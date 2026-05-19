@@ -1,0 +1,42 @@
+# CODEX_QUALITY_HARNESS_FILE v0.2.1
+name: weekly-health-check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install root dependencies if present
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f package.json ]; then
+            npm install --no-package-lock
+          fi
+      - name: Install monorepo dependencies if present
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in apps/backend apps/frontend contracts; do
+            if [ -f "$dir/package.json" ]; then
+              (cd "$dir" && npm install --no-package-lock)
+            fi
+          done
+      - name: Run local quality gate
+        env:
+          CODEX_REQUIRE_NPM: "1"
+        run: node scripts/codex-local-quality-gate.mjs

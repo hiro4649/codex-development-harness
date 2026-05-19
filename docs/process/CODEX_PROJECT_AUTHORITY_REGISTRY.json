@@ -1,0 +1,83 @@
+{
+  "version": "0.3.0",
+  "projects": {
+    "IRIS": {
+      "project_type": "project_repo",
+      "authority_required_for": [
+        "IRIS body specification changes",
+        "behavior changes",
+        "runtime contract changes",
+        "R3 source changes"
+      ],
+      "authority_source": "repo-local IRIS_SPEC_AUTHORITY.md",
+      "fallback": "none; stop IRIS body changes if missing in the active IRIS repo",
+      "not_required_for": [
+        "HARNESS repo common workflow docs maintenance"
+      ],
+      "notes": [
+        "Do not place IRIS_SPEC_AUTHORITY.md in HARNESS.",
+        "The old absolute path authority is deprecated / historical reference only.",
+        ".env.example changes normally require a dedicated env-policy PR.",
+        "R3/high-risk source changes require human review."
+      ]
+    },
+    "FUNKY": {
+      "project_type": "project_repo",
+      "authority_required_for": [
+        "FUNKY specification changes",
+        "behavior changes",
+        "R3 changes"
+      ],
+      "authority_source": "docs/funky/SPEC.md or existing FUNKY authority docs",
+      "fallback": "docs/funky/QUESTIONS.md",
+      "not_required_for": [
+        "HARNESS repo common workflow docs maintenance"
+      ],
+      "notes": [
+        "Use scripts/verify-funky.sh as the standard verification entry.",
+        "Keep backend, frontend, contracts, and NFT checks.",
+        "Do not mix source, docs, env, and harness changes in one PR."
+      ]
+    },
+    "IRIS-live2d-renderer": {
+      "project_type": "project_repo",
+      "authority_required_for": [
+        "renderer specification changes",
+        "Live2D cue schema changes",
+        "boundary changes",
+        "R3 changes"
+      ],
+      "authority_source": "renderer repo SPEC / REVIEW_POLICY / QUALITY docs",
+      "fallback": "renderer QUESTIONS.md",
+      "not_required_for": [
+        "HARNESS repo common workflow docs maintenance"
+      ],
+      "notes": [
+        "Keep R3 status.",
+        "Large changes require human review.",
+        "Human review is required for Live2D cue schema, renderer boundary, public summary, adapter handoff, and engine response normalization.",
+        "Do not force R3 down to R2 or R1."
+      ]
+    },
+    "HARNESS": {
+      "project_type": "cross_project_harness_repo",
+      "authority_required_for": [
+        "harness policy changes",
+        "quality gate changes",
+        "common workflow changes"
+      ],
+      "authority_source": [
+        "docs/codex/AUTHORITY_POLICY.md",
+        "docs/process/CODEX_PROJECT_AUTHORITY_REGISTRY.json"
+      ],
+      "fallback": "docs/codex/QUESTIONS.md",
+      "not_required_for": [
+        "IRIS body specification confirmation"
+      ],
+      "notes": [
+        "HARNESS does not require IRIS_SPEC_AUTHORITY.md.",
+        "Common workflow docs may be maintained without project-local authority files."
+      ]
+    }
+  }
+}
