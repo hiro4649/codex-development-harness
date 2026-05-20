@@ -1,0 +1,39 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "schemaVersion": "1.0.0",
+  "note": "Safe synthetic audit expectations. Do not store raw diffs, logs, payloads, endpoints, or secrets.",
+  "expectations": [
+    {
+      "ruleId": "TEST_WEAKENING_ASSERTION_REMOVED",
+      "severity": "blocking",
+      "confidence": "high",
+      "priority": "P0",
+      "taxonomy": "test_weakening",
+      "recommendedFixType": "test_fix"
+    },
+    {
+      "ruleId": "DEPENDENCY_PACKAGE_LOCKFILE_MISMATCH",
+      "severity": "warning",
+      "confidence": "medium",
+      "priority": "P2",
+      "taxonomy": "dependency_inconsistency",
+      "recommendedFixType": "dependency_fix"
+    },
+    {
+      "ruleId": "SECURITY_SENSITIVE_CHANGE",
+      "severity": "warning",
+      "confidence": "medium",
+      "priority": "P2",
+      "taxonomy": "security_sensitive_change",
+      "recommendedFixType": "human_review_required"
+    },
+    {
+      "ruleId": "COVERAGE_INTENT_MISSING",
+      "severity": "warning",
+      "confidence": "medium",
+      "priority": "P2",
+      "taxonomy": "coverage_gap",
+      "recommendedFixType": "test_fix"
+    }
+  ]
+}

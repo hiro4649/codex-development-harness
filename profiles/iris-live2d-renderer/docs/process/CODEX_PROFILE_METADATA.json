@@ -1,0 +1,17 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "profileName": "iris-live2d-renderer",
+  "expectedRepoMarkers": [
+    { "type": "file", "path": "src" },
+    { "type": "file", "path": "package.json" },
+    { "type": "fileContains", "path": "AGENTS.md", "text": "renderer_ready=true" }
+  ],
+  "forbiddenRepoMarkers": [
+    { "type": "file", "path": "IRIS_SPEC_AUTHORITY.md" }
+  ],
+  "requiredFiles": ["AGENTS.md", "package.json", "src"],
+  "forbiddenFiles": ["IRIS_SPEC_AUTHORITY.md", ".env", ".env.local"],
+  "recommendedChecks": ["secret scan", "local quality gate", "profile required checks", "renderer readiness reviewer"],
+  "profileDescription": "Live2D renderer sibling project profile with renderer readiness policy.",
+  "mismatchSeverity": "fail"
+}

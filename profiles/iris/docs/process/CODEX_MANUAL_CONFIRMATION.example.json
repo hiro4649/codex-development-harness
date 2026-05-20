@@ -1,0 +1,20 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "schemaVersion": "1.0.0",
+  "profile": "example-profile",
+  "riskLevel": "R3",
+  "headSha": "<current-pr-head-sha>",
+  "confirmedAt": "<ISO-8601 timestamp>",
+  "confirmedByRole": "project-owner",
+  "reviewedItems": [
+    "quality evidence",
+    "required risk items",
+    "residual risks"
+  ],
+  "qualityGateNotWeakened": true,
+  "riskLevelNotLowered": true,
+  "residualRisks": [
+    "manual confirmation recorded outside branch protection"
+  ],
+  "manualBranchProtectionAcknowledged": true
+}

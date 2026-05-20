@@ -1,0 +1,24 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "warnings": [],
+  "schema": {
+    "warningFields": [
+      "id",
+      "ruleId",
+      "path",
+      "profile",
+      "owner",
+      "expiresAt",
+      "severity",
+      "confidence",
+      "priority",
+      "reason",
+      "acceptedBy",
+      "introducedIn",
+      "lastReviewedAt",
+      "matchScope"
+    ],
+    "dateFormat": "YYYY-MM-DD",
+    "note": "Store safe code-audit warning metadata only. Do not store secrets, endpoints, raw logs, or raw payloads."
+  }
+}

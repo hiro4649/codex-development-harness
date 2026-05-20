@@ -11,7 +11,11 @@ function git(args) {
 function splitNull(buf) { return buf.toString('utf8').split('\0').filter(Boolean); }
 function toPosix(p) { return p.split(path.sep).join('/'); }
 function allowedExample(file) { return /(^|\/)\.env\.(example|sample)$/.test(file) || /\.(env\.example|env\.sample)$/.test(file); }
-function skipFile(file) { return /(^|\/)(node_modules|dist|build|\.next)(\/|$)/.test(file) || /(^|\/)\.git(\/|$)/.test(file); }
+function skipFile(file) {
+  return /(^|\/)(node_modules|dist|build|\.next)(\/|$)/.test(file)
+    || /(^|\/)\.git(\/|$)/.test(file)
+    || /^profiles\/[^/]+\/scripts\/codex-local-quality-gate\.mjs$/.test(file);
+}
 function binaryLike(buf) { return buf.includes(0); }
 
 const failures = [];

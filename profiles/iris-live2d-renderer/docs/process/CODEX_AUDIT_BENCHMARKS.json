@@ -1,0 +1,45 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "benchmarks": [
+    {
+      "benchmarkId": "safe-harness-only",
+      "profile": "generic",
+      "scenarioType": "harness",
+      "expectedRules": [],
+      "expectedSeverity": "info",
+      "expectedHumanReview": false,
+      "expectedDecision": "merge_ready_or_manual",
+      "safeDescription": "Synthetic harness-only change with no implementation scope."
+    },
+    {
+      "benchmarkId": "dependency-missing-direct",
+      "profile": "generic",
+      "scenarioType": "dependency",
+      "expectedRules": ["DEPENDENCY_DIRECT_IMPORT_MISSING"],
+      "expectedSeverity": "warning",
+      "expectedHumanReview": false,
+      "expectedDecision": "manual_or_ready_after_checks",
+      "safeDescription": "Synthetic package/import mismatch requiring dependency validation."
+    },
+    {
+      "benchmarkId": "test-assertion-removed",
+      "profile": "generic",
+      "scenarioType": "test",
+      "expectedRules": ["TEST_WEAKENING_ASSERTION_REMOVED"],
+      "expectedSeverity": "blocking",
+      "expectedHumanReview": true,
+      "expectedDecision": "not_merge_ready",
+      "safeDescription": "Synthetic test weakening with an explicit assertion removal."
+    },
+    {
+      "benchmarkId": "scope-mixing",
+      "profile": "generic",
+      "scenarioType": "mixed-scope",
+      "expectedRules": ["PR_SCOPE_MIXED"],
+      "expectedSeverity": "blocking",
+      "expectedHumanReview": true,
+      "expectedDecision": "not_merge_ready",
+      "safeDescription": "Synthetic PR mixes managed harness files with unrelated implementation scope."
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "profileName": "funky",
+  "expectedRepoMarkers": [
+    { "type": "file", "path": "apps/backend" },
+    { "type": "file", "path": "apps/frontend" },
+    { "type": "file", "path": "contracts" }
+  ],
+  "forbiddenRepoMarkers": [],
+  "requiredFiles": ["AGENTS.md", "apps/backend", "apps/frontend", "contracts"],
+  "forbiddenFiles": [".env", ".env.local"],
+  "recommendedChecks": ["secret scan", "local quality gate", "profile required checks", "asset security reviewer"],
+  "profileDescription": "High-risk asset-oriented repository profile with package policy split across app and contract workspaces.",
+  "mismatchSeverity": "fail"
+}

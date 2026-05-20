@@ -1,0 +1,27 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "schemaVersion": "1.0.0",
+  "note": "Safe example for PR scope planning. Keep project-specific paths in profile policy.",
+  "prType": "harness",
+  "allowedPaths": [
+    "AGENTS.md",
+    ".github/",
+    "docs/process/",
+    "scripts/codex-*"
+  ],
+  "blockedPaths": [
+    ".env",
+    ".env.*"
+  ],
+  "requiredChecks": [
+    "secret scan",
+    "local quality gate"
+  ],
+  "requiredReviewers": [],
+  "notInScope": [
+    "unrelated implementation changes",
+    "unrelated dependency changes"
+  ],
+  "knownResiduals": [],
+  "humanReviewRequired": true
+}

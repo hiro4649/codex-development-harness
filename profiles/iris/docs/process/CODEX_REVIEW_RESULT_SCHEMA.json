@@ -1,0 +1,37 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "reviewType": { "type": "string" },
+    "profile": { "type": "string" },
+    "riskLevel": { "type": "string", "enum": ["R1", "R2", "R3"] },
+    "reviewerSkill": { "type": "string" },
+    "findings": { "type": "array", "items": { "type": "object" } },
+    "rootCauseGroups": { "type": "array", "items": { "type": "object" } },
+    "prioritySummary": { "type": "object" },
+    "recommendedFixTypes": { "type": "array", "items": { "type": "string" } },
+    "fixImpact": { "type": "string", "enum": ["small", "medium", "large", "unknown"] },
+    "remediationChecklist": { "type": "array", "items": { "type": "string" } },
+    "blockingFindings": { "type": "array", "items": { "type": "object" } },
+    "nonBlockingFindings": { "type": "array", "items": { "type": "object" } },
+    "requiredFollowUps": { "type": "array", "items": { "type": "string" } },
+    "mergeRecommendation": { "type": "string" },
+    "evidenceRefs": { "type": "array", "items": { "type": "string" } },
+    "safeSummaryOnly": { "type": "boolean" }
+  },
+  "required": [
+    "reviewType",
+    "profile",
+    "riskLevel",
+    "reviewerSkill",
+    "findings",
+    "blockingFindings",
+    "nonBlockingFindings",
+    "requiredFollowUps",
+    "mergeRecommendation",
+    "evidenceRefs",
+    "safeSummaryOnly"
+  ]
+}

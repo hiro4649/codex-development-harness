@@ -1,0 +1,752 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "profile": "iris",
+  "packageDirs": [
+    "."
+  ],
+  "missingScript": "fail",
+  "allowedPaths": [],
+  "blockedPaths": [
+    ".env",
+    ".env.*",
+    "**/*.pem",
+    "**/*.p12",
+    "**/*.pfx"
+  ],
+  "highRiskPaths": [
+    "src/",
+    "test/",
+    "docs/specs/",
+    "IRIS_SPEC_AUTHORITY.md",
+    "scripts/run-tests.js"
+  ],
+  "harnessPrAllowedPaths": [
+    "AGENTS.md",
+    ".github/",
+    "docs/process/",
+    "scripts/codex-*"
+  ],
+  "harnessPrBlockedPaths": [
+    "src/",
+    "test/",
+    "docs/specs/",
+    "IRIS_SPEC_AUTHORITY.md",
+    "package.json",
+    "package-lock.json",
+    "scripts/run-tests.js"
+  ],
+  "harnessPrMode": "fail",
+  "diffScope": {
+    "outOfScope": "fail",
+    "blocked": "fail",
+    "highRisk": "warn"
+  },
+  "riskKeywords": {
+    "R3": [
+      "IRIS",
+      "IRIS_SPEC_AUTHORITY",
+      "Phase",
+      "candidate",
+      "approved",
+      "commit",
+      "execution",
+      "Core",
+      "Adapter",
+      "persistence",
+      "secret",
+      "admin"
+    ],
+    "R2": [
+      "config",
+      "workflow",
+      "script",
+      "dependency"
+    ]
+  },
+  "checks": [
+    {
+      "name": "IRIS config doctor",
+      "type": "npmScript",
+      "cwd": ".",
+      "script": "dev:config:doctor",
+      "profileRequired": true
+    },
+    {
+      "name": "npm test",
+      "type": "npmScript",
+      "cwd": ".",
+      "script": "test",
+      "envFlag": "CODEX_RUN_NPM_TEST",
+      "missingScript": "skip"
+    },
+    {
+      "name": "npm build",
+      "type": "npmScript",
+      "cwd": ".",
+      "script": "build",
+      "envFlag": "CODEX_RUN_NPM_BUILD",
+      "missingScript": "skip"
+    },
+    {
+      "name": "npm lint",
+      "type": "npmScript",
+      "cwd": ".",
+      "script": "lint",
+      "envFlag": "CODEX_RUN_NPM_LINT",
+      "missingScript": "skip"
+    },
+    {
+      "name": "npm smoke",
+      "type": "npmScript",
+      "cwd": ".",
+      "script": "smoke",
+      "envFlag": "CODEX_RUN_NPM_SMOKE",
+      "missingScript": "skip"
+    }
+  ],
+  "prTypes": {
+    "harness": {
+      "allowedPaths": [
+        "AGENTS.md",
+        ".github/",
+        "docs/process/",
+        "scripts/codex-*"
+      ],
+      "blockedPaths": [
+        "src/",
+        "test/",
+        "docs/specs/",
+        "IRIS_SPEC_AUTHORITY.md",
+        "package.json",
+        "package-lock.json",
+        "scripts/run-tests.js"
+      ],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "iris-boundary-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "allowPackageChanges": false,
+      "allowLockfileChanges": false,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "implementation": {
+      "allowedPaths": [],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "implementation-reviewer",
+        "iris-boundary-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "allowPackageChanges": true,
+      "allowLockfileChanges": true,
+      "allowImplementationChanges": true,
+      "companionTestPaths": [
+        "scripts/run-tests.js"
+      ],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": [
+        "src/",
+        "scripts/run-tests.js"
+      ]
+    },
+    "docs-only": {
+      "allowedPaths": [
+        "docs/"
+      ],
+      "blockedPaths": [
+        "src/",
+        "test/",
+        "docs/specs/",
+        "IRIS_SPEC_AUTHORITY.md",
+        "package.json",
+        "package-lock.json",
+        "scripts/run-tests.js"
+      ],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [],
+      "requiresHumanReview": false,
+      "allowPackageChanges": false,
+      "allowLockfileChanges": false,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "dependency": {
+      "allowedPaths": [
+        "package.json",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml"
+      ],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [],
+      "requiresHumanReview": true,
+      "allowPackageChanges": true,
+      "allowLockfileChanges": true,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "security": {
+      "allowedPaths": [],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "security-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "allowPackageChanges": true,
+      "allowLockfileChanges": true,
+      "allowImplementationChanges": true,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "test-only": {
+      "allowedPaths": [
+        "test/",
+        "tests/",
+        "**/*.test.*",
+        "**/*.spec.*"
+      ],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "test-coverage-reviewer"
+      ],
+      "requiresHumanReview": false,
+      "allowPackageChanges": false,
+      "allowLockfileChanges": false,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "fixture-contract-repair": {
+      "allowedPaths": [
+        "scripts/run-tests.js"
+      ],
+      "blockedPaths": [
+        "src/",
+        "test/",
+        "docs/specs/",
+        "IRIS_SPEC_AUTHORITY.md",
+        "package.json",
+        "package-lock.json",
+        "AGENTS.md",
+        ".github/",
+        "docs/process/",
+        "scripts/codex-*"
+      ],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "test-coverage-reviewer",
+        "iris-boundary-reviewer"
+      ],
+      "requiredReviewers": [
+        "test-coverage-reviewer",
+        "iris-boundary-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "riskLevel": "R3",
+      "allowPackageChanges": false,
+      "allowLockfileChanges": false,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": [
+        "scripts/run-tests.js"
+      ]
+    }
+  },
+  "reviewerSelection": {
+    "rules": [
+      {
+        "id": "tests",
+        "reviewerSkill": "test-coverage-reviewer",
+        "paths": [
+          "test/",
+          "tests/",
+          "**/*.test.*",
+          "**/*.spec.*"
+        ]
+      },
+      {
+        "id": "sensitive",
+        "reviewerSkill": "security-reviewer",
+        "keywords": [
+          "auth",
+          "authorization",
+          "permission",
+          "secret",
+          "credential",
+          "token",
+          "payment",
+          "persistence",
+          "migration",
+          "webhook",
+          "upload",
+          "runtime",
+          "adapter"
+        ],
+        "riskLevels": [
+          "R3"
+        ]
+      },
+      {
+        "id": "release",
+        "reviewerSkill": "release-gate-reviewer",
+        "paths": [
+          ".github/workflows/"
+        ],
+        "keywords": [
+          "deploy",
+          "release",
+          "rollout"
+        ]
+      },
+      {
+        "id": "profile-boundary",
+        "reviewerSkill": "iris-boundary-reviewer",
+        "paths": [
+          "src/",
+          "docs/specs/",
+          "IRIS_SPEC_AUTHORITY.md"
+        ],
+        "keywords": [
+          "IRIS",
+          "Phase",
+          "candidate",
+          "approved",
+          "commit",
+          "execution",
+          "Core",
+          "Adapter",
+          "world_command",
+          "External Observation",
+          "safe summaries"
+        ]
+      }
+    ]
+  },
+  "testWeakening": {
+    "testPaths": [
+      "test/",
+      "tests/",
+      "**/*.test.*",
+      "**/*.spec.*"
+    ],
+    "mode": "warn",
+    "safeFixtureMetadataPatterns": [
+      "metadata",
+      "manifest",
+      "approved",
+      "safe"
+    ]
+  },
+  "domainInvariants": [
+    {
+      "id": "core-adapter-boundary",
+      "reviewerSkill": "iris-boundary-reviewer",
+      "keywords": [
+        "Core",
+        "Adapter",
+        "boundary"
+      ],
+      "riskLevel": "R3"
+    },
+    {
+      "id": "approval-separation",
+      "reviewerSkill": "iris-boundary-reviewer",
+      "keywords": [
+        "candidate",
+        "approved",
+        "commit",
+        "execution"
+      ],
+      "riskLevel": "R3"
+    },
+    {
+      "id": "world-command-source",
+      "reviewerSkill": "iris-boundary-reviewer",
+      "keywords": [
+        "world_command"
+      ],
+      "riskLevel": "R3"
+    },
+    {
+      "id": "external-observation-truth",
+      "reviewerSkill": "iris-boundary-reviewer",
+      "keywords": [
+        "External Observation",
+        "truth"
+      ],
+      "riskLevel": "R3"
+    },
+    {
+      "id": "safe-summary-only",
+      "reviewerSkill": "iris-boundary-reviewer",
+      "keywords": [
+        "safe summary",
+        "safe summaries"
+      ],
+      "riskLevel": "R3"
+    }
+  ],
+  "dependencyAudit": {
+    "packageFiles": [
+      "package.json"
+    ],
+    "lockfiles": [
+      "package-lock.json",
+      "npm-shrinkwrap.json",
+      "yarn.lock",
+      "pnpm-lock.yaml"
+    ],
+    "requireLockfileForPackageChange": "warning",
+    "riskyPackages": []
+  },
+  "securitySensitiveTerms": [
+    "auth",
+    "authorization",
+    "permission",
+    "secret",
+    "credential",
+    "token",
+    "payment",
+    "persistence",
+    "migration",
+    "webhook",
+    "upload",
+    "runtime",
+    "adapter"
+  ],
+  "coverageIntent": {
+    "enabled": true,
+    "implementationPaths": [
+      "src/"
+    ],
+    "testPaths": [
+      "test/",
+      "tests/",
+      "scripts/run-tests.js"
+    ],
+    "required": [
+      "happy path",
+      "error path",
+      "boundary values",
+      "permissions",
+      "state transitions",
+      "regression",
+      "external failure",
+      "smoke/integration"
+    ],
+    "missingTestChange": "warning"
+  },
+  "codeAuditPolicy": {
+    "priorityOverrides": {
+      "DOMAIN_INVARIANT_BOUNDARY_RISK": "P1"
+    },
+    "recommendedFixTypes": {
+      "DOMAIN_INVARIANT_BOUNDARY_RISK": "human_review_required"
+    },
+    "fixImpactRules": {},
+    "reviewerMappings": {
+      "DOMAIN_INVARIANT_BOUNDARY_RISK": "iris-boundary-reviewer"
+    },
+    "domainInvariantMappings": {
+      "core-adapter-boundary": {
+        "evidence": "iris-boundary-reviewer: Core / Adapter boundary"
+      },
+      "approval-separation": {
+        "evidence": "iris-boundary-reviewer: candidate / approved / commit / execution separation"
+      },
+      "world-command-source": {
+        "evidence": "iris-boundary-reviewer: world_command source boundary"
+      },
+      "external-observation-truth": {
+        "evidence": "iris-boundary-reviewer: External Observation handling"
+      },
+      "safe-summary-only": {
+        "evidence": "iris-boundary-reviewer: safe summaries"
+      }
+    },
+    "testIntentRules": {},
+    "dependencyAuditRules": {},
+    "suppressionPolicy": {
+      "requireOwner": true,
+      "requireExpiresAt": true,
+      "minReasonLength": 12,
+      "broadScope": "warning",
+      "highPrioritySuppression": "warning",
+      "unknownRuleId": "warning"
+    },
+    "severityOverrides": {
+      "testWeakening": {
+        "assertionRemoved": "blocking",
+        "skipTodoOnlyAdded": "warning",
+        "expectationRelaxed": "warning",
+        "snapshotUpdated": "warning",
+        "errorPathRemoved": "warning",
+        "boundaryCoverageRemoved": "warning",
+        "regressionCoverageRemoved": "warning",
+        "fixtureFollowsImplementation": "warning"
+      },
+      "dependencyAudit": {
+        "packageWithoutLockfile": "warning",
+        "directImportMissing": "warning",
+        "riskyPackage": "warning"
+      },
+      "securitySensitiveChange": "warning",
+      "coverageIntent": "warning",
+      "domainInvariant": "blocking"
+    },
+    "baselinePolicy": {
+      "expired": "warning"
+    },
+    "mode": "standard",
+    "confidenceCalibration": {
+      "high": "blockingCandidate",
+      "medium": "warningCandidate",
+      "low": "infoCandidate"
+    },
+    "confidenceOverrides": {},
+    "negativeSignals": {
+      "enabled": true,
+      "lowerWarnings": true
+    },
+    "performanceBudget": {
+      "maxFiles": 500,
+      "maxBytes": 2000000,
+      "maxFindings": 200,
+      "maxRootCauses": 80,
+      "onLimit": "warning"
+    },
+    "falsePositivePolicy": {
+      "requireOwner": true,
+      "requireExpiresAt": true,
+      "requireReason": true,
+      "narrowMatchScope": true
+    },
+    "confidenceThresholds": {
+      "blockingMinConfidence": "high",
+      "humanReviewMinConfidence": "medium",
+      "warningMinConfidence": "low"
+    },
+    "auditQualityThresholds": {
+      "minScore": 0.85,
+      "maxFalsePositives": 0,
+      "maxFalseNegatives": 0
+    },
+    "canaryRules": [],
+    "canaryAsWarning": true,
+    "canaryExpiresAt": "",
+    "canaryPromoteToBlockingAfter": "",
+    "recommendedMode": "standard",
+    "semanticImpactMappings": {
+      "DOMAIN_INVARIANT_BOUNDARY_RISK": {
+        "category": "adapter_boundary"
+      }
+    },
+    "minimalPrPlan": {
+      "doNotMix": [
+        "harness update with implementation change",
+        "boundary change with output-summary change",
+        "test expectation change without specification evidence"
+      ]
+    },
+    "validationCommandPlan": {},
+    "faultInjectionBenchmark": {
+      "expectedFaults": 11,
+      "maxMissedFaults": 0,
+      "maxFalsePositives": 0
+    },
+    "specTestMismatch": {
+      "reviewerSkill": "iris-boundary-reviewer"
+    },
+    "defectTaxonomy": {
+      "categories": [
+        "boundary_violation",
+        "candidate_approved_confusion",
+        "adapter_handoff_risk",
+        "safe_summary_leak_risk",
+        "phase_io_drift",
+        "spec_test_mismatch"
+      ],
+      "ruleMappings": {
+        "TEST_WEAKENING_ASSERTION_REMOVED": "spec_test_mismatch",
+        "TEST_WEAKENING_SKIP_ADDED": "spec_test_mismatch",
+        "DEPENDENCY_DIRECT_IMPORT_MISSING": "dependency_inconsistency",
+        "DEPENDENCY_PACKAGE_LOCKFILE_MISMATCH": "dependency_inconsistency",
+        "SECURITY_SENSITIVE_CHANGE": "boundary_violation",
+        "COVERAGE_INTENT_MISSING": "spec_test_mismatch",
+        "DOMAIN_INVARIANT_BOUNDARY_RISK": "boundary_violation"
+      }
+    },
+    "humanReviewRoles": {
+      "default": "project-owner",
+      "security": "security-reviewer",
+      "release": "release-owner",
+      "domain": "domain-owner",
+      "test_weakening": "senior-engineer",
+      "dependency_inconsistency": "senior-engineer"
+    },
+    "scopeAgreement": {
+      "outputPath": "docs/process/CODEX_PR_SCOPE_CONTRACT.json",
+      "writeEnv": "CODEX_WRITE_PR_SCOPE_CONTRACT"
+    },
+    "calibrationLock": {
+      "path": "docs/process/CODEX_AUDIT_CALIBRATION_LOCK.json",
+      "drift": "warning"
+    },
+    "specTestCodeConsistency": {
+      "statusOnMismatch": "warning",
+      "requireReviewerCoverage": true
+    },
+    "ciParity": {
+      "missingRemoteGate": "manual_confirmation_required",
+      "localCacheRisk": "warning"
+    },
+    "auditThresholds": {
+      "minimumAuditGrade": 85,
+      "maxFalsePositiveCount": 1,
+      "maxFalseNegativeCount": 0
+    },
+    "specAuthority": {
+      "requiredFiles": [
+        "IRIS_SPEC_AUTHORITY.md"
+      ],
+      "notRequiredFiles": []
+    },
+    "humanReviewChecklist": {
+      "roles": {
+        "default": "project-owner"
+      },
+      "mustCheck": [
+        "quality evidence",
+        "high priority findings",
+        "residual risks"
+      ],
+      "mustNotAssume": [
+        "remote checks are current",
+        "static audit proves runtime behavior"
+      ],
+      "evidenceToInspect": [
+        "quality report",
+        "evidence pack",
+        "PR body"
+      ],
+      "questionsForHuman": [
+        "are residual risks acceptable?",
+        "are required checks current?"
+      ]
+    },
+    "mutationScenarios": [
+      {
+        "mutationId": "assertion-removed",
+        "ruleId": "TEST_WEAKENING_ASSERTION_REMOVED",
+        "expectedDetected": true
+      },
+      {
+        "mutationId": "direct-import-gap",
+        "ruleId": "DEPENDENCY_DIRECT_IMPORT_MISSING",
+        "expectedDetected": true
+      },
+      {
+        "mutationId": "scope-mixing",
+        "ruleId": "PR_SCOPE_MIXED",
+        "expectedDetected": true
+      }
+    ],
+    "canaryScenarios": [
+      {
+        "id": "harness-only",
+        "expected": "pass"
+      },
+      {
+        "id": "docs-only",
+        "expected": "pass"
+      },
+      {
+        "id": "dependency-risk",
+        "expected": "warning"
+      },
+      {
+        "id": "test-weakening",
+        "expected": "block"
+      }
+    ],
+    "boundaryMutationScenarios": [
+      {
+        "id": "candidate-approved-separation",
+        "expectedDetected": true
+      },
+      {
+        "id": "core-adapter-boundary",
+        "expectedDetected": true
+      },
+      {
+        "id": "safe-summary-only",
+        "expectedDetected": true
+      }
+    ],
+    "reviewerChallengeQuestions": [
+      "Does this change weaken verification evidence?",
+      "Is the remote quality evidence current?",
+      "Should this PR be split before review?",
+      "Does this preserve IRIS_SPEC_AUTHORITY.md boundary meaning?"
+    ]
+  },
+  "manualConfirmationPolicy": {
+    "requiredForRiskLevels": [
+      "R3"
+    ],
+    "allowedSources": [
+      "githubReview",
+      "prBody",
+      "prComment",
+      "localFile"
+    ],
+    "requireHeadSha": true,
+    "requireRole": true,
+    "requireReviewedItems": true,
+    "requiredReviewedItems": [],
+    "cannotOverride": [
+      "secretScanFailure",
+      "blockedPaths",
+      "highConfidenceSecret",
+      "implementationHarnessMixing",
+      "profileRequiredFailure"
+    ]
+  },
+  "implementationCompanionTestPaths": [],
+  "testFixtureCompanionPaths": [],
+  "fixtureContractRepairPaths": [
+    "scripts/run-tests.js"
+  ],
+  "fixtureContractRepairRules": {
+    "allowApprovedFixtureContractRepair": true,
+    "forbidTestWeakening": true,
+    "forbidSkipTodoOnly": true,
+    "forbidNegativeCaseWeakening": true,
+    "requireManualConfirmation": true,
+    "requireSafeSummary": true,
+    "requiredManualConfirmationItems": [
+      "validator non-weakening",
+      "negative cases maintained",
+      "fixture repair only",
+      "raw memory not exposed",
+      "safe summary maintained",
+      "full run residual failures are not treated as PASS",
+      "non-overridable failures are not overridden"
+    ]
+  }
+}

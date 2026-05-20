@@ -1,0 +1,52 @@
+# CODEX_QUALITY_HARNESS_FILE v0.6.8
+name: weekly-health-check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install policy package dependencies if present
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE' > "$RUNNER_TEMP/codex-package-dirs.txt"
+          const fs = require('fs');
+          const path = require('path');
+          const policyPath = path.join('docs', 'process', 'CODEX_QUALITY_GATE_POLICY.json');
+          let dirs = ['.'];
+          if (fs.existsSync(policyPath)) {
+            const raw = fs.readFileSync(policyPath, 'utf8').replace(/^\uFEFF/, '');
+            const policy = JSON.parse(raw);
+            if (Array.isArray(policy.packageDirs) && policy.packageDirs.length) dirs = policy.packageDirs;
+          }
+          for (const dir of [...new Set(dirs)]) {
+            if (fs.existsSync(path.join(dir || '.', 'package.json'))) console.log(dir || '.');
+          }
+          NODE
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            (cd "$dir" && npm install --no-package-lock)
+          done < "$RUNNER_TEMP/codex-package-dirs.txt"
+      - name: Run local quality gate
+        env:
+          CODEX_REQUIRE_NPM: "1"
+          CODEX_RUN_PROFILE_REQUIRED_CHECKS: "1"
+          CODEX_QUALITY_REPORT: "json"
+        run: node scripts/codex-local-quality-gate.mjs

@@ -1,0 +1,43 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "schemaVersion": "1.0.0",
+  "description": "Safe schema for recording whether an audit finding was useful. Do not include raw diffs, raw logs, endpoints, credentials, private data, or payloads.",
+  "required": [
+    "findingFingerprint",
+    "ruleId",
+    "profile",
+    "outcome",
+    "usefulness",
+    "actionability",
+    "falsePositive",
+    "missedRisk",
+    "fixApplied",
+    "humanReviewNeeded",
+    "notesSafeSummary",
+    "reviewedByRole",
+    "expiresAt"
+  ],
+  "properties": {
+    "findingFingerprint": { "type": "string" },
+    "ruleId": { "type": "string" },
+    "profile": { "type": "string" },
+    "outcome": { "type": "string" },
+    "usefulness": { "type": "string", "enum": ["high", "medium", "low", "unknown"] },
+    "actionability": { "type": "string" },
+    "falsePositive": { "type": "boolean" },
+    "missedRisk": { "type": "boolean" },
+    "fixApplied": { "type": "boolean" },
+    "humanReviewNeeded": { "type": "boolean" },
+    "notesSafeSummary": { "type": "string" },
+    "reviewedByRole": { "type": "string" },
+    "expiresAt": { "type": "string" }
+  },
+  "forbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload"
+  ]
+}

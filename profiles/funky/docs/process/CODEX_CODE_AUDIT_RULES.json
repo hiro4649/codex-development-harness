@@ -1,0 +1,93 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "rules": [
+    {
+      "ruleId": "TEST_WEAKENING_ASSERTION_REMOVED",
+      "defaultSeverity": "blocking",
+      "defaultConfidence": "high",
+      "defaultPriority": "P0",
+      "recommendedFixType": "test_fix",
+      "appliesToPrTypes": ["test-only", "implementation"],
+      "supportsBaseline": false,
+      "humanReviewTrigger": true,
+      "safeDescription": "Assertion evidence was removed from a test."
+    },
+    {
+      "ruleId": "TEST_WEAKENING_SKIP_ADDED",
+      "defaultSeverity": "warning",
+      "defaultConfidence": "medium",
+      "defaultPriority": "P2",
+      "recommendedFixType": "test_fix",
+      "appliesToPrTypes": ["test-only", "implementation"],
+      "supportsBaseline": true,
+      "humanReviewTrigger": false,
+      "safeDescription": "A skip, todo, or only test marker was added."
+    },
+    {
+      "ruleId": "DEPENDENCY_DIRECT_IMPORT_MISSING",
+      "defaultSeverity": "warning",
+      "defaultConfidence": "medium",
+      "defaultPriority": "P2",
+      "recommendedFixType": "dependency_fix",
+      "appliesToPrTypes": ["dependency", "implementation"],
+      "supportsBaseline": true,
+      "humanReviewTrigger": false,
+      "safeDescription": "A changed source import has no direct package declaration evidence."
+    },
+    {
+      "ruleId": "DEPENDENCY_PACKAGE_LOCKFILE_MISMATCH",
+      "defaultSeverity": "warning",
+      "defaultConfidence": "medium",
+      "defaultPriority": "P2",
+      "recommendedFixType": "dependency_fix",
+      "appliesToPrTypes": ["dependency"],
+      "supportsBaseline": true,
+      "humanReviewTrigger": false,
+      "safeDescription": "Package metadata and lock evidence appear inconsistent."
+    },
+    {
+      "ruleId": "SECURITY_SENSITIVE_CHANGE",
+      "defaultSeverity": "warning",
+      "defaultConfidence": "medium",
+      "defaultPriority": "P2",
+      "recommendedFixType": "human_review_required",
+      "appliesToPrTypes": ["implementation", "security"],
+      "supportsBaseline": true,
+      "humanReviewTrigger": true,
+      "safeDescription": "A profile-defined sensitive change signal was detected."
+    },
+    {
+      "ruleId": "COVERAGE_INTENT_MISSING",
+      "defaultSeverity": "warning",
+      "defaultConfidence": "medium",
+      "defaultPriority": "P2",
+      "recommendedFixType": "test_fix",
+      "appliesToPrTypes": ["implementation"],
+      "supportsBaseline": true,
+      "humanReviewTrigger": false,
+      "safeDescription": "Implementation changes have no nearby test intent evidence."
+    },
+    {
+      "ruleId": "DOMAIN_INVARIANT_BOUNDARY_RISK",
+      "defaultSeverity": "warning",
+      "defaultConfidence": "medium",
+      "defaultPriority": "P2",
+      "recommendedFixType": "human_review_required",
+      "appliesToPrTypes": ["implementation"],
+      "supportsBaseline": true,
+      "humanReviewTrigger": true,
+      "safeDescription": "A profile-defined invariant-sensitive change was detected."
+    },
+    {
+      "ruleId": "CODE_AUDIT_SUPPRESSION_HYGIENE",
+      "defaultSeverity": "warning",
+      "defaultConfidence": "medium",
+      "defaultPriority": "P2",
+      "recommendedFixType": "policy_fix",
+      "appliesToPrTypes": ["harness"],
+      "supportsBaseline": false,
+      "humanReviewTrigger": false,
+      "safeDescription": "A code audit baseline or suppression entry needs safer metadata."
+    }
+  ]
+}

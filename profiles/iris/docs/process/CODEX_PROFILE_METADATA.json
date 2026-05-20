@@ -1,0 +1,15 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "profileName": "iris",
+  "expectedRepoMarkers": [
+    { "type": "file", "path": "IRIS_SPEC_AUTHORITY.md" },
+    { "type": "file", "path": "src" },
+    { "type": "file", "path": "package.json" }
+  ],
+  "forbiddenRepoMarkers": [],
+  "requiredFiles": ["AGENTS.md", "IRIS_SPEC_AUTHORITY.md", "package.json", "src"],
+  "forbiddenFiles": [".env", ".env.local"],
+  "recommendedChecks": ["secret scan", "local quality gate", "profile required checks", "boundary reviewer"],
+  "profileDescription": "IRIS main repository profile with specification authority and boundary review policy.",
+  "mismatchSeverity": "fail"
+}

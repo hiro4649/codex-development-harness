@@ -1,0 +1,806 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "profile": "funky",
+  "packageDirs": [
+    "apps/backend",
+    "apps/frontend",
+    "contracts"
+  ],
+  "missingScript": "skip",
+  "allowedPaths": [],
+  "blockedPaths": [
+    ".env",
+    ".env.*",
+    "**/*.pem",
+    "**/*.p12",
+    "**/*.pfx"
+  ],
+  "highRiskPaths": [
+    "apps/backend/",
+    "apps/frontend/",
+    "contracts/",
+    "docs/launch/",
+    "package.json",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml"
+  ],
+  "harnessPrAllowedPaths": [
+    "AGENTS.md",
+    ".github/",
+    "docs/process/",
+    "scripts/codex-*"
+  ],
+  "harnessPrBlockedPaths": [
+    "apps/backend/",
+    "apps/frontend/",
+    "contracts/",
+    "docs/launch/",
+    "package.json",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    ".env",
+    ".env.*"
+  ],
+  "harnessPrMode": "fail",
+  "diffScope": {
+    "outOfScope": "fail",
+    "blocked": "fail",
+    "highRisk": "warn"
+  },
+  "riskKeywords": {
+    "R3": [
+      "asset",
+      "NFT",
+      "wallet",
+      "transfer",
+      "chain",
+      "receipt",
+      "role-safety",
+      "contract",
+      "admin",
+      "tier",
+      "secret",
+      "execution"
+    ],
+    "R2": [
+      "config",
+      "workflow",
+      "script",
+      "dependency"
+    ]
+  },
+  "checks": [
+    {
+      "name": "backend prisma validate",
+      "type": "npmScript",
+      "cwd": "apps/backend",
+      "script": "prisma:validate",
+      "profileRequired": true,
+      "env": {
+        "DATABASE_URL": "postgresql://codex_harness:codex_harness@127.0.0.1:5432/codex_harness?schema=public"
+      }
+    },
+    {
+      "name": "backend build",
+      "type": "npmScript",
+      "cwd": "apps/backend",
+      "script": "build",
+      "profileRequired": true,
+      "env": {
+        "DATABASE_URL": "postgresql://codex_harness:codex_harness@127.0.0.1:5432/codex_harness?schema=public"
+      }
+    },
+    {
+      "name": "backend test",
+      "type": "npmScript",
+      "cwd": "apps/backend",
+      "script": "test",
+      "profileRequired": true,
+      "env": {
+        "DATABASE_URL": "postgresql://codex_harness:codex_harness@127.0.0.1:5432/codex_harness?schema=public"
+      }
+    },
+    {
+      "name": "frontend build",
+      "type": "npmScript",
+      "cwd": "apps/frontend",
+      "script": "build",
+      "profileRequired": true
+    },
+    {
+      "name": "contracts compile",
+      "type": "npmScript",
+      "cwd": "contracts",
+      "script": "compile",
+      "profileRequired": true
+    },
+    {
+      "name": "contracts test",
+      "type": "npmScript",
+      "cwd": "contracts",
+      "script": "test",
+      "profileRequired": true
+    },
+    {
+      "name": "contracts compile nft",
+      "type": "npmScript",
+      "cwd": "contracts",
+      "script": "compile:nft",
+      "profileRequired": true
+    },
+    {
+      "name": "contracts test nft",
+      "type": "npmScript",
+      "cwd": "contracts",
+      "script": "test:nft",
+      "profileRequired": true
+    }
+  ],
+  "prTypes": {
+    "harness": {
+      "allowedPaths": [
+        "AGENTS.md",
+        ".github/",
+        "docs/process/",
+        "scripts/codex-*"
+      ],
+      "blockedPaths": [
+        "apps/backend/",
+        "apps/frontend/",
+        "contracts/",
+        "docs/launch/",
+        "package.json",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        ".env",
+        ".env.*"
+      ],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "asset-security-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "allowPackageChanges": false,
+      "allowLockfileChanges": false,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "implementation": {
+      "allowedPaths": [],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "asset-security-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "allowPackageChanges": true,
+      "allowLockfileChanges": true,
+      "allowImplementationChanges": true,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "docs-only": {
+      "allowedPaths": [
+        "docs/"
+      ],
+      "blockedPaths": [
+        "apps/backend/",
+        "apps/frontend/",
+        "contracts/",
+        "docs/launch/",
+        "package.json",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml"
+      ],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [],
+      "requiresHumanReview": false,
+      "allowPackageChanges": false,
+      "allowLockfileChanges": false,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "dependency": {
+      "allowedPaths": [
+        "apps/backend/package.json",
+        "apps/backend/package-lock.json",
+        "apps/frontend/package.json",
+        "apps/frontend/package-lock.json",
+        "contracts/package.json",
+        "contracts/package-lock.json",
+        "package.json",
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml"
+      ],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "asset-security-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "allowPackageChanges": true,
+      "allowLockfileChanges": true,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "security": {
+      "allowedPaths": [],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "asset-security-reviewer",
+        "security-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "allowPackageChanges": true,
+      "allowLockfileChanges": true,
+      "allowImplementationChanges": true,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "test-only": {
+      "allowedPaths": [
+        "test/",
+        "tests/",
+        "**/*.test.*",
+        "**/*.spec.*"
+      ],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "test-coverage-reviewer"
+      ],
+      "requiresHumanReview": false,
+      "allowPackageChanges": false,
+      "allowLockfileChanges": false,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "contract": {
+      "allowedPaths": [
+        "contracts/"
+      ],
+      "blockedPaths": [
+        ".env",
+        ".env.*"
+      ],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "asset-security-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "allowPackageChanges": true,
+      "allowLockfileChanges": true,
+      "allowImplementationChanges": true,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    },
+    "fixture-contract-repair": {
+      "allowedPaths": [],
+      "blockedPaths": [],
+      "requiredChecks": [],
+      "requiredReviewerSkills": [
+        "test-coverage-reviewer"
+      ],
+      "requiredReviewers": [
+        "test-coverage-reviewer"
+      ],
+      "requiresHumanReview": true,
+      "riskLevel": "R3",
+      "allowPackageChanges": false,
+      "allowLockfileChanges": false,
+      "allowImplementationChanges": false,
+      "companionTestPaths": [],
+      "testFixtureCompanionPaths": [],
+      "highRiskPaths": []
+    }
+  },
+  "reviewerSelection": {
+    "rules": [
+      {
+        "id": "tests",
+        "reviewerSkill": "test-coverage-reviewer",
+        "paths": [
+          "test/",
+          "tests/",
+          "**/*.test.*",
+          "**/*.spec.*"
+        ]
+      },
+      {
+        "id": "sensitive",
+        "reviewerSkill": "security-reviewer",
+        "keywords": [
+          "auth",
+          "authorization",
+          "permission",
+          "secret",
+          "credential",
+          "token",
+          "payment",
+          "persistence",
+          "migration",
+          "webhook",
+          "upload",
+          "runtime",
+          "adapter"
+        ],
+        "riskLevels": [
+          "R3"
+        ]
+      },
+      {
+        "id": "release",
+        "reviewerSkill": "release-gate-reviewer",
+        "paths": [
+          ".github/workflows/"
+        ],
+        "keywords": [
+          "deploy",
+          "release",
+          "rollout"
+        ]
+      },
+      {
+        "id": "profile-asset",
+        "reviewerSkill": "asset-security-reviewer",
+        "paths": [
+          "apps/backend/",
+          "apps/frontend/",
+          "contracts/"
+        ],
+        "keywords": [
+          "asset",
+          "NFT",
+          "wallet",
+          "transfer",
+          "chain",
+          "receipt",
+          "role-safety",
+          "contract",
+          "admin",
+          "tier",
+          "txHash"
+        ]
+      }
+    ]
+  },
+  "testWeakening": {
+    "testPaths": [
+      "test/",
+      "tests/",
+      "**/*.test.*",
+      "**/*.spec.*"
+    ],
+    "mode": "warn",
+    "safeFixtureMetadataPatterns": [
+      "metadata",
+      "manifest",
+      "approved",
+      "safe"
+    ]
+  },
+  "domainInvariants": [
+    {
+      "id": "asset-flow",
+      "reviewerSkill": "asset-security-reviewer",
+      "keywords": [
+        "asset",
+        "wallet",
+        "transfer",
+        "receipt"
+      ],
+      "riskLevel": "R3"
+    },
+    {
+      "id": "chain-proof",
+      "reviewerSkill": "asset-security-reviewer",
+      "keywords": [
+        "chainId",
+        "contract address",
+        "txHash",
+        "event log"
+      ],
+      "riskLevel": "R3"
+    },
+    {
+      "id": "role-safety",
+      "reviewerSkill": "asset-security-reviewer",
+      "keywords": [
+        "admin",
+        "role-safety",
+        "permission"
+      ],
+      "riskLevel": "R3"
+    },
+    {
+      "id": "idempotency",
+      "reviewerSkill": "asset-security-reviewer",
+      "keywords": [
+        "idempotency",
+        "double execution",
+        "retry"
+      ],
+      "riskLevel": "R3"
+    }
+  ],
+  "dependencyAudit": {
+    "packageFiles": [
+      "apps/backend/package.json",
+      "apps/frontend/package.json",
+      "contracts/package.json",
+      "package.json"
+    ],
+    "lockfiles": [
+      "apps/backend/package-lock.json",
+      "apps/frontend/package-lock.json",
+      "contracts/package-lock.json",
+      "package-lock.json",
+      "yarn.lock",
+      "pnpm-lock.yaml"
+    ],
+    "requireLockfileForPackageChange": "warning",
+    "riskyPackages": []
+  },
+  "securitySensitiveTerms": [
+    "auth",
+    "authorization",
+    "permission",
+    "secret",
+    "credential",
+    "token",
+    "payment",
+    "persistence",
+    "migration",
+    "webhook",
+    "upload",
+    "runtime",
+    "adapter",
+    "asset",
+    "NFT",
+    "wallet",
+    "transfer",
+    "chain",
+    "receipt",
+    "contract",
+    "admin",
+    "tier",
+    "txHash"
+  ],
+  "coverageIntent": {
+    "enabled": true,
+    "implementationPaths": [
+      "apps/backend/",
+      "apps/frontend/",
+      "contracts/"
+    ],
+    "testPaths": [
+      "apps/backend/test/",
+      "apps/frontend/test/",
+      "contracts/test/",
+      "test/",
+      "tests/"
+    ],
+    "required": [
+      "happy path",
+      "error path",
+      "boundary values",
+      "permissions",
+      "state transitions",
+      "regression",
+      "external failure",
+      "smoke/integration"
+    ],
+    "missingTestChange": "warning"
+  },
+  "codeAuditPolicy": {
+    "priorityOverrides": {
+      "DOMAIN_INVARIANT_BOUNDARY_RISK": "P1"
+    },
+    "recommendedFixTypes": {
+      "DOMAIN_INVARIANT_BOUNDARY_RISK": "human_review_required"
+    },
+    "fixImpactRules": {},
+    "reviewerMappings": {
+      "DOMAIN_INVARIANT_BOUNDARY_RISK": "asset-security-reviewer"
+    },
+    "domainInvariantMappings": {
+      "asset-flow": {
+        "evidence": "asset-security-reviewer: asset / wallet / transfer / receipt flow"
+      },
+      "chain-proof": {
+        "evidence": "asset-security-reviewer: chain proof and receipt verification"
+      },
+      "role-safety": {
+        "evidence": "asset-security-reviewer: role separation"
+      },
+      "idempotency": {
+        "evidence": "asset-security-reviewer: idempotency and double execution prevention"
+      }
+    },
+    "testIntentRules": {},
+    "dependencyAuditRules": {},
+    "suppressionPolicy": {
+      "requireOwner": true,
+      "requireExpiresAt": true,
+      "minReasonLength": 12,
+      "broadScope": "warning",
+      "highPrioritySuppression": "warning",
+      "unknownRuleId": "warning"
+    },
+    "severityOverrides": {
+      "testWeakening": {
+        "assertionRemoved": "blocking",
+        "skipTodoOnlyAdded": "warning",
+        "expectationRelaxed": "warning",
+        "snapshotUpdated": "warning",
+        "errorPathRemoved": "warning",
+        "boundaryCoverageRemoved": "warning",
+        "regressionCoverageRemoved": "warning",
+        "fixtureFollowsImplementation": "warning"
+      },
+      "dependencyAudit": {
+        "packageWithoutLockfile": "warning",
+        "directImportMissing": "warning",
+        "riskyPackage": "warning"
+      },
+      "securitySensitiveChange": "warning",
+      "coverageIntent": "warning",
+      "domainInvariant": "blocking"
+    },
+    "baselinePolicy": {
+      "expired": "warning"
+    },
+    "mode": "standard",
+    "confidenceCalibration": {
+      "high": "blockingCandidate",
+      "medium": "warningCandidate",
+      "low": "infoCandidate"
+    },
+    "confidenceOverrides": {},
+    "negativeSignals": {
+      "enabled": true,
+      "lowerWarnings": true
+    },
+    "performanceBudget": {
+      "maxFiles": 500,
+      "maxBytes": 2000000,
+      "maxFindings": 200,
+      "maxRootCauses": 80,
+      "onLimit": "warning"
+    },
+    "falsePositivePolicy": {
+      "requireOwner": true,
+      "requireExpiresAt": true,
+      "requireReason": true,
+      "narrowMatchScope": true
+    },
+    "confidenceThresholds": {
+      "blockingMinConfidence": "high",
+      "humanReviewMinConfidence": "medium",
+      "warningMinConfidence": "low"
+    },
+    "auditQualityThresholds": {
+      "minScore": 0.85,
+      "maxFalsePositives": 0,
+      "maxFalseNegatives": 0
+    },
+    "canaryRules": [],
+    "canaryAsWarning": true,
+    "canaryExpiresAt": "",
+    "canaryPromoteToBlockingAfter": "",
+    "recommendedMode": "standard",
+    "semanticImpactMappings": {
+      "DOMAIN_INVARIANT_BOUNDARY_RISK": {
+        "category": "external_integration"
+      }
+    },
+    "minimalPrPlan": {
+      "doNotMix": [
+        "harness update with implementation change",
+        "dependency update with asset-flow change",
+        "domain-flow change with role or permission change"
+      ]
+    },
+    "validationCommandPlan": {},
+    "faultInjectionBenchmark": {
+      "expectedFaults": 11,
+      "maxMissedFaults": 0,
+      "maxFalsePositives": 0
+    },
+    "specTestMismatch": {
+      "reviewerSkill": "asset-security-reviewer"
+    },
+    "defectTaxonomy": {
+      "categories": [
+        "asset_flow_risk",
+        "wallet_transfer_risk",
+        "receipt_verification_gap",
+        "chain_id_mismatch",
+        "role_safety_risk",
+        "contract_compile_risk",
+        "dependency_fresh_ci_risk"
+      ],
+      "ruleMappings": {
+        "TEST_WEAKENING_ASSERTION_REMOVED": "role_safety_risk",
+        "TEST_WEAKENING_SKIP_ADDED": "role_safety_risk",
+        "DEPENDENCY_DIRECT_IMPORT_MISSING": "dependency_fresh_ci_risk",
+        "DEPENDENCY_PACKAGE_LOCKFILE_MISMATCH": "dependency_fresh_ci_risk",
+        "SECURITY_SENSITIVE_CHANGE": "asset_flow_risk",
+        "COVERAGE_INTENT_MISSING": "receipt_verification_gap",
+        "DOMAIN_INVARIANT_BOUNDARY_RISK": "asset_flow_risk"
+      }
+    },
+    "humanReviewRoles": {
+      "default": "project-owner",
+      "security": "security-reviewer",
+      "release": "release-owner",
+      "domain": "domain-owner",
+      "test_weakening": "senior-engineer",
+      "dependency_inconsistency": "senior-engineer"
+    },
+    "scopeAgreement": {
+      "outputPath": "docs/process/CODEX_PR_SCOPE_CONTRACT.json",
+      "writeEnv": "CODEX_WRITE_PR_SCOPE_CONTRACT"
+    },
+    "calibrationLock": {
+      "path": "docs/process/CODEX_AUDIT_CALIBRATION_LOCK.json",
+      "drift": "warning"
+    },
+    "specTestCodeConsistency": {
+      "statusOnMismatch": "warning",
+      "requireReviewerCoverage": true
+    },
+    "ciParity": {
+      "missingRemoteGate": "manual_confirmation_required",
+      "localCacheRisk": "warning"
+    },
+    "auditThresholds": {
+      "minimumAuditGrade": 90,
+      "maxFalsePositiveCount": 1,
+      "maxFalseNegativeCount": 0
+    },
+    "specAuthority": {
+      "requiredFiles": [],
+      "notRequiredFiles": [
+        "IRIS_SPEC_AUTHORITY.md"
+      ]
+    },
+    "humanReviewChecklist": {
+      "roles": {
+        "default": "project-owner"
+      },
+      "mustCheck": [
+        "quality evidence",
+        "high priority findings",
+        "residual risks"
+      ],
+      "mustNotAssume": [
+        "remote checks are current",
+        "static audit proves runtime behavior"
+      ],
+      "evidenceToInspect": [
+        "quality report",
+        "evidence pack",
+        "PR body"
+      ],
+      "questionsForHuman": [
+        "are residual risks acceptable?",
+        "are required checks current?"
+      ]
+    },
+    "mutationScenarios": [
+      {
+        "mutationId": "assertion-removed",
+        "ruleId": "TEST_WEAKENING_ASSERTION_REMOVED",
+        "expectedDetected": true
+      },
+      {
+        "mutationId": "direct-import-gap",
+        "ruleId": "DEPENDENCY_DIRECT_IMPORT_MISSING",
+        "expectedDetected": true
+      },
+      {
+        "mutationId": "scope-mixing",
+        "ruleId": "PR_SCOPE_MIXED",
+        "expectedDetected": true
+      }
+    ],
+    "canaryScenarios": [
+      {
+        "id": "harness-only",
+        "expected": "pass"
+      },
+      {
+        "id": "docs-only",
+        "expected": "pass"
+      },
+      {
+        "id": "dependency-risk",
+        "expected": "warning"
+      },
+      {
+        "id": "test-weakening",
+        "expected": "block"
+      }
+    ],
+    "boundaryMutationScenarios": [
+      {
+        "id": "asset-receipt-safety",
+        "expectedDetected": true
+      },
+      {
+        "id": "wallet-chain-safety",
+        "expectedDetected": true
+      },
+      {
+        "id": "contract-admin-separation",
+        "expectedDetected": true
+      }
+    ],
+    "reviewerChallengeQuestions": [
+      "Does this change weaken verification evidence?",
+      "Is the remote quality evidence current?",
+      "Should this PR be split before review?",
+      "Is receipt / chainId / role-safety evidence current?"
+    ]
+  },
+  "manualConfirmationPolicy": {
+    "requiredForRiskLevels": [
+      "R3"
+    ],
+    "allowedSources": [
+      "githubReview",
+      "prBody",
+      "prComment",
+      "localFile"
+    ],
+    "requireHeadSha": true,
+    "requireRole": true,
+    "requireReviewedItems": true,
+    "requiredReviewedItems": [],
+    "cannotOverride": [
+      "secretScanFailure",
+      "blockedPaths",
+      "highConfidenceSecret",
+      "implementationHarnessMixing",
+      "profileRequiredFailure"
+    ]
+  },
+  "implementationCompanionTestPaths": [],
+  "testFixtureCompanionPaths": [],
+  "fixtureContractRepairPaths": [],
+  "fixtureContractRepairRules": {
+    "allowApprovedFixtureContractRepair": true,
+    "forbidTestWeakening": true,
+    "forbidSkipTodoOnly": true,
+    "forbidNegativeCaseWeakening": true,
+    "requireManualConfirmation": true,
+    "requireSafeSummary": true,
+    "requiredManualConfirmationItems": [
+      "validator non-weakening",
+      "negative cases maintained",
+      "fixture repair only",
+      "raw memory not exposed",
+      "safe summary maintained",
+      "full run residual failures are not treated as PASS",
+      "non-overridable failures are not overridden"
+    ]
+  }
+}
