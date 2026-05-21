@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.8
+// CODEX_QUALITY_HARNESS_FILE v0.6.9
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -10,7 +10,10 @@ const policyPath = path.join('docs', 'process', 'CODEX_QUALITY_GATE_POLICY.json'
 const knownRiskPath = path.join('docs', 'process', 'CODEX_KNOWN_RISKS.json');
 const codeAuditBaselinePath = path.join('docs', 'process', 'CODEX_CODE_AUDIT_BASELINE.json');
 const auditCalibrationLockPath = path.join('docs', 'process', 'CODEX_AUDIT_CALIBRATION_LOCK.json');
-const HARNESS_VERSION = '0.6.8';
+const agentMemoryPolicyPath = path.join('docs', 'process', 'CODEX_AGENT_MEMORY_POLICY.json');
+const skillLifecyclePolicyPath = path.join('docs', 'process', 'CODEX_SKILL_LIFECYCLE_POLICY.json');
+const selfEvolutionPolicyPath = path.join('docs', 'process', 'CODEX_HARNESS_SELF_EVOLUTION_POLICY.json');
+const HARNESS_VERSION = '0.6.9';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const jsonMode = process.env.CODEX_QUALITY_REPORT === 'json';
 const defaultPolicy = {
@@ -301,6 +304,18 @@ const defaultPolicy = {
       questionsForHuman: ['are residual risks acceptable?', 'are required checks current?'],
     },
   },
+  agentMemoryPolicy: {
+    required: true,
+    missing: 'warning',
+  },
+  skillLifecyclePolicy: {
+    required: true,
+    missing: 'warning',
+  },
+  selfEvolutionPolicy: {
+    required: true,
+    missing: 'warning',
+  },
   checks: [
     { name: 'npm test', type: 'npmScript', cwd: '.', script: 'test', envFlag: 'CODEX_RUN_NPM_TEST' },
     { name: 'npm build', type: 'npmScript', cwd: '.', script: 'build', envFlag: 'CODEX_RUN_NPM_BUILD' },
@@ -494,6 +509,10 @@ const report = {
   prTypeInference: { status: 'not_run', inferredType: 'unknown', confidence: 'low', reasons: [] },
   residualTestStatus: { status: 'not_run', knownResidualAccepted: false, newFailureDetected: false },
   skillShapeStatus: { status: 'not_run', checked: 0, warnings: [] },
+  agentMemoryPolicyStatus: { status: 'not_run', violations: [] },
+  skillLifecyclePolicyStatus: { status: 'not_run', checkedSkills: 0, violations: [] },
+  curatorSuggestionStatus: { status: 'not_run', autoApply: false },
+  selfEvolutionPolicyStatus: { status: 'not_run', violations: [] },
   outputSizeBudget: { topFindings: 5, rootCauses: 5, safeSummary: true },
   recommendedNextAction: 'run quality gate',
   prType: process.env.CODEX_PR_TYPE || 'unspecified',
@@ -617,6 +636,7 @@ function validatePolicySchema(policy) {
     'diffScope', 'riskKeywords', 'riskLevelBehavior', 'failOnNewWarnings', 'knownRiskExpiry',
     'knownRisks', 'harnessPrAllowedPaths', 'harnessPrBlockedPaths', 'implementationCompanionTestPaths', 'testFixtureCompanionPaths', 'fixtureContractRepairPaths', 'fixtureContractRepairRules', 'harnessPrMode', 'prTypes', 'prTypePolicies', 'checks',
     'reviewerSelection', 'testWeakening', 'domainInvariants', 'dependencyAudit', 'securitySensitiveTerms', 'manualConfirmationPolicy', 'coverageIntent', 'codeAuditPolicy',
+    'agentMemoryPolicy', 'skillLifecyclePolicy', 'selfEvolutionPolicy',
   ]);
   if (!policy || typeof policy !== 'object' || Array.isArray(policy)) {
     addPolicyViolation('policy.invalid', 'Quality gate policy must be a JSON object.');
@@ -717,6 +737,11 @@ function validatePolicySchema(policy) {
   }
   if (policy.codeAuditPolicy !== undefined && (!policy.codeAuditPolicy || typeof policy.codeAuditPolicy !== 'object' || Array.isArray(policy.codeAuditPolicy))) {
     addPolicyViolation('policy.codeAuditPolicy.invalid', 'codeAuditPolicy must be an object.');
+  }
+  for (const key of ['agentMemoryPolicy', 'skillLifecyclePolicy', 'selfEvolutionPolicy']) {
+    if (policy[key] !== undefined && (!policy[key] || typeof policy[key] !== 'object' || Array.isArray(policy[key]))) {
+      addPolicyViolation(`policy.${key}.invalid`, `${key} must be an object.`);
+    }
   }
   if (policy.missingScript !== undefined && !['skip', 'fail'].includes(policy.missingScript)) {
     addPolicyViolation('policy.missingScript.invalid', 'missingScript must be skip or fail.');
@@ -969,6 +994,9 @@ function readPolicy() {
           ...(policy.codeAuditPolicy?.baselinePolicy || {}),
         },
       },
+      agentMemoryPolicy: { ...defaultPolicy.agentMemoryPolicy, ...(policy.agentMemoryPolicy || {}) },
+      skillLifecyclePolicy: { ...defaultPolicy.skillLifecyclePolicy, ...(policy.skillLifecyclePolicy || {}) },
+      selfEvolutionPolicy: { ...defaultPolicy.selfEvolutionPolicy, ...(policy.selfEvolutionPolicy || {}) },
       checks: Array.isArray(policy.checks) ? policy.checks : defaultPolicy.checks,
     };
   } catch (error) {
@@ -1717,14 +1745,21 @@ function markerVersionFromFile(file) {
 function computeVersionConsistency() {
   const candidates = [
     'AGENTS.md',
+    agentMemoryPolicyPath,
     path.join('docs', 'process', 'CODEX_HARNESS_MANIFEST.json'),
+    selfEvolutionPolicyPath,
     path.join('docs', 'process', 'CODEX_PROFILE_METADATA.json'),
+    skillLifecyclePolicyPath,
     path.join('docs', 'process', 'CODEX_MULTI_REPO_TARGETS.example.json'),
     path.join('docs', 'process', 'CODEX_REVIEW_RESULT_SCHEMA.json'),
     policyPath,
     knownRiskPath,
+    path.join('scripts', 'codex-agent-memory-validate.mjs'),
+    path.join('scripts', 'codex-harness-curator-suggest.mjs'),
+    path.join('scripts', 'codex-harness-self-evolution-suggest.mjs'),
     path.join('scripts', 'codex-local-quality-gate.mjs'),
     path.join('scripts', 'codex-secret-safety-scan.mjs'),
+    path.join('scripts', 'codex-skill-lifecycle-validate.mjs'),
     path.join('scripts', 'codex-worktree-doctor.mjs'),
     path.join('scripts', 'codex-pr-readiness.mjs'),
     path.join('scripts', 'codex-pr-body-draft.mjs'),
@@ -1756,6 +1791,169 @@ function computeVersionConsistency() {
     missing,
     unmarked,
   };
+}
+function policyMissingStatus(id, file) {
+  return { status: 'warning', path: normalizePath(file), violations: [{ id, level: 'warning' }] };
+}
+function policyUnsafeValueHit(value) {
+  if (typeof value === 'string') {
+    return looksSecretLike(value)
+      || looksEndpointLike(value)
+      || /\b[A-Za-z]:\\Users\\[^"'`\s]+/.test(value)
+      || /\/home\/[^"'`\s]+/.test(value);
+  }
+  if (Array.isArray(value)) return value.some(policyUnsafeValueHit);
+  if (value && typeof value === 'object') return Object.values(value).some(policyUnsafeValueHit);
+  return false;
+}
+function policyViolationList(status) {
+  return status.violations || [];
+}
+function validateGovernanceMarker(policy, file, violations) {
+  if (policy.marker !== marker) violations.push({ id: 'marker.mismatch', level: 'fail', path: normalizePath(file) });
+}
+function validateAgentMemoryPolicy() {
+  if (!fs.existsSync(agentMemoryPolicyPath)) return policyMissingStatus('agentMemoryPolicy.missing', agentMemoryPolicyPath);
+  const violations = [];
+  try {
+    const policy = readJsonFile(agentMemoryPolicyPath);
+    validateGovernanceMarker(policy, agentMemoryPolicyPath, violations);
+    const required = ['rawDiff', 'rawLogs', 'secretValue', 'endpointValue', 'privatePath', 'payload', 'productionData', 'personalData'];
+    if (policy.schemaVersion !== '1.0.0') violations.push({ id: 'agentMemoryPolicy.schemaVersion', level: 'fail' });
+    if (policy.memoryMode !== 'safe-summary-only') violations.push({ id: 'agentMemoryPolicy.memoryMode', level: 'fail' });
+    for (const item of required) {
+      if (!Array.isArray(policy.forbiddenContent) || !policy.forbiddenContent.includes(item)) violations.push({ id: `agentMemoryPolicy.forbiddenContent.${item}`, level: 'fail' });
+    }
+    if (policy.maxSummaryChars !== 2200) violations.push({ id: 'agentMemoryPolicy.maxSummaryChars', level: 'fail' });
+    if (policy.maxUserContextChars !== 1375) violations.push({ id: 'agentMemoryPolicy.maxUserContextChars', level: 'fail' });
+    if (policy.profileBounded !== true) violations.push({ id: 'agentMemoryPolicy.profileBounded', level: 'fail' });
+    if (policy.crossProfileSharing !== false) violations.push({ id: 'agentMemoryPolicy.crossProfileSharing', level: 'fail' });
+    if (policy.autoApply !== false) violations.push({ id: 'agentMemoryPolicy.autoApply', level: 'fail' });
+    if (policy.humanApprovalRequired !== true) violations.push({ id: 'agentMemoryPolicy.humanApprovalRequired', level: 'fail' });
+    if (policyUnsafeValueHit(policy)) violations.push({ id: 'agentMemoryPolicy.unsafePattern', level: 'fail' });
+    return {
+      status: violations.some((item) => item.level === 'fail') ? 'fail' : 'pass',
+      path: normalizePath(agentMemoryPolicyPath),
+      memoryMode: policy.memoryMode || 'unknown',
+      safeSummaryOnly: policy.memoryMode === 'safe-summary-only',
+      autoApply: false,
+      humanApprovalRequired: policy.humanApprovalRequired === true,
+      violations,
+    };
+  } catch {
+    return { status: 'fail', path: normalizePath(agentMemoryPolicyPath), violations: [{ id: 'agentMemoryPolicy.parse', level: 'fail' }] };
+  }
+}
+function validateSkillLifecyclePolicy() {
+  if (!fs.existsSync(skillLifecyclePolicyPath)) return policyMissingStatus('skillLifecyclePolicy.missing', skillLifecyclePolicyPath);
+  const violations = [];
+  const skillSummaries = [];
+  try {
+    const policy = readJsonFile(skillLifecyclePolicyPath);
+    validateGovernanceMarker(policy, skillLifecyclePolicyPath, violations);
+    const required = ['title', 'purpose', 'whenToUse', 'procedure', 'pitfalls', 'verification', 'safeOutput'];
+    if (policy.schemaVersion !== '1.0.0') violations.push({ id: 'skillLifecyclePolicy.schemaVersion', level: 'fail' });
+    if (policy.skillFiles?.allowedGlob !== 'docs/process/skills/*.md') violations.push({ id: 'skillLifecyclePolicy.skillFiles', level: 'fail' });
+    for (const item of required) {
+      if (!Array.isArray(policy.requiredElements) || !policy.requiredElements.includes(item)) violations.push({ id: `skillLifecyclePolicy.requiredElements.${item}`, level: 'fail' });
+    }
+    if (policy.agentGeneratedSkill?.autoAdopt !== false) violations.push({ id: 'skillLifecyclePolicy.autoAdopt', level: 'fail' });
+    if (policy.staleAfterDays !== 30) violations.push({ id: 'skillLifecyclePolicy.staleAfterDays', level: 'fail' });
+    if (policy.archiveAfterDays !== 90) violations.push({ id: 'skillLifecyclePolicy.archiveAfterDays', level: 'fail' });
+    if (policy.deleteAutomatically !== false) violations.push({ id: 'skillLifecyclePolicy.deleteAutomatically', level: 'fail' });
+    if (policy.archiveAutomatically !== false) violations.push({ id: 'skillLifecyclePolicy.archiveAutomatically', level: 'fail' });
+    if (policy.pinSupported !== true) violations.push({ id: 'skillLifecyclePolicy.pinSupported', level: 'fail' });
+    if (policy.humanApprovalRequired !== true) violations.push({ id: 'skillLifecyclePolicy.humanApprovalRequired', level: 'fail' });
+    if (policyUnsafeValueHit(policy)) violations.push({ id: 'skillLifecyclePolicy.unsafePattern', level: 'fail' });
+    const skillDir = path.join('docs', 'process', 'skills');
+    const skillFiles = fs.existsSync(skillDir)
+      ? fs.readdirSync(skillDir, { withFileTypes: true }).filter((entry) => entry.isFile() && entry.name.endsWith('.md')).map((entry) => path.join(skillDir, entry.name)).sort()
+      : [];
+    for (const file of skillFiles) {
+      const text = fs.readFileSync(file, 'utf8').toLowerCase();
+      const missing = required.filter((item) => !(text.includes(`## ${item.toLowerCase()}`) || text.includes(`### ${item.toLowerCase()}`)));
+      if (missing.length) violations.push({ id: 'skillLifecyclePolicy.skillShape', level: 'warning', path: normalizePath(file) });
+      skillSummaries.push({ fileName: path.basename(file), status: missing.length ? 'warning' : 'pass', missingElements: missing });
+    }
+    if (!skillFiles.length) violations.push({ id: 'skillLifecyclePolicy.noSkills', level: 'warning' });
+    return {
+      status: violations.some((item) => item.level === 'fail') ? 'fail' : (violations.length ? 'warning' : 'pass'),
+      path: normalizePath(skillLifecyclePolicyPath),
+      checkedSkills: skillFiles.length,
+      autoApply: false,
+      humanApprovalRequired: policy.humanApprovalRequired === true,
+      skills: skillSummaries,
+      violations,
+    };
+  } catch {
+    return { status: 'fail', path: normalizePath(skillLifecyclePolicyPath), checkedSkills: 0, violations: [{ id: 'skillLifecyclePolicy.parse', level: 'fail' }] };
+  }
+}
+function validateCuratorSuggestionScript() {
+  const file = path.join('scripts', 'codex-harness-curator-suggest.mjs');
+  if (!fs.existsSync(file)) return { status: 'warning', script: normalizePath(file), autoApply: false, violations: [{ id: 'curatorSuggestion.missing', level: 'warning' }] };
+  const text = fs.readFileSync(file, 'utf8');
+  const violations = [];
+  if (!text.includes('autoApply: false')) violations.push({ id: 'curatorSuggestion.autoApply', level: 'fail' });
+  if (/\b(?:writeFile|appendFile|rmSync|renameSync|copyFileSync)\b/.test(text)) violations.push({ id: 'curatorSuggestion.writesFiles', level: 'fail' });
+  if (policyUnsafeValueHit(text)) violations.push({ id: 'curatorSuggestion.unsafePattern', level: 'fail' });
+  return {
+    status: violations.some((item) => item.level === 'fail') ? 'fail' : 'pass',
+    script: normalizePath(file),
+    autoApply: false,
+    suggestionOnly: true,
+    violations,
+  };
+}
+function validateSelfEvolutionPolicy() {
+  if (!fs.existsSync(selfEvolutionPolicyPath)) return policyMissingStatus('selfEvolutionPolicy.missing', selfEvolutionPolicyPath);
+  const violations = [];
+  try {
+    const policy = readJsonFile(selfEvolutionPolicyPath);
+    validateGovernanceMarker(policy, selfEvolutionPolicyPath, violations);
+    const allowed = ['audit feedback', 'quality report', 'effectiveness tracker', 'learning recommendation', 'decision retrospective'];
+    if (policy.schemaVersion !== '1.0.0') violations.push({ id: 'selfEvolutionPolicy.schemaVersion', level: 'fail' });
+    for (const signal of policy.sourceSignals || []) {
+      if (!allowed.includes(signal)) violations.push({ id: 'selfEvolutionPolicy.sourceSignals.disallowed', level: 'fail' });
+    }
+    for (const signal of allowed) {
+      if (!Array.isArray(policy.sourceSignals) || !policy.sourceSignals.includes(signal)) violations.push({ id: `selfEvolutionPolicy.sourceSignals.${signal}`, level: 'fail' });
+    }
+    if (!Array.isArray(policy.forbiddenSourceSignals) || !policy.forbiddenSourceSignals.includes('raw execution logs')) violations.push({ id: 'selfEvolutionPolicy.rawExecutionLogs', level: 'fail' });
+    if (policy.candidatePatch?.directApply !== false) violations.push({ id: 'selfEvolutionPolicy.directApply', level: 'fail' });
+    if (policy.autoCommit !== false) violations.push({ id: 'selfEvolutionPolicy.autoCommit', level: 'fail' });
+    if (policy.autoPush !== false) violations.push({ id: 'selfEvolutionPolicy.autoPush', level: 'fail' });
+    if (policy.requiresAllChecksPass !== true) violations.push({ id: 'selfEvolutionPolicy.requiresAllChecksPass', level: 'fail' });
+    if (policy.requiresHumanApproval !== true) violations.push({ id: 'selfEvolutionPolicy.requiresHumanApproval', level: 'fail' });
+    if (policy.maxSkillSizeKB !== 15) violations.push({ id: 'selfEvolutionPolicy.maxSkillSizeKB', level: 'fail' });
+    if (policy.mustPreserveSemanticPurpose !== true) violations.push({ id: 'selfEvolutionPolicy.mustPreserveSemanticPurpose', level: 'fail' });
+    if (policyUnsafeValueHit(policy)) violations.push({ id: 'selfEvolutionPolicy.unsafePattern', level: 'fail' });
+    const suggestScript = path.join('scripts', 'codex-harness-self-evolution-suggest.mjs');
+    if (!fs.existsSync(suggestScript)) violations.push({ id: 'selfEvolutionPolicy.suggestScriptMissing', level: 'warning' });
+    else {
+      const source = fs.readFileSync(suggestScript, 'utf8');
+      if (!source.includes('autoApply: false')) violations.push({ id: 'selfEvolutionPolicy.suggestAutoApply', level: 'fail' });
+      if (/\b(?:writeFile|appendFile|rmSync|renameSync|copyFileSync)\b/.test(source)) violations.push({ id: 'selfEvolutionPolicy.suggestWritesFiles', level: 'fail' });
+    }
+    return {
+      status: violations.some((item) => item.level === 'fail') ? 'fail' : (violations.length ? 'warning' : 'pass'),
+      path: normalizePath(selfEvolutionPolicyPath),
+      sourceSignalCount: Array.isArray(policy.sourceSignals) ? policy.sourceSignals.length : 0,
+      autoApply: false,
+      autoCommit: false,
+      autoPush: false,
+      requiresHumanApproval: policy.requiresHumanApproval === true,
+      violations,
+    };
+  } catch {
+    return { status: 'fail', path: normalizePath(selfEvolutionPolicyPath), violations: [{ id: 'selfEvolutionPolicy.parse', level: 'fail' }] };
+  }
+}
+function applyGovernancePolicyStatus(status, failId, failMessage) {
+  for (const violation of policyViolationList(status)) {
+    if (violation.level === 'fail') addPolicyViolation(violation.id, failMessage, 'fail', { path: violation.path || status.path || status.script });
+    else addWarning({ id: violation.id, path: violation.path || status.path || status.script, message: failMessage });
+  }
 }
 function bumpRisk(level) {
   if ((levels[level] || 0) > (levels[report.riskLevel] || 0)) report.riskLevel = level;
@@ -4716,6 +4914,10 @@ function computeSafeArtifactValidation() {
     feedbackRecord: report.feedbackLoop,
     performanceSummary: report.performanceSummary,
     rolloutTracker: report.rolloutStatus,
+    agentMemoryPolicyStatus: report.agentMemoryPolicyStatus,
+    skillLifecyclePolicyStatus: report.skillLifecyclePolicyStatus,
+    curatorSuggestionStatus: report.curatorSuggestionStatus,
+    selfEvolutionPolicyStatus: report.selfEvolutionPolicyStatus,
   };
   const unsafe = Object.entries(artifacts).filter(([, value]) => safeForbiddenArtifactHit(value)).map(([name]) => name);
   return {
@@ -4760,6 +4962,10 @@ function computeEvidenceSummary() {
     secretScan: report.secretScan?.status || 'unknown',
     localQualityGate: report.localGate?.status || 'unknown',
     profileRequiredChecks: report.profileRequiredChecks?.status || 'unknown',
+    agentMemoryPolicyStatus: report.agentMemoryPolicyStatus?.status || 'unknown',
+    skillLifecyclePolicyStatus: report.skillLifecyclePolicyStatus?.status || 'unknown',
+    curatorSuggestionStatus: report.curatorSuggestionStatus?.status || 'unknown',
+    selfEvolutionPolicyStatus: report.selfEvolutionPolicyStatus?.status || 'unknown',
     diffScope: {
       outOfScope: report.changedPathsSummary.outOfScope.length,
       blocked: report.changedPathsSummary.blocked.length,
@@ -5556,6 +5762,14 @@ for (const file of report.versionConsistency.missing || []) {
 for (const file of report.versionConsistency.unmarked || []) {
   addWarning({ id: 'versionConsistency.unmarked', path: file.path, message: `Managed harness file has no version marker: ${file.path}`, known: warningKnown({ id: 'versionConsistency.unmarked', path: file.path }, knownRisks) });
 }
+report.agentMemoryPolicyStatus = validateAgentMemoryPolicy();
+applyGovernancePolicyStatus(report.agentMemoryPolicyStatus, 'agentMemoryPolicy.failed', 'Agent memory policy governance failed.');
+report.skillLifecyclePolicyStatus = validateSkillLifecyclePolicy();
+applyGovernancePolicyStatus(report.skillLifecyclePolicyStatus, 'skillLifecyclePolicy.failed', 'Skill lifecycle policy governance failed.');
+report.curatorSuggestionStatus = validateCuratorSuggestionScript();
+applyGovernancePolicyStatus(report.curatorSuggestionStatus, 'curatorSuggestion.failed', 'Curator suggestion governance failed.');
+report.selfEvolutionPolicyStatus = validateSelfEvolutionPolicy();
+applyGovernancePolicyStatus(report.selfEvolutionPolicyStatus, 'selfEvolutionPolicy.failed', 'Self-evolution policy governance failed.');
 classifyDiff(policy, knownRisks);
 runDiffAudits(policy, knownRisks, codeAuditBaseline);
 for (const warning of report.warnings) {

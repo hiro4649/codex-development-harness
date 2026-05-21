@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.2.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.6.9 -->
 # PR Risk Matrix
 
 ## R1 low risk

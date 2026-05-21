@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
   "schemaVersion": "1.0.0",
   "description": "Safe schema for recording whether an audit finding was useful. Do not include raw diffs, raw logs, endpoints, credentials, private data, or payloads.",
   "required": [

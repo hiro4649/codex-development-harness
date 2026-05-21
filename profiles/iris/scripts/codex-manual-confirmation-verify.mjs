@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.8
+// CODEX_QUALITY_HARNESS_FILE v0.6.9
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
 const policyPath = path.join('docs', 'process', 'CODEX_QUALITY_GATE_POLICY.json');
 const jsonMode = process.argv.includes('--json') || process.env.CODEX_MANUAL_CONFIRMATION_REPORT === 'json';
-const HARNESS_VERSION = '0.6.8';
+const HARNESS_VERSION = '0.6.9';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const DEFAULT_POLICY = {

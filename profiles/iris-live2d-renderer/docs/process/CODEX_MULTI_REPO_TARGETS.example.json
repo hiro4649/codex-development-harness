@@ -1,10 +1,10 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
   "targets": [
     {
       "repoPath": "../example-project",
       "expectedProfile": "generic",
-      "expectedHarnessVersion": "0.6.8"
+      "expectedHarnessVersion": "0.6.9"
     }
   ]
 }

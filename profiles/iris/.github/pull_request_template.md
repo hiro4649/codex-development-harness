@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.6.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.6.9 -->
 ## Summary
 
 ## Why this change is needed
