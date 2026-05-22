@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v0.7.0
+CODEX_QUALITY_HARNESS_FILE v0.7.1
 ## Codex Quality Harness
 
 すべてのCodex作業は、最小差分、証拠ベース、PR前検証を必須とする。
@@ -43,5 +43,14 @@ For complex, ambiguous, R3, security, migration, dependency, release, or multi-f
 PRs must satisfy `docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md`.
 Reviews should use `docs/process/code_review.md`.
 Do not claim merge readiness unless method gate, quality gate, and required checks pass.
+
+## Production Evidence and Hermes Rule
+
+Root harness version is v0.7.1. Profile templates remain v0.7.0 compatible unless a project propagation task explicitly says otherwise.
+Do not bump `profiles/*` to v0.7.1 only to satisfy source validation.
+Do not claim production ready, release ready, merge ready, go/no-go, or equivalent production/shipping wording without checkable evidence.
+Use safe summary only: no raw diff, raw logs, raw payload, endpoint value, secret value, private path, production data, or personal data.
+Manual confirmation cannot override non-overridable failures such as secret scan failure, blocked paths, high-confidence secret findings, implementation/harness mixing, profile required check failure, OpenAI method gate failure, stale evidence, or unsafe output.
+For R3, security, release, dependency, migration, or multi-file work, keep plan-first evidence, review evidence, residual risks, and rollback or stop condition visible.
 
 <!-- CODEX_QUALITY_HARNESS_END -->

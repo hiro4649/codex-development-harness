@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.7.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.7.1 -->
 # Release Gate
 
 Before merge or deploy, confirm:

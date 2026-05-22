@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.7.0
+# CODEX_QUALITY_HARNESS_FILE v0.7.1
 name: quality-gate
 
 on:
@@ -45,6 +45,9 @@ jobs:
 
           CODEX_OPENAI_METHOD_REPORT: "json"
           CODEX_EVENT_NAME: ${{ github.event_name }}
+          CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           CODEX_REQUIRE_NPM: "1"
         run: |
           set -euo pipefail
@@ -56,6 +59,7 @@ jobs:
 
           const requiredPass = [
             'sourceHarnessValidationStatus',
+            'profileTemplateCompatibilityStatus',
             'agentMemoryPolicyStatus',
             'skillLifecyclePolicyStatus',
             'curatorSuggestionStatus',
@@ -64,13 +68,24 @@ jobs:
             'outputShapeStatus',
             'openaiCodexMethodStatus',
             'methodSupportStatus',
+            'productionReadinessStatus',
+            'evidenceIntegrityStatus',
+            'hermesInvariantStatus',
+            'v071SelfTestStatus',
+            'qualityScoreStatus',
           ];
 
           const failures = [];
+          const prDependent = new Set([
+            'openaiCodexMethodStatus',
+            'productionReadinessStatus',
+            'evidenceIntegrityStatus',
+            'hermesInvariantStatus',
+          ]);
           for (const key of requiredPass) {
             const status = report[key]?.status || 'missing';
             console.log(`${key}: ${status}`);
-            if (key === 'openaiCodexMethodStatus' && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
+            if (prDependent.has(key) && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
               continue;
             }
             if (status !== 'pass') failures.push(`${key}=${status}`);
