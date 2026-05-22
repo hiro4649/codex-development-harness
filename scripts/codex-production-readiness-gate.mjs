@@ -156,6 +156,7 @@ export function evidenceFacts(body, env = process.env) {
 
 export function manualOverrideLabels(body) {
   const lower = normalizeText(body);
+  if (/\bcannot override\b|\bcan not override\b|\bcannot be manually overridden\b|\bmust not override\b/.test(lower)) return [];
   if (!/\bmanual confirmation\b.*\boverride\b|\boverride\b.*\bmanual confirmation\b/.test(lower)) return [];
   return nonOverridableFailures
     .filter((item) => lower.includes(item.toLowerCase()))
