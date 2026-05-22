@@ -24,6 +24,7 @@
     "qualityGateNotWeakened",
     "riskLevelNotLowered"
   ],
+  "humanConfirmationRequirementScope": "explicit_human_or_manual_confirmation_field_only",
   "productionReadyWordingRequiresEvidence": true,
   "goNoGoRequiresEvidence": true,
   "staleEvidenceRule": "fail",

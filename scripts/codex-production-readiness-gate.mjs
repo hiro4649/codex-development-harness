@@ -133,6 +133,11 @@ export function hasReasonedSkip(body) {
   return /\breason\b|\bbecause\b|\bnot applicable with reason\b|\bseparate follow up\b/.test(lower);
 }
 
+function humanReviewDecisionPresent(body) {
+  return confirmationRequirement(body) !== 'missing' ||
+    /\bhuman review\s*:\s*(yes|required|no|not required with reason)\b/i.test(body);
+}
+
 export function evidenceFacts(body, env = process.env) {
   const lower = normalizeText(body);
   const command = /\bcommands run\b|\bcommand\b|\bnode scripts\//i.test(body);
@@ -141,7 +146,7 @@ export function evidenceFacts(body, env = process.env) {
   const source = /\blocal\b|\bci\b|\bgithub actions\b|\bmanual\b/i.test(body);
   const rollback = /\brollback\b|\bmerge after verify\b|\bmerge-after verify\b|\bstop condition\b/i.test(body);
   const risk = /\brisk level\b|\br[123]\b/i.test(body);
-  const humanReview = /\bhuman review\b|\bhuman confirmation\b|\bmanual confirmation\b|\bnot required with reason\b/i.test(body);
+  const humanReview = humanReviewDecisionPresent(body);
   const residual = /\bresidual risks?\b|\bknown risks?\b|\bremaining blockers?\b/i.test(body);
   const remote = /\bremote quality[- ]gate\b|\bgithub actions\b|\bci\b/i.test(body);
   const headLine = body.match(/head\s*sha\s*[:=]\s*([a-f0-9]{40})/i);
@@ -180,12 +185,29 @@ export function manualOverrideLabels(body) {
     .map((item) => `manual_override_attempt:${item}`);
 }
 
-function confirmationRequirement(body) {
-  if (/\b(?:human confirmation|manual confirmation)\s+needed\s*:\s*(?:no|not required)\b/i.test(body)) return 'not_required';
-  if (/\bnot required with reason\b/i.test(body)) return 'not_required';
-  if (/\b(?:human confirmation|manual confirmation)\s+needed\s*:\s*(?:yes|required)\b/i.test(body)) return 'required';
-  if (/\b(?:human confirmation|manual confirmation)\s+required\b/i.test(body)) return 'required';
-  return 'not_required';
+function humanConfirmationDecisionLines(body) {
+  return String(body || '')
+    .split(/\r?\n/)
+    .map(stripListMarker)
+    .map((line) => line.trim())
+    .filter((line) => /^(?:human|manual)\s+confirmation\s+(?:needed|required)\b/i.test(line));
+}
+
+export function confirmationRequirement(body) {
+  let required = false;
+  let notRequired = false;
+  for (const line of humanConfirmationDecisionLines(body)) {
+    const lower = line.toLowerCase().replace(/\s+/g, ' ').trim();
+    const lineNotRequired = /(?:needed\s*:\s*)?(?:no\b|not required\b)/i.test(lower);
+    const lineRequired = /needed\s*:\s*(?:yes|required)\b/i.test(lower) ||
+      /^(?:human|manual)\s+confirmation\s+required\b/i.test(lower);
+    if (lineNotRequired) notRequired = true;
+    if (lineRequired) required = true;
+  }
+  if (required && notRequired) return 'conflict';
+  if (required) return 'required';
+  if (notRequired) return 'not_required';
+  return 'missing';
 }
 
 function booleanField(body, names) {
@@ -225,11 +247,27 @@ export function buildHumanConfirmationStatus(env = process.env) {
     };
   }
 
-  if (confirmationRequirement(body) === 'not_required') {
+  const requirement = confirmationRequirement(body);
+  if (requirement === 'conflict') {
+    return {
+      humanConfirmationStatus: {
+        status: 'fail',
+        labels: ['human_confirmation_conflicting_values'],
+        missingEvidence,
+        failures: ['human_confirmation_conflicting_values'],
+        warnings,
+        safeSummaryOnly: true,
+      },
+      valuesPrinted: false,
+      status: 'fail',
+    };
+  }
+
+  if (requirement !== 'required') {
     return {
       humanConfirmationStatus: {
         status: 'not_required',
-        labels: ['human_confirmation_not_required'],
+        labels: [requirement === 'not_required' ? 'human_confirmation_not_required' : 'human_confirmation_not_declared'],
         missingEvidence,
         failures,
         warnings,

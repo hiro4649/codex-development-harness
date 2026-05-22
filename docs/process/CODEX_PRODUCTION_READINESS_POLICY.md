@@ -16,6 +16,9 @@ Production Evidence and Hermes Gate does not make a project production ready. It
 - completed human confirmation evidence when `Human confirmation needed: yes` or `required` is declared:
   `confirmedByRole`, `reviewedItems`, current head SHA, residual risks accepted,
   `qualityGateNotWeakened`, and `riskLevelNotLowered`
+- human confirmation requirement must be read from explicit `Human confirmation` or
+  `Manual confirmation` fields only. Other sections that say `not required with reason`
+  do not make human confirmation optional.
 
 ## Decision Rules
 

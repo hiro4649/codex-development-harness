@@ -160,6 +160,34 @@ function buildReport() {
   assert('completed human confirmation can be merge-ready', localMergeReadyFromHumanConfirmation(completedHuman.status), failures);
   assert('completed human confirmation can score 100', localQualityScoreFromHumanConfirmation(completedHuman.status) === 100, failures);
 
+  const bypassBody = [
+    'Human confirmation needed: yes - R3 harness behavior.',
+    'Plan-first status: not required with reason - small edit.',
+    'Risk level: R3',
+    'Residual risks: downstream propagation separate.',
+    `Head SHA: ${expectedHead}`,
+  ].join('\n');
+  const bypassHuman = buildHumanConfirmationStatus(baseEnv(bypassBody)).humanConfirmationStatus;
+  cases.push({ name: 'human-confirmation-required-not-bypassed-by-other-section-not-required', statuses: [bypassHuman.status] });
+  assert('human confirmation required is not bypassed by other section not required', bypassHuman.status === 'manual_confirmation_required', failures);
+  assert('bypassed human confirmation is not merge-ready', !localMergeReadyFromHumanConfirmation(bypassHuman.status), failures);
+  assert('bypassed human confirmation cannot score 100', localQualityScoreFromHumanConfirmation(bypassHuman.status) !== 100, failures);
+
+  const explicitNotRequired = buildHumanConfirmationStatus(baseEnv([
+    'Human confirmation needed: not required with reason - R1 docs-only update.',
+    'Risk level: R1',
+    'Residual risks: none beyond docs typo.',
+  ].join('\n'))).humanConfirmationStatus;
+  cases.push({ name: 'human-confirmation-explicit-not-required-with-reason', statuses: [explicitNotRequired.status] });
+  assert('explicit human confirmation not required passes as not_required', explicitNotRequired.status === 'not_required', failures);
+
+  const conflictingHuman = buildHumanConfirmationStatus(baseEnv([
+    'Human confirmation needed: yes',
+    'Human confirmation needed: not required with reason - conflicting text.',
+  ].join('\n'))).humanConfirmationStatus;
+  cases.push({ name: 'human-confirmation-conflicting-values', statuses: [conflictingHuman.status] });
+  assert('conflicting human confirmation values are not not_required', conflictingHuman.status !== 'not_required', failures);
+
   const remotePendingConfirmed = runAll(baseEnv(`${validBody()}\nRemote Evidence: pending with reason - current workflow rerun is required.`));
   cases.push({ name: 'remote-evidence-gap-covered-by-human-confirmation', statuses: [statusOf(remotePendingConfirmed, 'production')] });
   assert('human confirmation covers remote evidence manual gap', statusOf(remotePendingConfirmed, 'production') === 'pass', failures);
