@@ -15,7 +15,7 @@ function statusOf(key) {
 
 const lines = [
   '## v0.7.0 purpose',
-  'OpenAI Codex Method Gate: safe summary memory, explicit skill lifecycle, curator suggestions, and human-approved self-evolution only.',
+  'OpenAI Codex Method Gate: PR task shape, plan-first evidence, review basis, and safe-output discipline are CI-enforced.',
   '',
   '## Changed files',
   'See git diff file list for harness-managed source/profile files only.',
@@ -28,7 +28,11 @@ const lines = [
   `selfEvolutionPolicyStatus: ${statusOf('selfEvolutionPolicyStatus')}`,
   `safeArtifactValidation: ${statusOf('safeArtifactValidation')}`,
   `outputShapeStatus: ${statusOf('outputShapeStatus')}`,
+  `openaiCodexMethodStatus: ${statusOf('openaiCodexMethodStatus')}`,
   'suggestion-only side effects: none when gate passes',
+  '',
+  '## Codex Method reminder',
+  'Include Goal, Context, Constraints, Done when, Files or scope, Plan-first status, Environment setup, Testing and review, Residual risks, Best of N used or skipped, Code review status, and Human confirmation needed.',
   '',
   '## Not propagated',
   '- FUNKY real development repository',
