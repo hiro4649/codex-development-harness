@@ -186,11 +186,26 @@ export function manualOverrideLabels(body) {
 }
 
 function humanConfirmationDecisionLines(body) {
-  return String(body || '')
+  const lines = String(body || '')
     .split(/\r?\n/)
     .map(stripListMarker)
     .map((line) => line.trim())
-    .filter((line) => /^(?:human|manual)\s+confirmation\s+(?:needed|required)\b/i.test(line));
+    .filter(Boolean);
+  const decisionLines = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!/^(?:human|manual)\s+confirmation\s+(?:needed|required)\b/i.test(line)) continue;
+    const hasInlineDecision = /\b(?:yes|required|no|not required)\b/i.test(line);
+    if (hasInlineDecision || index + 1 >= lines.length) {
+      decisionLines.push(line);
+      continue;
+    }
+    const next = lines[index + 1];
+    const nextLooksLikeField = /^[A-Za-z][A-Za-z0-9 /-]{1,80}\s*:/i.test(next) ||
+      /^#{1,6}\s+/.test(next);
+    decisionLines.push(nextLooksLikeField ? line : `${line} ${next}`);
+  }
+  return decisionLines;
 }
 
 export function confirmationRequirement(body) {

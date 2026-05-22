@@ -173,6 +173,17 @@ function buildReport() {
   assert('bypassed human confirmation is not merge-ready', !localMergeReadyFromHumanConfirmation(bypassHuman.status), failures);
   assert('bypassed human confirmation cannot score 100', localQualityScoreFromHumanConfirmation(bypassHuman.status) !== 100, failures);
 
+  const multilineHuman = buildHumanConfirmationStatus(baseEnv([
+    'Human confirmation needed:',
+    'yes - R3 harness behavior.',
+    'Plan-first status: not required with reason - small edit.',
+    'Risk level: R3',
+    'Residual risks: downstream propagation separate.',
+    `Head SHA: ${expectedHead}`,
+  ].join('\n'))).humanConfirmationStatus;
+  cases.push({ name: 'human-confirmation-multiline-required', statuses: [multilineHuman.status] });
+  assert('multiline human confirmation required is detected', multilineHuman.status === 'manual_confirmation_required', failures);
+
   const explicitNotRequired = buildHumanConfirmationStatus(baseEnv([
     'Human confirmation needed: not required with reason - R1 docs-only update.',
     'Risk level: R1',
