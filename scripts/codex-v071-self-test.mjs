@@ -160,6 +160,10 @@ function buildReport() {
   assert('completed human confirmation can be merge-ready', localMergeReadyFromHumanConfirmation(completedHuman.status), failures);
   assert('completed human confirmation can score 100', localQualityScoreFromHumanConfirmation(completedHuman.status) === 100, failures);
 
+  const remotePendingConfirmed = runAll(baseEnv(`${validBody()}\nRemote Evidence: pending with reason - current workflow rerun is required.`));
+  cases.push({ name: 'remote-evidence-gap-covered-by-human-confirmation', statuses: [statusOf(remotePendingConfirmed, 'production')] });
+  assert('human confirmation covers remote evidence manual gap', statusOf(remotePendingConfirmed, 'production') === 'pass', failures);
+
   const selfAssertion = runAll(baseEnv('Risk level: R3\nResult: pass\nResidual risks: none'));
   cases.push({ name: 'hermes-self-assertion-only', statuses: [statusOf(selfAssertion, 'hermes')] });
   assert('Hermes self assertion only fails', statusOf(selfAssertion, 'hermes') === 'fail', failures);

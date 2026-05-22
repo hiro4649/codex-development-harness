@@ -310,6 +310,7 @@ function classifyProductionReadiness(env = process.env) {
   }
 
   const facts = evidenceFacts(body, env);
+  const humanConfirmation = buildHumanConfirmationStatus(env).humanConfirmationStatus;
   if (facts.staleHead) failures.push('stale_evidence_head_sha_mismatch');
   if (facts.productionClaim) {
     const required = [
@@ -325,7 +326,9 @@ function classifyProductionReadiness(env = process.env) {
       if (!ok) failures.push(label);
     }
     if (facts.weakWords) failures.push('weak_evidence_used_for_production_claim');
-    if (facts.remote && !facts.remoteClaimedPass && facts.risky) warnings.push('remote_quality_gate_requires_manual_confirmation');
+    if (facts.remote && !facts.remoteClaimedPass && facts.risky && humanConfirmation.status !== 'pass') {
+      warnings.push('remote_quality_gate_requires_manual_confirmation');
+    }
   } else if (facts.risky) {
     if (!facts.humanReview) failures.push('risky_change_human_review_decision_missing');
     if (!facts.residual) failures.push('risky_change_residual_risks_missing');
