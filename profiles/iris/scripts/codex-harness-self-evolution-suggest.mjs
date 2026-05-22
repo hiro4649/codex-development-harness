@@ -30,7 +30,29 @@ function validatePolicy(policy) {
     return;
   }
   if (policy.marker !== marker) addViolation('policy.marker', 'marker must match harness version');
+  const allowedFields = new Set([
+    'marker',
+    'schemaVersion',
+    'profile',
+    'sourceSignals',
+    'forbidden',
+    'forbiddenSourceSignals',
+    'candidatePatch',
+    'autoApply',
+    'autoCommit',
+    'autoPush',
+    'requiresAllChecksPass',
+    'requiresHumanApproval',
+    'maxSkillSizeKB',
+    'mustPreserveSemanticPurpose',
+    'allowedUnknownFields',
+  ]);
+  const allowedUnknown = new Set(Array.isArray(policy.allowedUnknownFields) ? policy.allowedUnknownFields : []);
+  for (const key of Object.keys(policy)) {
+    if (!allowedFields.has(key) && !allowedUnknown.has(key)) addViolation(`policy.unknownField.${key}`, `${key} is not an allowed field`);
+  }
   if (policy.schemaVersion !== '1.0.0') addViolation('policy.schemaVersion', 'schemaVersion must be 1.0.0');
+  if (!Array.isArray(policy.forbidden)) addViolation('policy.forbidden', 'forbidden must be an array');
   if (!Array.isArray(policy.sourceSignals)) addViolation('policy.sourceSignals', 'sourceSignals must be an array');
   for (const signal of policy.sourceSignals || []) {
     if (!allowedSignals.includes(signal)) addViolation('policy.sourceSignals.disallowed', 'sourceSignals must be limited to approved safe summaries');
@@ -41,11 +63,12 @@ function validatePolicy(policy) {
   if (!policy.forbiddenSourceSignals?.includes('raw execution logs')) addViolation('policy.forbiddenSourceSignals.rawExecutionLogs', 'raw execution logs must be forbidden');
   if (policy.candidatePatch?.mayGenerate !== true) addViolation('policy.candidatePatch.mayGenerate', 'candidate patch generation must be explicitly allowed');
   if (policy.candidatePatch?.directApply !== false) addViolation('policy.candidatePatch.directApply', 'candidate patches must not be directly applied');
+  if (policy.autoApply !== false) addViolation('policy.autoApply', 'autoApply must be false');
   if (policy.autoCommit !== false) addViolation('policy.autoCommit', 'autoCommit must be false');
   if (policy.autoPush !== false) addViolation('policy.autoPush', 'autoPush must be false');
   if (policy.requiresAllChecksPass !== true) addViolation('policy.requiresAllChecksPass', 'requiresAllChecksPass must be true');
   if (policy.requiresHumanApproval !== true) addViolation('policy.requiresHumanApproval', 'requiresHumanApproval must be true');
-  if (policy.maxSkillSizeKB !== 15) addViolation('policy.maxSkillSizeKB', 'maxSkillSizeKB must be 15');
+  if (typeof policy.maxSkillSizeKB !== 'number' || policy.maxSkillSizeKB > 15) addViolation('policy.maxSkillSizeKB', 'maxSkillSizeKB must be a number at or below 15');
   if (policy.mustPreserveSemanticPurpose !== true) addViolation('policy.mustPreserveSemanticPurpose', 'mustPreserveSemanticPurpose must be true');
 }
 

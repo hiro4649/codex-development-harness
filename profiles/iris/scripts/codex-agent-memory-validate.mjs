@@ -49,14 +49,36 @@ function validatePolicy(policy) {
     return;
   }
   if (policy.marker !== marker) addViolation('policy.marker', 'marker must match harness version');
+  const allowedFields = new Set([
+    'marker',
+    'schemaVersion',
+    'profile',
+    'memoryMode',
+    'forbidden',
+    'forbiddenContent',
+    'maxSummaryChars',
+    'maxUserContextChars',
+    'profileBounded',
+    'crossProfileSharing',
+    'autoApply',
+    'humanApprovalRequired',
+    'safeOutput',
+    'allowedUnknownFields',
+  ]);
+  const allowedUnknown = new Set(Array.isArray(policy.allowedUnknownFields) ? policy.allowedUnknownFields : []);
+  for (const key of Object.keys(policy)) {
+    if (!allowedFields.has(key) && !allowedUnknown.has(key)) addViolation(`policy.unknownField.${key}`, `${key} is not an allowed field`);
+  }
   if (policy.schemaVersion !== '1.0.0') addViolation('policy.schemaVersion', 'schemaVersion must be 1.0.0');
   if (policy.memoryMode !== 'safe-summary-only') addViolation('policy.memoryMode', 'memoryMode must be safe-summary-only');
+  if (!Array.isArray(policy.forbidden)) addViolation('policy.forbidden', 'forbidden must be an array');
   if (!Array.isArray(policy.forbiddenContent)) addViolation('policy.forbiddenContent', 'forbiddenContent must be an array');
   for (const item of requiredForbiddenContent) {
+    if (!policy.forbidden?.includes(item)) addViolation(`policy.forbidden.${item}`, `${item} must be forbidden`);
     if (!policy.forbiddenContent?.includes(item)) addViolation(`policy.forbiddenContent.${item}`, `${item} must be forbidden`);
   }
-  if (policy.maxSummaryChars !== 2200) addViolation('policy.maxSummaryChars', 'maxSummaryChars must be 2200');
-  if (policy.maxUserContextChars !== 1375) addViolation('policy.maxUserContextChars', 'maxUserContextChars must be 1375');
+  if (typeof policy.maxSummaryChars !== 'number' || policy.maxSummaryChars > 2200) addViolation('policy.maxSummaryChars', 'maxSummaryChars must be a number at or below 2200');
+  if (typeof policy.maxUserContextChars !== 'number' || policy.maxUserContextChars > 1375) addViolation('policy.maxUserContextChars', 'maxUserContextChars must be a number at or below 1375');
   if (policy.profileBounded !== true) addViolation('policy.profileBounded', 'profileBounded must be true');
   if (policy.crossProfileSharing !== false) addViolation('policy.crossProfileSharing', 'crossProfileSharing must be false');
   if (policy.autoApply !== false) addViolation('policy.autoApply', 'autoApply must be false');

@@ -25,5 +25,16 @@
   "deleteAutomatically": false,
   "archiveAutomatically": false,
   "pinSupported": true,
-  "humanApprovalRequired": true
+  "humanApprovalRequired": true,
+  "forbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "allowedUnknownFields": []
 }

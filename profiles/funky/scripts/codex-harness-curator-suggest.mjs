@@ -79,6 +79,8 @@ console.log(JSON.stringify({
   profile: typeof policy.profile === 'string' ? policy.profile : 'unknown',
   safeSummaryOnly: true,
   autoApply: false,
+  autoCommit: false,
+  autoPush: false,
   changedFiles: [],
   skillFilesChecked: skills.map((file) => path.basename(file)),
   recommendations,

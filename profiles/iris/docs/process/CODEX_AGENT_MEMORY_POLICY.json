@@ -22,5 +22,16 @@
   "safeOutput": {
     "summaryOnly": true,
     "rawStorageAllowed": false
-  }
+  },
+  "forbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "allowedUnknownFields": []
 }

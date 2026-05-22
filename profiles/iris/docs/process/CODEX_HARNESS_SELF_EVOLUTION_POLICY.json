@@ -21,5 +21,17 @@
   "requiresAllChecksPass": true,
   "requiresHumanApproval": true,
   "maxSkillSizeKB": 15,
-  "mustPreserveSemanticPurpose": true
+  "mustPreserveSemanticPurpose": true,
+  "forbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "allowedUnknownFields": [],
+  "autoApply": false
 }
