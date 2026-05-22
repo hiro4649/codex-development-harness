@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.9
+// CODEX_QUALITY_HARNESS_FILE v0.7.0
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 
-const HARNESS_VERSION = '0.6.9';
+const HARNESS_VERSION = '0.7.0';
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
 const forbiddenSourcePaths = [
@@ -334,6 +334,25 @@ function computeSafeArtifactValidation(report) {
     secretFree: !unsafe,
   };
 }
+function runOpenAICodexMethodGate() {
+  const script = path.join('scripts', 'codex-openai-method-gate.mjs');
+  if (!fs.existsSync(script)) {
+    return { status: 'fail', failures: ['methodGateScript=missing'], safeSummary: 'OpenAI Codex Method Gate script is missing.' };
+  }
+  const result = spawn('node', [script], {
+    env: { ...process.env, CODEX_OPENAI_METHOD_REPORT: 'json' },
+    stdio: 'pipe',
+  });
+  const output = `${result.stdout || ''}`.trim();
+  if (output) {
+    try {
+      return JSON.parse(output);
+    } catch {
+      return { status: 'fail', failures: ['methodGateOutput=parse_failed'], safeSummary: 'OpenAI Codex Method Gate returned invalid JSON.' };
+    }
+  }
+  return { status: 'fail', failures: ['methodGate=failed'], safeSummary: 'OpenAI Codex Method Gate failed.' };
+}
 function computeOutputShapeStatus(report) {
   const required = [
     'sourceHarnessValidationStatus',
@@ -342,6 +361,8 @@ function computeOutputShapeStatus(report) {
     'curatorSuggestionStatus',
     'selfEvolutionPolicyStatus',
     'safeArtifactValidation',
+    'openaiCodexMethodStatus',
+    'methodSupportStatus',
   ];
   const missing = required.filter((key) => report[key] === undefined);
   return {
@@ -370,18 +391,24 @@ function runSourceHarnessGate() {
     warnings,
     failures,
     humanReviewRequired: false,
+    openaiCodexMethodStatus: { status: 'not_run' },
+    methodSupportStatus: { status: 'not_run' },
   };
   if (report.sourceHarnessValidationStatus.status === 'fail') failures.push(...report.sourceHarnessValidationStatus.failures);
   if (report.sourceHarnessValidationStatus.status === 'warning') warnings.push(...report.sourceHarnessValidationStatus.warnings);
   const governance = runProfileGovernanceScripts(report);
   failures.push(...governance.failures);
   warnings.push(...governance.warnings);
+  report.openaiCodexMethodStatus = runOpenAICodexMethodGate();
+  report.methodSupportStatus = report.openaiCodexMethodStatus.methodSupportStatus || { status: 'missing' };
 
   for (const [key, value] of Object.entries({
     agentMemoryPolicyStatus: report.agentMemoryPolicyStatus,
     skillLifecyclePolicyStatus: report.skillLifecyclePolicyStatus,
     curatorSuggestionStatus: report.curatorSuggestionStatus,
     selfEvolutionPolicyStatus: report.selfEvolutionPolicyStatus,
+    openaiCodexMethodStatus: report.openaiCodexMethodStatus,
+    methodSupportStatus: report.methodSupportStatus,
   })) {
     if (value?.status === 'fail') failures.push({ id: `${key}.failed`, message: `${key} failed` });
     else if (value?.status === 'warning') warnings.push({ id: `${key}.warning`, message: `${key} requires human review` });
@@ -403,6 +430,8 @@ function runSourceHarnessGate() {
     console.log(`skillLifecyclePolicyStatus: ${report.skillLifecyclePolicyStatus.status}`);
     console.log(`curatorSuggestionStatus: ${report.curatorSuggestionStatus.status}`);
     console.log(`selfEvolutionPolicyStatus: ${report.selfEvolutionPolicyStatus.status}`);
+    console.log(`openaiCodexMethodStatus: ${report.openaiCodexMethodStatus.status}`);
+    console.log(`methodSupportStatus: ${report.methodSupportStatus.status}`);
     console.log(`safeArtifactValidation: ${report.safeArtifactValidation.status}`);
     console.log(`outputShapeStatus: ${report.outputShapeStatus.status}`);
   }

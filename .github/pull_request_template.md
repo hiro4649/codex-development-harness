@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.6.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.7.0 -->
 ## Purpose
 
 ## Scope
@@ -52,3 +52,32 @@ If yes, explain scope and approval.
 ## Merge-After Verify
 
 List the verify command or smoke path to run after merge.
+
+
+## Codex Method Compliance
+
+Goal:
+
+Context:
+
+Files or scope:
+
+Constraints:
+
+Done when:
+
+Plan-first status:
+
+Environment setup:
+
+Testing and review:
+
+Residual risks:
+
+Best of N used or skipped:
+
+Code review status:
+
+Human confirmation needed:
+
+Do not leave TODO / TBD / N/A without reason.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.9
+// CODEX_QUALITY_HARNESS_FILE v0.7.0
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';

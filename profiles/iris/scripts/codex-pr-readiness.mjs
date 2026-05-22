@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.9
+// CODEX_QUALITY_HARNESS_FILE v0.7.0
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 
-const HARNESS_VERSION = '0.6.9';
+const HARNESS_VERSION = '0.7.0';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const args = process.argv.slice(2);
 

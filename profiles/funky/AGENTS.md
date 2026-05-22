@@ -92,7 +92,7 @@ mainへの直接push
 関係ないP1/P2修正の混入
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-<!-- CODEX_QUALITY_HARNESS_FILE v0.6.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.7.0 -->
 ## Codex Quality Harness
 
 Use the repo-local harness files in `docs/process/` and `scripts/codex-*`.
@@ -106,4 +106,13 @@ Manual confirmation cannot override secret scan failures, blocked paths, high-co
 R3変更では、認証、認可、所有者確認、chainId、contract address、txHash、receipt、event log、idempotency、二重実行防止、rollbackを必ず確認する。
 DB更新だけでon-chain成功扱いにしない。
 tBNB未入金、staging未反映、receipt未確認の状態をproduction readyと書かない。
+
+## OpenAI Codex Method Rule
+
+Use `docs/process/CODEX_TASK_BRIEF_TEMPLATE.md` for non-trivial tasks.
+For complex, ambiguous, R3, security, migration, dependency, release, or multi-file work, plan before coding.
+PRs must satisfy `docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md`.
+Reviews should use `docs/process/code_review.md`.
+Do not claim merge readiness unless method gate, quality gate, and required checks pass.
+
 <!-- CODEX_QUALITY_HARNESS_END -->

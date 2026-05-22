@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
-  "harnessVersion": "0.6.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.0",
+  "harnessVersion": "0.7.0",
   "profile": "funky",
   "scriptNames": [
     "codex-adversarial-pr-simulator.mjs",
@@ -53,7 +53,8 @@
     "codex-secret-safety-scan.mjs",
     "codex-secret-safety-scan.sh",
     "codex-skill-lifecycle-validate.mjs",
-    "codex-worktree-doctor.mjs"
+    "codex-worktree-doctor.mjs",
+    "codex-openai-method-gate.mjs"
   ],
   "policyFiles": [
     "docs/process/CODEX_AGENT_MEMORY_POLICY.json",
@@ -71,7 +72,12 @@
     "docs/process/CODEX_PR_SCOPE_CONTRACT.example.json",
     "docs/process/CODEX_QUALITY_GATE_POLICY.json",
     "docs/process/CODEX_REVIEW_RESULT_SCHEMA.json",
-    "docs/process/CODEX_SKILL_LIFECYCLE_POLICY.json"
+    "docs/process/CODEX_SKILL_LIFECYCLE_POLICY.json",
+    "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
+    "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.json",
+    "docs/process/CODEX_TASK_BRIEF_TEMPLATE.md",
+    "docs/process/CODEX_PLAN_TEMPLATE.md",
+    "docs/process/code_review.md"
   ],
   "managedFiles": [
     ".github/pull_request_template.md",
@@ -145,6 +151,12 @@
     "scripts/codex-secret-safety-scan.mjs",
     "scripts/codex-secret-safety-scan.sh",
     "scripts/codex-skill-lifecycle-validate.mjs",
-    "scripts/codex-worktree-doctor.mjs"
+    "scripts/codex-worktree-doctor.mjs",
+    "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
+    "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.json",
+    "docs/process/CODEX_TASK_BRIEF_TEMPLATE.md",
+    "docs/process/CODEX_PLAN_TEMPLATE.md",
+    "docs/process/code_review.md",
+    "scripts/codex-openai-method-gate.mjs"
   ]
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.9
+// CODEX_QUALITY_HARNESS_FILE v0.7.0
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -16,7 +16,8 @@ const auditCalibrationLockPath = path.join('docs', 'process', 'CODEX_AUDIT_CALIB
 const agentMemoryPolicyPath = path.join('docs', 'process', 'CODEX_AGENT_MEMORY_POLICY.json');
 const skillLifecyclePolicyPath = path.join('docs', 'process', 'CODEX_SKILL_LIFECYCLE_POLICY.json');
 const selfEvolutionPolicyPath = path.join('docs', 'process', 'CODEX_HARNESS_SELF_EVOLUTION_POLICY.json');
-const HARNESS_VERSION = '0.6.9';
+const openaiMethodPolicyPath = path.join('docs', 'process', 'CODEX_OPENAI_CODEX_METHOD_POLICY.json');
+const HARNESS_VERSION = '0.7.0';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const SOURCE_REPO_MODE = process.env.CODEX_HARNESS_SOURCE_REPO === '1';
 const jsonMode = process.env.CODEX_QUALITY_REPORT === 'json';
@@ -165,6 +166,7 @@ const defaultPolicy = {
       'highConfidenceSecret',
       'implementationHarnessMixing',
       'profileRequiredFailure',
+      'openaiMethodGateFailure',
     ],
   },
   coverageIntent: {
@@ -518,6 +520,8 @@ const report = {
   curatorSuggestionStatus: { status: 'not_run', autoApply: false },
   selfEvolutionPolicyStatus: { status: 'not_run', violations: [] },
   sourceHarnessValidationStatus: { status: 'not_run', sourceRepoMode: SOURCE_REPO_MODE },
+  openaiCodexMethodStatus: { status: 'not_run' },
+  methodSupportStatus: { status: 'not_run' },
   outputSizeBudget: { topFindings: 5, rootCauses: 5, safeSummary: true },
   recommendedNextAction: 'run quality gate',
   prType: process.env.CODEX_PR_TYPE || 'unspecified',
@@ -2459,6 +2463,7 @@ function manualConfirmationCannotOverrideFailures(policy = activeAuditPolicy || 
   if (configured.has('highConfidenceSecret') && highConfidenceSecret) blockers.push('highConfidenceSecret');
   if (configured.has('implementationHarnessMixing') && report.prSeparationStatus?.status === 'fail') blockers.push('implementationHarnessMixing');
   if (configured.has('profileRequiredFailure') && report.profileRequiredChecks?.status === 'fail') blockers.push('profileRequiredFailure');
+  if (configured.has('openaiMethodGateFailure') && report.openaiCodexMethodStatus?.status === 'fail') blockers.push('openaiMethodGateFailure');
   return [...new Set(blockers)].sort();
 }
 function manualConfirmationRequired(policy = activeAuditPolicy || defaultPolicy) {
@@ -3023,6 +3028,39 @@ function computeModeTransitionSafety() {
     newHumanReviewTriggers: report.humanReviewReasons.slice(0, 10),
   };
 }
+function runOpenAICodexMethodGate() {
+  const script = path.join('scripts', 'codex-openai-method-gate.mjs');
+  if (!fs.existsSync(script)) {
+    return { status: 'fail', failures: ['methodGateScript=missing'], safeSummary: 'OpenAI Codex Method Gate script is missing.' };
+  }
+  const result = spawnSync(process.execPath, [script], {
+    encoding: 'utf8',
+    env: { ...process.env, CODEX_OPENAI_METHOD_REPORT: 'json' },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const output = String(result.stdout || '').trim();
+  if (output) {
+    try {
+      return JSON.parse(output);
+    } catch {
+      return { status: 'fail', failures: ['methodGateOutput=parse_failed'], safeSummary: 'OpenAI Codex Method Gate returned invalid JSON.' };
+    }
+  }
+  return { status: 'fail', failures: ['methodGate=failed'], safeSummary: 'OpenAI Codex Method Gate failed.' };
+}
+function applyOpenAIMethodGateStatus(status) {
+  report.methodSupportStatus = status.methodSupportStatus || { status: 'missing' };
+  if (status.status === 'fail') {
+    addFailure('openaiMethodGateFailure', 'OpenAI Codex Method Gate failed.');
+  } else if (status.status === 'warning') {
+    addWarning('openaiMethodGateWarning', 'OpenAI Codex Method Gate requires human review.');
+    addHumanReview('openaiMethodGateWarning', 'OpenAI Codex Method Gate returned warnings.');
+  }
+  if (report.methodSupportStatus.status === 'fail') {
+    addFailure('methodSupportStatus.failed', 'OpenAI Codex Method support file validation failed.');
+  }
+}
+
 function computeOutputShapeStatus() {
   const serialized = JSON.stringify(report);
   const forbidden = [
@@ -3030,7 +3068,7 @@ function computeOutputShapeStatus() {
     /\b(?:gh[pousr]_|sk-|AKIA)[A-Za-z0-9_-]{8,}\b/,
     /-----BEGIN [^-]+PRIVATE KEY-----/i,
   ];
-  const requiredFields = ['qualityReportSchemaVersion', 'codeAuditSchemaVersion', 'harnessVersion', 'profile', 'riskLevel', 'manualConfirmationStatus', 'rootCauseGroups', 'blockingFindings', 'warningFindings', 'agentMemoryPolicyStatus', 'skillLifecyclePolicyStatus', 'selfEvolutionPolicyStatus', 'curatorSuggestionStatus', 'sourceHarnessValidationStatus', 'safeArtifactValidation', 'faultInjectionBenchmark', 'semanticImpact', 'testSufficiency', 'specTestMismatch', 'minimalPrPlan', 'ciRiskPrediction', 'decisionTrace', 'defectTaxonomy', 'ciParity', 'oracleLimits', 'auditGrade', 'oracleValidation', 'decisionSimulator', 'acceptanceCriteria', 'confusionRisk', 'temporalConsistency', 'deploymentBoundary', 'mutationBenchmark', 'adversarialPrSimulator', 'auditBypass', 'realWorldCanarySet', 'specBoundaryMutation', 'testAuditMutation', 'dependencyAdversarial', 'ciParityAdversarial', 'evidenceIntegrity', 'policyLint', 'auditEffectiveness', 'fixOutcome', 'postFixVerificationPlan', 'repairQuality', 'splitEffectiveness', 'noiseControl', 'auditLearningRecommendation', 'decisionRetrospective', 'rolloutScore', 'freshness', 'riskAcceptanceWorkflow', 'reviewerAssignmentQuality', 'verificationCompleteness', 'skippedCheckJustification', 'auditModeRecommendation', 'auditConflict', 'maturityScore'];
+  const requiredFields = ['qualityReportSchemaVersion', 'codeAuditSchemaVersion', 'harnessVersion', 'profile', 'riskLevel', 'manualConfirmationStatus', 'rootCauseGroups', 'blockingFindings', 'warningFindings', 'agentMemoryPolicyStatus', 'skillLifecyclePolicyStatus', 'selfEvolutionPolicyStatus', 'curatorSuggestionStatus', 'sourceHarnessValidationStatus', 'openaiCodexMethodStatus', 'methodSupportStatus', 'safeArtifactValidation', 'faultInjectionBenchmark', 'semanticImpact', 'testSufficiency', 'specTestMismatch', 'minimalPrPlan', 'ciRiskPrediction', 'decisionTrace', 'defectTaxonomy', 'ciParity', 'oracleLimits', 'auditGrade', 'oracleValidation', 'decisionSimulator', 'acceptanceCriteria', 'confusionRisk', 'temporalConsistency', 'deploymentBoundary', 'mutationBenchmark', 'adversarialPrSimulator', 'auditBypass', 'realWorldCanarySet', 'specBoundaryMutation', 'testAuditMutation', 'dependencyAdversarial', 'ciParityAdversarial', 'evidenceIntegrity', 'policyLint', 'auditEffectiveness', 'fixOutcome', 'postFixVerificationPlan', 'repairQuality', 'splitEffectiveness', 'noiseControl', 'auditLearningRecommendation', 'decisionRetrospective', 'rolloutScore', 'freshness', 'riskAcceptanceWorkflow', 'reviewerAssignmentQuality', 'verificationCompleteness', 'skippedCheckJustification', 'auditModeRecommendation', 'auditConflict', 'maturityScore'];
   const missing = requiredFields.filter((field) => report[field] === undefined);
   return {
     status: missing.length || forbidden.some((pattern) => pattern.test(serialized)) ? 'fail' : 'pass',
@@ -5006,6 +5044,8 @@ function computeSafeArtifactValidation() {
     curatorSuggestionStatus: report.curatorSuggestionStatus,
     selfEvolutionPolicyStatus: report.selfEvolutionPolicyStatus,
     sourceHarnessValidationStatus: report.sourceHarnessValidationStatus,
+    openaiCodexMethodStatus: report.openaiCodexMethodStatus,
+    methodSupportStatus: report.methodSupportStatus,
   };
   const unsafe = Object.entries(artifacts).filter(([, value]) => safeForbiddenArtifactHit(value)).map(([name]) => name);
   return {
@@ -5025,6 +5065,8 @@ function enforceFinalValidationStatuses() {
     ['selfEvolutionPolicyStatus', report.selfEvolutionPolicyStatus],
     ['curatorSuggestionStatus', report.curatorSuggestionStatus],
     ['sourceHarnessValidationStatus', report.sourceHarnessValidationStatus],
+    ['openaiCodexMethodStatus', report.openaiCodexMethodStatus],
+    ['methodSupportStatus', report.methodSupportStatus],
     ['safeArtifactValidation', report.safeArtifactValidation],
     ['outputShapeStatus', report.outputShapeStatus],
   ];
@@ -5897,6 +5939,8 @@ report.curatorSuggestionStatus = validateCuratorSuggestionScript();
 applyGovernancePolicyStatus(report.curatorSuggestionStatus, 'curatorSuggestion.failed', 'Curator suggestion governance failed.');
 report.selfEvolutionPolicyStatus = validateSelfEvolutionPolicy();
 applyGovernancePolicyStatus(report.selfEvolutionPolicyStatus, 'selfEvolutionPolicy.failed', 'Self-evolution policy governance failed.');
+report.openaiCodexMethodStatus = runOpenAICodexMethodGate();
+applyOpenAIMethodGateStatus(report.openaiCodexMethodStatus);
 classifyDiff(policy, knownRisks);
 runDiffAudits(policy, knownRisks, codeAuditBaseline);
 for (const warning of report.warnings) {

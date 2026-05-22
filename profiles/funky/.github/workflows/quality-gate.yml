@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.6.9
+# CODEX_QUALITY_HARNESS_FILE v0.7.0
 name: quality-gate
 
 on:
@@ -50,6 +50,8 @@ jobs:
           CODEX_REQUIRE_NPM: "1"
           CODEX_RUN_PROFILE_REQUIRED_CHECKS: "1"
           CODEX_QUALITY_REPORT: "json"
+
+          CODEX_OPENAI_METHOD_REPORT: "json"
           CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
           CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}

@@ -163,7 +163,7 @@ full run-tests FAIL を握りつぶさない。
 secret / endpoint値 / API key / token / raw payload / raw command / raw memory / raw OBS event / raw frame / OCR text / raw voice sample / dataset path / internal model path / raw logs を出さない。
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-<!-- CODEX_QUALITY_HARNESS_FILE v0.6.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.7.0 -->
 ## Codex Quality Harness
 
 Use the repo-local harness files in `docs/process/` and `scripts/codex-*`.
@@ -176,4 +176,13 @@ Manual confirmation cannot override secret scan failures, blocked paths, high-co
 Use only repo-local `IRIS_SPEC_AUTHORITY.md` as the IRIS source of truth.
 Preserve Phase ownership, Phase I/O, Core / Adapter boundary, and candidate / approved / commit / execution separation.
 Boundary or adapter-affecting changes are R3 and require `docs/process/skills/iris-boundary-reviewer.md`.
+
+## OpenAI Codex Method Rule
+
+Use `docs/process/CODEX_TASK_BRIEF_TEMPLATE.md` for non-trivial tasks.
+For complex, ambiguous, R3, security, migration, dependency, release, or multi-file work, plan before coding.
+PRs must satisfy `docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md`.
+Reviews should use `docs/process/code_review.md`.
+Do not claim merge readiness unless method gate, quality gate, and required checks pass.
+
 <!-- CODEX_QUALITY_HARNESS_END -->

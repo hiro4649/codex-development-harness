@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "1.0.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.0",
+  "policyName": "openai-codex-method-gate",
+  "requiredPrSections": [
+    "Goal",
+    "Context",
+    "Constraints",
+    "Done when",
+    "Files or scope",
+    "Plan-first status",
+    "Environment setup",
+    "Testing and review",
+    "Residual risks",
+    "Best of N used or skipped",
+    "Code review status",
+    "Human confirmation needed"
+  ],
+  "requiredForPullRequest": true,
+  "minimumSectionChars": 12,
+  "forbidTodoOnly": true,
+  "forbidEmptySections": true,
+  "forbidRawDiff": true,
+  "forbidUnsafeOutput": true,
+  "planFirstRequiredFor": [
+    "R3",
+    "implementation",
+    "dependency",
+    "security",
+    "release",
+    "migration",
+    "refactor",
+    "multi-file",
+    "large-diff"
+  ],
+  "thresholds": {
+    "largeDiffFiles": 8,
+    "largeDiffLines": 300
+  },
+  "bestOfNRecommendedFor": [
+    "architecture",
+    "ambiguous",
+    "risky",
+    "migration"
+  ],
+  "reviewPolicy": {
+    "requiresCodeReviewFile": true,
+    "codeReviewPath": "docs/process/code_review.md",
+    "requiresPrTemplateMethodSection": true
+  },
+  "manualConfirmationCannotOverride": [
+    "secretScanFailure",
+    "blockedPaths",
+    "highConfidenceSecret",
+    "implementationHarnessMixing",
+    "profileRequiredFailure",
+    "openaiMethodGateFailure"
+  ],
+  "allowedNonPrStatuses": [
+    "not_applicable"
+  ],
+  "safeOutputForbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "autoApply": false,
+  "humanApprovalRequired": true
+}
