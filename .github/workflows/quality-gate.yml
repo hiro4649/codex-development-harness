@@ -95,6 +95,7 @@ jobs:
           console.log(`report.status: ${report.status}`);
           console.log(`mergeReady: ${report.mergeReady}`);
           console.log(`humanReviewRequired: ${report.humanReviewRequired}`);
+          console.log(`humanConfirmationStatus: ${report.humanConfirmationStatus?.status || 'missing'}`);
 
           if (!['pass', 'manual_confirmation_required'].includes(report.status)) {
             failures.push(`report.status=${report.status}`);

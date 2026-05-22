@@ -8,6 +8,7 @@ import {
   evidenceFacts,
   readPrBody,
   unsafeLabels,
+  weakEvidenceLineLabels,
 } from './codex-production-readiness-gate.mjs';
 
 function readOptionalJson(file) {
@@ -20,19 +21,8 @@ function readOptionalJson(file) {
 }
 
 function weakEvidenceLabels(body) {
-  const labels = [];
   const lower = body.toLowerCase();
-  const weakPhrases = [
-    ['weak_phrase_passed_only', /\bpassed only\b/],
-    ['weak_phrase_looks_good', /\blooks good\b/],
-    ['weak_phrase_verified_only', /^\s*verified\s*$/im],
-    ['weak_phrase_done_only', /^\s*done\s*$/im],
-    ['weak_phrase_tbd', /\btbd\b|\btodo\b/],
-    ['weak_phrase_not_run', /\bnot run\b/],
-  ];
-  for (const [label, pattern] of weakPhrases) {
-    if (pattern.test(lower)) labels.push(label);
-  }
+  const labels = weakEvidenceLineLabels(body);
   if (/\bskip|skipped\b/.test(lower) && !/\breason\b|\bbecause\b|\bnot applicable with reason\b|\bseparate follow up\b/.test(lower)) {
     labels.push('skipped_check_without_reason');
   }

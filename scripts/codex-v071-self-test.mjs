@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import {
   HARNESS_VERSION,
   buildProductionReadinessReport,
+  buildHumanConfirmationStatus,
   forbiddenOutputKeys,
   marker,
 } from './codex-production-readiness-gate.mjs';
@@ -23,7 +24,7 @@ function baseEnv(body, extra = {}) {
   };
 }
 
-function validBody() {
+function baseValidBody() {
   return [
     '## Codex Method Compliance',
     'Goal: Add v0.7.1 source harness gates without changing project repositories.',
@@ -48,6 +49,33 @@ function validBody() {
     'Known Risks: downstream profile propagation is separate.',
     'Safe summary only: yes.',
   ].join('\n');
+}
+
+function completedHumanConfirmationBlock() {
+  return [
+    '',
+    'Manual confirmation:',
+    'confirmedByRole: project-owner',
+    `headSha: ${expectedHead}`,
+    'reviewedItems:',
+    '- quality evidence',
+    '- residual risks',
+    'residualRisksAccepted: true',
+    'qualityGateNotWeakened: true',
+    'riskLevelNotLowered: true',
+  ].join('\n');
+}
+
+function validBody() {
+  return `${baseValidBody()}${completedHumanConfirmationBlock()}`;
+}
+
+function localMergeReadyFromHumanConfirmation(status) {
+  return ['pass', 'not_required'].includes(status);
+}
+
+function localQualityScoreFromHumanConfirmation(status) {
+  return ['pass', 'not_required'].includes(status) ? 100 : 89;
 }
 
 function runAll(env) {
@@ -107,18 +135,30 @@ function buildReport() {
   cases.push({ name: 'weak-command-evidence', statuses: [statusOf(weak, 'evidence')] });
   assert('weak command evidence does not pass', statusOf(weak, 'evidence') !== 'pass', failures);
 
-  const stale = runAll(baseEnv(validBody().replace(`Head SHA: ${expectedHead}`, `Head SHA: ${otherHead}`)));
+  const stale = runAll(baseEnv(validBody().replaceAll(expectedHead, otherHead)));
   cases.push({ name: 'stale-head-sha', statuses: [statusOf(stale, 'production'), statusOf(stale, 'evidence')] });
   assert('stale head fails production', statusOf(stale, 'production') === 'fail', failures);
   assert('stale head fails evidence', statusOf(stale, 'evidence') === 'fail', failures);
 
-  const r3NoHuman = runAll(baseEnv(validBody().replace('Human confirmation needed: yes - R3 harness gate behavior.', 'Review decision omitted.')));
+  const r3NoHuman = runAll(baseEnv(baseValidBody().replace('Human confirmation needed: yes - R3 harness gate behavior.', 'Review decision omitted.')));
   cases.push({ name: 'r3-without-human-review', statuses: [statusOf(r3NoHuman, 'production'), statusOf(r3NoHuman, 'hermes')] });
   assert('R3 without human review does not pass', statusOf(r3NoHuman, 'hermes') !== 'pass', failures);
 
   const override = runAll(baseEnv(`${validBody()}\nManual confirmation can override secretScanFailure.`));
   cases.push({ name: 'manual-override-non-overridable', statuses: [statusOf(override, 'production'), statusOf(override, 'hermes')] });
   assert('manual override of non-overridable fails', statusOf(override, 'production') === 'fail' || statusOf(override, 'hermes') === 'fail', failures);
+
+  const incompleteHuman = buildHumanConfirmationStatus(baseEnv(baseValidBody())).humanConfirmationStatus;
+  cases.push({ name: 'human-confirmation-required-incomplete', statuses: [incompleteHuman.status] });
+  assert('human confirmation required but incomplete needs manual confirmation', incompleteHuman.status === 'manual_confirmation_required', failures);
+  assert('incomplete human confirmation is not merge-ready', !localMergeReadyFromHumanConfirmation(incompleteHuman.status), failures);
+  assert('incomplete human confirmation cannot score 100', localQualityScoreFromHumanConfirmation(incompleteHuman.status) !== 100, failures);
+
+  const completedHuman = buildHumanConfirmationStatus(baseEnv(validBody())).humanConfirmationStatus;
+  cases.push({ name: 'human-confirmation-completed', statuses: [completedHuman.status] });
+  assert('completed human confirmation passes', completedHuman.status === 'pass', failures);
+  assert('completed human confirmation can be merge-ready', localMergeReadyFromHumanConfirmation(completedHuman.status), failures);
+  assert('completed human confirmation can score 100', localQualityScoreFromHumanConfirmation(completedHuman.status) === 100, failures);
 
   const selfAssertion = runAll(baseEnv('Risk level: R3\nResult: pass\nResidual risks: none'));
   cases.push({ name: 'hermes-self-assertion-only', statuses: [statusOf(selfAssertion, 'hermes')] });

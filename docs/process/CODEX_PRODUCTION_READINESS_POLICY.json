@@ -13,7 +13,16 @@
     "rollbackOrMergeAfterVerify",
     "residualRisks",
     "humanReviewDecision",
+    "humanConfirmationStatus",
     "skippedChecksWithReason"
+  ],
+  "humanConfirmationRequiredEvidence": [
+    "confirmedByRole",
+    "reviewedItems",
+    "headShaMatchesCurrentHead",
+    "residualRisksAccepted",
+    "qualityGateNotWeakened",
+    "riskLevelNotLowered"
   ],
   "productionReadyWordingRequiresEvidence": true,
   "goNoGoRequiresEvidence": true,
@@ -29,7 +38,10 @@
     "openaiMethodGateFailure",
     "staleEvidence",
     "unsafeOutput",
-    "productionReadyClaimWithoutEvidence"
+    "productionReadyClaimWithoutEvidence",
+    "confirmationHeadShaMismatch",
+    "qualityGateWeakening",
+    "riskLevelLowering"
   ],
   "allowedNotApplicable": [
     "non_pr_local_without_production_or_release_claim"

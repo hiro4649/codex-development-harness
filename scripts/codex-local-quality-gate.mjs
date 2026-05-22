@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
+import { buildHumanConfirmationStatus } from './codex-production-readiness-gate.mjs';
 
 const HARNESS_VERSION = '0.7.1';
 const PROFILE_TEMPLATE_VERSION = '0.7.0';
@@ -423,6 +424,7 @@ function computeOutputShapeStatus(report) {
     'productionReadinessStatus',
     'evidenceIntegrityStatus',
     'hermesInvariantStatus',
+    'humanConfirmationStatus',
     'v071SelfTestStatus',
     'qualityScoreStatus',
   ];
@@ -456,15 +458,16 @@ function computeQualityScoreStatus(report) {
     'productionReadinessStatus',
     'evidenceIntegrityStatus',
     'hermesInvariantStatus',
+    'humanConfirmationStatus',
     'v071SelfTestStatus',
     'safeArtifactValidation',
     'outputShapeStatus',
   ];
   const statuses = scored.map((key) => {
     const status = report[key]?.status || 'missing';
-    const effectiveStatus = !prContext && allowedNonPrNotApplicable.has(key) && status === 'not_applicable'
-      ? 'pass'
-      : status;
+    let effectiveStatus = status;
+    if (!prContext && allowedNonPrNotApplicable.has(key) && status === 'not_applicable') effectiveStatus = 'pass';
+    if (key === 'humanConfirmationStatus' && status === 'not_required') effectiveStatus = 'pass';
     return { key, status, effectiveStatus };
   });
   const fail = statuses.filter((item) => item.effectiveStatus === 'fail' || item.effectiveStatus === 'missing');
@@ -521,6 +524,7 @@ function runSourceHarnessGate() {
     productionReadinessStatus: { status: 'not_run' },
     evidenceIntegrityStatus: { status: 'not_run' },
     hermesInvariantStatus: { status: 'not_run' },
+    humanConfirmationStatus: { status: 'not_run' },
     v071SelfTestStatus: { status: 'not_run' },
     profileTemplateCompatibilityStatus: { status: 'not_run' },
     qualityScoreStatus: { status: 'not_run' },
@@ -536,6 +540,7 @@ function runSourceHarnessGate() {
   report.productionReadinessStatus = runGateScript('scripts/codex-production-readiness-gate.mjs', 'productionReadinessStatus', 'CODEX_PRODUCTION_READINESS_REPORT');
   report.evidenceIntegrityStatus = runGateScript('scripts/codex-evidence-integrity-gate.mjs', 'evidenceIntegrityStatus', 'CODEX_EVIDENCE_INTEGRITY_REPORT');
   report.hermesInvariantStatus = runGateScript('scripts/codex-hermes-invariant-gate.mjs', 'hermesInvariantStatus', 'CODEX_HERMES_INVARIANT_REPORT');
+  report.humanConfirmationStatus = buildHumanConfirmationStatus(process.env).humanConfirmationStatus;
   report.v071SelfTestStatus = runGateScript('scripts/codex-v071-self-test.mjs', 'v071SelfTestStatus', 'CODEX_V071_SELF_TEST_REPORT');
 
   for (const [key, value] of Object.entries({
@@ -549,11 +554,12 @@ function runSourceHarnessGate() {
     productionReadinessStatus: report.productionReadinessStatus,
     evidenceIntegrityStatus: report.evidenceIntegrityStatus,
     hermesInvariantStatus: report.hermesInvariantStatus,
+    humanConfirmationStatus: report.humanConfirmationStatus,
     v071SelfTestStatus: report.v071SelfTestStatus,
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }
-  report.humanReviewRequired = warnings.length > 0;
+  report.humanReviewRequired = warnings.length > 0 || report.humanConfirmationStatus.status === 'manual_confirmation_required';
   report.safeArtifactValidation = computeSafeArtifactValidation(report);
   if (report.safeArtifactValidation.status === 'fail') failures.push({ id: 'safeArtifactValidation.failed', message: 'safe artifact validation failed' });
   report.qualityScoreStatus = computeQualityScoreStatus(report);
@@ -562,7 +568,7 @@ function runSourceHarnessGate() {
   report.qualityScoreStatus = computeQualityScoreStatus(report);
   if (report.qualityScoreStatus.status === 'fail') failures.push({ id: 'qualityScoreStatus.failed', message: 'quality score validation failed' });
   report.status = failures.length ? 'fail' : (warnings.length ? 'manual_confirmation_required' : 'pass');
-  report.mergeReady = failures.length === 0 && warnings.length === 0;
+  report.mergeReady = failures.length === 0 && warnings.length === 0 && ['pass', 'not_required'].includes(report.humanConfirmationStatus.status);
   report.localGate = { status: report.status };
 
   if (jsonReport) console.log(JSON.stringify(report, null, 2));
@@ -579,6 +585,7 @@ function runSourceHarnessGate() {
     console.log(`productionReadinessStatus: ${report.productionReadinessStatus.status}`);
     console.log(`evidenceIntegrityStatus: ${report.evidenceIntegrityStatus.status}`);
     console.log(`hermesInvariantStatus: ${report.hermesInvariantStatus.status}`);
+    console.log(`humanConfirmationStatus: ${report.humanConfirmationStatus.status}`);
     console.log(`v071SelfTestStatus: ${report.v071SelfTestStatus.status}`);
     console.log(`safeArtifactValidation: ${report.safeArtifactValidation.status}`);
     console.log(`outputShapeStatus: ${report.outputShapeStatus.status}`);

@@ -13,13 +13,17 @@ Production Evidence and Hermes Gate does not make a project production ready. It
 - rollback plan, stop condition, or merge-after verify for release-like changes
 - residual risks and human review decision
 - skipped checks with a reason
+- completed human confirmation evidence when `Human confirmation needed: yes` or `required` is declared:
+  `confirmedByRole`, `reviewedItems`, current head SHA, residual risks accepted,
+  `qualityGateNotWeakened`, and `riskLevelNotLowered`
 
 ## Decision Rules
 
 - `pass`: required evidence is present, current, safe, and not contradicted by known risk labels.
 - `manual_confirmation_required`: remote evidence cannot be fetched but the gap is human-reviewable and not non-overridable.
+- `manual_confirmation_required`: human confirmation is declared as required but the confirmation evidence is incomplete.
 - `not_applicable`: non-PR local execution with no production or release claim.
-- `fail`: production-ready claim without evidence, stale head SHA, unsafe output, missing rollback for release-like work, R3 without human review, or manual override of a non-overridable failure.
+- `fail`: production-ready claim without evidence, stale head SHA, unsafe output, missing rollback for release-like work, R3 without human review, confirmation head SHA mismatch, quality gate weakening, risk level lowering, or manual override of a non-overridable failure.
 
 ## Non-Overridable Failures
 

@@ -95,6 +95,24 @@ export function normalizeText(value) {
   return String(value || '').toLowerCase().replace(/[`*_#[\](){}-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+function stripListMarker(line) {
+  return String(line || '').replace(/^\s*[-*]\s+/, '').trim();
+}
+
+export function weakEvidenceLineLabels(body) {
+  const labels = [];
+  const lines = String(body || '').split(/\r?\n/).map(stripListMarker).filter(Boolean);
+  const weakValue = '(passed only|looks good|verified|done|n/a|na|tbd|todo|not run)';
+  for (const line of lines) {
+    const lower = line.toLowerCase().trim().replace(/\s+/g, ' ');
+    if (new RegExp(`^${weakValue}\\.?$`).test(lower)) labels.push('weak_evidence_value_only');
+    if (new RegExp(`^(commands run|verification results|remote quality[- ]gate result|testing and review|result)\\s*:\\s*${weakValue}\\.?$`).test(lower)) {
+      labels.push('weak_evidence_field_value');
+    }
+  }
+  return [...new Set(labels)];
+}
+
 export function hasProductionClaim(body) {
   const lower = normalizeText(body);
   return /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b|\bgo no go\b|\bgo\b|\b本番可\b|\b出荷可\b/.test(lower);
@@ -106,8 +124,7 @@ export function isRiskyContext(body) {
 }
 
 export function hasWeakEvidenceWords(body) {
-  const lower = normalizeText(body);
-  return /\bpassed only\b|\blooks good\b|\bverified\b|\bdone\b|\bn\/a\b|\btbd\b|\btodo\b|\bnot run\b/.test(lower);
+  return weakEvidenceLineLabels(body).length > 0;
 }
 
 export function hasReasonedSkip(body) {
@@ -161,6 +178,115 @@ export function manualOverrideLabels(body) {
   return nonOverridableFailures
     .filter((item) => lower.includes(item.toLowerCase()))
     .map((item) => `manual_override_attempt:${item}`);
+}
+
+function confirmationRequirement(body) {
+  if (/\b(?:human confirmation|manual confirmation)\s+needed\s*:\s*(?:no|not required)\b/i.test(body)) return 'not_required';
+  if (/\bnot required with reason\b/i.test(body)) return 'not_required';
+  if (/\b(?:human confirmation|manual confirmation)\s+needed\s*:\s*(?:yes|required)\b/i.test(body)) return 'required';
+  if (/\b(?:human confirmation|manual confirmation)\s+required\b/i.test(body)) return 'required';
+  return 'not_required';
+}
+
+function booleanField(body, names) {
+  for (const name of names) {
+    const pattern = new RegExp(`${name}\\s*:\\s*(true|yes|pass|false|no|fail)`, 'i');
+    const match = body.match(pattern);
+    if (!match) continue;
+    const value = match[1].toLowerCase();
+    if (['true', 'yes', 'pass'].includes(value)) return true;
+    if (['false', 'no', 'fail'].includes(value)) return false;
+  }
+  return null;
+}
+
+export function buildHumanConfirmationStatus(env = process.env) {
+  const bodyInfo = readPrBody(env);
+  const body = bodyInfo.body || '';
+  const failures = [];
+  const warnings = [];
+  const labels = [];
+  const missingEvidence = [];
+
+  failures.push(...manualOverrideLabels(body));
+
+  if (bodyInfo.prContext && !body.trim()) {
+    return {
+      humanConfirmationStatus: {
+        status: 'fail',
+        labels: ['pr_body_missing'],
+        missingEvidence,
+        failures: ['pr_body_missing'],
+        warnings,
+        safeSummaryOnly: true,
+      },
+      valuesPrinted: false,
+      status: 'fail',
+    };
+  }
+
+  if (confirmationRequirement(body) === 'not_required') {
+    return {
+      humanConfirmationStatus: {
+        status: 'not_required',
+        labels: ['human_confirmation_not_required'],
+        missingEvidence,
+        failures,
+        warnings,
+        safeSummaryOnly: true,
+      },
+      valuesPrinted: false,
+      status: 'not_required',
+    };
+  }
+
+  labels.push('human_confirmation_required');
+
+  const confirmedByRole = /\bconfirmedByRole\s*:\s*\S+/i.test(body) ||
+    /\bconfirmed by role\s*:\s*\S+/i.test(body);
+  const reviewedItems = /\breviewedItems\s*:/i.test(body) ||
+    /\breviewed items\s*:/i.test(body);
+  const headMatch = body.match(/\b(?:headSha|head SHA)\s*[:=]\s*([a-f0-9]{40})/i);
+  const expectedHead = env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '';
+  const headPresent = Boolean(headMatch);
+  const headMatches = Boolean(headMatch && expectedHead && headMatch[1].toLowerCase() === String(expectedHead).toLowerCase());
+  const residualRisksAccepted = booleanField(body, ['residualRisksAccepted', 'residual risks accepted']);
+  const qualityGateNotWeakened = booleanField(body, ['qualityGateNotWeakened', 'quality gate not weakened']);
+  const riskLevelNotLowered = booleanField(body, ['riskLevelNotLowered', 'risk level not lowered']);
+
+  if (!confirmedByRole) missingEvidence.push('confirmedByRole');
+  if (!reviewedItems) missingEvidence.push('reviewedItems');
+  if (!headPresent) missingEvidence.push('headSha');
+  else if (expectedHead && !headMatches) failures.push('human_confirmation_head_sha_mismatch');
+  else if (!expectedHead) missingEvidence.push('expectedHeadSha');
+  if (residualRisksAccepted !== true) missingEvidence.push('residualRisksAccepted');
+  if (qualityGateNotWeakened !== true) missingEvidence.push('qualityGateNotWeakened');
+  if (riskLevelNotLowered !== true) missingEvidence.push('riskLevelNotLowered');
+
+  if (qualityGateNotWeakened === false) failures.push('quality_gate_weakening_confirmed');
+  if (riskLevelNotLowered === false) failures.push('risk_level_lowering_confirmed');
+
+  const status = failures.length ? 'fail' : missingEvidence.length ? 'manual_confirmation_required' : 'pass';
+  return {
+    humanConfirmationStatus: {
+      status,
+      labels,
+      missingEvidence,
+      failures,
+      warnings,
+      evidence: {
+        confirmedByRole,
+        reviewedItems,
+        headShaStatus: headPresent ? (headMatches ? 'matched' : 'mismatch') : 'missing',
+        residualRisksAccepted: residualRisksAccepted === true,
+        qualityGateNotWeakened: qualityGateNotWeakened === true,
+        riskLevelNotLowered: riskLevelNotLowered === true,
+      },
+      safeSummaryOnly: true,
+    },
+    valuesPrinted: false,
+    status,
+  };
 }
 
 function classifyProductionReadiness(env = process.env) {
