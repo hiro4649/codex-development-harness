@@ -18,6 +18,9 @@ const defaultPolicy = {
     'Environment setup',
     'Testing and review',
     'Residual risks',
+    'Best of N used or skipped',
+    'Code review status',
+    'Human confirmation needed',
   ],
   minimumSectionChars: 12,
   planFirstRequiredFor: [
@@ -120,6 +123,12 @@ function canonicalSectionName(value, requiredSections) {
   aliases.set('review testing', 'Testing and review');
   aliases.set('risks', 'Residual risks');
   aliases.set('residual risks', 'Residual risks');
+  aliases.set('best of n', 'Best of N used or skipped');
+  aliases.set('best of n used or skipped', 'Best of N used or skipped');
+  aliases.set('code review', 'Code review status');
+  aliases.set('code review status', 'Code review status');
+  aliases.set('human confirmation', 'Human confirmation needed');
+  aliases.set('human confirmation needed', 'Human confirmation needed');
   return aliases.get(normalize(value)) || null;
 }
 
@@ -166,6 +175,77 @@ function placeholderOnly(value) {
   return false;
 }
 
+function allowedPublicUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'github.com' || host === 'docs.github.com' || host.endsWith('.github.com')) return true;
+    if (host === 'developers.openai.com' || host === 'openai.com' || host === 'cdn.openai.com') return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+function unsafeUrlLabels(label, text) {
+  const findings = [];
+  const lines = String(text || '').split(/\r?\n/);
+  const urlPattern = /\b(?:https?|postgres(?:ql)?|mysql|mongodb|file):\/\/[^\s<>"'`]+/gi;
+  const envUrlAssignment = /\b[A-Z0-9_]*(?:URL|URI|ENDPOINT|RPC)[A-Z0-9_]*\s*=\s*["']?(?:https?|postgres(?:ql)?|mysql|mongodb):\/\//i;
+
+  for (const line of lines) {
+    const urls = line.match(urlPattern) || [];
+    if (envUrlAssignment.test(line)) findings.push(`${label}:env_url_assignment_like`);
+
+    for (const rawUrl of urls) {
+      if (/^(?:postgres(?:ql)?|mysql|mongodb):\/\//i.test(rawUrl)) {
+        findings.push(`${label}:database_url_like`);
+        continue;
+      }
+      if (/^file:\/\/\/?(?:[a-z]:\/users\/|\/home\/)/i.test(rawUrl)) {
+        findings.push(`${label}:private_path_url_like`);
+        continue;
+      }
+      if (allowedPublicUrl(rawUrl)) continue;
+      if (/^[a-z][a-z0-9+.-]*:\/\/[^/\s:@]+:[^/\s:@]+@/i.test(rawUrl)) {
+        findings.push(`${label}:credentialed_url_like`);
+        continue;
+      }
+
+      let parsed = null;
+      try {
+        parsed = new URL(rawUrl);
+      } catch {
+        findings.push(`${label}:malformed_url_like`);
+        continue;
+      }
+
+      const host = parsed.hostname.toLowerCase();
+      if (
+        host === 'localhost' ||
+        host === '0.0.0.0' ||
+        host === '::1' ||
+        /^127\./.test(host) ||
+        host.endsWith('.internal') ||
+        host.endsWith('.local') ||
+        (!host.includes('.') && !['github.com', 'openai.com'].includes(host))
+      ) {
+        findings.push(`${label}:internal_url_like`);
+        continue;
+      }
+      if (/(?:^|[?&])(token|key|secret|password)=/i.test(parsed.search)) {
+        findings.push(`${label}:secret_query_url_like`);
+        continue;
+      }
+      if (/\b(?:production|prod|endpoint|rpc|database|db|secret|token|key)\b/i.test(line)) {
+        findings.push(`${label}:production_endpoint_line_like`);
+      }
+    }
+  }
+
+  return [...new Set(findings)];
+}
+
 function unsafeLabels(label, text, options = {}) {
   if (!text) return [];
   const findings = [];
@@ -176,13 +256,14 @@ function unsafeLabels(label, text, options = {}) {
     ['openai_key_like', /\bsk-[A-Za-z0-9_-]{20,}\b/],
     ['aws_key_like', /\bAKIA[0-9A-Z]{16}\b/],
     ['jwt_like', /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/],
-    ['endpoint_like', /(?:https?|postgres(?:ql)?|mysql|mongodb):\/\/\S+/i],
     ['private_path_like', /\b[A-Za-z]:\\Users\\[^"'`\s]+|\/home\/[^"'`\s]+/i],
   ];
 
   for (const [name, pattern] of rules) {
     if (pattern.test(text)) findings.push(`${label}:${name}`);
   }
+
+  findings.push(...unsafeUrlLabels(label, text));
 
   if (!options.allowForbiddenLabels) {
     const forbiddenLabels = [
@@ -224,12 +305,29 @@ function gitChangedStats() {
   }
 }
 
-function inspectSupportFiles(policy, failures) {
+function inspectSupportFiles(policy) {
   const status = {};
+  const failures = [];
+  const shapeRules = {
+    policyMd: [/Required Task Shape/i, /CI must not mark a pull request merge-ready/i],
+    policyJson: [/"requiredPrSections"/, /"manualConfirmationCannotOverride"/],
+    codeReview: [/Correctness:/i, /Method compliance:/i, /Evidence:/i],
+    taskBrief: [/Goal:/i, /Context:/i, /Residual risks:/i],
+    planTemplate: [/Goal restatement:/i, /Tests to run:/i, /Stop conditions:/i],
+    prTemplate: [/Codex Method Compliance/i, /Code review status:/i],
+    agents: [/CODEX_OPENAI_CODEX_METHOD_POLICY\.md|code_review\.md/i],
+  };
   for (const [key, file] of Object.entries(managedPaths)) {
     const text = readText(file);
     status[key] = text === null ? 'missing' : 'present';
     if (text === null) failures.push(`${key}=missing`);
+    else {
+      if (!text.includes(marker)) failures.push(`${key}=marker_missing`);
+      const rules = shapeRules[key] || [];
+      for (const rule of rules) {
+        if (!rule.test(text)) failures.push(`${key}=shape_mismatch`);
+      }
+    }
   }
 
   const prTemplate = readText(managedPaths.prTemplate) || '';
@@ -251,7 +349,11 @@ function inspectSupportFiles(policy, failures) {
   }
 
   if (policy.marker !== marker) failures.push('policyJson=marker_mismatch');
-  return status;
+  return {
+    status: failures.length ? 'fail' : 'pass',
+    files: status,
+    failures,
+  };
 }
 
 function detectPlanFirstNeed(body, policy) {
@@ -276,6 +378,36 @@ function detectPlanFirstNeed(body, policy) {
   return { required: triggers.length > 0, triggers: [...new Set(triggers)], stats };
 }
 
+function validateExplicitSection(section, value) {
+  const compact = value.replace(/[\s*`_>-]+/g, ' ').trim().toLowerCase();
+  if (placeholderOnly(value)) return `${section}=weak`;
+
+  if (section === 'Code review status') {
+    if (/^(not run|not-run|unreviewed|none|n\/a|na)$/.test(compact)) return 'Code review status=not_run';
+    if (
+      /\bself reviewed\b/.test(compact) ||
+      /\breviewed\b/.test(compact) ||
+      /\bmanual(?:ly)?\b/.test(compact) ||
+      /docs\/process\/code_review\.md/.test(compact) ||
+      /not required with reason|not-required-with-reason/.test(compact)
+    ) return null;
+    return 'Code review status=missing_evidence';
+  }
+
+  if (section === 'Human confirmation needed') {
+    if (/\b(yes|no|required|manual confirmation|not required with reason|not-required-with-reason)\b/.test(compact)) return null;
+    return 'Human confirmation needed=missing_decision';
+  }
+
+  if (section === 'Best of N used or skipped') {
+    if (/\b(used|compared)\b/.test(compact)) return null;
+    if (/skipped/.test(compact) && /\b(reason|because|not applicable|not required with reason|not-required-with-reason)\b/.test(compact)) return null;
+    return 'Best of N used or skipped=missing_reason';
+  }
+
+  return null;
+}
+
 function buildReport() {
   const warnings = [];
   const failures = [];
@@ -289,30 +421,35 @@ function buildReport() {
 
   const bodyInfo = readPrBody();
   const requireGate = process.env.CODEX_REQUIRE_OPENAI_METHOD_GATE === '1';
+  const support = inspectSupportFiles(policy);
+  failures.push(...support.failures);
+  const requiredSections = policy.requiredPrSections || defaultPolicy.requiredPrSections;
   if (!bodyInfo.body.trim()) {
     if (requireGate || bodyInfo.prContext) failures.push('prBody=missing');
     else {
+      const status = support.status === 'fail' ? 'fail' : 'not_applicable';
       return {
         marker,
         harnessVersion: HARNESS_VERSION,
-        status: 'not_applicable',
-        requiredSections: policy.requiredPrSections || defaultPolicy.requiredPrSections,
+        status,
+        requiredSections,
         missingSections: [],
         weakSections: [],
         planFirst: { required: false, status: 'not_applicable', triggers: [] },
-        prTemplateStatus: { status: 'not_evaluated' },
-        codeReviewStatus: { status: 'not_evaluated' },
-        policyStatus: { status: 'not_evaluated' },
-        unsafeOutputStatus: { status: 'not_evaluated' },
+        prTemplateStatus: { status: support.files.prTemplate === 'missing_method_section' ? 'fail' : support.files.prTemplate || 'missing' },
+        codeReviewStatus: { status: support.files.codeReview || 'missing', path: managedPaths.codeReview },
+        policyStatus: { status: support.failures.some((item) => item.startsWith('policyJson=')) ? 'fail' : 'pass', path: managedPaths.policyJson },
+        methodSupportStatus: support,
+        unsafeOutputStatus: { status: support.failures.some((item) => item.startsWith('unsafeOutput=')) ? 'fail' : 'pass' },
         warnings,
         failures,
-        safeSummary: 'No pull request body was available; method gate is not applicable for local non-PR execution.',
+        safeSummary: status === 'fail'
+          ? 'OpenAI Codex Method Gate support files failed; see safe labels.'
+          : 'No pull request body was available; method gate is not applicable for local non-PR execution.',
       };
     }
   }
 
-  const support = inspectSupportFiles(policy, failures);
-  const requiredSections = policy.requiredPrSections || defaultPolicy.requiredPrSections;
   const sections = parseSections(bodyInfo.body, requiredSections);
   const missingSections = [];
   const weakSections = [];
@@ -325,6 +462,10 @@ function buildReport() {
 
   for (const section of missingSections) failures.push(`sectionMissing=${section}`);
   for (const section of weakSections) failures.push(`sectionWeak=${section}`);
+  for (const section of ['Best of N used or skipped', 'Code review status', 'Human confirmation needed']) {
+    const finding = validateExplicitSection(section, sections[section] || '');
+    if (finding) failures.push(`sectionInvalid=${finding}`);
+  }
 
   const unsafeFindings = unsafeLabels('prBody', bodyInfo.body);
   for (const finding of unsafeFindings) failures.push(`unsafeOutput=${finding}`);
@@ -363,9 +504,10 @@ function buildReport() {
     missingSections,
     weakSections,
     planFirst: { ...planFirst, status: planStatus },
-    prTemplateStatus: { status: support.prTemplate === 'missing_method_section' ? 'fail' : support.prTemplate || 'missing' },
-    codeReviewStatus: { status: support.codeReview || 'missing', path: managedPaths.codeReview },
+    prTemplateStatus: { status: support.files.prTemplate === 'missing_method_section' ? 'fail' : support.files.prTemplate || 'missing' },
+    codeReviewStatus: { status: support.files.codeReview || 'missing', path: managedPaths.codeReview },
     policyStatus: { status: failures.some((item) => item.startsWith('policyJson=')) ? 'fail' : 'pass', path: managedPaths.policyJson },
+    methodSupportStatus: support,
     unsafeOutputStatus: { status: unsafeFindings.length ? 'fail' : 'pass', labels: unsafeFindings },
     warnings,
     failures,
@@ -407,6 +549,7 @@ try {
     prTemplateStatus: { status: 'unknown' },
     codeReviewStatus: { status: 'unknown' },
     policyStatus: { status: 'unknown' },
+    methodSupportStatus: { status: 'unknown' },
     unsafeOutputStatus: { status: 'unknown' },
     warnings: [],
     failures: ['methodGate=unexpected_error'],

@@ -362,6 +362,7 @@ function computeOutputShapeStatus(report) {
     'selfEvolutionPolicyStatus',
     'safeArtifactValidation',
     'openaiCodexMethodStatus',
+    'methodSupportStatus',
   ];
   const missing = required.filter((key) => report[key] === undefined);
   return {
@@ -391,6 +392,7 @@ function runSourceHarnessGate() {
     failures,
     humanReviewRequired: false,
     openaiCodexMethodStatus: { status: 'not_run' },
+    methodSupportStatus: { status: 'not_run' },
   };
   if (report.sourceHarnessValidationStatus.status === 'fail') failures.push(...report.sourceHarnessValidationStatus.failures);
   if (report.sourceHarnessValidationStatus.status === 'warning') warnings.push(...report.sourceHarnessValidationStatus.warnings);
@@ -398,6 +400,7 @@ function runSourceHarnessGate() {
   failures.push(...governance.failures);
   warnings.push(...governance.warnings);
   report.openaiCodexMethodStatus = runOpenAICodexMethodGate();
+  report.methodSupportStatus = report.openaiCodexMethodStatus.methodSupportStatus || { status: 'missing' };
 
   for (const [key, value] of Object.entries({
     agentMemoryPolicyStatus: report.agentMemoryPolicyStatus,
@@ -405,6 +408,7 @@ function runSourceHarnessGate() {
     curatorSuggestionStatus: report.curatorSuggestionStatus,
     selfEvolutionPolicyStatus: report.selfEvolutionPolicyStatus,
     openaiCodexMethodStatus: report.openaiCodexMethodStatus,
+    methodSupportStatus: report.methodSupportStatus,
   })) {
     if (value?.status === 'fail') failures.push({ id: `${key}.failed`, message: `${key} failed` });
     else if (value?.status === 'warning') warnings.push({ id: `${key}.warning`, message: `${key} requires human review` });
@@ -427,6 +431,7 @@ function runSourceHarnessGate() {
     console.log(`curatorSuggestionStatus: ${report.curatorSuggestionStatus.status}`);
     console.log(`selfEvolutionPolicyStatus: ${report.selfEvolutionPolicyStatus.status}`);
     console.log(`openaiCodexMethodStatus: ${report.openaiCodexMethodStatus.status}`);
+    console.log(`methodSupportStatus: ${report.methodSupportStatus.status}`);
     console.log(`safeArtifactValidation: ${report.safeArtifactValidation.status}`);
     console.log(`outputShapeStatus: ${report.outputShapeStatus.status}`);
   }

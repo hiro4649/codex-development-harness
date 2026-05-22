@@ -521,6 +521,7 @@ const report = {
   selfEvolutionPolicyStatus: { status: 'not_run', violations: [] },
   sourceHarnessValidationStatus: { status: 'not_run', sourceRepoMode: SOURCE_REPO_MODE },
   openaiCodexMethodStatus: { status: 'not_run' },
+  methodSupportStatus: { status: 'not_run' },
   outputSizeBudget: { topFindings: 5, rootCauses: 5, safeSummary: true },
   recommendedNextAction: 'run quality gate',
   prType: process.env.CODEX_PR_TYPE || 'unspecified',
@@ -3048,11 +3049,15 @@ function runOpenAICodexMethodGate() {
   return { status: 'fail', failures: ['methodGate=failed'], safeSummary: 'OpenAI Codex Method Gate failed.' };
 }
 function applyOpenAIMethodGateStatus(status) {
+  report.methodSupportStatus = status.methodSupportStatus || { status: 'missing' };
   if (status.status === 'fail') {
     addFailure('openaiMethodGateFailure', 'OpenAI Codex Method Gate failed.');
   } else if (status.status === 'warning') {
     addWarning('openaiMethodGateWarning', 'OpenAI Codex Method Gate requires human review.');
     addHumanReview('openaiMethodGateWarning', 'OpenAI Codex Method Gate returned warnings.');
+  }
+  if (report.methodSupportStatus.status === 'fail') {
+    addFailure('methodSupportStatus.failed', 'OpenAI Codex Method support file validation failed.');
   }
 }
 
@@ -3063,7 +3068,7 @@ function computeOutputShapeStatus() {
     /\b(?:gh[pousr]_|sk-|AKIA)[A-Za-z0-9_-]{8,}\b/,
     /-----BEGIN [^-]+PRIVATE KEY-----/i,
   ];
-  const requiredFields = ['qualityReportSchemaVersion', 'codeAuditSchemaVersion', 'harnessVersion', 'profile', 'riskLevel', 'manualConfirmationStatus', 'rootCauseGroups', 'blockingFindings', 'warningFindings', 'agentMemoryPolicyStatus', 'skillLifecyclePolicyStatus', 'selfEvolutionPolicyStatus', 'curatorSuggestionStatus', 'sourceHarnessValidationStatus', 'openaiCodexMethodStatus', 'safeArtifactValidation', 'faultInjectionBenchmark', 'semanticImpact', 'testSufficiency', 'specTestMismatch', 'minimalPrPlan', 'ciRiskPrediction', 'decisionTrace', 'defectTaxonomy', 'ciParity', 'oracleLimits', 'auditGrade', 'oracleValidation', 'decisionSimulator', 'acceptanceCriteria', 'confusionRisk', 'temporalConsistency', 'deploymentBoundary', 'mutationBenchmark', 'adversarialPrSimulator', 'auditBypass', 'realWorldCanarySet', 'specBoundaryMutation', 'testAuditMutation', 'dependencyAdversarial', 'ciParityAdversarial', 'evidenceIntegrity', 'policyLint', 'auditEffectiveness', 'fixOutcome', 'postFixVerificationPlan', 'repairQuality', 'splitEffectiveness', 'noiseControl', 'auditLearningRecommendation', 'decisionRetrospective', 'rolloutScore', 'freshness', 'riskAcceptanceWorkflow', 'reviewerAssignmentQuality', 'verificationCompleteness', 'skippedCheckJustification', 'auditModeRecommendation', 'auditConflict', 'maturityScore'];
+  const requiredFields = ['qualityReportSchemaVersion', 'codeAuditSchemaVersion', 'harnessVersion', 'profile', 'riskLevel', 'manualConfirmationStatus', 'rootCauseGroups', 'blockingFindings', 'warningFindings', 'agentMemoryPolicyStatus', 'skillLifecyclePolicyStatus', 'selfEvolutionPolicyStatus', 'curatorSuggestionStatus', 'sourceHarnessValidationStatus', 'openaiCodexMethodStatus', 'methodSupportStatus', 'safeArtifactValidation', 'faultInjectionBenchmark', 'semanticImpact', 'testSufficiency', 'specTestMismatch', 'minimalPrPlan', 'ciRiskPrediction', 'decisionTrace', 'defectTaxonomy', 'ciParity', 'oracleLimits', 'auditGrade', 'oracleValidation', 'decisionSimulator', 'acceptanceCriteria', 'confusionRisk', 'temporalConsistency', 'deploymentBoundary', 'mutationBenchmark', 'adversarialPrSimulator', 'auditBypass', 'realWorldCanarySet', 'specBoundaryMutation', 'testAuditMutation', 'dependencyAdversarial', 'ciParityAdversarial', 'evidenceIntegrity', 'policyLint', 'auditEffectiveness', 'fixOutcome', 'postFixVerificationPlan', 'repairQuality', 'splitEffectiveness', 'noiseControl', 'auditLearningRecommendation', 'decisionRetrospective', 'rolloutScore', 'freshness', 'riskAcceptanceWorkflow', 'reviewerAssignmentQuality', 'verificationCompleteness', 'skippedCheckJustification', 'auditModeRecommendation', 'auditConflict', 'maturityScore'];
   const missing = requiredFields.filter((field) => report[field] === undefined);
   return {
     status: missing.length || forbidden.some((pattern) => pattern.test(serialized)) ? 'fail' : 'pass',
@@ -5040,6 +5045,7 @@ function computeSafeArtifactValidation() {
     selfEvolutionPolicyStatus: report.selfEvolutionPolicyStatus,
     sourceHarnessValidationStatus: report.sourceHarnessValidationStatus,
     openaiCodexMethodStatus: report.openaiCodexMethodStatus,
+    methodSupportStatus: report.methodSupportStatus,
   };
   const unsafe = Object.entries(artifacts).filter(([, value]) => safeForbiddenArtifactHit(value)).map(([name]) => name);
   return {
@@ -5060,6 +5066,7 @@ function enforceFinalValidationStatuses() {
     ['curatorSuggestionStatus', report.curatorSuggestionStatus],
     ['sourceHarnessValidationStatus', report.sourceHarnessValidationStatus],
     ['openaiCodexMethodStatus', report.openaiCodexMethodStatus],
+    ['methodSupportStatus', report.methodSupportStatus],
     ['safeArtifactValidation', report.safeArtifactValidation],
     ['outputShapeStatus', report.outputShapeStatus],
   ];

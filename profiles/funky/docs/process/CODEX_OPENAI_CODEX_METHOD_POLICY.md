@@ -18,12 +18,19 @@ A pull request body must include:
 - Environment setup
 - Testing and review
 - Residual risks
+- Best of N used or skipped
+- Code review status
+- Human confirmation needed
 
 ## Plan-First Rule
 
 Plan-first is required for large, R3, implementation, dependency, migration, refactor, release, security, multi-file, or ambiguous work.
 
-Best of N is optional, but recommended when multiple plausible solutions exist, especially for architecture, ambiguous, risky, or migration work.
+Best of N is optional, but the PR must state whether it was used or skipped with a reason. It is recommended when multiple plausible solutions exist, especially for architecture, ambiguous, risky, or migration work.
+
+Code review status must show review evidence, such as self-review against docs/process/code_review.md, manual review, or not-required-with-reason.
+
+Human confirmation needed must be explicit: yes, no, required, or not-required-with-reason.
 
 Task queues may be used as lightweight backlog notes, but they are not merge-ready evidence by themselves.
 

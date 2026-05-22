@@ -11,7 +11,10 @@
     "Plan-first status",
     "Environment setup",
     "Testing and review",
-    "Residual risks"
+    "Residual risks",
+    "Best of N used or skipped",
+    "Code review status",
+    "Human confirmation needed"
   ],
   "requiredForPullRequest": true,
   "minimumSectionChars": 12,
