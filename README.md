@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.7.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.7.1 -->
 
 # Codex Development Harness
 
@@ -6,29 +6,44 @@ This repository is the canonical source for the Codex quality harness.
 
 Current local baseline:
 
-- Version: v0.7.0
-- Update name: OpenAI Codex Method Gate
+- Version: v0.7.1
+- Update name: Production Evidence and Hermes Gate
+- Root harness version: `0.7.1`
+- Profile template version: `0.7.0` compatible
 - Profiles:
   - `profiles/iris`
   - `profiles/funky`
   - `profiles/iris-live2d-renderer`
 
-This repository is prepared as the source for v0.7.0. Propagating the matching
-profile files into real development projects is a separate task and is not run
-by this repository update.
+This source update is limited to the harness repository. It does not update,
+edit, test, or initialize these real development projects:
 
-Not updated by this change:
+- `IRIS`
+- `FUNKY`
+- `IRIS-live2d-renderer`
 
-- `C:\Users\HIRO-001\Documents\CodexProjects\IRIS`
-- `C:\Users\HIRO-001\Documents\CodexProjects\FUNKY`
-- `C:\Users\HIRO-001\Documents\CodexProjects\IRIS-live2d-renderer`
+Do not use old directories or snapshot-only directories as the harness source of
+truth. Do not bump profile templates to v0.7.1 just to satisfy root harness
+validation; the source harness and profile template version domains are separate.
 
-Do not use old directories under `C:\Users\HIRO-001\Documents\Codex` or local
-snapshot-only directories as the harness source of truth.
+## v0.7.1 Production Evidence and Hermes Gate
 
+v0.7.1 tightens the conditions for production, release, merge-ready, go/no-go,
+and similar claims. It does not create production readiness by itself. It
+requires safe, checkable evidence before those claims can pass.
 
-## v0.7.0 OpenAI Codex Method Gate
+New source-harness gates:
 
-v0.7.0 makes OpenAI Codex best practices CI-enforced at the pull request level. It checks PR body evidence for Goal, Context, Constraints, Done when, Plan-first status, Environment setup, Testing and review, and Residual risks before a PR can be treated as merge-ready.
+- Production Readiness Gate
+- Evidence Integrity Gate
+- Hermes Invariant Gate
+- v0.7.1 Self-Test Gate
+- Quality Score Summary
+- Profile Template Compatibility Status
 
-This source update manages docs/process/code_review.md and the PR template as first-class harness files. Propagation to FUNKY, IRIS, and IRIS-live2d-renderer is a separate follow-up task and is not performed by this source PR.
+The gates preserve v0.7.0 behavior: secret scan, unsafe wording detection,
+test-weakening detection, OpenAI Codex Method Gate, safe artifact validation,
+scope separation, R3 handling, and non-overridable failure rules remain active.
+
+Reports are safe summaries only. They must not print secrets, endpoint values,
+private paths, raw logs, raw payloads, production data, or personal data.

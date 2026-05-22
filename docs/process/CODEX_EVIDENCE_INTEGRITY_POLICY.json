@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "1.0.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.1",
+  "policyName": "evidence-integrity-gate",
+  "requiredEvidenceFields": [
+    "command",
+    "result",
+    "exitCodeOrPassFail",
+    "dateOrTimestamp",
+    "source",
+    "headShaWhenAvailable",
+    "skippedChecksWithReason",
+    "residualRisks",
+    "remoteQualityGateEvidence",
+    "qualityReportPathWhenAvailable",
+    "evidencePackPathWhenAvailable"
+  ],
+  "weakEvidence": [
+    "passed only",
+    "looks good",
+    "verified",
+    "done",
+    "n/a",
+    "TBD",
+    "TODO",
+    "not run",
+    "skipped without reason"
+  ],
+  "failRules": [
+    "weakEvidenceAsPass",
+    "staleEvidenceAsCurrent",
+    "skippedWithoutReason",
+    "headShaMissingForRiskyReadiness",
+    "unsafeArtifactShape"
+  ],
+  "manualConfirmationCannotOverride": [
+    "unsafeOutput",
+    "staleEvidence",
+    "secretExposure",
+    "requiredCheckFailure"
+  ],
+  "allowedNotApplicable": [
+    "non_pr_local_without_evidence_claim"
+  ]
+}

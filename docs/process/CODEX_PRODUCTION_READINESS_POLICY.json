@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "1.0.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.1",
+  "policyName": "production-readiness-gate",
+  "requiredEvidenceFields": [
+    "command",
+    "result",
+    "exitCodeOrPassFail",
+    "dateOrTimestamp",
+    "source",
+    "headShaWhenPrScoped",
+    "remoteQualityGateEvidence",
+    "rollbackOrMergeAfterVerify",
+    "residualRisks",
+    "humanReviewDecision",
+    "humanConfirmationStatus",
+    "skippedChecksWithReason"
+  ],
+  "humanConfirmationRequiredEvidence": [
+    "confirmedByRole",
+    "reviewedItems",
+    "headShaMatchesCurrentHead",
+    "residualRisksAccepted",
+    "qualityGateNotWeakened",
+    "riskLevelNotLowered"
+  ],
+  "humanConfirmationRequirementScope": "explicit_human_or_manual_confirmation_field_only",
+  "productionReadyWordingRequiresEvidence": true,
+  "goNoGoRequiresEvidence": true,
+  "staleEvidenceRule": "fail",
+  "headShaRule": "required_for_pr_readiness_claims",
+  "remoteLocalParityRule": "remote_claims_must_be_supported_by_remote_or_ci_evidence",
+  "manualConfirmationCannotOverride": [
+    "secretScanFailure",
+    "blockedPaths",
+    "highConfidenceSecret",
+    "implementationHarnessMixing",
+    "profileRequiredFailure",
+    "openaiMethodGateFailure",
+    "staleEvidence",
+    "unsafeOutput",
+    "productionReadyClaimWithoutEvidence",
+    "confirmationHeadShaMismatch",
+    "qualityGateWeakening",
+    "riskLevelLowering"
+  ],
+  "allowedNotApplicable": [
+    "non_pr_local_without_production_or_release_claim"
+  ],
+  "safeOutputForbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ]
+}

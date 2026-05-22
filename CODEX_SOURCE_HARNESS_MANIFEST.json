@@ -1,6 +1,11 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.0",
-  "harnessVersion": "0.7.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.1",
+  "harnessVersion": "0.7.1",
+  "sourceHarnessVersion": "0.7.1",
+  "profileTemplateVersion": "0.7.0",
+  "compatibleProfileTemplateVersions": [
+    "0.7.0"
+  ],
   "schemaVersion": "1.0.0",
   "sourceRepoMode": true,
   "profiles": [
@@ -19,6 +24,12 @@
     "docs/process/skills/*.md",
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.json",
+    "docs/process/CODEX_PRODUCTION_READINESS_POLICY.md",
+    "docs/process/CODEX_PRODUCTION_READINESS_POLICY.json",
+    "docs/process/CODEX_EVIDENCE_INTEGRITY_POLICY.md",
+    "docs/process/CODEX_EVIDENCE_INTEGRITY_POLICY.json",
+    "docs/process/CODEX_HERMES_INVARIANT_POLICY.md",
+    "docs/process/CODEX_HERMES_INVARIANT_POLICY.json",
     "docs/process/CODEX_TASK_BRIEF_TEMPLATE.md",
     "docs/process/CODEX_PLAN_TEMPLATE.md",
     "docs/process/code_review.md",
@@ -29,6 +40,12 @@
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.json",
+    "docs/process/CODEX_PRODUCTION_READINESS_POLICY.md",
+    "docs/process/CODEX_PRODUCTION_READINESS_POLICY.json",
+    "docs/process/CODEX_EVIDENCE_INTEGRITY_POLICY.md",
+    "docs/process/CODEX_EVIDENCE_INTEGRITY_POLICY.json",
+    "docs/process/CODEX_HERMES_INVARIANT_POLICY.md",
+    "docs/process/CODEX_HERMES_INVARIANT_POLICY.json",
     "docs/process/CODEX_TASK_BRIEF_TEMPLATE.md",
     "docs/process/CODEX_PLAN_TEMPLATE.md",
     "docs/process/code_review.md"
@@ -41,7 +58,11 @@
     "codex-harness-curator-suggest.mjs",
     "codex-harness-self-evolution-suggest.mjs",
     "codex-pr-body-draft.mjs",
-    "codex-openai-method-gate.mjs"
+    "codex-openai-method-gate.mjs",
+    "codex-production-readiness-gate.mjs",
+    "codex-evidence-integrity-gate.mjs",
+    "codex-hermes-invariant-gate.mjs",
+    "codex-v071-self-test.mjs"
   ],
   "optionalFiles": []
 }

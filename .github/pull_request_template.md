@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.7.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.7.1 -->
 ## Purpose
 
 ## Scope
@@ -52,6 +52,36 @@ If yes, explain scope and approval.
 ## Merge-After Verify
 
 List the verify command or smoke path to run after merge.
+
+## Production Go/No-Go
+
+Claim: no / yes with evidence
+
+## Evidence Integrity
+
+Command, result, exit code or pass/fail, date, source, and head SHA:
+
+## Hermes Invariants
+
+Safe summary only, boundary, human review, residual risk, and non-overridable failure status:
+
+## Remote/Local Evidence
+
+Local:
+
+Remote:
+
+## Rollback or Merge-After Verify
+
+Rollback, stop condition, or merge-after verify:
+
+## Stale Evidence Check
+
+Head SHA and evidence freshness:
+
+## Manual Confirmation Limits
+
+Non-overridable failures cannot be manually overridden:
 
 
 ## Codex Method Compliance

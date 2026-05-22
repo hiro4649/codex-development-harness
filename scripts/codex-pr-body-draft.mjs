@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.0
+// CODEX_QUALITY_HARNESS_FILE v0.7.1
 import fs from 'node:fs';
 import process from 'node:process';
 
@@ -14,8 +14,8 @@ function statusOf(key) {
 }
 
 const lines = [
-  '## v0.7.0 purpose',
-  'OpenAI Codex Method Gate: PR task shape, plan-first evidence, review basis, and safe-output discipline are CI-enforced.',
+  '## v0.7.1 purpose',
+  'Production Evidence and Hermes Gate: production/release claims require evidence, stale evidence is blocked, and safe-output discipline is CI-enforced.',
   '',
   '## Changed files',
   'See git diff file list for harness-managed source/profile files only.',
@@ -26,6 +26,12 @@ const lines = [
   `skillLifecyclePolicyStatus: ${statusOf('skillLifecyclePolicyStatus')}`,
   `curatorSuggestionStatus: ${statusOf('curatorSuggestionStatus')}`,
   `selfEvolutionPolicyStatus: ${statusOf('selfEvolutionPolicyStatus')}`,
+  `productionReadinessStatus: ${statusOf('productionReadinessStatus')}`,
+  `evidenceIntegrityStatus: ${statusOf('evidenceIntegrityStatus')}`,
+  `hermesInvariantStatus: ${statusOf('hermesInvariantStatus')}`,
+  `v071SelfTestStatus: ${statusOf('v071SelfTestStatus')}`,
+  `profileTemplateCompatibilityStatus: ${statusOf('profileTemplateCompatibilityStatus')}`,
+  `qualityScoreStatus: ${statusOf('qualityScoreStatus')}`,
   `safeArtifactValidation: ${statusOf('safeArtifactValidation')}`,
   `outputShapeStatus: ${statusOf('outputShapeStatus')}`,
   `openaiCodexMethodStatus: ${statusOf('openaiCodexMethodStatus')}`,

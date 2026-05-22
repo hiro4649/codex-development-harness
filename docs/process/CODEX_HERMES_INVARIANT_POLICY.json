@@ -1,0 +1,39 @@
+{
+  "schemaVersion": "1.0.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.1",
+  "policyName": "hermes-invariant-gate",
+  "invariants": [
+    "externalEvidencePreferred",
+    "boundaryProtected",
+    "safeSummaryOnly",
+    "humanJudgmentVisible",
+    "nonOverridableFailuresProtected",
+    "productionClaimRequiresEvidence",
+    "rollbackOrStopConditionVisible",
+    "planAndReviewEvidence"
+  ],
+  "humanReviewRequiredCases": [
+    "R3",
+    "security",
+    "release",
+    "dependency",
+    "migration",
+    "multiFile",
+    "boundaryAmbiguity"
+  ],
+  "failRules": [
+    "selfAssertionOnly",
+    "unsafeProductionClaim",
+    "safeSummaryViolation",
+    "manualOverrideOfNonOverridableFailure",
+    "boundaryAmbiguityWithoutHumanReview",
+    "r3HumanReviewMissing",
+    "planFirstRequiredButMissing",
+    "reviewStatusMissingEvidence",
+    "residualRisksHidden",
+    "productionDataExposureRisk"
+  ],
+  "allowedNotApplicable": [
+    "non_pr_local_without_risk_or_readiness_claim"
+  ]
+}
