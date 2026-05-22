@@ -1,4 +1,4 @@
-﻿# AGENTS.md
+# AGENTS.md
 
 ## 最重要ルール
 
@@ -92,7 +92,7 @@ mainへの直接push
 関係ないP1/P2修正の混入
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-<!-- CODEX_QUALITY_HARNESS_FILE v0.6.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.6.9 -->
 ## Codex Quality Harness
 
 Use the repo-local harness files in `docs/process/` and `scripts/codex-*`.
@@ -102,8 +102,8 @@ Manual confirmation cannot override secret scan failures, blocked paths, high-co
 
 ## Funky Asset Safety Rule
 
-雉・肇縲¨FT縲：anPoint縲》icket縲》ier縲・・≡縲『allet縲∥dmin讓ｩ髯舌…ontract縲《taging env縺ｫ隗ｦ繧後ｋ螟画峩縺ｯR3謇ｱ縺・↓縺吶ｋ縲・
-R3螟画峩縺ｧ縺ｯ縲∬ｪ崎ｨｼ縲∬ｪ榊庄縲∵園譛芽・｢ｺ隱阪…hainId縲…ontract address縲》xHash縲〉eceipt縲‘vent log縲（dempotency縲∽ｺ碁㍾螳溯｡碁亟豁｢縲〉ollback繧貞ｿ・★遒ｺ隱阪☆繧九・
-DB譖ｴ譁ｰ縺縺代〒on-chain謌仙粥謇ｱ縺・↓縺励↑縺・・
-tBNB譛ｪ蜈･驥代《taging譛ｪ蜿肴丐縲〉eceipt譛ｪ遒ｺ隱阪・迥ｶ諷九ｒproduction ready縺ｨ譖ｸ縺九↑縺・・
+資産、NFT、FanPoint、ticket、tier、送金、wallet、admin権限、contract、staging envに触れる変更はR3扱いにする。
+R3変更では、認証、認可、所有者確認、chainId、contract address、txHash、receipt、event log、idempotency、二重実行防止、rollbackを必ず確認する。
+DB更新だけでon-chain成功扱いにしない。
+tBNB未入金、staging未反映、receipt未確認の状態をproduction readyと書かない。
 <!-- CODEX_QUALITY_HARNESS_END -->

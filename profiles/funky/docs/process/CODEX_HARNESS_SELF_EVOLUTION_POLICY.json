@@ -1,0 +1,37 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
+  "schemaVersion": "1.0.0",
+  "profile": "funky",
+  "sourceSignals": [
+    "audit feedback",
+    "quality report",
+    "effectiveness tracker",
+    "learning recommendation",
+    "decision retrospective"
+  ],
+  "forbiddenSourceSignals": [
+    "raw execution logs"
+  ],
+  "candidatePatch": {
+    "mayGenerate": true,
+    "directApply": false
+  },
+  "autoCommit": false,
+  "autoPush": false,
+  "requiresAllChecksPass": true,
+  "requiresHumanApproval": true,
+  "maxSkillSizeKB": 15,
+  "mustPreserveSemanticPurpose": true,
+  "forbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "allowedUnknownFields": [],
+  "autoApply": false
+}

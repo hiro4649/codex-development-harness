@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.8
+// CODEX_QUALITY_HARNESS_FILE v0.6.9
 import process from 'node:process';
 
 function argValue(name, fallback = '') {

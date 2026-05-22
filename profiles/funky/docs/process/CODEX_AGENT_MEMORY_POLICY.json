@@ -1,0 +1,37 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
+  "schemaVersion": "1.0.0",
+  "profile": "funky",
+  "memoryMode": "safe-summary-only",
+  "forbiddenContent": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "maxSummaryChars": 2200,
+  "maxUserContextChars": 1375,
+  "profileBounded": true,
+  "crossProfileSharing": false,
+  "autoApply": false,
+  "humanApprovalRequired": true,
+  "safeOutput": {
+    "summaryOnly": true,
+    "rawStorageAllowed": false
+  },
+  "forbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "allowedUnknownFields": []
+}

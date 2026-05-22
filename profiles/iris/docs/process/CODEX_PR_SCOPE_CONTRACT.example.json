@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
   "schemaVersion": "1.0.0",
   "note": "Safe example for PR scope planning. Keep project-specific paths in profile policy.",
   "prType": "harness",

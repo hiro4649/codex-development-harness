@@ -1,0 +1,40 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
+  "schemaVersion": "1.0.0",
+  "profile": "funky",
+  "skillFiles": {
+    "allowedGlob": "docs/process/skills/*.md",
+    "allowedDirectory": "docs/process/skills",
+    "allowedExtension": ".md"
+  },
+  "requiredElements": [
+    "title",
+    "purpose",
+    "whenToUse",
+    "procedure",
+    "pitfalls",
+    "verification",
+    "safeOutput"
+  ],
+  "agentGeneratedSkill": {
+    "proposalAllowed": true,
+    "autoAdopt": false
+  },
+  "staleAfterDays": 30,
+  "archiveAfterDays": 90,
+  "deleteAutomatically": false,
+  "archiveAutomatically": false,
+  "pinSupported": true,
+  "humanApprovalRequired": true,
+  "forbidden": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "allowedUnknownFields": []
+}

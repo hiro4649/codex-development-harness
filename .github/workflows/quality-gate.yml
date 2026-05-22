@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.2.1
+# CODEX_QUALITY_HARNESS_FILE v0.6.9
 name: quality-gate
 
 on:
@@ -35,7 +35,66 @@ jobs:
               (cd "$dir" && npm install --no-package-lock)
             fi
           done
-      - name: Run local quality gate
+      - name: Run source harness quality gate
+        shell: bash
         env:
+          CODEX_HARNESS_SOURCE_REPO: "1"
+          CODEX_QUALITY_REPORT: "json"
           CODEX_REQUIRE_NPM: "1"
-        run: node scripts/codex-local-quality-gate.mjs
+        run: |
+          set -euo pipefail
+          node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-source-gate.json"
+          node - "$RUNNER_TEMP/codex-source-gate.json" <<'NODE'
+          const fs = require('fs');
+          const file = process.argv[2];
+          const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+
+          const requiredPass = [
+            'sourceHarnessValidationStatus',
+            'agentMemoryPolicyStatus',
+            'skillLifecyclePolicyStatus',
+            'curatorSuggestionStatus',
+            'selfEvolutionPolicyStatus',
+            'safeArtifactValidation',
+            'outputShapeStatus',
+          ];
+
+          const failures = [];
+          for (const key of requiredPass) {
+            const status = report[key]?.status || 'missing';
+            console.log(`${key}: ${status}`);
+            if (status !== 'pass') failures.push(`${key}=${status}`);
+          }
+
+          console.log(`report.status: ${report.status}`);
+          console.log(`mergeReady: ${report.mergeReady}`);
+          console.log(`humanReviewRequired: ${report.humanReviewRequired}`);
+
+          if (!['pass', 'manual_confirmation_required'].includes(report.status)) {
+            failures.push(`report.status=${report.status}`);
+          }
+
+          const unsafe = [
+            /rawDiff/i,
+            /rawLogs/i,
+            /secretValue/i,
+            /endpointValue/i,
+            /privatePath/i,
+            /payload/i,
+            /productionData/i,
+            /personalData/i,
+            /(?:https?|postgres(?:ql)?|mysql|mongodb):\/\/\S+/i,
+            /\b(?:gh[pousr]_|sk-|AKIA|glpat-|npm_|xox[baprs]-)[A-Za-z0-9_-]{8,}\b/,
+            /-----BEGIN [^-]+PRIVATE KEY-----/i,
+          ];
+          const raw = fs.readFileSync(file, 'utf8');
+          if (unsafe.some((pattern) => pattern.test(raw))) {
+            failures.push('unsafe output pattern detected');
+          }
+
+          if (failures.length) {
+            console.error('Source harness gate verification failed:');
+            for (const item of failures) console.error(`- ${item}`);
+            process.exit(1);
+          }
+          NODE

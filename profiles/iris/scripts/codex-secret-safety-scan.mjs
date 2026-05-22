@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.8
+// CODEX_QUALITY_HARNESS_FILE v0.6.9
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -45,7 +45,7 @@ const highConfidenceChecks = [
   ['npm_token_like', /\bnpm_[A-Za-z0-9]{20,}\b/],
   ['gitlab_token_like', /\bglpat-[A-Za-z0-9_-]{20,}\b/],
 ];
-const assignmentPattern = /(?:^|[^\w])([A-Z0-9_]*(?:PRIVATE_KEY|JWT_SECRET|DATABASE_URL|DB_URL|API_KEY|ACCESS_TOKEN|SECRET_KEY)[A-Z0-9_]*)\s*=\s*([^\r\n]*)/ig;
+const assignmentPattern = /(?:^|[^\w])([A-Z0-9_]*(?:PRIVATE_KEY|JWT_SECRET|DATABASE_URL|DB_URL|API_KEY|ACCESS_TOKEN|SECRET_KEY|SLACK_TOKEN|NPM_TOKEN|GITLAB_TOKEN|TOKEN|PASSWORD|CREDENTIAL|CLIENT_SECRET)[A-Z0-9_]*)\s*=\s*([^\r\n]*)/ig;
 
 function parseAssignmentValue(raw) {
   let value = raw.trim();
@@ -114,7 +114,7 @@ function scanAssignments(file, text, state) {
   }
 }
 function scanContent(file) {
-  if (allowedExample(file) || skipFile(file)) return;
+  if (skipFile(file)) return;
   if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return;
   const buf = fs.readFileSync(file);
   if (binaryLike(buf)) return;
@@ -123,6 +123,65 @@ function scanContent(file) {
   scanHighConfidence(file, text);
   scanAssignments(file, text, state);
 }
+function contentFailureKinds(file, text, state = 'changed') {
+  const kinds = new Set();
+  for (const [kind, pattern] of highConfidenceChecks) {
+    pattern.lastIndex = 0;
+    if (pattern.test(text)) kinds.add(kind);
+  }
+  for (const line of text.split(/\r?\n/)) {
+    assignmentPattern.lastIndex = 0;
+    let match;
+    while ((match = assignmentPattern.exec(line))) {
+      const value = parseAssignmentValue(match[2]);
+      if (!value || isPlaceholderValue(value)) continue;
+      if (isFixtureContext(file, line) && !looksCredentialLike(value, state)) continue;
+      if (looksCredentialLike(value, state)) kinds.add('secret_assignment_like');
+    }
+  }
+  return kinds;
+}
+function runSelfTest() {
+  const tests = [
+    {
+      name: 'env-example-placeholders-pass',
+      file: '.env.example',
+      text: [
+        ['OPENAI_API_KEY', 'changeme'].join('='),
+        ['DATABASE_URL', '${DATABASE_URL}'].join('='),
+        ['TOKEN', '<TOKEN>'].join('='),
+      ].join('\n'),
+      shouldFail: false,
+    },
+    {
+      name: 'env-example-openai-key-fails',
+      file: '.env.example',
+      text: [['OPENAI_API_KEY', `sk-${'A'.repeat(48)}`].join('=')].join('\n'),
+      shouldFail: true,
+    },
+    {
+      name: 'env-example-credential-assignment-fails',
+      file: '.env.sample',
+      text: [['CLIENT_SECRET', 'Ab1_Zy9-Xk8Lm7Qp2Rs5Tu6Vw3Yz4NnB0'].join('=')].join('\n'),
+      shouldFail: true,
+    },
+  ];
+  const failed = [];
+  for (const test of tests) {
+    const kinds = contentFailureKinds(test.file, test.text, 'changed');
+    const didFail = kinds.size > 0;
+    if (didFail !== test.shouldFail) failed.push(test.name);
+  }
+  if (failed.length) {
+    console.log('Secret safety scan self-test failed.');
+    for (const name of failed) console.log(`- ${name}`);
+    process.exit(1);
+  }
+  console.log('Secret safety scan self-test passed.');
+  process.exit(0);
+}
+
+if (process.env.CODEX_SECRET_SCAN_SELF_TEST === '1') runSelfTest();
 
 const files = new Set([...trackedFiles, ...untrackedFiles]);
 for (const file of files) {

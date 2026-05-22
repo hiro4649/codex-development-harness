@@ -1,0 +1,34 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
+  "harnessVersion": "0.6.9",
+  "schemaVersion": "1.0.0",
+  "sourceRepoMode": true,
+  "profiles": [
+    "funky",
+    "iris",
+    "iris-live2d-renderer"
+  ],
+  "managedFiles": [
+    ".github/pull_request_template.md",
+    ".github/workflows/quality-gate.yml",
+    ".github/workflows/weekly-health-check.yml",
+    "CODEX_SOURCE_HARNESS_MANIFEST.json",
+    "README.md",
+    "docs/codex/*.md",
+    "docs/process/*.md",
+    "docs/process/skills/*.md"
+  ],
+  "policyFiles": [
+    "CODEX_SOURCE_HARNESS_MANIFEST.json"
+  ],
+  "scriptNames": [
+    "codex-local-quality-gate.mjs",
+    "codex-local-quality-gate.sh",
+    "codex-secret-safety-scan.mjs",
+    "codex-secret-safety-scan.sh",
+    "codex-harness-curator-suggest.mjs",
+    "codex-harness-self-evolution-suggest.mjs",
+    "codex-pr-body-draft.mjs"
+  ],
+  "optionalFiles": []
+}

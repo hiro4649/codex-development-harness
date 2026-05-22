@@ -1,9 +1,12 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.8
+// CODEX_QUALITY_HARNESS_FILE v0.6.9
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+
+process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
 function argValue(name) {
   const index = process.argv.indexOf(name);
@@ -39,6 +42,25 @@ function knownRiskSummary(report) {
 function reviewersSummary(report) {
   const reviewers = report?.selectedReviewers?.reviewers || report?.evidencePack?.selectedReviewers || [];
   return reviewers.length ? reviewers.join(', ') : 'none';
+}
+function statusOf(value) {
+  return value?.status || value?.validationStatus || value?.curatorSuggestionStatus || value?.selfEvolutionPolicyStatus || 'unknown';
+}
+function suggestionSideEffectSummary(report) {
+  const curator = report.curatorSuggestionStatus || {};
+  const selfEvolution = report.selfEvolutionPolicyStatus || {};
+  const changed = [
+    ...((curator.changedFiles || [])),
+    ...((selfEvolution.changedFiles || [])),
+  ].filter(Boolean);
+  if (changed.length) return `changed files detected (${changed.length})`;
+  if (statusOf(curator) === 'pass' && statusOf(selfEvolution) === 'pass') return 'none';
+  return 'review required';
+}
+function prCreationPolicy(report) {
+  return report.localGate?.status === 'fail' || report.status === 'fail'
+    ? 'PR creation prohibited until local quality gate passes'
+    : 'PR creation allowed only after human review';
 }
 
 const reportPath = argValue('--report') || process.env.CODEX_QUALITY_REPORT_PATH || '';
@@ -140,6 +162,14 @@ const draft = [
   `real project evaluation: ${report.realProjectEvaluation?.realProjectEvaluationStatus || report.realProjectEvaluation?.status || 'unknown'}`,
   `performance summary: ${report.performanceSummary?.status || 'unknown'}`,
   `safe artifact validation: ${report.safeArtifactValidation?.status || 'unknown'}`,
+  `output shape: ${report.outputShapeStatus?.status || 'unknown'}`,
+  `source harness validation: ${report.sourceHarnessValidationStatus?.status || 'unknown'}`,
+  `agent memory policy: ${report.agentMemoryPolicyStatus?.status || 'unknown'}`,
+  `skill lifecycle policy: ${report.skillLifecyclePolicyStatus?.status || 'unknown'}`,
+  `curator suggestion: ${report.curatorSuggestionStatus?.status || 'unknown'} autoApply=${report.curatorSuggestionStatus?.autoApply === false ? 'false' : 'unknown'} autoCommit=${report.curatorSuggestionStatus?.autoCommit === false ? 'false' : 'unknown'} autoPush=${report.curatorSuggestionStatus?.autoPush === false ? 'false' : 'unknown'}`,
+  `self evolution policy: ${report.selfEvolutionPolicyStatus?.status || 'unknown'} autoApply=${report.selfEvolutionPolicyStatus?.autoApply === false ? 'false' : 'unknown'} autoCommit=${report.selfEvolutionPolicyStatus?.autoCommit === false ? 'false' : 'unknown'} autoPush=${report.selfEvolutionPolicyStatus?.autoPush === false ? 'false' : 'unknown'}`,
+  `suggestion-only side effects: ${suggestionSideEffectSummary(report)}`,
+  'real development repos propagated: no',
   `rollout gate: ${report.rolloutGate?.status || 'unknown'}`,
   `trustLevel: ${report.trustLevel || 'unknown'}`,
   `noise budget: ${report.noiseBudget?.status || 'unknown'} shown=${report.noiseBudget?.warningsShown || 0} hidden=${report.noiseBudget?.warningsHidden || 0}`,
@@ -184,7 +214,14 @@ const draft = [
   `secret scan: ${report.secretScan?.status || 'unknown'}`,
   `local quality gate: ${report.localGate?.status || report.status || 'unknown'}`,
   `profile required checks: ${report.profileRequiredChecks?.status || 'unknown'}`,
+  `source harness validation: ${statusOf(report.sourceHarnessValidationStatus)}`,
+  `agent memory policy: ${statusOf(report.agentMemoryPolicyStatus)}`,
+  `skill lifecycle policy: ${statusOf(report.skillLifecyclePolicyStatus)}`,
+  `curator suggestion: ${statusOf(report.curatorSuggestionStatus)}`,
+  `self evolution policy: ${statusOf(report.selfEvolutionPolicyStatus)}`,
+  `suggestion-only side effects: ${suggestionSideEffectSummary(report)}`,
   `JSON report mergeReady: ${report.mergeReady === true ? 'true' : 'false'}`,
+  `PR creation policy: ${prCreationPolicy(report)}`,
   'GitHub Actions quality-gate: PASS / manual confirmation required',
   '',
   'Manual confirmation',
@@ -230,6 +267,11 @@ const draft = [
   (report.prSplitRecommendation?.splitRecommended ? `suggested PR split:\n${safeList((report.prSplitRecommendation.suggestedPRs || []).map((item) => `${item.type}: ${(item.rootCauseIds || []).join(', ')}`))}` : 'suggested PR split: none'),
   `baseline lifecycle: ${report.baselineLifecycle?.status || 'unknown'}`,
   `releaseCandidateStatus: ${report.releaseCandidateStatus || 'unknown'}`,
+  `sourceHarnessValidationStatus: ${statusOf(report.sourceHarnessValidationStatus)}`,
+  `new policy inspection: memory=${statusOf(report.agentMemoryPolicyStatus)} skill=${statusOf(report.skillLifecyclePolicyStatus)} selfEvolution=${statusOf(report.selfEvolutionPolicyStatus)} curator=${statusOf(report.curatorSuggestionStatus)}`,
+  `suggestion-only side effects: ${suggestionSideEffectSummary(report)}`,
+  'real development repositories not updated: FUNKY / IRIS / IRIS-live2d-renderer',
+  `PR creation policy: ${prCreationPolicy(report)}`,
   `known residual / partial run: ${report.partialRunHandling?.mustMentionInPR === true ? 'must mention in PR body' : 'none requiring PR note'}`,
   `scope agreement summary: ${report.prScopeAgreement?.status || 'unknown'} blocked=${report.prScopeAgreement?.notInScope?.length || 0}`,
   `residual failure summary: ${report.residualFailureGovernance?.mustMentionInPR === true ? 'must mention in PR body' : 'no residual note required by safe summary'}`,

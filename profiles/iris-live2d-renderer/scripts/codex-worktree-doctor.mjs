@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.8
+// CODEX_QUALITY_HARNESS_FILE v0.6.9
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -62,6 +62,9 @@ const cleanClone =
   head === originMain;
 const safeToDevelop = !isMain && !hasStagedChanges && !hasUnstagedChanges;
 const safeToCreatePR = !isMain && !dirty && ahead > 0;
+const cleanMainRequired = process.env.CODEX_REQUIRE_CLEAN_MAIN === '1';
+const cleanPrBranchRequired = process.env.CODEX_REQUIRE_CLEAN_PR_BRANCH === '1';
+const cleanWorktreeRequired = process.env.CODEX_REQUIRE_CLEAN_WORKTREE === '1';
 
 const warnings = [];
 if (!hasOriginMain) warnings.push({ id: 'originMain.missing', message: 'origin/main was not available.' });
@@ -80,8 +83,8 @@ const recommendedAction = cleanClone
         : 'continue with care')));
 
 const report = {
-  marker: 'CODEX_QUALITY_HARNESS_FILE v0.6.8',
-  harnessVersion: '0.6.8',
+  marker: 'CODEX_QUALITY_HARNESS_FILE v0.6.9',
+  harnessVersion: '0.6.9',
   status: warnings.length ? 'warning' : 'pass',
   currentBranch: branch,
   branch,
@@ -99,6 +102,9 @@ const report = {
   cleanClone,
   safeToDevelop,
   safeToCreatePR,
+  cleanMainRequired,
+  cleanPrBranchRequired,
+  cleanWorktreeRequired,
   prBranchSafeSummary: branch !== 'main' && !dirty,
   recommendedAction,
   counts: {
@@ -141,4 +147,6 @@ if (process.env.CODEX_WORKTREE_DOCTOR_JSON === '1') {
   for (const warning of warnings) console.log(`warning: ${warning.id}`);
 }
 
-if (process.env.CODEX_REQUIRE_CLEAN_WORKTREE === '1' && !cleanClone) process.exit(1);
+if (cleanMainRequired && !cleanClone) process.exit(1);
+if (cleanPrBranchRequired && (isMain || dirty)) process.exit(1);
+if (cleanWorktreeRequired && dirty) process.exit(1);

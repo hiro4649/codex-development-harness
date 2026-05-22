@@ -1,17 +1,23 @@
+<!-- CODEX_QUALITY_HARNESS_FILE v0.6.9 -->
+
 # Codex Development Harness
 
 This repository is the canonical source for the Codex quality harness.
 
 Current local baseline:
 
-- Version: v0.6.8
+- Version: v0.6.9
+- Update name: Harness Memory and Skill Governance
 - Profiles:
   - `profiles/iris`
   - `profiles/funky`
   - `profiles/iris-live2d-renderer`
 
-Use this repository as the starting point for preparing v0.6.9. After a new
-harness version is prepared here, propagate the matching profile files into:
+This repository is prepared as the source for v0.6.9. Propagating the matching
+profile files into real development projects is a separate task and is not run
+by this repository update.
+
+Not updated by this change:
 
 - `C:\Users\HIRO-001\Documents\CodexProjects\IRIS`
 - `C:\Users\HIRO-001\Documents\CodexProjects\FUNKY`

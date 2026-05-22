@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
   "profileName": "funky",
   "expectedRepoMarkers": [
     { "type": "file", "path": "apps/backend" },
