@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.9
+// CODEX_QUALITY_HARNESS_FILE v0.7.0
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
-const HARNESS_VERSION = '0.6.9';
+const HARNESS_VERSION = '0.7.0';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const policyPath = path.join('docs', 'process', 'CODEX_SKILL_LIFECYCLE_POLICY.json');
 const skillsDir = path.join('docs', 'process', 'skills');

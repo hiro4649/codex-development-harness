@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.6.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.0",
   "profile": "iris",
   "packageDirs": [
     "."
@@ -724,7 +724,8 @@
       "blockedPaths",
       "highConfidenceSecret",
       "implementationHarnessMixing",
-      "profileRequiredFailure"
+      "profileRequiredFailure",
+      "openaiMethodGateFailure"
     ]
   },
   "implementationCompanionTestPaths": [],

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.6.9
+// CODEX_QUALITY_HARNESS_FILE v0.7.0
 import fs from 'node:fs';
 import process from 'node:process';
 
@@ -14,8 +14,8 @@ function statusOf(key) {
 }
 
 const lines = [
-  '## v0.6.9 purpose',
-  'Harness Memory and Skill Governance: safe summary memory, explicit skill lifecycle, curator suggestions, and human-approved self-evolution only.',
+  '## v0.7.0 purpose',
+  'OpenAI Codex Method Gate: safe summary memory, explicit skill lifecycle, curator suggestions, and human-approved self-evolution only.',
   '',
   '## Changed files',
   'See git diff file list for harness-managed source/profile files only.',

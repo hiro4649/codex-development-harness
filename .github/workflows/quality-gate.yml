@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.6.9
+# CODEX_QUALITY_HARNESS_FILE v0.7.0
 name: quality-gate
 
 on:
@@ -40,6 +40,9 @@ jobs:
         env:
           CODEX_HARNESS_SOURCE_REPO: "1"
           CODEX_QUALITY_REPORT: "json"
+
+          CODEX_OPENAI_METHOD_REPORT: "json"
+          CODEX_EVENT_NAME: ${{ github.event_name }}
           CODEX_REQUIRE_NPM: "1"
         run: |
           set -euo pipefail
@@ -57,12 +60,16 @@ jobs:
             'selfEvolutionPolicyStatus',
             'safeArtifactValidation',
             'outputShapeStatus',
+            'openaiCodexMethodStatus',
           ];
 
           const failures = [];
           for (const key of requiredPass) {
             const status = report[key]?.status || 'missing';
             console.log(`${key}: ${status}`);
+            if (key === 'openaiCodexMethodStatus' && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
+              continue;
+            }
             if (status !== 'pass') failures.push(`${key}=${status}`);
           }
 
