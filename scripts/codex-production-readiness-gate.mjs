@@ -126,7 +126,7 @@ export function evidenceFacts(body, env = process.env) {
   const risk = /\brisk level\b|\br[123]\b/i.test(body);
   const humanReview = /\bhuman review\b|\bhuman confirmation\b|\bmanual confirmation\b|\bnot required with reason\b/i.test(body);
   const residual = /\bresidual risks?\b|\bknown risks?\b|\bremaining blockers?\b/i.test(body);
-  const remote = /\bremote quality gate\b|\bgithub actions\b|\bquality gate\b|\bci\b/i.test(body);
+  const remote = /\bremote quality[- ]gate\b|\bgithub actions\b|\bci\b/i.test(body);
   const headLine = body.match(/head\s*sha\s*[:=]\s*([a-f0-9]{40})/i);
   const expectedHead = env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '';
   const staleHead = Boolean(headLine && expectedHead && headLine[1].toLowerCase() !== String(expectedHead).toLowerCase());
