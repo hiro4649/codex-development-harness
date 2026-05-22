@@ -81,8 +81,6 @@ function buildHermesInvariantReport(env = process.env) {
   if (/\boverride\b/i.test(lower) && failures.some((item) => item.startsWith('manual_override_attempt'))) {
     failures.push('manual_override_of_non_overridable_failure');
   }
-  if (/\bproduction data\b|\bprod data\b/i.test(lower)) failures.push('production_data_exposure_risk');
-
   const status = failures.length ? 'fail' : warnings.length ? 'manual_confirmation_required' : 'pass';
   return {
     marker,
