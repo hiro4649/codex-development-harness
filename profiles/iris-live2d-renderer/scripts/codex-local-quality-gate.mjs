@@ -5,6 +5,9 @@ import path from 'node:path';
 import process from 'node:process';
 import crypto from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+process.chdir(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 
 const policyPath = path.join('docs', 'process', 'CODEX_QUALITY_GATE_POLICY.json');
 const knownRiskPath = path.join('docs', 'process', 'CODEX_KNOWN_RISKS.json');
