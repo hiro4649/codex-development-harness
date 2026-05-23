@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 import { buildHumanConfirmationObjectReport } from './codex-human-confirmation-validate.mjs';
 import { buildSafeOutputScanReport } from './codex-safe-output-scan.mjs';
-import { buildCiReplayReport } from './codex-ci-replay.mjs';
+import { buildCiReplayReport, buildCiReplayReportFromGithubData } from './codex-ci-replay.mjs';
 import { buildPrBodyLintReport } from './codex-pr-body-lint.mjs';
 import { buildProductionReadinessReport } from './codex-production-readiness-gate.mjs';
 
@@ -108,6 +108,26 @@ function validBody() {
   ].join('\n');
 }
 
+function validBodyWithoutConfirmationEvidence() {
+  return validBody().replace(/\nHuman Confirmation Evidence:[\s\S]*$/u, '');
+}
+
+function manualConfirmationBlock() {
+  return [
+    'BEGIN_CODEX_MANUAL_CONFIRMATION_JSON',
+    JSON.stringify({ codexManualConfirmation: validConfirmation() }, null, 2),
+    'END_CODEX_MANUAL_CONFIRMATION_JSON',
+  ].join('\n');
+}
+
+function evidencePackBlock(pack = validPack()) {
+  return [
+    'BEGIN_CODEX_EVIDENCE_PACK_JSON',
+    JSON.stringify({ codexEvidencePack: pack }, null, 2),
+    'END_CODEX_EVIDENCE_PACK_JSON',
+  ].join('\n');
+}
+
 function buildReport() {
   const failures = [];
   const cases = [];
@@ -129,6 +149,22 @@ function buildReport() {
   cases.push({ name: 'invalid evidence pack missing headSha', status: packInvalid.evidencePackStatus.status });
   assertCase('invalid evidence pack missing headSha fails', packInvalid.evidencePackStatus.status === 'fail', failures);
 
+  const packBody = buildEvidencePackReport({
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_PR_BODY: evidencePackBlock(),
+    CODEX_PR_HEAD_SHA: expectedHead,
+  });
+  cases.push({ name: 'evidence pack PR body object', status: packBody.evidencePackStatus.status });
+  assertCase('evidence pack PR body object passes', packBody.evidencePackStatus.status === 'pass' && packBody.evidencePackStatus.source === 'evidence_pack_pr_body', failures);
+
+  const packComment = buildEvidencePackReport({
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_PR_COMMENTS: evidencePackBlock(),
+    CODEX_PR_HEAD_SHA: expectedHead,
+  });
+  cases.push({ name: 'evidence pack PR comment object', status: packComment.evidencePackStatus.status });
+  assertCase('evidence pack PR comment object passes', packComment.evidencePackStatus.status === 'pass' && packComment.evidencePackStatus.source === 'evidence_pack_pr_comment', failures);
+
   const packStrictMissing = buildEvidencePackReport({
     CODEX_EVENT_NAME: 'pull_request',
     CODEX_HARNESS_SOURCE_REPO: '1',
@@ -146,7 +182,7 @@ function buildReport() {
   cases.push({ name: 'manual confirmation stale head', status: confirmationStale.humanConfirmationObjectStatus.status });
   assertCase('manual confirmation stale head fails', confirmationStale.humanConfirmationObjectStatus.status === 'fail', failures);
 
-  const fencedBody = `${validBody()}\n\n\`\`\`json\n${JSON.stringify({ codexManualConfirmation: validConfirmation() })}\n\`\`\`\n`;
+  const structuredBody = `${validBody()}\n\n${manualConfirmationBlock()}\n`;
   const confirmationStrictFallback = buildHumanConfirmationObjectReport({
     CODEX_EVENT_NAME: 'pull_request',
     CODEX_HUMAN_CONFIRMATION_STRICT: '1',
@@ -160,18 +196,65 @@ function buildReport() {
     CODEX_EVENT_NAME: 'pull_request',
     CODEX_HUMAN_CONFIRMATION_STRICT: '1',
     CODEX_PR_HEAD_SHA: expectedHead,
-    CODEX_PR_BODY: fencedBody,
+    CODEX_PR_BODY: structuredBody,
   });
-  cases.push({ name: 'strict human confirmation fenced JSON', status: confirmationFenced.humanConfirmationObjectStatus.status });
-  assertCase('strict human confirmation fenced JSON passes', confirmationFenced.humanConfirmationObjectStatus.status === 'pass', failures);
+  cases.push({ name: 'strict human confirmation PR body object', status: confirmationFenced.humanConfirmationObjectStatus.status });
+  assertCase('strict human confirmation PR body object passes', confirmationFenced.humanConfirmationObjectStatus.status === 'pass' && confirmationFenced.humanConfirmationObjectStatus.source === 'pr_body_json', failures);
+
+  const confirmationComment = buildHumanConfirmationObjectReport({
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_HUMAN_CONFIRMATION_STRICT: '1',
+    CODEX_PR_HEAD_SHA: expectedHead,
+    CODEX_PR_BODY: validBody(),
+    CODEX_PR_COMMENTS: manualConfirmationBlock(),
+  });
+  cases.push({ name: 'strict human confirmation PR comment object', status: confirmationComment.humanConfirmationObjectStatus.status });
+  assertCase('strict human confirmation PR comment object passes', confirmationComment.humanConfirmationObjectStatus.status === 'pass' && confirmationComment.humanConfirmationObjectStatus.source === 'pr_comment_json', failures);
 
   const githubPath = buildPrBodyLintReport({ GITHUB_EVENT_PATH: eventFile, CODEX_EVENT_NAME: 'pull_request', CODEX_PR_HEAD_SHA: expectedHead }, ['node', 'codex-pr-body-lint.mjs', '--json']);
   cases.push({ name: 'PR body current GitHub API path', status: githubPath.prBodyLintStatus.status });
   assertCase('PR body current GitHub API path passes', githubPath.prBodyLintStatus.status === 'pass', failures);
 
-  const replay = buildCiReplayReport(['node', 'codex-ci-replay.mjs', '--repo', 'owner/repo', '--pr', '1', '--head', expectedHead, '--body', bodyFile, '--json'], { CODEX_PR_HEAD_SHA: expectedHead });
-  cases.push({ name: 'remote/local parity replay fixture', status: replay.ciReplayStatus.status });
-  assertCase('remote/local parity replay fixture passes', replay.ciReplayStatus.status === 'pass', failures);
+  const bodyFileReplay = buildCiReplayReport(['node', 'codex-ci-replay.mjs', '--repo', 'owner/repo', '--pr', '1', '--head', expectedHead, '--body', bodyFile, '--json'], { CODEX_PR_HEAD_SHA: expectedHead });
+  cases.push({ name: 'body-file-fallback', status: bodyFileReplay.ciReplayStatus.status });
+  assertCase('body-file-fallback passes', bodyFileReplay.ciReplayStatus.status === 'pass', failures);
+
+  const eventReplay = buildCiReplayReport(['node', 'codex-ci-replay.mjs', '--repo', 'owner/repo', '--pr', '1', '--head', expectedHead, '--json'], {
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_PR_HEAD_SHA: expectedHead,
+    GITHUB_EVENT_PATH: eventFile,
+  });
+  cases.push({ name: 'event-snapshot-fallback', status: eventReplay.ciReplayStatus.status });
+  assertCase('event-snapshot-fallback passes', eventReplay.ciReplayStatus.status === 'pass', failures);
+
+  const remoteFixture = {
+    ok: true,
+    pr: { body: validBody(), head: { sha: expectedHead }, base: { sha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } },
+    comments: [],
+    reviews: [],
+  };
+  const replay = buildCiReplayReportFromGithubData({ repo: 'owner/repo', pr: '1', head: expectedHead }, { CODEX_PR_HEAD_SHA: expectedHead }, remoteFixture);
+  cases.push({ name: 'github-api-current-pr-body', status: replay.ciReplayStatus.status });
+  assertCase('github-api-current-pr-body passes', replay.ciReplayStatus.status === 'pass' && replay.prBodySource === 'github_api_pr_body', failures);
+
+  const replayMismatch = buildCiReplayReportFromGithubData({ repo: 'owner/repo', pr: '1', head: expectedHead }, { CODEX_PR_HEAD_SHA: expectedHead }, {
+    ...remoteFixture,
+    pr: { ...remoteFixture.pr, head: { sha: staleHead } },
+  });
+  cases.push({ name: 'github-api-head-sha-mismatch', status: replayMismatch.ciReplayStatus.status });
+  assertCase('github-api-head-sha-mismatch fails', replayMismatch.ciReplayStatus.status === 'fail' && replayMismatch.ciReplayStatus.reasonCodes.includes('head_sha_mismatch'), failures);
+
+  const replayCommentConfirmation = buildCiReplayReportFromGithubData({ repo: 'owner/repo', pr: '1', head: expectedHead }, { CODEX_PR_HEAD_SHA: expectedHead, CODEX_HUMAN_CONFIRMATION_STRICT: '1' }, {
+    ...remoteFixture,
+    pr: { ...remoteFixture.pr, body: validBodyWithoutConfirmationEvidence() },
+    comments: [{ body: manualConfirmationBlock() }],
+  });
+  cases.push({ name: 'github-api-pr-comment-structured-confirmation', status: replayCommentConfirmation.ciReplayStatus.status });
+  assertCase('github-api-pr-comment-structured-confirmation passes', replayCommentConfirmation.ciReplayStatus.status === 'pass' && replayCommentConfirmation.confirmationSource === 'github_api_comment', failures);
+
+  const replayApiUnavailableDirect = buildCiReplayReportFromGithubData({ repo: 'owner/repo', pr: '1', head: expectedHead }, { CODEX_PR_HEAD_SHA: expectedHead }, { ok: false, reasonCode: 'github_api_unavailable' });
+  cases.push({ name: 'github-api-unavailable-manual-confirmation-required', status: replayApiUnavailableDirect.ciReplayStatus.status });
+  assertCase('github-api-unavailable-manual-confirmation-required is manual', replayApiUnavailableDirect.ciReplayStatus.status === 'manual_confirmation_required', failures);
 
   const replayApiUnavailable = buildCiReplayReport(['node', 'codex-ci-replay.mjs', '--repo', 'owner/repo', '--pr', '1', '--head', expectedHead, '--json'], {
     CODEX_EVENT_NAME: 'pull_request',

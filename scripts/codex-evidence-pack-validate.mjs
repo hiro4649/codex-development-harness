@@ -46,6 +46,19 @@ function readJson(file) {
   }
 }
 
+function parseJsonBlock(text, beginMarker, endMarker, property) {
+  const source = String(text || '');
+  const pattern = new RegExp(`${beginMarker}\\s*([\\s\\S]*?)\\s*${endMarker}`, 'i');
+  const match = source.match(pattern);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1]);
+    return parsed?.[property] && typeof parsed[property] === 'object' ? parsed[property] : null;
+  } catch {
+    return { __invalid: true };
+  }
+}
+
 function evidencePackPath(env = process.env) {
   if (env.CODEX_EVIDENCE_PACK_PATH) return env.CODEX_EVIDENCE_PACK_PATH;
   return fs.existsSync(defaultPackPath) ? defaultPackPath : '';
@@ -79,6 +92,39 @@ function hasPrBodyFallback(env = process.env) {
     }
   }
   return false;
+}
+
+function prBodyText(env = process.env) {
+  if (env.CODEX_PR_BODY) return env.CODEX_PR_BODY;
+  if (env.CODEX_PR_BODY_PATH) return readText(env.CODEX_PR_BODY_PATH) || '';
+  if (env.GITHUB_EVENT_PATH) {
+    const text = readText(env.GITHUB_EVENT_PATH);
+    if (!text) return '';
+    try {
+      return JSON.parse(text).pull_request?.body || '';
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+export function evidencePackFromStructuredText(env = process.env) {
+  const commentPack = parseJsonBlock(
+    env.CODEX_PR_COMMENTS || '',
+    'BEGIN_CODEX_EVIDENCE_PACK_JSON',
+    'END_CODEX_EVIDENCE_PACK_JSON',
+    'codexEvidencePack',
+  );
+  if (commentPack) return { pack: commentPack, source: 'evidence_pack_pr_comment' };
+  const bodyPack = parseJsonBlock(
+    prBodyText(env),
+    'BEGIN_CODEX_EVIDENCE_PACK_JSON',
+    'END_CODEX_EVIDENCE_PACK_JSON',
+    'codexEvidencePack',
+  );
+  if (bodyPack) return { pack: bodyPack, source: 'evidence_pack_pr_body' };
+  return null;
 }
 
 function normalizedStatus(value, allowed) {
@@ -137,7 +183,7 @@ export function validateEvidencePack(pack, env = process.env) {
     reasonCodes: [...new Set(reasonCodes)],
     warnings: [...new Set(warnings)],
     missingFields,
-    source: 'evidence_pack',
+    source: 'evidence_pack_file',
     normalized: {
       schemaVersionPresent: Boolean(pack.schemaVersion),
       repositoryPresent: Boolean(pack.repository),
@@ -154,13 +200,47 @@ export function buildEvidencePackReport(env = process.env) {
   const file = evidencePackPath(env);
   const strict = isStrictEvidencePackMode(env);
   if (!file) {
+    const structured = evidencePackFromStructuredText(env);
+    if (structured) {
+      if (structured.pack.__invalid) {
+        return {
+          marker,
+          harnessVersion: HARNESS_VERSION,
+          evidencePackStatus: {
+            status: 'fail',
+            source: structured.source,
+            reasonCodes: ['evidence_pack_invalid'],
+            safeSummaryOnly: true,
+          },
+          normalizedEvidencePack: null,
+          valuesPrinted: false,
+          status: 'fail',
+        };
+      }
+      const validation = validateEvidencePack(structured.pack, env);
+      return {
+        marker,
+        harnessVersion: HARNESS_VERSION,
+        evidencePackStatus: {
+          status: validation.status,
+          source: structured.source,
+          reasonCodes: validation.reasonCodes,
+          warnings: validation.warnings,
+          missingFields: validation.missingFields,
+          safeSummaryOnly: true,
+        },
+        normalizedEvidencePack: validation.normalized,
+        valuesPrinted: false,
+        status: validation.status,
+      };
+    }
     if (strict) {
       return {
         marker,
         harnessVersion: HARNESS_VERSION,
         evidencePackStatus: {
           status: 'manual_confirmation_required',
-          source: hasPrBodyFallback(env) ? 'legacy_fallback' : 'missing',
+          source: hasPrBodyFallback(env) ? 'pr_body_legacy_fallback' : 'missing',
           reasonCodes: ['evidence_pack_missing'],
           warnings: hasPrBodyFallback(env) ? ['evidence_pack_missing_legacy_fallback'] : [],
           safeSummaryOnly: true,
@@ -176,7 +256,7 @@ export function buildEvidencePackReport(env = process.env) {
         harnessVersion: HARNESS_VERSION,
         evidencePackStatus: {
           status: 'pass',
-          source: 'pr_body_fallback',
+          source: 'pr_body_legacy_fallback',
           reasonCodes: [],
           warnings: ['evidence_pack_missing_legacy_fallback'],
           safeSummaryOnly: true,
@@ -224,7 +304,7 @@ export function buildEvidencePackReport(env = process.env) {
     harnessVersion: HARNESS_VERSION,
     evidencePackStatus: {
       status: validation.status,
-      source: validation.source,
+      source: 'evidence_pack_file',
       reasonCodes: validation.reasonCodes,
       warnings: validation.warnings,
       missingFields: validation.missingFields,

@@ -176,3 +176,43 @@ jobs:
             process.exit(1);
           }
           NODE
+      - name: Write safe quality summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('fs');
+          function readJson(file) {
+            try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+            catch { return null; }
+          }
+          const summary = readJson('codex-quality-gate-safe-summary.json');
+          const reasons = readJson('codex-failure-reasons.json') || [];
+          console.log('## Codex quality gate safe summary');
+          if (summary) {
+            console.log(`- status: ${summary.status || 'missing'}`);
+            console.log(`- mergeReady: ${summary.mergeReady}`);
+            console.log(`- humanReviewRequired: ${summary.humanReviewRequired}`);
+            console.log(`- qualityScoreStatus: ${summary.qualityScoreStatus?.status || 'missing'}`);
+            console.log(`- qualityScore: ${summary.qualityScoreStatus?.score ?? 'missing'}`);
+          } else {
+            console.log('- status: summary_missing');
+          }
+          console.log(`- failureReasonCount: ${Array.isArray(reasons) ? reasons.length : 0}`);
+          for (const item of Array.isArray(reasons) ? reasons.slice(0, 20) : []) {
+            const reasonCode = String(item.reasonCode || 'unknown').replace(/[^A-Za-z0-9_.:-]/g, '_');
+            const safeMessage = String(item.safeMessage || 'safe_message_missing').replace(/[^A-Za-z0-9_.:= -]/g, '_').slice(0, 180);
+            console.log(`- ${reasonCode}: ${safeMessage}`);
+          }
+          NODE
+      - name: Upload safe quality artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-quality-gate-safe-artifacts
+          path: |
+            codex-quality-gate-safe-summary.json
+            codex-evidence-pack.normalized.json
+            codex-failure-reasons.json
+          if-no-files-found: ignore

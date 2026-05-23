@@ -105,7 +105,7 @@ function githubUrl(repo, suffix) {
 }
 
 function confirmationSourceFromRemote(prBody, comments, reviews) {
-  const confirmationPattern = /\b(?:human|manual)\s+confirmation\b|\bconfirmedByRole\b|\bcodexManualConfirmation\b/i;
+  const confirmationPattern = /\bconfirmedByRole\b|\bcodexManualConfirmation\b|\bBEGIN_CODEX_MANUAL_CONFIRMATION_JSON\b/i;
   if (confirmationPattern.test(prBody || '')) return 'github_api_pr_body';
   if ((comments || []).some((item) => confirmationPattern.test(item.body || ''))) return 'github_api_comment';
   if ((reviews || []).some((item) => confirmationPattern.test(item.body || ''))) return 'github_api_review';
@@ -126,6 +126,10 @@ async function fetchGithubReplayInputs(args, env) {
     comments: Array.isArray(comments.value) ? comments.value : [],
     reviews: Array.isArray(reviews.value) ? reviews.value : [],
   };
+}
+
+export async function defaultGithubReplayClient(args, env = process.env) {
+  return fetchGithubReplayInputs(args, env);
 }
 
 function classifyReplay(args, replayEnv, bodySource, confirmationSourceLabel, lint, confirmation, extraReasons = []) {
@@ -227,7 +231,66 @@ export function buildCiReplayReport(argv = process.argv, env = process.env) {
   return classifyReplay(args, replayEnv, bodySource.source, confirmationSource(replayEnv), lint, confirmation, reasonCodes);
 }
 
-export async function buildCiReplayReportAsync(argv = process.argv, env = process.env) {
+export function buildCiReplayReportFromGithubData(argsInput, env = process.env, remote) {
+  const args = effectiveArgs(argsInput, env);
+  if (!remote?.ok) {
+    return {
+      marker,
+      harnessVersion: HARNESS_VERSION,
+      ciReplayStatus: {
+        status: 'manual_confirmation_required',
+        reasonCodes: [remote?.reasonCode || 'github_api_unavailable'],
+        safeSummaryOnly: true,
+      },
+      localRemoteParityStatus: {
+        status: 'manual_confirmation_required',
+        reasonCodes: [remote?.reasonCode || 'github_api_unavailable'],
+        safeSummaryOnly: true,
+      },
+      prBodySource: 'github_api_unavailable',
+      confirmationSource: 'unknown',
+      valuesPrinted: false,
+      status: 'manual_confirmation_required',
+    };
+  }
+
+  const remoteHead = remote.pr?.head?.sha || '';
+  const remoteBase = remote.pr?.base?.sha || args.base || '';
+  const reasons = [];
+  if (!remoteHead) reasons.push('missing_head_sha');
+  else if (String(remoteHead).toLowerCase() !== String(args.head).toLowerCase()) {
+    reasons.push('head_sha_mismatch', 'stale_evidence');
+  }
+
+  const prBody = remote.pr?.body || '';
+  const commentsText = (remote.comments || []).map((item) => item.body || '').filter(Boolean).join('\n');
+  const reviewsText = (remote.reviews || []).map((item) => item.body || '').filter(Boolean).join('\n');
+  const replayEnv = {
+    ...env,
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_PR_NUMBER: String(args.pr),
+    CODEX_PR_HEAD_SHA: String(args.head),
+    CODEX_PR_BASE_SHA: String(remoteBase),
+    CODEX_REPOSITORY: String(args.repo),
+    CODEX_GITHUB_API_AVAILABLE: '1',
+    CODEX_PR_BODY: prBody,
+    CODEX_PR_COMMENTS: commentsText,
+    CODEX_PR_REVIEWS: reviewsText,
+  };
+  const lint = buildPrBodyLintReport(replayEnv, ['node', 'codex-pr-body-lint.mjs', '--json', '--head', args.head]);
+  const confirmation = buildHumanConfirmationObjectReport(replayEnv);
+  return classifyReplay(
+    args,
+    replayEnv,
+    prBody ? 'github_api_pr_body' : 'missing',
+    confirmationSourceFromRemote(prBody, remote.comments || [], remote.reviews || []),
+    lint,
+    confirmation,
+    reasons,
+  );
+}
+
+export async function buildCiReplayReportAsync(argv = process.argv, env = process.env, githubClient = defaultGithubReplayClient) {
   const args = effectiveArgs(parseArgs(argv), env);
   if (!args.repo || !args.pr || !args.head) return buildCiReplayReport(argv, env);
   const token = githubToken(env);
@@ -250,62 +313,8 @@ export async function buildCiReplayReportAsync(argv = process.argv, env = proces
     };
   }
 
-  const remote = await fetchGithubReplayInputs(args, env);
-  if (!remote.ok) {
-    return {
-      marker,
-      harnessVersion: HARNESS_VERSION,
-      ciReplayStatus: {
-        status: 'manual_confirmation_required',
-        reasonCodes: [remote.reasonCode || 'github_api_unavailable'],
-        safeSummaryOnly: true,
-      },
-      localRemoteParityStatus: {
-        status: 'manual_confirmation_required',
-        reasonCodes: [remote.reasonCode || 'github_api_unavailable'],
-        safeSummaryOnly: true,
-      },
-      prBodySource: 'github_api_unavailable',
-      confirmationSource: 'unknown',
-      valuesPrinted: false,
-      status: 'manual_confirmation_required',
-    };
-  }
-
-  const remoteHead = remote.pr?.head?.sha || '';
-  const remoteBase = remote.pr?.base?.sha || args.base || '';
-  const reasons = [];
-  if (!remoteHead) reasons.push('missing_head_sha');
-  else if (String(remoteHead).toLowerCase() !== String(args.head).toLowerCase()) {
-    reasons.push('head_sha_mismatch', 'stale_evidence');
-  }
-
-  const prBody = remote.pr?.body || '';
-  const commentsText = remote.comments.map((item) => item.body || '').filter(Boolean).join('\n');
-  const reviewsText = remote.reviews.map((item) => item.body || '').filter(Boolean).join('\n');
-  const confirmationBody = [prBody, commentsText, reviewsText].filter(Boolean).join('\n');
-  const replayEnv = {
-    ...env,
-    CODEX_EVENT_NAME: 'pull_request',
-    CODEX_PR_NUMBER: String(args.pr),
-    CODEX_PR_HEAD_SHA: String(args.head),
-    CODEX_PR_BASE_SHA: String(remoteBase),
-    CODEX_REPOSITORY: String(args.repo),
-    CODEX_GITHUB_API_AVAILABLE: '1',
-  };
-  const lintEnv = { ...replayEnv, CODEX_PR_BODY: prBody };
-  const confirmationEnv = { ...replayEnv, CODEX_PR_BODY: confirmationBody };
-  const lint = buildPrBodyLintReport(lintEnv, ['node', 'codex-pr-body-lint.mjs', '--json', '--head', args.head]);
-  const confirmation = buildHumanConfirmationObjectReport(confirmationEnv);
-  return classifyReplay(
-    args,
-    replayEnv,
-    prBody ? 'github_api_pr_body' : 'missing',
-    confirmationSourceFromRemote(prBody, remote.comments, remote.reviews),
-    lint,
-    confirmation,
-    reasons,
-  );
+  const remote = await githubClient(args, env);
+  return buildCiReplayReportFromGithubData(args, env, remote);
 }
 
 function printReport(report) {

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildHumanConfirmationStatus, readPrBody } from './codex-production-readiness-gate.mjs';
-import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
+import { buildEvidencePackReport, evidencePackFromStructuredText } from './codex-evidence-pack-validate.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
 export const HARNESS_VERSION = '0.7.2';
@@ -35,6 +35,19 @@ function readJson(file) {
   if (text === null) return null;
   try {
     return JSON.parse(text);
+  } catch {
+    return { __invalid: true };
+  }
+}
+
+function parseJsonBlock(text, beginMarker, endMarker, property) {
+  const source = String(text || '');
+  const pattern = new RegExp(`${beginMarker}\\s*([\\s\\S]*?)\\s*${endMarker}`, 'i');
+  const match = source.match(pattern);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1]);
+    return parsed?.[property] && typeof parsed[property] === 'object' ? parsed[property] : null;
   } catch {
     return { __invalid: true };
   }
@@ -133,9 +146,43 @@ export function validateHumanConfirmationObject(object = {}, env = process.env) 
 function confirmationFromEvidencePack(env) {
   const packReport = buildEvidencePackReport(env);
   const packPath = env.CODEX_EVIDENCE_PACK_PATH || (fs.existsSync(path.join('.codex', 'evidence-pack.json')) ? path.join('.codex', 'evidence-pack.json') : '');
-  if (!packPath || packReport.status === 'fail') return null;
-  const pack = readJson(packPath);
+  if (packPath && packReport.status !== 'fail') {
+    const pack = readJson(packPath);
+    return pack?.humanConfirmation || null;
+  }
+  const structured = evidencePackFromStructuredText(env);
+  if (!structured?.pack || structured.pack.__invalid || packReport.status === 'fail') return null;
+  const pack = structured.pack;
   return pack?.humanConfirmation || null;
+}
+
+function prBodyText(env) {
+  return readPrBody(env).body || '';
+}
+
+function confirmationFromStructuredJson(env) {
+  const commentObject = parseJsonBlock(
+    env.CODEX_PR_COMMENTS || '',
+    'BEGIN_CODEX_MANUAL_CONFIRMATION_JSON',
+    'END_CODEX_MANUAL_CONFIRMATION_JSON',
+    'codexManualConfirmation',
+  );
+  if (commentObject) return { object: commentObject, source: 'pr_comment_json' };
+  const reviewObject = parseJsonBlock(
+    env.CODEX_PR_REVIEWS || '',
+    'BEGIN_CODEX_MANUAL_CONFIRMATION_JSON',
+    'END_CODEX_MANUAL_CONFIRMATION_JSON',
+    'codexManualConfirmation',
+  );
+  if (reviewObject) return { object: reviewObject, source: 'pr_review_json' };
+  const bodyObject = parseJsonBlock(
+    prBodyText(env),
+    'BEGIN_CODEX_MANUAL_CONFIRMATION_JSON',
+    'END_CODEX_MANUAL_CONFIRMATION_JSON',
+    'codexManualConfirmation',
+  );
+  if (bodyObject) return { object: bodyObject, source: 'pr_body_json' };
+  return null;
 }
 
 function confirmationFromFencedJson(env) {
@@ -162,11 +209,21 @@ export function buildHumanConfirmationObjectReport(env = process.env) {
   let source = 'none';
   if (file) {
     object = readJson(file);
+    if (object?.codexManualConfirmation && typeof object.codexManualConfirmation === 'object') {
+      object = object.codexManualConfirmation;
+    }
     source = 'manual_confirmation_file';
   }
   if (!object) {
     object = confirmationFromEvidencePack(env);
     if (object) source = 'evidence_pack_human_confirmation';
+  }
+  if (!object) {
+    const structured = confirmationFromStructuredJson(env);
+    if (structured) {
+      object = structured.object;
+      source = structured.source;
+    }
   }
   if (!object) {
     object = confirmationFromFencedJson(env);

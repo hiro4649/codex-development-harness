@@ -4,7 +4,7 @@
 
 Human confirmation may come from `.codex/manual-confirmation.json`,
 `CODEX_MANUAL_CONFIRMATION_PATH`, the evidence pack `humanConfirmation` object,
-or a PR body/comment fenced JSON block containing `codexManualConfirmation`.
+or a PR body/comment structured JSON block containing `codexManualConfirmation`.
 Natural-language PR body, PR comment, or review approval evidence may be used
 for legacy/non-strict classification, but source-harness pull requests and
 `CODEX_HUMAN_CONFIRMATION_STRICT=1` must not score 100 from prose fallback
@@ -31,9 +31,9 @@ secret scan failures, blocked paths, high-confidence secrets, implementation
 and harness mixing, profile-required failures, OpenAI method failures, stale
 evidence, or unsafe output.
 
-Example PR body fenced JSON source:
+Example PR body or comment structured JSON source:
 
-```json
+BEGIN_CODEX_MANUAL_CONFIRMATION_JSON
 {
   "codexManualConfirmation": {
     "target": "pull_request",
@@ -50,4 +50,4 @@ Example PR body fenced JSON source:
     "nonOverridableFailuresAcknowledged": true
   }
 }
-```
+END_CODEX_MANUAL_CONFIRMATION_JSON
