@@ -66,7 +66,6 @@ function isLikelySafePolicyText(text) {
 function valueFindings(value, pathLabel) {
   const text = String(value || '');
   if (!text) return [];
-  if (isLikelySafePolicyText(text)) return [];
   const findings = [];
   const rules = [
     ['unsafe_url_or_endpoint_value', /\b(?:https?|postgres(?:ql)?|mysql|mongodb):\/\/[^\s<>"'`]+/i],

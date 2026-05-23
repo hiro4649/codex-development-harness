@@ -6,6 +6,7 @@ import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { buildHumanConfirmationStatus } from './codex-production-readiness-gate.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
+import { buildGithubReplayContextAsync } from './codex-ci-replay.mjs';
 
 const HARNESS_VERSION = '0.7.2';
 const PROFILE_TEMPLATE_VERSION = '0.7.0';
@@ -169,12 +170,12 @@ function markerAllowedForPath(file, version, profileVersions) {
 function safeForbiddenArtifactHit(value) {
   return scanSafeOutput(value).findings.length > 0;
 }
-function runGateScript(script, field, envName) {
+function runGateScript(script, field, envName, baseEnv = process.env) {
   if (!fs.existsSync(script)) {
     return { status: 'fail', failures: [`${field}=script_missing`], safeSummaryOnly: true };
   }
   const result = spawn('node', [script], {
-    env: { ...process.env, CODEX_QUALITY_REPORT: 'json', [envName]: 'json' },
+    env: { ...baseEnv, CODEX_QUALITY_REPORT: 'json', [envName]: 'json' },
     stdio: 'pipe',
   });
   const output = String(result.stdout || '').trim();
@@ -383,13 +384,13 @@ function computeSafeArtifactValidation(report) {
     secretFree: !unsafe,
   };
 }
-function runOpenAICodexMethodGate() {
+function runOpenAICodexMethodGate(baseEnv = process.env) {
   const script = path.join('scripts', 'codex-openai-method-gate.mjs');
   if (!fs.existsSync(script)) {
     return { status: 'fail', failures: ['methodGateScript=missing'], safeSummary: 'OpenAI Codex Method Gate script is missing.' };
   }
   const result = spawn('node', [script], {
-    env: { ...process.env, CODEX_OPENAI_METHOD_REPORT: 'json' },
+    env: { ...baseEnv, CODEX_OPENAI_METHOD_REPORT: 'json' },
     stdio: 'pipe',
   });
   const output = `${result.stdout || ''}`.trim();
@@ -549,11 +550,45 @@ function applyStatusOutcome(key, value, failures, warnings) {
     warnings.push({ id: `${key}.manual`, message: `${key} requires manual confirmation` });
   }
 }
-function runSourceHarnessGate() {
+function isPullRequestContext(env = process.env) {
+  return env.CODEX_EVENT_NAME === 'pull_request' ||
+    Boolean(env.CODEX_PR_NUMBER) ||
+    Boolean(env.GITHUB_REF && env.GITHUB_REF.includes('/pull/'));
+}
+async function resolveRemoteGateContext(env = process.env) {
+  const args = {
+    repo: env.CODEX_REPOSITORY || env.GITHUB_REPOSITORY || '',
+    pr: env.CODEX_PR_NUMBER || '',
+    head: env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '',
+    base: env.CODEX_PR_BASE_SHA || '',
+  };
+  if (!isPullRequestContext(env) || !args.repo || !args.pr || !args.head) {
+    return {
+      env: {},
+      status: 'not_applicable',
+      reasonCodes: ['ci_replay_not_requested'],
+      prBodySource: 'not_applicable',
+      confirmationSource: 'not_applicable',
+      safeSummaryOnly: true,
+    };
+  }
+  const context = await buildGithubReplayContextAsync(args, env);
+  return {
+    env: context.status === 'pass' ? context.env : {},
+    status: context.status,
+    reasonCodes: context.reasonCodes || [],
+    prBodySource: context.prBodySource || 'missing',
+    confirmationSource: context.confirmationSource || 'missing',
+    safeSummaryOnly: true,
+  };
+}
+async function runSourceHarnessGate() {
   const jsonReport = process.env.CODEX_QUALITY_REPORT === 'json';
   const failures = [];
   const warnings = [];
   if (!jsonReport) console.log('== Codex source harness quality gate ==');
+  const remoteContext = await resolveRemoteGateContext(process.env);
+  const gateEnv = { ...process.env, ...remoteContext.env };
   const secretSelfTest = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { env: { CODEX_SECRET_SCAN_SELF_TEST: '1' }, stdio: 'pipe' });
   if (secretSelfTest.status !== 0) failures.push({ id: 'secretScan.selfTest', message: 'secret scan self-test failed' });
   const secretScan = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { stdio: 'pipe' });
@@ -581,6 +616,13 @@ function runSourceHarnessGate() {
     ciReplayStatus: { status: 'not_run' },
     prBodyLintStatus: { status: 'not_run' },
     failureReasonCatalogStatus: { status: 'not_run' },
+    remoteContextStatus: {
+      status: remoteContext.status,
+      reasonCodes: remoteContext.reasonCodes,
+      prBodySource: remoteContext.prBodySource,
+      confirmationSource: remoteContext.confirmationSource,
+      safeSummaryOnly: true,
+    },
     v071SelfTestStatus: { status: 'not_run' },
     v072SelfTestStatus: { status: 'not_run' },
     profileTemplateCompatibilityStatus: { status: 'not_run' },
@@ -592,20 +634,20 @@ function runSourceHarnessGate() {
   const governance = runProfileGovernanceScripts(report);
   failures.push(...governance.failures);
   warnings.push(...governance.warnings);
-  report.openaiCodexMethodStatus = runOpenAICodexMethodGate();
+  report.openaiCodexMethodStatus = runOpenAICodexMethodGate(gateEnv);
   report.methodSupportStatus = report.openaiCodexMethodStatus.methodSupportStatus || { status: 'missing' };
-  report.productionReadinessStatus = runGateScript('scripts/codex-production-readiness-gate.mjs', 'productionReadinessStatus', 'CODEX_PRODUCTION_READINESS_REPORT');
-  report.evidenceIntegrityStatus = runGateScript('scripts/codex-evidence-integrity-gate.mjs', 'evidenceIntegrityStatus', 'CODEX_EVIDENCE_INTEGRITY_REPORT');
-  report.hermesInvariantStatus = runGateScript('scripts/codex-hermes-invariant-gate.mjs', 'hermesInvariantStatus', 'CODEX_HERMES_INVARIANT_REPORT');
-  report.humanConfirmationStatus = buildHumanConfirmationStatus(process.env).humanConfirmationStatus;
-  report.evidencePackStatus = runGateScript('scripts/codex-evidence-pack-validate.mjs', 'evidencePackStatus', 'CODEX_EVIDENCE_PACK_REPORT');
-  report.humanConfirmationObjectStatus = runGateScript('scripts/codex-human-confirmation-validate.mjs', 'humanConfirmationObjectStatus', 'CODEX_HUMAN_CONFIRMATION_REPORT');
-  report.safeOutputScanStatus = runGateScript('scripts/codex-safe-output-scan.mjs', 'safeOutputScanStatus', 'CODEX_SAFE_OUTPUT_SCAN_REPORT');
-  report.ciReplayStatus = runGateScript('scripts/codex-ci-replay.mjs', 'ciReplayStatus', 'CODEX_CI_REPLAY_REPORT');
-  report.prBodyLintStatus = runGateScript('scripts/codex-pr-body-lint.mjs', 'prBodyLintStatus', 'CODEX_PR_BODY_LINT_REPORT');
+  report.productionReadinessStatus = runGateScript('scripts/codex-production-readiness-gate.mjs', 'productionReadinessStatus', 'CODEX_PRODUCTION_READINESS_REPORT', gateEnv);
+  report.evidenceIntegrityStatus = runGateScript('scripts/codex-evidence-integrity-gate.mjs', 'evidenceIntegrityStatus', 'CODEX_EVIDENCE_INTEGRITY_REPORT', gateEnv);
+  report.hermesInvariantStatus = runGateScript('scripts/codex-hermes-invariant-gate.mjs', 'hermesInvariantStatus', 'CODEX_HERMES_INVARIANT_REPORT', gateEnv);
+  report.humanConfirmationStatus = buildHumanConfirmationStatus(gateEnv).humanConfirmationStatus;
+  report.evidencePackStatus = runGateScript('scripts/codex-evidence-pack-validate.mjs', 'evidencePackStatus', 'CODEX_EVIDENCE_PACK_REPORT', gateEnv);
+  report.humanConfirmationObjectStatus = runGateScript('scripts/codex-human-confirmation-validate.mjs', 'humanConfirmationObjectStatus', 'CODEX_HUMAN_CONFIRMATION_REPORT', gateEnv);
+  report.safeOutputScanStatus = runGateScript('scripts/codex-safe-output-scan.mjs', 'safeOutputScanStatus', 'CODEX_SAFE_OUTPUT_SCAN_REPORT', gateEnv);
+  report.ciReplayStatus = runGateScript('scripts/codex-ci-replay.mjs', 'ciReplayStatus', 'CODEX_CI_REPLAY_REPORT', gateEnv);
+  report.prBodyLintStatus = runGateScript('scripts/codex-pr-body-lint.mjs', 'prBodyLintStatus', 'CODEX_PR_BODY_LINT_REPORT', gateEnv);
   report.failureReasonCatalogStatus = computeFailureReasonCatalogStatus();
-  report.v071SelfTestStatus = runGateScript('scripts/codex-v071-self-test.mjs', 'v071SelfTestStatus', 'CODEX_V071_SELF_TEST_REPORT');
-  report.v072SelfTestStatus = runGateScript('scripts/codex-v072-self-test.mjs', 'v072SelfTestStatus', 'CODEX_V072_SELF_TEST_REPORT');
+  report.v071SelfTestStatus = runGateScript('scripts/codex-v071-self-test.mjs', 'v071SelfTestStatus', 'CODEX_V071_SELF_TEST_REPORT', gateEnv);
+  report.v072SelfTestStatus = runGateScript('scripts/codex-v072-self-test.mjs', 'v072SelfTestStatus', 'CODEX_V072_SELF_TEST_REPORT', gateEnv);
 
   for (const [key, value] of Object.entries({
     profileTemplateCompatibilityStatus: report.profileTemplateCompatibilityStatus,
@@ -680,7 +722,7 @@ function runSourceHarnessGate() {
 }
 
 if (process.env.CODEX_QUALITY_REPORT !== 'json') console.log('== Codex local quality gate ==');
-if (process.env.CODEX_HARNESS_SOURCE_REPO === '1') runSourceHarnessGate();
+if (process.env.CODEX_HARNESS_SOURCE_REPO === '1') await runSourceHarnessGate();
 run('node', ['scripts/codex-secret-safety-scan.mjs']);
 
 const npmDirs = ['.', 'apps/backend', 'apps/frontend', 'contracts'].filter((dir) => fs.existsSync(path.join(dir, 'package.json')));

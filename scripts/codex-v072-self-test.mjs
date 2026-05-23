@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 import { buildHumanConfirmationObjectReport } from './codex-human-confirmation-validate.mjs';
 import { buildSafeOutputScanReport } from './codex-safe-output-scan.mjs';
-import { buildCiReplayReport, buildCiReplayReportFromGithubData } from './codex-ci-replay.mjs';
+import { buildCiReplayReport, buildCiReplayReportFromGithubData, buildGithubReplayContextFromData } from './codex-ci-replay.mjs';
 import { buildPrBodyLintReport } from './codex-pr-body-lint.mjs';
 import { buildProductionReadinessReport } from './codex-production-readiness-gate.mjs';
 
@@ -252,6 +252,32 @@ function buildReport() {
   cases.push({ name: 'github-api-pr-comment-structured-confirmation', status: replayCommentConfirmation.ciReplayStatus.status });
   assertCase('github-api-pr-comment-structured-confirmation passes', replayCommentConfirmation.ciReplayStatus.status === 'pass' && replayCommentConfirmation.confirmationSource === 'github_api_comment', failures);
 
+  const replayCommentEvidenceContext = buildGithubReplayContextFromData({ repo: 'owner/repo', pr: '1', head: expectedHead }, { CODEX_PR_HEAD_SHA: expectedHead }, {
+    ...remoteFixture,
+    pr: { ...remoteFixture.pr, body: validBodyWithoutConfirmationEvidence() },
+    comments: [{ body: evidencePackBlock() }],
+  });
+  const topLevelEvidenceFromComment = buildEvidencePackReport({
+    ...replayCommentEvidenceContext.env,
+    CODEX_EVIDENCE_PACK_STRICT: '1',
+    CODEX_HARNESS_SOURCE_REPO: '1',
+  });
+  cases.push({ name: 'github-api-comment-structured-evidence-visible-to-local-gate', status: topLevelEvidenceFromComment.evidencePackStatus.status });
+  assertCase('github-api-comment-structured-evidence-visible-to-local-gate passes', topLevelEvidenceFromComment.evidencePackStatus.status === 'pass' && topLevelEvidenceFromComment.evidencePackStatus.source === 'evidence_pack_pr_comment', failures);
+
+  const replayCommentManualContext = buildGithubReplayContextFromData({ repo: 'owner/repo', pr: '1', head: expectedHead }, { CODEX_PR_HEAD_SHA: expectedHead }, {
+    ...remoteFixture,
+    pr: { ...remoteFixture.pr, body: validBodyWithoutConfirmationEvidence() },
+    comments: [{ body: manualConfirmationBlock() }],
+  });
+  const topLevelConfirmationFromComment = buildHumanConfirmationObjectReport({
+    ...replayCommentManualContext.env,
+    CODEX_HUMAN_CONFIRMATION_STRICT: '1',
+    CODEX_HARNESS_SOURCE_REPO: '1',
+  });
+  cases.push({ name: 'github-api-comment-structured-confirmation-visible-to-local-gate', status: topLevelConfirmationFromComment.humanConfirmationObjectStatus.status });
+  assertCase('github-api-comment-structured-confirmation-visible-to-local-gate passes', topLevelConfirmationFromComment.humanConfirmationObjectStatus.status === 'pass' && topLevelConfirmationFromComment.humanConfirmationObjectStatus.source === 'pr_comment_json', failures);
+
   const replayApiUnavailableDirect = buildCiReplayReportFromGithubData({ repo: 'owner/repo', pr: '1', head: expectedHead }, { CODEX_PR_HEAD_SHA: expectedHead }, { ok: false, reasonCode: 'github_api_unavailable' });
   cases.push({ name: 'github-api-unavailable-manual-confirmation-required', status: replayApiUnavailableDirect.ciReplayStatus.status });
   assertCase('github-api-unavailable-manual-confirmation-required is manual', replayApiUnavailableDirect.ciReplayStatus.status === 'manual_confirmation_required', failures);
@@ -263,13 +289,25 @@ function buildReport() {
   cases.push({ name: 'CI replay PR context without API evidence', status: replayApiUnavailable.ciReplayStatus.status });
   assertCase('CI replay PR context without API evidence requires manual confirmation', replayApiUnavailable.ciReplayStatus.status === 'manual_confirmation_required', failures);
 
-  const safePolicy = buildSafeOutputScanReport({ policyText: 'Do not output raw payload, secret value, endpoint value, private path, production data, or personal data.' });
-  cases.push({ name: 'safe policy vocabulary allowed fixture', status: safePolicy.safeOutputScanStatus.status });
-  assertCase('safe policy vocabulary does not fail', safePolicy.safeOutputScanStatus.status === 'pass', failures);
+  const safePolicy = buildSafeOutputScanReport({ policyText: 'Reports must not include raw payload, secret value, endpoint value.' });
+  cases.push({ name: 'safe-policy-vocabulary-without-value', status: safePolicy.safeOutputScanStatus.status });
+  assertCase('safe-policy-vocabulary-without-value passes', safePolicy.safeOutputScanStatus.status === 'pass', failures);
+
+  const safePolicyWithUrl = buildSafeOutputScanReport({ policyText: 'Reports must not include endpoint value https://example.invalid/token' });
+  cases.push({ name: 'safe-policy-vocabulary-with-url', status: safePolicyWithUrl.safeOutputScanStatus.status });
+  assertCase('safe-policy-vocabulary-with-url fails', safePolicyWithUrl.safeOutputScanStatus.status === 'fail', failures);
+
+  const safePolicyWithToken = buildSafeOutputScanReport({ policyText: 'Do not print secret value sk-xxxxxxxxxxxxxxxx' });
+  cases.push({ name: 'safe-policy-vocabulary-with-token', status: safePolicyWithToken.safeOutputScanStatus.status });
+  assertCase('safe-policy-vocabulary-with-token fails', safePolicyWithToken.safeOutputScanStatus.status === 'fail', failures);
+
+  const safePolicyWithPrivatePath = buildSafeOutputScanReport({ policyText: 'Private path is forbidden: C:\\Users\\Example\\secret' });
+  cases.push({ name: 'safe-policy-vocabulary-with-private-path', status: safePolicyWithPrivatePath.safeOutputScanStatus.status });
+  assertCase('safe-policy-vocabulary-with-private-path fails', safePolicyWithPrivatePath.safeOutputScanStatus.status === 'fail', failures);
 
   const falsePositive = buildSafeOutputScanReport({ reasonCodes: ['unsafe_value_detected'], safeMessage: 'Safe label only.' });
-  cases.push({ name: 'unsafe scanner false positive fixture', status: falsePositive.safeOutputScanStatus.status });
-  assertCase('safe labels do not fail unsafe scanner', falsePositive.safeOutputScanStatus.status === 'pass', failures);
+  cases.push({ name: 'safe-label-unsafe-value-detected', status: falsePositive.safeOutputScanStatus.status });
+  assertCase('safe-label-unsafe-value-detected passes', falsePositive.safeOutputScanStatus.status === 'pass', failures);
 
   const truePositive = buildSafeOutputScanReport({ endpointValue: 'redacted-fixture' });
   cases.push({ name: 'forbidden value leak fixture', status: truePositive.safeOutputScanStatus.status });
