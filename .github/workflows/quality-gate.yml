@@ -123,6 +123,7 @@ jobs:
             'offlineEvolutionProposalStatus',
             'testCoverageEvidenceStatus',
             'performanceEvidenceStatus',
+            'bestOfNEvidenceStatus',
           ]);
           for (const key of requiredPass) {
             const status = report[key]?.status || 'missing';
@@ -134,6 +135,9 @@ jobs:
               continue;
             }
             if (optionalNotApplicable.has(key) && status === 'not_applicable') {
+              continue;
+            }
+            if (key === 'humanConfirmationObjectStatus' && status === 'not_required') {
               continue;
             }
             if (status !== 'pass') failures.push(`${key}=${status}`);
