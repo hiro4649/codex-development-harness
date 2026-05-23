@@ -1,0 +1,25 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.2",
+  "harnessVersion": "0.7.2",
+  "reasonCodes": [
+    { "reasonCode": "missing_head_sha", "gate": "evidence", "severity": "error", "safeMessage": "Current head SHA evidence is missing.", "nextBestFix": "Record the current PR head SHA in structured evidence.", "canManualConfirmationOverride": false },
+    { "reasonCode": "head_sha_mismatch", "gate": "evidence", "severity": "error", "safeMessage": "Evidence head SHA does not match current head.", "nextBestFix": "Regenerate evidence for the current head.", "canManualConfirmationOverride": false },
+    { "reasonCode": "stale_evidence", "gate": "evidence", "severity": "error", "safeMessage": "Evidence is stale or lacks freshness proof.", "nextBestFix": "Rerun checks and update evidence.", "canManualConfirmationOverride": false },
+    { "reasonCode": "missing_remote_evidence", "gate": "ci", "severity": "error", "safeMessage": "Remote quality evidence is missing.", "nextBestFix": "Run the quality gate on the PR head.", "canManualConfirmationOverride": true },
+    { "reasonCode": "missing_command_result", "gate": "evidence", "severity": "error", "safeMessage": "Command result evidence is incomplete.", "nextBestFix": "Record command, result, exit code or pass/fail, date, source, and head SHA.", "canManualConfirmationOverride": false },
+    { "reasonCode": "weak_evidence_phrase", "gate": "evidence", "severity": "error", "safeMessage": "Weak evidence wording was used as proof.", "nextBestFix": "Replace weak wording with structured command evidence.", "canManualConfirmationOverride": false },
+    { "reasonCode": "unsafe_claim_wording", "gate": "production", "severity": "error", "safeMessage": "Production or release claim lacks required evidence.", "nextBestFix": "Remove the claim or provide complete evidence.", "canManualConfirmationOverride": false },
+    { "reasonCode": "missing_human_confirmation", "gate": "humanConfirmation", "severity": "manual_confirmation_required", "safeMessage": "Human confirmation is required but incomplete.", "nextBestFix": "Add current-head structured human confirmation.", "canManualConfirmationOverride": true },
+    { "reasonCode": "human_confirmation_incomplete", "gate": "humanConfirmation", "severity": "manual_confirmation_required", "safeMessage": "Human confirmation is missing required fields.", "nextBestFix": "Complete the required structured confirmation fields.", "canManualConfirmationOverride": true },
+    { "reasonCode": "non_overridable_failure_present", "gate": "humanConfirmation", "severity": "error", "safeMessage": "A non-overridable failure is present.", "nextBestFix": "Fix the underlying failure.", "canManualConfirmationOverride": false },
+    { "reasonCode": "unsafe_value_detected", "gate": "safeOutput", "severity": "error", "safeMessage": "Unsafe value was detected.", "nextBestFix": "Remove the value and keep only safe labels.", "canManualConfirmationOverride": false },
+    { "reasonCode": "scope_mismatch", "gate": "scope", "severity": "error", "safeMessage": "Changed files do not match allowed scope.", "nextBestFix": "Remove forbidden or unrelated changes.", "canManualConfirmationOverride": false },
+    { "reasonCode": "forbidden_path_changed", "gate": "scope", "severity": "error", "safeMessage": "A forbidden path changed.", "nextBestFix": "Revert forbidden path changes.", "canManualConfirmationOverride": false },
+    { "reasonCode": "local_ci_parity_mismatch", "gate": "ciReplay", "severity": "error", "safeMessage": "Local replay and CI context do not agree.", "nextBestFix": "Replay with the current PR body and head SHA.", "canManualConfirmationOverride": false },
+    { "reasonCode": "github_api_unavailable", "gate": "ciReplay", "severity": "manual_confirmation_required", "safeMessage": "GitHub API evidence could not be fetched.", "nextBestFix": "Provide GitHub token read access or rerun in GitHub Actions.", "canManualConfirmationOverride": true },
+    { "reasonCode": "ci_replay_not_requested", "gate": "ciReplay", "severity": "not_applicable", "safeMessage": "CI replay was not requested in this context.", "nextBestFix": "Run ci replay with repository, PR number, and head SHA when PR parity is required.", "canManualConfirmationOverride": true },
+    { "reasonCode": "evidence_pack_missing", "gate": "evidencePack", "severity": "warning", "safeMessage": "Structured evidence pack is missing.", "nextBestFix": "Add .codex/evidence-pack.json or rely on legacy PR body fallback when allowed.", "canManualConfirmationOverride": true },
+    { "reasonCode": "evidence_pack_invalid", "gate": "evidencePack", "severity": "error", "safeMessage": "Structured evidence pack is invalid.", "nextBestFix": "Fix the evidence pack schema fields.", "canManualConfirmationOverride": false },
+    { "reasonCode": "manual_confirmation_invalid", "gate": "humanConfirmation", "severity": "error", "safeMessage": "Manual confirmation is invalid.", "nextBestFix": "Fix current-head confirmation fields.", "canManualConfirmationOverride": false }
+  ]
+}

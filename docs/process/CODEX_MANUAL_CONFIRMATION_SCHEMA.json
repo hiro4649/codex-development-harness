@@ -1,0 +1,37 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.2",
+  "schemaVersion": "1.0.0",
+  "title": "Codex Manual Confirmation",
+  "type": "object",
+  "required": [
+    "target",
+    "repository",
+    "prNumber",
+    "headSha",
+    "riskLevel",
+    "confirmedByRole",
+    "confirmedAt",
+    "reviewedItems",
+    "residualRisks",
+    "qualityGateNotWeakened",
+    "riskLevelNotLowered",
+    "nonOverridableFailuresAcknowledged"
+  ],
+  "properties": {
+    "target": { "type": "string" },
+    "repository": { "type": "string" },
+    "prNumber": { "type": ["number", "string"] },
+    "headSha": { "type": "string" },
+    "riskLevel": { "type": "string" },
+    "confirmedByRole": { "type": "string" },
+    "confirmedAt": { "type": "string" },
+    "reviewedItems": { "type": "array", "items": { "type": "string" } },
+    "residualRisks": { "type": "array", "items": { "type": "string" } },
+    "qualityGateNotWeakened": { "type": "boolean" },
+    "riskLevelNotLowered": { "type": "boolean" },
+    "nonOverridableFailuresAcknowledged": { "type": "boolean" }
+  },
+  "safeOutput": {
+    "valuesPrinted": false
+  }
+}

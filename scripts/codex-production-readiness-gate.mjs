@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.1
+// CODEX_QUALITY_HARNESS_FILE v0.7.2
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 
-export const HARNESS_VERSION = '0.7.1';
+export const HARNESS_VERSION = '0.7.2';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 export const forbiddenOutputKeys = [
   'rawDiff',
@@ -115,7 +116,7 @@ export function weakEvidenceLineLabels(body) {
 
 export function hasProductionClaim(body) {
   const lower = normalizeText(body);
-  return /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b|\bgo no go\b|\bgo\b|\b本番可\b|\b出荷可\b/.test(lower);
+  return /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b|\bgo no go\b|\bgo\b|\b譛ｬ逡ｪ蜿ｯ\b|\b蜃ｺ闕ｷ蜿ｯ\b/.test(lower);
 }
 
 export function isRiskyContext(body) {
@@ -345,6 +346,20 @@ export function buildHumanConfirmationStatus(env = process.env) {
 function classifyProductionReadiness(env = process.env) {
   const failures = [];
   const warnings = [];
+  const evidencePack = buildEvidencePackReport(env).evidencePackStatus;
+  if (evidencePack?.source === 'evidence_pack') {
+    return {
+      status: evidencePack.status,
+      labels: ['structured_evidence_pack_preferred'],
+      failures: evidencePack.status === 'fail' ? (evidencePack.reasonCodes || ['evidence_pack_invalid']) : [],
+      warnings: evidencePack.warnings || [],
+      bodySource: 'evidence_pack',
+      evidence: {
+        structuredEvidencePack: true,
+        headShaStatus: (evidencePack.reasonCodes || []).includes('head_sha_mismatch') ? 'stale' : 'present',
+      },
+    };
+  }
   const bodyInfo = readPrBody(env);
   const body = bodyInfo.body || '';
   const unsafe = unsafeLabels('productionReadinessInput', body);

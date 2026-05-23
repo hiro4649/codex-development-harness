@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.1
+// CODEX_QUALITY_HARNESS_FILE v0.7.2
 import fs from 'node:fs';
 import {
   HARNESS_VERSION,
@@ -105,8 +105,8 @@ function profileCompatibilityPass() {
   const raw = fs.readFileSync('CODEX_SOURCE_HARNESS_MANIFEST.json', 'utf8').replace(/^\uFEFF/, '');
   const manifest = JSON.parse(raw);
   const compatible = manifest.compatibleProfileTemplateVersions || [];
-  return manifest.sourceHarnessVersion === '0.7.1' &&
-    manifest.harnessVersion === '0.7.1' &&
+  return manifest.sourceHarnessVersion === '0.7.2' &&
+    manifest.harnessVersion === '0.7.2' &&
     compatible.includes('0.7.0') &&
     manifest.profileTemplateVersion === '0.7.0';
 }

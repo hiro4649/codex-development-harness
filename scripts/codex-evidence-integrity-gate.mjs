@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.1
+// CODEX_QUALITY_HARNESS_FILE v0.7.2
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -10,6 +10,7 @@ import {
   unsafeLabels,
   weakEvidenceLineLabels,
 } from './codex-production-readiness-gate.mjs';
+import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 
 function readOptionalJson(file) {
   if (!file) return null;
@@ -42,6 +43,30 @@ function qualityReportLabels(report) {
 }
 
 function buildEvidenceIntegrityReport(env = process.env) {
+  const evidencePack = buildEvidencePackReport(env).evidencePackStatus;
+  if (evidencePack?.source === 'evidence_pack') {
+    const status = evidencePack.status;
+    return {
+      marker,
+      harnessVersion: HARNESS_VERSION,
+      evidenceIntegrityStatus: {
+        status,
+        labels: ['structured_evidence_pack_preferred'],
+        failures: status === 'fail' ? (evidencePack.reasonCodes || ['evidence_pack_invalid']) : [],
+        warnings: evidencePack.warnings || [],
+        requiredEvidenceFields: {
+          evidencePack: 'present',
+          headShaStatus: (evidencePack.reasonCodes || []).includes('head_sha_mismatch') ? 'stale' : 'present',
+        },
+        safeSummaryOnly: true,
+      },
+      valuesPrinted: false,
+      status,
+      safeSummary: status === 'pass'
+        ? 'Evidence integrity gate passed using structured evidence pack.'
+        : 'Evidence integrity gate failed; see safe labels only.',
+    };
+  }
   const bodyInfo = readPrBody(env);
   const body = bodyInfo.body || '';
   const failures = [];

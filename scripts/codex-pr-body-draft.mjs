@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.1
+// CODEX_QUALITY_HARNESS_FILE v0.7.2
 import fs from 'node:fs';
 import process from 'node:process';
 
@@ -14,8 +14,8 @@ function statusOf(key) {
 }
 
 const lines = [
-  '## v0.7.1 purpose',
-  'Production Evidence and Hermes Gate: production/release claims require evidence, stale evidence is blocked, and safe-output discipline is CI-enforced.',
+  '## v0.7.2 purpose',
+  'Structured Evidence and CI Replay Gate: structured evidence, structured confirmation, CI replay, PR body lint, safe output scanning, and failure reasons reduce prose-only readiness risk.',
   '',
   '## Changed files',
   'See git diff file list for harness-managed source/profile files only.',
@@ -29,7 +29,14 @@ const lines = [
   `productionReadinessStatus: ${statusOf('productionReadinessStatus')}`,
   `evidenceIntegrityStatus: ${statusOf('evidenceIntegrityStatus')}`,
   `hermesInvariantStatus: ${statusOf('hermesInvariantStatus')}`,
+  `evidencePackStatus: ${statusOf('evidencePackStatus')}`,
+  `humanConfirmationObjectStatus: ${statusOf('humanConfirmationObjectStatus')}`,
+  `safeOutputScanStatus: ${statusOf('safeOutputScanStatus')}`,
+  `ciReplayStatus: ${statusOf('ciReplayStatus')}`,
+  `prBodyLintStatus: ${statusOf('prBodyLintStatus')}`,
+  `failureReasonCatalogStatus: ${statusOf('failureReasonCatalogStatus')}`,
   `v071SelfTestStatus: ${statusOf('v071SelfTestStatus')}`,
+  `v072SelfTestStatus: ${statusOf('v072SelfTestStatus')}`,
   `profileTemplateCompatibilityStatus: ${statusOf('profileTemplateCompatibilityStatus')}`,
   `qualityScoreStatus: ${statusOf('qualityScoreStatus')}`,
   `safeArtifactValidation: ${statusOf('safeArtifactValidation')}`,

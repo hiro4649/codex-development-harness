@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.1",
-  "harnessVersion": "0.7.1",
-  "sourceHarnessVersion": "0.7.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.2",
+  "harnessVersion": "0.7.2",
+  "sourceHarnessVersion": "0.7.2",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -30,6 +30,12 @@
     "docs/process/CODEX_EVIDENCE_INTEGRITY_POLICY.json",
     "docs/process/CODEX_HERMES_INVARIANT_POLICY.md",
     "docs/process/CODEX_HERMES_INVARIANT_POLICY.json",
+    "docs/process/CODEX_EVIDENCE_PACK_POLICY.md",
+    "docs/process/CODEX_EVIDENCE_PACK_SCHEMA.json",
+    "docs/process/CODEX_MANUAL_CONFIRMATION_POLICY.md",
+    "docs/process/CODEX_MANUAL_CONFIRMATION_SCHEMA.json",
+    "docs/process/CODEX_SAFE_OUTPUT_SCAN_POLICY.json",
+    "docs/process/CODEX_FAILURE_REASON_CATALOG.json",
     "docs/process/CODEX_TASK_BRIEF_TEMPLATE.md",
     "docs/process/CODEX_PLAN_TEMPLATE.md",
     "docs/process/code_review.md",
@@ -46,6 +52,12 @@
     "docs/process/CODEX_EVIDENCE_INTEGRITY_POLICY.json",
     "docs/process/CODEX_HERMES_INVARIANT_POLICY.md",
     "docs/process/CODEX_HERMES_INVARIANT_POLICY.json",
+    "docs/process/CODEX_EVIDENCE_PACK_POLICY.md",
+    "docs/process/CODEX_EVIDENCE_PACK_SCHEMA.json",
+    "docs/process/CODEX_MANUAL_CONFIRMATION_POLICY.md",
+    "docs/process/CODEX_MANUAL_CONFIRMATION_SCHEMA.json",
+    "docs/process/CODEX_SAFE_OUTPUT_SCAN_POLICY.json",
+    "docs/process/CODEX_FAILURE_REASON_CATALOG.json",
     "docs/process/CODEX_TASK_BRIEF_TEMPLATE.md",
     "docs/process/CODEX_PLAN_TEMPLATE.md",
     "docs/process/code_review.md"
@@ -62,7 +74,13 @@
     "codex-production-readiness-gate.mjs",
     "codex-evidence-integrity-gate.mjs",
     "codex-hermes-invariant-gate.mjs",
-    "codex-v071-self-test.mjs"
+    "codex-evidence-pack-validate.mjs",
+    "codex-human-confirmation-validate.mjs",
+    "codex-safe-output-scan.mjs",
+    "codex-ci-replay.mjs",
+    "codex-pr-body-lint.mjs",
+    "codex-v071-self-test.mjs",
+    "codex-v072-self-test.mjs"
   ],
   "optionalFiles": []
 }

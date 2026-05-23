@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.7.1
+# CODEX_QUALITY_HARNESS_FILE v0.7.2
 name: quality-gate
 
 on:
@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
+  issues: read
 
 jobs:
   quality-gate:
@@ -45,10 +47,14 @@ jobs:
           CODEX_QUALITY_REPORT: "json"
 
           CODEX_OPENAI_METHOD_REPORT: "json"
+          CODEX_EVIDENCE_PACK_STRICT: "1"
+          CODEX_HUMAN_CONFIRMATION_STRICT: "1"
           CODEX_EVENT_NAME: ${{ github.event_name }}
           CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
           CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          CODEX_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
           CODEX_REQUIRE_NPM: "1"
         run: |
           set -euo pipefail
@@ -72,7 +78,14 @@ jobs:
             'productionReadinessStatus',
             'evidenceIntegrityStatus',
             'hermesInvariantStatus',
+            'evidencePackStatus',
+            'humanConfirmationObjectStatus',
+            'safeOutputScanStatus',
+            'ciReplayStatus',
+            'prBodyLintStatus',
+            'failureReasonCatalogStatus',
             'v071SelfTestStatus',
+            'v072SelfTestStatus',
             'qualityScoreStatus',
           ];
 
@@ -89,6 +102,9 @@ jobs:
             if (prDependent.has(key) && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
               continue;
             }
+            if (key === 'ciReplayStatus' && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
+              continue;
+            }
             if (status !== 'pass') failures.push(`${key}=${status}`);
           }
 
@@ -96,6 +112,33 @@ jobs:
           console.log(`mergeReady: ${report.mergeReady}`);
           console.log(`humanReviewRequired: ${report.humanReviewRequired}`);
           console.log(`humanConfirmationStatus: ${report.humanConfirmationStatus?.status || 'missing'}`);
+          console.log(`qualityScoreStatus: ${report.qualityScoreStatus?.status || 'missing'}`);
+          console.log(`qualityScore: ${report.qualityScoreStatus?.score ?? 'missing'}`);
+
+          const safeSummary = {
+            status: report.status,
+            mergeReady: report.mergeReady,
+            humanReviewRequired: report.humanReviewRequired,
+            qualityScoreStatus: report.qualityScoreStatus,
+            failureCount: Array.isArray(report.failures) ? report.failures.length : 0,
+            warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
+          };
+          const failureReasons = [
+            ...(Array.isArray(report.failures) ? report.failures : []).map((item) => ({
+              reasonCode: item.id || 'quality_gate_failure',
+              safeMessage: item.message || 'Quality gate failure.',
+            })),
+            ...failures.map((item) => ({
+              reasonCode: 'workflow_required_status_failure',
+              safeMessage: item,
+            })),
+          ];
+          fs.writeFileSync('codex-quality-gate-safe-summary.json', JSON.stringify(safeSummary, null, 2));
+          fs.writeFileSync('codex-failure-reasons.json', JSON.stringify(failureReasons, null, 2));
+          fs.writeFileSync('codex-evidence-pack.normalized.json', JSON.stringify({
+            evidencePackStatus: report.evidencePackStatus || { status: 'missing' },
+            normalizedEvidencePackPresent: Boolean(report.normalizedEvidencePack),
+          }, null, 2));
 
           if (!['pass', 'manual_confirmation_required'].includes(report.status)) {
             failures.push(`report.status=${report.status}`);
@@ -107,7 +150,7 @@ jobs:
             /secretValue/i,
             /endpointValue/i,
             /privatePath/i,
-            /payload/i,
+            /"(?:rawPayload|payload)"\s*:/i,
             /productionData/i,
             /personalData/i,
             /(?:https?|postgres(?:ql)?|mysql|mongodb):\/\/\S+/i,
@@ -121,7 +164,55 @@ jobs:
 
           if (failures.length) {
             console.error('Source harness gate verification failed:');
-            for (const item of failures) console.error(`- ${item}`);
+            for (const item of failures) {
+              const safe = String(item).replace(/[^A-Za-z0-9_.:= -]/g, '_').slice(0, 180);
+              console.error(`::error title=codex-quality-gate::${safe}`);
+              console.error(`- ${safe}`);
+            }
+            for (const warning of report.warnings || []) {
+              const safe = String(warning.id || warning.message || 'quality_gate_warning').replace(/[^A-Za-z0-9_.:= -]/g, '_').slice(0, 180);
+              console.warn(`::warning title=codex-quality-gate::${safe}`);
+            }
             process.exit(1);
           }
           NODE
+      - name: Write safe quality summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('fs');
+          function readJson(file) {
+            try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+            catch { return null; }
+          }
+          const summary = readJson('codex-quality-gate-safe-summary.json');
+          const reasons = readJson('codex-failure-reasons.json') || [];
+          console.log('## Codex quality gate safe summary');
+          if (summary) {
+            console.log(`- status: ${summary.status || 'missing'}`);
+            console.log(`- mergeReady: ${summary.mergeReady}`);
+            console.log(`- humanReviewRequired: ${summary.humanReviewRequired}`);
+            console.log(`- qualityScoreStatus: ${summary.qualityScoreStatus?.status || 'missing'}`);
+            console.log(`- qualityScore: ${summary.qualityScoreStatus?.score ?? 'missing'}`);
+          } else {
+            console.log('- status: summary_missing');
+          }
+          console.log(`- failureReasonCount: ${Array.isArray(reasons) ? reasons.length : 0}`);
+          for (const item of Array.isArray(reasons) ? reasons.slice(0, 20) : []) {
+            const reasonCode = String(item.reasonCode || 'unknown').replace(/[^A-Za-z0-9_.:-]/g, '_');
+            const safeMessage = String(item.safeMessage || 'safe_message_missing').replace(/[^A-Za-z0-9_.:= -]/g, '_').slice(0, 180);
+            console.log(`- ${reasonCode}: ${safeMessage}`);
+          }
+          NODE
+      - name: Upload safe quality artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-quality-gate-safe-artifacts
+          path: |
+            codex-quality-gate-safe-summary.json
+            codex-evidence-pack.normalized.json
+            codex-failure-reasons.json
+          if-no-files-found: ignore

@@ -1,0 +1,57 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.2",
+  "schemaVersion": "1.0.0",
+  "title": "Codex Evidence Pack",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "harnessVersion",
+    "repository",
+    "prNumber",
+    "headSha",
+    "baseSha",
+    "changeType",
+    "riskLevel",
+    "scope",
+    "commands",
+    "remoteRuns",
+    "residualRisks",
+    "productionClaims",
+    "rollbackOrStopCondition",
+    "humanConfirmation",
+    "safeOutput"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "harnessVersion": { "type": "string" },
+    "repository": { "type": "string" },
+    "prNumber": { "type": ["number", "string"] },
+    "headSha": { "type": "string" },
+    "baseSha": { "type": "string" },
+    "changeType": { "type": "string" },
+    "riskLevel": { "type": "string" },
+    "scope": {
+      "type": "object",
+      "required": ["changedFiles", "allowedPaths", "forbiddenPaths"],
+      "properties": {
+        "changedFiles": { "type": "array", "items": { "type": "string" } },
+        "allowedPaths": { "type": "array", "items": { "type": "string" } },
+        "forbiddenPaths": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "commands": { "type": "array" },
+    "remoteRuns": { "type": "array" },
+    "residualRisks": { "type": "array", "items": { "type": "string" } },
+    "productionClaims": { "type": ["string", "array", "object"] },
+    "rollbackOrStopCondition": { "type": "string" },
+    "humanConfirmation": { "type": "object" },
+    "safeOutput": { "type": ["object", "string"] }
+  },
+  "safeOutput": {
+    "valuesPrinted": false,
+    "rawLogsAllowed": false,
+    "rawPayloadAllowed": false,
+    "secretValuesAllowed": false,
+    "endpointValuesAllowed": false
+  }
+}
