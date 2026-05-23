@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -8,7 +8,7 @@ import { buildHumanConfirmationStatus } from './codex-production-readiness-gate.
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 import { buildGithubReplayContextAsync } from './codex-ci-replay.mjs';
 
-const HARNESS_VERSION = '0.8.0';
+const HARNESS_VERSION = '0.8.1';
 const PROFILE_TEMPLATE_VERSION = '0.7.0';
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
@@ -423,6 +423,8 @@ function computeOutputShapeStatus(report) {
     'agentsContextStatus',
     'environmentReadinessStatus',
     'goldenSetStatus',
+    'changeClassificationStatus',
+    'productVerificationStatus',
     'bestOfNEvidenceStatus',
     'taskQueueLiteStatus',
     'safeTraceSchemaStatus',
@@ -450,6 +452,7 @@ function computeOutputShapeStatus(report) {
     'v071SelfTestStatus',
     'v072SelfTestStatus',
     'v080SelfTestStatus',
+    'v081SelfTestStatus',
     'qualityScoreStatus',
   ];
   const missing = required.filter((key) => report[key] === undefined);
@@ -472,6 +475,8 @@ function computeQualityScoreStatus(report) {
     'productionReadinessStatus',
     'evidenceIntegrityStatus',
     'hermesInvariantStatus',
+    'changeClassificationStatus',
+    'productVerificationStatus',
     'ciReplayStatus',
     'prBodyLintStatus',
     'evidencePackStatus',
@@ -490,6 +495,8 @@ function computeQualityScoreStatus(report) {
     'agentsContextStatus',
     'environmentReadinessStatus',
     'goldenSetStatus',
+    'changeClassificationStatus',
+    'productVerificationStatus',
     'secretScan',
     'agentMemoryPolicyStatus',
     'skillLifecyclePolicyStatus',
@@ -510,6 +517,7 @@ function computeQualityScoreStatus(report) {
     'v071SelfTestStatus',
     'v072SelfTestStatus',
     'v080SelfTestStatus',
+    'v081SelfTestStatus',
     'bestOfNEvidenceStatus',
     'taskQueueLiteStatus',
     'safeTraceSchemaStatus',
@@ -551,6 +559,98 @@ function computeQualityScoreStatus(report) {
     safeSummaryOnly: true,
   };
 }
+function computeTargetOutputShapeStatus(report) {
+  const required = [
+    'targetManifestStatus',
+    'secretScan',
+    'agentsContextStatus',
+    'environmentReadinessStatus',
+    'changeClassificationStatus',
+    'productVerificationStatus',
+    'safeOutputScanStatus',
+    'goldenSetStatus',
+    'bestOfNEvidenceStatus',
+    'taskQueueLiteStatus',
+    'safeTraceSchemaStatus',
+    'curatorReportStatus',
+    'offlineEvolutionProposalStatus',
+    'testCoverageEvidenceStatus',
+    'performanceEvidenceStatus',
+    'v080SelfTestStatus',
+    'v081SelfTestStatus',
+    'safeArtifactValidation',
+    'targetQualityScoreStatus',
+  ];
+  const missing = required.filter((key) => report[key] === undefined);
+  return {
+    status: missing.length || safeForbiddenArtifactHit(report) ? 'fail' : 'pass',
+    missingFields: missing,
+    safeSummaryOnly: true,
+  };
+}
+function computeTargetQualityScoreStatus(report) {
+  const scored = [
+    'targetManifestStatus',
+    'secretScan',
+    'agentsContextStatus',
+    'environmentReadinessStatus',
+    'changeClassificationStatus',
+    'productVerificationStatus',
+    'safeOutputScanStatus',
+    'goldenSetStatus',
+    'bestOfNEvidenceStatus',
+    'taskQueueLiteStatus',
+    'safeTraceSchemaStatus',
+    'curatorReportStatus',
+    'offlineEvolutionProposalStatus',
+    'testCoverageEvidenceStatus',
+    'performanceEvidenceStatus',
+    'v080SelfTestStatus',
+    'v081SelfTestStatus',
+    'safeArtifactValidation',
+    'outputShapeStatus',
+  ];
+  const allowedNotApplicable = new Set([
+    'changeClassificationStatus',
+    'productVerificationStatus',
+    'goldenSetStatus',
+    'bestOfNEvidenceStatus',
+    'taskQueueLiteStatus',
+    'safeTraceSchemaStatus',
+    'curatorReportStatus',
+    'offlineEvolutionProposalStatus',
+    'testCoverageEvidenceStatus',
+    'performanceEvidenceStatus',
+    'v081SelfTestStatus',
+  ]);
+  const statuses = scored.map((key) => {
+    const status = report[key]?.status || 'missing';
+    let effectiveStatus = status;
+    if (allowedNotApplicable.has(key) && status === 'not_applicable') effectiveStatus = 'pass_optional';
+    return { key, status, effectiveStatus };
+  });
+  const blocking = statuses.filter((item) => ['fail', 'missing', 'not_run'].includes(item.effectiveStatus));
+  const manual = statuses.filter((item) => ['manual_confirmation_required', 'warning'].includes(item.effectiveStatus));
+  const notApplicable = statuses.filter((item) => item.effectiveStatus === 'pass_optional');
+  let score = 100;
+  if (blocking.length) score = 70;
+  else if (manual.length) score = 89;
+  else if (notApplicable.length) score = 95;
+  return {
+    status: blocking.length ? 'fail' : 'pass',
+    score,
+    labels: [
+      ...(blocking.length ? ['target_quality_score_blocking_failure'] : []),
+      ...(manual.length ? ['manual_confirmation_remaining'] : []),
+      ...(notApplicable.length ? ['optional_not_applicable_allowed'] : []),
+      ...(score === 100 ? ['all_required_target_gates_passed'] : []),
+    ],
+    blockingStatuses: blocking,
+    manualStatuses: manual,
+    notApplicableStatuses: notApplicable,
+    safeSummaryOnly: true,
+  };
+}
 function computeFailureReasonCatalogStatus() {
   const file = path.join('docs', 'process', 'CODEX_FAILURE_REASON_CATALOG.json');
   const required = [
@@ -589,6 +689,17 @@ function computeFailureReasonCatalogStatus() {
     'offline_evolution_proposal_invalid',
     'test_coverage_evidence_missing',
     'performance_claim_without_evidence',
+    'agents_context_entire_file_mojibake',
+    'agents_context_duplicate_harness_block',
+    'agents_context_missing_harness_block',
+    'target_manifest_missing',
+    'change_classification_unknown',
+    'product_verification_required',
+    'npm_skip_not_allowed_for_product_change',
+    'runtime_claim_requires_product_checks',
+    'package_change_requires_package_verification',
+    'target_quality_score_unavailable',
+    'target_quality_score_blocking_failure',
   ];
   if (!fs.existsSync(file)) return { status: 'fail', missingReasonCodes: required, safeSummaryOnly: true };
   try {
@@ -674,6 +785,8 @@ async function runSourceHarnessGate() {
     agentsContextStatus: { status: 'not_run' },
     environmentReadinessStatus: { status: 'not_run' },
     goldenSetStatus: { status: 'not_run' },
+    changeClassificationStatus: { status: 'not_run' },
+    productVerificationStatus: { status: 'not_run' },
     bestOfNEvidenceStatus: { status: 'not_run' },
     taskQueueLiteStatus: { status: 'not_run' },
     safeTraceSchemaStatus: { status: 'not_run' },
@@ -701,6 +814,7 @@ async function runSourceHarnessGate() {
     v071SelfTestStatus: { status: 'not_run' },
     v072SelfTestStatus: { status: 'not_run' },
     v080SelfTestStatus: { status: 'not_run' },
+    v081SelfTestStatus: { status: 'not_run' },
     profileTemplateCompatibilityStatus: { status: 'not_run' },
     qualityScoreStatus: { status: 'not_run' },
   };
@@ -716,6 +830,8 @@ async function runSourceHarnessGate() {
   report.agentsContextStatus = runGateScript('scripts/codex-agents-context-gate.mjs', 'agentsContextStatus', 'CODEX_AGENTS_CONTEXT_REPORT', gateEnv);
   report.environmentReadinessStatus = runGateScript('scripts/codex-environment-readiness-gate.mjs', 'environmentReadinessStatus', 'CODEX_ENVIRONMENT_READINESS_REPORT', gateEnv);
   report.goldenSetStatus = runGateScript('scripts/codex-golden-set-gate.mjs', 'goldenSetStatus', 'CODEX_GOLDEN_SET_REPORT', gateEnv);
+  report.changeClassificationStatus = runGateScript('scripts/codex-change-classification-gate.mjs', 'changeClassificationStatus', 'CODEX_CHANGE_CLASSIFICATION_REPORT', gateEnv);
+  report.productVerificationStatus = runGateScript('scripts/codex-product-verification-gate.mjs', 'productVerificationStatus', 'CODEX_PRODUCT_VERIFICATION_REPORT', gateEnv);
   report.productionReadinessStatus = runGateScript('scripts/codex-production-readiness-gate.mjs', 'productionReadinessStatus', 'CODEX_PRODUCTION_READINESS_REPORT', gateEnv);
   report.evidenceIntegrityStatus = runGateScript('scripts/codex-evidence-integrity-gate.mjs', 'evidenceIntegrityStatus', 'CODEX_EVIDENCE_INTEGRITY_REPORT', gateEnv);
   report.hermesInvariantStatus = runGateScript('scripts/codex-hermes-invariant-gate.mjs', 'hermesInvariantStatus', 'CODEX_HERMES_INVARIANT_REPORT', gateEnv);
@@ -736,6 +852,9 @@ async function runSourceHarnessGate() {
   report.testCoverageEvidenceStatus = runGateScript('scripts/codex-test-coverage-evidence-gate.mjs', 'testCoverageEvidenceStatus', 'CODEX_TEST_COVERAGE_EVIDENCE_REPORT', gateEnv);
   report.performanceEvidenceStatus = runGateScript('scripts/codex-performance-evidence-gate.mjs', 'performanceEvidenceStatus', 'CODEX_PERFORMANCE_EVIDENCE_REPORT', gateEnv);
   report.v080SelfTestStatus = runGateScript('scripts/codex-v080-self-test.mjs', 'v080SelfTestStatus', 'CODEX_V080_SELF_TEST_REPORT', gateEnv);
+  report.v081SelfTestStatus = process.env.CODEX_SKIP_V081_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v081-self-test.mjs', 'v081SelfTestStatus', 'CODEX_V081_SELF_TEST_REPORT', gateEnv);
 
   for (const [key, value] of Object.entries({
     profileTemplateCompatibilityStatus: report.profileTemplateCompatibilityStatus,
@@ -749,6 +868,8 @@ async function runSourceHarnessGate() {
     agentsContextStatus: report.agentsContextStatus,
     environmentReadinessStatus: report.environmentReadinessStatus,
     goldenSetStatus: report.goldenSetStatus,
+    changeClassificationStatus: report.changeClassificationStatus,
+    productVerificationStatus: report.productVerificationStatus,
     productionReadinessStatus: report.productionReadinessStatus,
     evidenceIntegrityStatus: report.evidenceIntegrityStatus,
     hermesInvariantStatus: report.hermesInvariantStatus,
@@ -762,6 +883,7 @@ async function runSourceHarnessGate() {
     v071SelfTestStatus: report.v071SelfTestStatus,
     v072SelfTestStatus: report.v072SelfTestStatus,
     v080SelfTestStatus: report.v080SelfTestStatus,
+    v081SelfTestStatus: report.v081SelfTestStatus,
     bestOfNEvidenceStatus: report.bestOfNEvidenceStatus,
     taskQueueLiteStatus: report.taskQueueLiteStatus,
     safeTraceSchemaStatus: report.safeTraceSchemaStatus,
@@ -799,6 +921,8 @@ async function runSourceHarnessGate() {
     console.log(`agentsContextStatus: ${report.agentsContextStatus.status}`);
     console.log(`environmentReadinessStatus: ${report.environmentReadinessStatus.status}`);
     console.log(`goldenSetStatus: ${report.goldenSetStatus.status}`);
+    console.log(`changeClassificationStatus: ${report.changeClassificationStatus.status}`);
+    console.log(`productVerificationStatus: ${report.productVerificationStatus.status}`);
     console.log(`productionReadinessStatus: ${report.productionReadinessStatus.status}`);
     console.log(`evidenceIntegrityStatus: ${report.evidenceIntegrityStatus.status}`);
     console.log(`hermesInvariantStatus: ${report.hermesInvariantStatus.status}`);
@@ -812,6 +936,7 @@ async function runSourceHarnessGate() {
     console.log(`v071SelfTestStatus: ${report.v071SelfTestStatus.status}`);
     console.log(`v072SelfTestStatus: ${report.v072SelfTestStatus.status}`);
     console.log(`v080SelfTestStatus: ${report.v080SelfTestStatus.status}`);
+    console.log(`v081SelfTestStatus: ${report.v081SelfTestStatus.status}`);
     console.log(`bestOfNEvidenceStatus: ${report.bestOfNEvidenceStatus.status}`);
     console.log(`taskQueueLiteStatus: ${report.taskQueueLiteStatus.status}`);
     console.log(`safeTraceSchemaStatus: ${report.safeTraceSchemaStatus.status}`);
@@ -833,8 +958,136 @@ async function runSourceHarnessGate() {
   process.exit(0);
 }
 
+function targetManifestStatus() {
+  const file = path.join('docs', 'process', 'CODEX_HARNESS_MANIFEST.json');
+  if (!fs.existsSync(file)) {
+    return { status: 'fail', reasonCodes: ['target_manifest_missing'], safeSummaryOnly: true };
+  }
+  try {
+    const manifest = readJsonFile(file);
+    const failures = [];
+    if (!manifest.targetRepoMode) failures.push('target_manifest_missing');
+    if (manifest.harnessVersion && manifest.harnessVersion !== HARNESS_VERSION) failures.push('target_manifest_version_mismatch');
+    if (safeForbiddenArtifactHit(manifest)) failures.push('unsafe_value_detected');
+    return {
+      status: failures.length ? 'fail' : 'pass',
+      reasonCodes: failures,
+      targetRepoMode: manifest.targetRepoMode === true,
+      safeSummaryOnly: true,
+    };
+  } catch {
+    return { status: 'fail', reasonCodes: ['target_manifest_missing'], safeSummaryOnly: true };
+  }
+}
+
+async function runTargetHarnessGate() {
+  const jsonReport = process.env.CODEX_QUALITY_REPORT === 'json';
+  const failures = [];
+  const warnings = [];
+  if (!jsonReport) console.log('== Codex target harness quality gate ==');
+
+  const secretScan = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { stdio: 'pipe' });
+  if (secretScan.status !== 0) failures.push({ id: 'secretScan.failed', message: 'secret safety scan failed' });
+
+  const gateEnv = { ...process.env };
+  const report = {
+    marker: MARKER,
+    harnessVersion: HARNESS_VERSION,
+    status: 'running',
+    mergeReady: false,
+    targetMergeReady: false,
+    targetManifestStatus: targetManifestStatus(),
+    secretScan: { status: secretScan.status === 0 ? 'pass' : 'fail' },
+    agentsContextStatus: { status: 'not_run' },
+    environmentReadinessStatus: { status: 'not_run' },
+    changeClassificationStatus: { status: 'not_run' },
+    productVerificationStatus: { status: 'not_run' },
+    safeOutputScanStatus: { status: 'not_run' },
+    goldenSetStatus: { status: 'not_run' },
+    bestOfNEvidenceStatus: { status: 'not_run' },
+    taskQueueLiteStatus: { status: 'not_run' },
+    safeTraceSchemaStatus: { status: 'not_run' },
+    curatorReportStatus: { status: 'not_run' },
+    offlineEvolutionProposalStatus: { status: 'not_run' },
+    testCoverageEvidenceStatus: { status: 'not_run' },
+    performanceEvidenceStatus: { status: 'not_run' },
+    v080SelfTestStatus: { status: 'not_run' },
+    v081SelfTestStatus: { status: 'not_run' },
+    safeArtifactValidation: { status: 'not_run' },
+    outputShapeStatus: { status: 'not_run' },
+    targetQualityScoreStatus: { status: 'not_run' },
+    failures,
+    warnings,
+    humanReviewRequired: false,
+  };
+
+  report.agentsContextStatus = runGateScript('scripts/codex-agents-context-gate.mjs', 'agentsContextStatus', 'CODEX_AGENTS_CONTEXT_REPORT', gateEnv);
+  report.environmentReadinessStatus = runGateScript('scripts/codex-environment-readiness-gate.mjs', 'environmentReadinessStatus', 'CODEX_ENVIRONMENT_READINESS_REPORT', gateEnv);
+  report.changeClassificationStatus = runGateScript('scripts/codex-change-classification-gate.mjs', 'changeClassificationStatus', 'CODEX_CHANGE_CLASSIFICATION_REPORT', gateEnv);
+  report.productVerificationStatus = runGateScript('scripts/codex-product-verification-gate.mjs', 'productVerificationStatus', 'CODEX_PRODUCT_VERIFICATION_REPORT', gateEnv);
+  report.safeOutputScanStatus = runGateScript('scripts/codex-safe-output-scan.mjs', 'safeOutputScanStatus', 'CODEX_SAFE_OUTPUT_SCAN_REPORT', gateEnv);
+  report.goldenSetStatus = fs.existsSync(path.join('docs', 'process', 'golden', 'cases.json'))
+    ? runGateScript('scripts/codex-golden-set-gate.mjs', 'goldenSetStatus', 'CODEX_GOLDEN_SET_REPORT', gateEnv)
+    : { status: 'not_applicable', reasonCodes: ['golden_set_not_configured'], safeSummaryOnly: true };
+  report.bestOfNEvidenceStatus = runGateScript('scripts/codex-best-of-n-evidence-gate.mjs', 'bestOfNEvidenceStatus', 'CODEX_BEST_OF_N_EVIDENCE_REPORT', gateEnv);
+  report.taskQueueLiteStatus = runGateScript('scripts/codex-task-queue-lite-gate.mjs', 'taskQueueLiteStatus', 'CODEX_TASK_QUEUE_LITE_REPORT', gateEnv);
+  report.safeTraceSchemaStatus = runGateScript('scripts/codex-safe-trace-schema-gate.mjs', 'safeTraceSchemaStatus', 'CODEX_SAFE_TRACE_SCHEMA_REPORT', gateEnv);
+  report.curatorReportStatus = runGateScript('scripts/codex-curator-report-gate.mjs', 'curatorReportStatus', 'CODEX_CURATOR_REPORT', gateEnv);
+  report.offlineEvolutionProposalStatus = runGateScript('scripts/codex-offline-evolution-proposal-gate.mjs', 'offlineEvolutionProposalStatus', 'CODEX_OFFLINE_EVOLUTION_PROPOSAL_REPORT', gateEnv);
+  report.testCoverageEvidenceStatus = runGateScript('scripts/codex-test-coverage-evidence-gate.mjs', 'testCoverageEvidenceStatus', 'CODEX_TEST_COVERAGE_EVIDENCE_REPORT', gateEnv);
+  report.performanceEvidenceStatus = runGateScript('scripts/codex-performance-evidence-gate.mjs', 'performanceEvidenceStatus', 'CODEX_PERFORMANCE_EVIDENCE_REPORT', gateEnv);
+  report.v080SelfTestStatus = runGateScript('scripts/codex-v080-self-test.mjs', 'v080SelfTestStatus', 'CODEX_V080_SELF_TEST_REPORT', gateEnv);
+  report.v081SelfTestStatus = process.env.CODEX_SKIP_V081_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v081-self-test.mjs', 'v081SelfTestStatus', 'CODEX_V081_SELF_TEST_REPORT', gateEnv);
+
+  for (const [key, value] of Object.entries({
+    targetManifestStatus: report.targetManifestStatus,
+    secretScan: report.secretScan,
+    agentsContextStatus: report.agentsContextStatus,
+    environmentReadinessStatus: report.environmentReadinessStatus,
+    changeClassificationStatus: report.changeClassificationStatus,
+    productVerificationStatus: report.productVerificationStatus,
+    safeOutputScanStatus: report.safeOutputScanStatus,
+    goldenSetStatus: report.goldenSetStatus,
+    bestOfNEvidenceStatus: report.bestOfNEvidenceStatus,
+    taskQueueLiteStatus: report.taskQueueLiteStatus,
+    safeTraceSchemaStatus: report.safeTraceSchemaStatus,
+    curatorReportStatus: report.curatorReportStatus,
+    offlineEvolutionProposalStatus: report.offlineEvolutionProposalStatus,
+    testCoverageEvidenceStatus: report.testCoverageEvidenceStatus,
+    performanceEvidenceStatus: report.performanceEvidenceStatus,
+    v080SelfTestStatus: report.v080SelfTestStatus,
+    v081SelfTestStatus: report.v081SelfTestStatus,
+  })) {
+    applyStatusOutcome(key, value, failures, warnings);
+  }
+  report.safeArtifactValidation = computeSafeArtifactValidation(report);
+  if (report.safeArtifactValidation.status === 'fail') failures.push({ id: 'safeArtifactValidation.failed', message: 'safe artifact validation failed' });
+  report.targetQualityScoreStatus = computeTargetQualityScoreStatus(report);
+  report.outputShapeStatus = computeTargetOutputShapeStatus(report);
+  if (report.outputShapeStatus.status === 'fail') failures.push({ id: 'outputShapeStatus.failed', message: 'output shape validation failed' });
+  report.targetQualityScoreStatus = computeTargetQualityScoreStatus(report);
+  if (report.targetQualityScoreStatus.status === 'fail') failures.push({ id: 'targetQualityScoreStatus.failed', message: 'target quality score validation failed' });
+  report.status = failures.length ? 'fail' : (warnings.length ? 'manual_confirmation_required' : 'pass');
+  report.mergeReady = failures.length === 0 && warnings.length === 0;
+  report.targetMergeReady = report.mergeReady;
+  report.humanReviewRequired = warnings.length > 0;
+
+  if (jsonReport) console.log(JSON.stringify(report, null, 2));
+  else {
+    console.log(`status: ${report.status}`);
+    console.log(`targetQualityScoreStatus: ${report.targetQualityScoreStatus.status}`);
+    console.log(`targetQualityScore: ${report.targetQualityScoreStatus.score}`);
+  }
+  if (failures.length) process.exit(1);
+  if (!jsonReport) console.log('Codex target harness quality gate passed.');
+  process.exit(0);
+}
+
 if (process.env.CODEX_QUALITY_REPORT !== 'json') console.log('== Codex local quality gate ==');
 if (process.env.CODEX_HARNESS_SOURCE_REPO === '1') await runSourceHarnessGate();
+if (process.env.CODEX_HARNESS_MODE === 'target') await runTargetHarnessGate();
 run('node', ['scripts/codex-secret-safety-scan.mjs']);
 
 const npmDirs = ['.', 'apps/backend', 'apps/frontend', 'contracts'].filter((dir) => fs.existsSync(path.join(dir, 'package.json')));

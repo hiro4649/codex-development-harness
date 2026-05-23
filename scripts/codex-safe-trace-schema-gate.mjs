@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 import fs from 'node:fs';
 import path from 'node:path';
 import { HARNESS_VERSION, marker, listFiles, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';

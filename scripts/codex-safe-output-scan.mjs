@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const HARNESS_VERSION = '0.8.0';
+export const HARNESS_VERSION = '0.8.1';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const forbiddenFieldNames = new Set([
@@ -31,6 +31,7 @@ const safePolicyVocabulary = [
 
 const safeLabelAllowlist = new Set([
   'unsafe_value_detected',
+  'npm_skip_not_allowed_for_product_change',
   'safe_policy_vocabulary',
   'forbidden_field_name_detected',
   'manual_confirmation_required',
@@ -66,6 +67,7 @@ function isLikelySafePolicyText(text) {
 function valueFindings(value, pathLabel) {
   const text = String(value || '');
   if (!text) return [];
+  if (safeLabelAllowlist.has(text.trim())) return [];
   const findings = [];
   const rules = [
     ['unsafe_url_or_endpoint_value', /\b(?:https?|postgres(?:ql)?|mysql|mongodb):\/\/[^\s<>"'`]+/i],

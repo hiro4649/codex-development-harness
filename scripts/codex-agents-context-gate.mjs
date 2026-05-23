@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 import {
   HARNESS_VERSION,
   marker,
@@ -20,6 +20,10 @@ const requiredPhrases = [
   /profile\/core separation/i,
 ];
 
+function harnessBlocks(text) {
+  return String(text || '').match(/CODEX_QUALITY_HARNESS_BEGIN[\s\S]*?CODEX_QUALITY_HARNESS_END/g) || [];
+}
+
 function storedUnsafeContentFindings(text) {
   const findings = [];
   const safePolicyContext = /\b(do not|must not|never|forbidden|avoid|safe output|policy|rule|cannot|no raw)\b/i;
@@ -35,11 +39,24 @@ function storedUnsafeContentFindings(text) {
 function buildReport() {
   const text = readText('AGENTS.md');
   const reasonCodes = [];
+  let harnessBlockCount = 0;
+  let currentHarnessBlockPresent = false;
+  let unsafeFindingsCount = 0;
+  let mojibakeDetected = false;
   if (text === null) reasonCodes.push('agents_context_missing');
   else {
-    reasonCodes.push(...mojibakeFindings(text));
-    if (concreteUnsafeFindings(text, 'AGENTS.md').length) reasonCodes.push('agents_context_unsafe_value');
+    const blocks = harnessBlocks(text);
+    harnessBlockCount = blocks.length;
+    currentHarnessBlockPresent = blocks.some((block) => block.includes(marker));
+    const mojibake = mojibakeFindings(text);
+    mojibakeDetected = mojibake.length > 0;
+    if (mojibakeDetected) reasonCodes.push('agents_context_entire_file_mojibake');
+    const unsafe = concreteUnsafeFindings(text, 'AGENTS.md');
+    unsafeFindingsCount = unsafe.length;
+    if (unsafeFindingsCount) reasonCodes.push('agents_context_unsafe_value');
     reasonCodes.push(...storedUnsafeContentFindings(text));
+    if (harnessBlockCount !== 1) reasonCodes.push(harnessBlockCount === 0 ? 'agents_context_missing_harness_block' : 'agents_context_duplicate_harness_block');
+    if (!currentHarnessBlockPresent) reasonCodes.push('agents_context_missing_harness_block');
     for (const pattern of requiredPhrases) {
       if (!pattern.test(text)) reasonCodes.push('agents_context_required_section_missing');
     }
@@ -49,6 +66,10 @@ function buildReport() {
   return simpleStatus('agentsContextStatus', status, {
     reasonCodes: [...new Set(reasonCodes)],
     utf8Readable: text !== null,
+    mojibakeDetected,
+    harnessBlockCount,
+    currentHarnessBlockPresent,
+    unsafeFindingsCount,
   });
 }
 

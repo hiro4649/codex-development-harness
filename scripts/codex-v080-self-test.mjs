@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -128,7 +128,7 @@ function buildReport() {
     v080SelfTestStatus: { status: failures.length ? 'fail' : 'pass', cases, failures, safeSummaryOnly: true },
     valuesPrinted: false,
     status: failures.length ? 'fail' : 'pass',
-    safeSummary: failures.length ? 'v0.8.0 self-test failed; see safe labels only.' : 'v0.8.0 self-test passed.',
+    safeSummary: failures.length ? 'v0.8.1 self-test failed; see safe labels only.' : 'v0.8.1 self-test passed.',
   };
 }
 
@@ -148,7 +148,7 @@ if (isMain()) {
       v080SelfTestStatus: { status: 'fail', failures: ['unexpected_error'], safeSummaryOnly: true },
       valuesPrinted: false,
       status: 'fail',
-      safeSummary: 'v0.8.0 self-test failed with an internal error.',
+      safeSummary: 'v0.8.1 self-test failed with an internal error.',
     };
     writeJsonReport(report, 'CODEX_V080_SELF_TEST_REPORT');
     process.exit(1);

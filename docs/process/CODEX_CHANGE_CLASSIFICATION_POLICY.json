@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.1",
+  "harnessVersion": "0.8.1",
+  "policy": "change_classification",
+  "inputs": [
+    "git diff origin/main...HEAD",
+    "working tree diff",
+    "PR body",
+    "event context"
+  ],
+  "mergeBlockingInPrContext": [
+    "unknownRisk"
+  ],
+  "reasonCodes": [
+    "change_classification_unknown"
+  ],
+  "safeSummaryOnly": true
+}

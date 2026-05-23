@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const HARNESS_VERSION = '0.8.0';
+export const HARNESS_VERSION = '0.8.1';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 export function readText(file) {

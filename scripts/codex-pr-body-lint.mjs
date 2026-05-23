@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -9,9 +9,9 @@ import {
   evidenceFacts,
   buildHumanConfirmationStatus,
 } from './codex-production-readiness-gate.mjs';
-import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
+import { buildEvidencePackReport, isStructuredEvidencePackSource } from './codex-evidence-pack-validate.mjs';
 
-export const HARNESS_VERSION = '0.8.0';
+export const HARNESS_VERSION = '0.8.1';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const requiredSections = [
@@ -112,11 +112,9 @@ export function buildPrBodyLintReport(env = process.env, argv = process.argv) {
   if (hasProductionClaim(body) && (!facts.command || !facts.result || !facts.headKnown)) {
     failures.push('unsafe_claim_wording');
   }
-  if (evidencePack.source !== 'evidence_pack') {
+  if (!isStructuredEvidencePackSource(evidencePack.source)) {
     if (!facts.command || !facts.result) failures.push('missing_command_result');
     if (!facts.residual) failures.push('stale_evidence');
-  } else {
-    warnings.push('evidence_pack_preferred_body_consistency_only');
   }
   if (human.status === 'manual_confirmation_required') warnings.push('missing_human_confirmation');
   if (human.status === 'fail') failures.push('manual_confirmation_invalid');

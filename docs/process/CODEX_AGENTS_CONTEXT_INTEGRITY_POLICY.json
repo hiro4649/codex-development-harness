@@ -1,0 +1,23 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.1",
+  "harnessVersion": "0.8.1",
+  "policy": "agents_context_integrity",
+  "required": [
+    "exactly_one_current_harness_block",
+    "utf8_readable_text",
+    "entire_file_mojibake_scan",
+    "entire_file_concrete_unsafe_value_scan",
+    "safe_summary_only"
+  ],
+  "allowedSafeVocabulary": [
+    "do not output endpoint values",
+    "do not print secrets",
+    "safe summary only"
+  ],
+  "failureReasonCodes": [
+    "agents_context_entire_file_mojibake",
+    "agents_context_duplicate_harness_block",
+    "agents_context_missing_harness_block",
+    "agents_context_unsafe_value"
+  ]
+}
