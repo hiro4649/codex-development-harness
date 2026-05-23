@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.0
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-const HARNESS_VERSION = '0.7.2';
+const HARNESS_VERSION = '0.8.0';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const defaultPolicy = {
@@ -124,6 +124,7 @@ function canonicalSectionName(value, requiredSections) {
   aliases.set('risks', 'Residual risks');
   aliases.set('residual risks', 'Residual risks');
   aliases.set('best of n', 'Best of N used or skipped');
+  aliases.set('best of n evidence', 'Best of N used or skipped');
   aliases.set('best of n used or skipped', 'Best of N used or skipped');
   aliases.set('code review', 'Code review status');
   aliases.set('code review status', 'Code review status');
@@ -401,6 +402,7 @@ function validateExplicitSection(section, value) {
 
   if (section === 'Best of N used or skipped') {
     if (/\b(used|compared)\b/.test(compact)) return null;
+    if (/candidate count/.test(compact) && /selected candidate/.test(compact)) return null;
     if (/skipped/.test(compact) && /\b(reason|because|not applicable|not required with reason|not-required-with-reason)\b/.test(compact)) return null;
     return 'Best of N used or skipped=missing_reason';
   }

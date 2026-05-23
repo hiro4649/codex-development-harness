@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.2",
-  "harnessVersion": "0.7.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.0",
+  "harnessVersion": "0.8.0",
   "reasonCodes": [
     { "reasonCode": "missing_head_sha", "gate": "evidence", "severity": "error", "safeMessage": "Current head SHA evidence is missing.", "nextBestFix": "Record the current PR head SHA in structured evidence.", "canManualConfirmationOverride": false },
     { "reasonCode": "head_sha_mismatch", "gate": "evidence", "severity": "error", "safeMessage": "Evidence head SHA does not match current head.", "nextBestFix": "Regenerate evidence for the current head.", "canManualConfirmationOverride": false },
@@ -20,6 +20,24 @@
     { "reasonCode": "ci_replay_not_requested", "gate": "ciReplay", "severity": "not_applicable", "safeMessage": "CI replay was not requested in this context.", "nextBestFix": "Run ci replay with repository, PR number, and head SHA when PR parity is required.", "canManualConfirmationOverride": true },
     { "reasonCode": "evidence_pack_missing", "gate": "evidencePack", "severity": "warning", "safeMessage": "Structured evidence pack is missing.", "nextBestFix": "Add .codex/evidence-pack.json or rely on legacy PR body fallback when allowed.", "canManualConfirmationOverride": true },
     { "reasonCode": "evidence_pack_invalid", "gate": "evidencePack", "severity": "error", "safeMessage": "Structured evidence pack is invalid.", "nextBestFix": "Fix the evidence pack schema fields.", "canManualConfirmationOverride": false },
-    { "reasonCode": "manual_confirmation_invalid", "gate": "humanConfirmation", "severity": "error", "safeMessage": "Manual confirmation is invalid.", "nextBestFix": "Fix current-head confirmation fields.", "canManualConfirmationOverride": false }
+    { "reasonCode": "manual_confirmation_invalid", "gate": "humanConfirmation", "severity": "error", "safeMessage": "Manual confirmation is invalid.", "nextBestFix": "Fix current-head confirmation fields.", "canManualConfirmationOverride": false },
+    { "reasonCode": "generic_core_project_coupling", "gate": "genericCore", "severity": "error", "safeMessage": "Core harness depends on project-specific assumptions.", "nextBestFix": "Move profile behavior behind optional compatibility mode.", "canManualConfirmationOverride": false },
+    { "reasonCode": "profile_required_in_core_mode", "gate": "genericCore", "severity": "error", "safeMessage": "Profile checks are required in core mode.", "nextBestFix": "Set profile compatibility to optional or explicitly enable profile mode.", "canManualConfirmationOverride": false },
+    { "reasonCode": "agents_context_mojibake", "gate": "agentsContext", "severity": "error", "safeMessage": "AGENTS.md contains corrupted text.", "nextBestFix": "Rewrite AGENTS.md as clean UTF-8 text.", "canManualConfirmationOverride": false },
+    { "reasonCode": "agents_context_unsafe_value", "gate": "agentsContext", "severity": "error", "safeMessage": "AGENTS.md contains unsafe value-shaped content.", "nextBestFix": "Replace values with safe labels.", "canManualConfirmationOverride": false },
+    { "reasonCode": "environment_readiness_missing", "gate": "environmentReadiness", "severity": "error", "safeMessage": "Environment readiness guidance is incomplete.", "nextBestFix": "Document Node/runtime and setup guidance.", "canManualConfirmationOverride": true },
+    { "reasonCode": "golden_set_missing", "gate": "goldenSet", "severity": "error", "safeMessage": "Golden set fixtures are missing.", "nextBestFix": "Add deterministic safe golden fixtures.", "canManualConfirmationOverride": false },
+    { "reasonCode": "golden_set_failed", "gate": "goldenSet", "severity": "error", "safeMessage": "Golden set regression failed.", "nextBestFix": "Fix gate behavior or fixture expectations.", "canManualConfirmationOverride": false },
+    { "reasonCode": "best_of_n_required", "gate": "bestOfN", "severity": "error", "safeMessage": "Best of N evidence is required for this risk.", "nextBestFix": "Add candidate count, selected candidate, and safe reasons.", "canManualConfirmationOverride": true },
+    { "reasonCode": "best_of_n_invalid", "gate": "bestOfN", "severity": "error", "safeMessage": "Best of N evidence is incomplete.", "nextBestFix": "Complete the Best of N evidence fields.", "canManualConfirmationOverride": true },
+    { "reasonCode": "task_queue_unsafe", "gate": "taskQueueLite", "severity": "error", "safeMessage": "Task queue contains unsafe content.", "nextBestFix": "Keep queue entries safe-summary-only.", "canManualConfirmationOverride": false },
+    { "reasonCode": "safe_trace_schema_invalid", "gate": "safeTrace", "severity": "error", "safeMessage": "Safe trace schema is invalid.", "nextBestFix": "Use the v0.8.0 safe trace schema.", "canManualConfirmationOverride": false },
+    { "reasonCode": "safe_trace_unsafe_value", "gate": "safeTrace", "severity": "error", "safeMessage": "Safe trace contains unsafe value-shaped content.", "nextBestFix": "Remove raw values and set rawValuesStored false.", "canManualConfirmationOverride": false },
+    { "reasonCode": "curator_auto_apply_forbidden", "gate": "curatorReport", "severity": "error", "safeMessage": "Curator report attempts an automatic action.", "nextBestFix": "Make curator report suggestion-only.", "canManualConfirmationOverride": false },
+    { "reasonCode": "curator_report_invalid", "gate": "curatorReport", "severity": "error", "safeMessage": "Curator report is invalid.", "nextBestFix": "Use allowed safe action labels only.", "canManualConfirmationOverride": false },
+    { "reasonCode": "offline_evolution_auto_apply_forbidden", "gate": "offlineEvolution", "severity": "error", "safeMessage": "Offline evolution proposal attempts automatic action.", "nextBestFix": "Keep proposals human-approved and suggestion-only.", "canManualConfirmationOverride": false },
+    { "reasonCode": "offline_evolution_proposal_invalid", "gate": "offlineEvolution", "severity": "error", "safeMessage": "Offline evolution proposal is invalid.", "nextBestFix": "Complete proposal-only fields.", "canManualConfirmationOverride": false },
+    { "reasonCode": "test_coverage_evidence_missing", "gate": "testCoverage", "severity": "error", "safeMessage": "Required test coverage evidence is missing.", "nextBestFix": "Map changed area to test command and edge/failure paths.", "canManualConfirmationOverride": true },
+    { "reasonCode": "performance_claim_without_evidence", "gate": "performance", "severity": "error", "safeMessage": "Performance claim lacks measurement evidence.", "nextBestFix": "Add baseline and new measurement summaries or remove the claim.", "canManualConfirmationOverride": false }
   ]
 }

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.0
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 
-export const HARNESS_VERSION = '0.7.2';
+export const HARNESS_VERSION = '0.8.0';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 export const forbiddenOutputKeys = [
   'rawDiff',
@@ -116,7 +116,7 @@ export function weakEvidenceLineLabels(body) {
 
 export function hasProductionClaim(body) {
   const lower = normalizeText(body);
-  return /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b|\bgo no go\b|\bgo\b|\b譛ｬ逡ｪ蜿ｯ\b|\b蜃ｺ闕ｷ蜿ｯ\b/.test(lower);
+  return /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b|\bgo no go\b|\bgo\b|\b譛ｬ逡�E�蜿�E�\b|\b蜁E��闕ｷ蜿�E�\b/.test(lower);
 }
 
 export function isRiskyContext(body) {

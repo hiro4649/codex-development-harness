@@ -1,0 +1,8 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.0",
+  "harnessVersion": "0.8.0",
+  "allowedActions": ["keep", "patch_candidate", "merge_candidate", "archive_candidate", "pin_candidate", "no_action"],
+  "autoApplyAllowed": false,
+  "autoCommitAllowed": false,
+  "autoPushAllowed": false
+}

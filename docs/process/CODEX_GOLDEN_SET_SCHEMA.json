@@ -1,0 +1,22 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.0",
+  "harnessVersion": "0.8.0",
+  "type": "object",
+  "required": ["schemaVersion", "cases"],
+  "properties": {
+    "schemaVersion": { "type": "string" },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["caseId", "gate", "expectedStatus", "safeSummary"],
+        "properties": {
+          "caseId": { "type": "string" },
+          "gate": { "type": "string" },
+          "expectedStatus": { "type": "string" },
+          "safeSummary": { "type": "string" }
+        }
+      }
+    }
+  }
+}

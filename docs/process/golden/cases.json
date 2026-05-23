@@ -1,0 +1,10 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.0",
+  "schemaVersion": "0.8.0",
+  "cases": [
+    { "caseId": "safe-output-policy-vocabulary", "gate": "safeOutput", "expectedStatus": "pass", "safeSummary": "Policy vocabulary without concrete values is allowed." },
+    { "caseId": "evidence-pack-missing-head", "gate": "evidencePack", "expectedStatus": "fail", "safeSummary": "Missing head SHA fails." },
+    { "caseId": "manual-confirmation-stale-head", "gate": "humanConfirmation", "expectedStatus": "fail", "safeSummary": "Head mismatch fails." },
+    { "caseId": "core-profile-required", "gate": "genericCore", "expectedStatus": "fail", "safeSummary": "Profiles cannot be required in core mode." }
+  ]
+}

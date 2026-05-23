@@ -1,58 +1,42 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.7.2 -->
-
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.0 -->
 # Codex Development Harness
 
-This repository is the canonical source for the Codex quality harness.
+Version: v0.8.0
+Name: Generic Core and Golden Evidence Gate
 
-Current local baseline:
+This repository contains reusable Codex quality gates, policies, and safe
+evidence tooling. v0.8.0 focuses on a generic source harness core that can pass
+without any downstream project profile, deterministic golden audit cases, clean
+AGENTS.md persistent context, and practical evidence gates for real development.
 
-- Version: v0.7.2
-- Update name: Structured Evidence and CI Replay Gate
-- Root harness version: `0.7.2`
-- Profile template version: `0.7.0` compatible
-- Profiles:
-  - `profiles/iris`
-  - `profiles/funky`
-  - `profiles/iris-live2d-renderer`
+## What v0.8.0 Adds
 
-This source update is limited to the harness repository. It does not update,
-edit, test, or initialize these real development projects:
+- Generic core mode: `CODEX_HARNESS_MODE=core`
+- Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
+- AGENTS context validation
+- Environment readiness validation
+- Golden set regression fixtures
+- Practical Best of N evidence checks
+- Optional task queue lite validation
+- Optional safe trace schema validation
+- Report-only curator and offline evolution proposal gates
+- Test coverage evidence and performance evidence gates when claims require them
 
-- `IRIS`
-- `FUNKY`
-- `IRIS-live2d-renderer`
+## What v0.8.0 Does Not Add
 
-Do not use old directories or snapshot-only directories as the harness source of
-truth. Do not bump profile templates to v0.7.2 just to satisfy root harness
-validation; the source harness and profile template version domains are separate.
+No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
+layer, automatic skill rewriting, automatic commit, automatic push, required LLM
+judge, GEPA optimizer, or self-evolving runtime is implemented.
 
-## v0.7.2 Structured Evidence and CI Replay Gate
+## Running The Core Gate
 
-v0.7.2 keeps the v0.7.1 production, evidence, Hermes, human confirmation, and
-quality-score rules, then reduces PR prose dependence and CI/local mismatch by
-adding structured evidence, structured human confirmation, safer output scanning,
-CI replay, PR body linting, and a safe failure reason catalog.
+Node.js 20 or newer is expected. The harness core uses Node.js standard library
+scripts and does not require npm dependencies. If `package.json` is absent, npm
+checks are not real verification.
 
-New or expanded source-harness gates:
+```bash
+CODEX_HARNESS_SOURCE_REPO=1 CODEX_HARNESS_MODE=core CODEX_REQUIRE_NPM=1 CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs
+```
 
-- Structured Evidence Pack Gate
-- Structured Human Confirmation Gate
-- Safe Output Scanner
-- CI Replay Gate
-- PR Body Linter
-- Failure Reason Catalog Status
-- v0.7.2 Self-Test Gate
-- Production Readiness Gate
-- Evidence Integrity Gate
-- Hermes Invariant Gate
-- v0.7.1 Self-Test Gate
-- Quality Score Summary
-- Profile Template Compatibility Status
-
-The gates preserve v0.7.1 behavior: secret scan, unsafe wording detection,
-test-weakening detection, OpenAI Codex Method Gate, safe artifact validation,
-scope separation, R3 handling, production evidence enforcement, Hermes
-invariants, and non-overridable failure rules remain active.
-
-Reports are safe summaries only. They must not print secrets, endpoint values,
-private paths, raw logs, raw payloads, production data, or personal data.
+Profiles remain v0.7.0-compatible optional artifacts unless a downstream
+propagation task explicitly updates them.

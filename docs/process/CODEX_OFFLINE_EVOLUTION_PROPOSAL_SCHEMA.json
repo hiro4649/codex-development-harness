@@ -1,0 +1,8 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.0",
+  "harnessVersion": "0.8.0",
+  "required": ["targetFile", "sourceSignals", "candidateAction", "expectedImprovement", "constraints", "goldenSetStatus", "humanApprovalRequired"],
+  "autoApplyAllowed": false,
+  "autoCommitAllowed": false,
+  "autoPushAllowed": false
+}
