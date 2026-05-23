@@ -10,7 +10,7 @@ import {
   unsafeLabels,
   weakEvidenceLineLabels,
 } from './codex-production-readiness-gate.mjs';
-import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
+import { buildEvidencePackReport, isStructuredEvidencePackSource } from './codex-evidence-pack-validate.mjs';
 
 function readOptionalJson(file) {
   if (!file) return null;
@@ -44,7 +44,7 @@ function qualityReportLabels(report) {
 
 function buildEvidenceIntegrityReport(env = process.env) {
   const evidencePack = buildEvidencePackReport(env).evidencePackStatus;
-  if (evidencePack?.source === 'evidence_pack') {
+  if (isStructuredEvidencePackSource(evidencePack?.source)) {
     const status = evidencePack.status;
     return {
       marker,

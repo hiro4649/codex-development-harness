@@ -8,6 +8,9 @@ import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, writeJsonReport } from './codex-v080-lib.mjs';
 import { buildChangeClassificationReport } from './codex-change-classification-gate.mjs';
 import { buildProductVerificationReport } from './codex-product-verification-gate.mjs';
+import { buildProductionReadinessReport } from './codex-production-readiness-gate.mjs';
+import { buildEvidenceIntegrityReport } from './codex-evidence-integrity-gate.mjs';
+import { buildPrBodyLintReport } from './codex-pr-body-lint.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.dirname(here);
@@ -171,6 +174,101 @@ function buildReport() {
   assertCase('Best of N required for R3 missing evidence fails', result.parsed?.bestOfNEvidenceStatus?.status === 'fail', failures, cases, result.parsed?.bestOfNEvidenceStatus?.status);
   result = run('scripts/codex-best-of-n-evidence-gate.mjs', { env: { CODEX_EVENT_NAME: 'pull_request', CODEX_PR_BODY: 'Risk level: R3\n\nBest of N Evidence:\nCandidate count: 2\nSelected candidate: smallest safe change\nReason selected: narrowest safe option\nRejected alternatives: broader rewrite' } });
   assertCase('Best of N evidence present passes', result.parsed?.bestOfNEvidenceStatus?.status === 'pass', failures, cases, result.parsed?.bestOfNEvidenceStatus?.status);
+
+  const structuredHead = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  const structuredEvidenceBody = `## Goal
+Validate structured evidence source handling.
+
+## Context
+Fixture PR body.
+
+Risk level: R3.
+
+## Files or scope
+scripts/codex-*
+
+## Constraints
+Safe summary only.
+
+## Done when
+Structured evidence is accepted.
+
+## Plan-first status
+Done - plan reviewed before coding.
+
+## Testing and review
+Command: node scripts/codex-v081-self-test.mjs
+Result: pass
+Source: local
+Date: 2026-05-23
+Code review status: self-reviewed
+
+## Residual risks
+Fixture only.
+
+## Human confirmation needed
+not required with reason - fixture does not represent a real PR.
+
+## Production Go/No-Go
+Runtime readiness claimed: no.
+
+## Evidence Integrity
+Structured evidence pack is present.
+
+## Hermes Invariants
+Safe summary only. Human judgment is visible. Rollback or stop condition is present.
+
+## Remote/Local Evidence
+Source: local.
+
+## Rollback or Merge-After Verify
+Stop condition: do not merge if gate fails.
+
+## Stale Evidence Check
+head SHA: ${structuredHead}
+
+## Manual Confirmation Limits
+Manual confirmation cannot override non-overridable failures.
+
+BEGIN_CODEX_EVIDENCE_PACK_JSON
+{
+  "codexEvidencePack": {
+    "schemaVersion": "0.8.1",
+    "harnessVersion": "0.8.1",
+    "repository": "example/repo",
+    "prNumber": 1,
+    "headSha": "${structuredHead}",
+    "baseSha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "changeType": "source-harness",
+    "riskLevel": "R3",
+    "scope": {
+      "changedFiles": ["scripts/codex-example.mjs"],
+      "allowedPaths": ["scripts/codex-"],
+      "forbiddenPaths": ["src/"]
+    },
+    "commands": [
+      { "name": "node scripts/codex-v081-self-test.mjs", "result": "pass", "exitCode": 0, "source": "local", "date": "2026-05-23" }
+    ],
+    "remoteRuns": [],
+    "residualRisks": ["fixture only"],
+    "productionClaims": { "claimsRuntimeReady": false, "claimsDeploymentReady": false, "claimsMergeReady": false },
+    "rollbackOrStopCondition": "Do not merge if gate fails.",
+    "humanConfirmation": {},
+    "safeOutput": { "status": "pass", "unsafeFindings": [] }
+  }
+}
+END_CODEX_EVIDENCE_PACK_JSON`;
+  const structuredEnv = {
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_PR_HEAD_SHA: structuredHead,
+    CODEX_PR_BODY: structuredEvidenceBody,
+  };
+  const productionStructured = buildProductionReadinessReport(structuredEnv);
+  assertCase('Production readiness accepts PR body structured evidence pack source', productionStructured.productionReadinessStatus.status === 'pass', failures, cases, productionStructured.productionReadinessStatus.status);
+  const integrityStructured = buildEvidenceIntegrityReport(structuredEnv);
+  assertCase('Evidence integrity accepts PR body structured evidence pack source', integrityStructured.evidenceIntegrityStatus.status === 'pass', failures, cases, integrityStructured.evidenceIntegrityStatus.status);
+  const lintStructured = buildPrBodyLintReport(structuredEnv, ['node', 'codex-pr-body-lint.mjs']);
+  assertCase('PR body lint accepts PR body structured evidence pack source', lintStructured.prBodyLintStatus.status === 'pass', failures, cases, lintStructured.prBodyLintStatus.status);
 
   const docsOnly = buildProductVerificationReport({
     CODEX_EVENT_NAME: 'pull_request',

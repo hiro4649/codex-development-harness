@@ -28,6 +28,10 @@ const requiredTopLevel = [
   'safeOutput',
 ];
 
+export function isStructuredEvidencePackSource(source) {
+  return typeof source === 'string' && source.startsWith('evidence_pack');
+}
+
 function readText(file) {
   try {
     return fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
