@@ -1,0 +1,37 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.7.2",
+  "harnessVersion": "0.7.2",
+  "scannerDomains": [
+    "forbiddenValueScanner",
+    "forbiddenFieldNameScanner",
+    "safePolicyVocabularyAllowlist",
+    "safeLabelAllowlist"
+  ],
+  "forbiddenFieldNames": [
+    "rawDiff",
+    "rawLogs",
+    "secretValue",
+    "endpointValue",
+    "privatePath",
+    "rawPayload",
+    "payload",
+    "productionData",
+    "personalData"
+  ],
+  "safePolicyVocabularyAllowlist": [
+    "raw payload",
+    "secret",
+    "endpoint",
+    "private path",
+    "production data",
+    "personal data"
+  ],
+  "safeLabelAllowlist": [
+    "unsafe_value_detected",
+    "forbidden_field_name_detected",
+    "manual_confirmation_required",
+    "evidence_pack_missing",
+    "evidence_pack_invalid"
+  ],
+  "rule": "Policy text may name forbidden categories. Reports must not contain unsafe values or forbidden payload-shaped fields."
+}

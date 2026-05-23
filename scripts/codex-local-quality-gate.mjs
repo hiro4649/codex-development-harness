@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.1
+// CODEX_QUALITY_HARNESS_FILE v0.7.2
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
 import { buildHumanConfirmationStatus } from './codex-production-readiness-gate.mjs';
+import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
-const HARNESS_VERSION = '0.7.1';
+const HARNESS_VERSION = '0.7.2';
 const PROFILE_TEMPLATE_VERSION = '0.7.0';
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
@@ -166,14 +167,7 @@ function markerAllowedForPath(file, version, profileVersions) {
   return expectedMarkerVersionForPath(file, profileVersions).includes(version);
 }
 function safeForbiddenArtifactHit(value) {
-  const text = JSON.stringify(value || {});
-  return [
-    /(?:https?|postgres(?:ql)?|mysql|mongodb):\/\/\S+/i,
-    /\b(?:gh[pousr]_|sk-|AKIA|glpat-|npm_|xox[baprs]-)[A-Za-z0-9_-]{8,}\b/,
-    /-----BEGIN [^-]+PRIVATE KEY-----/i,
-    /\b[A-Za-z]:\\Users\\[^"'`\s]+/i,
-    /\/home\/[^"'`\s]+/i,
-  ].some((pattern) => pattern.test(text));
+  return scanSafeOutput(value).findings.length > 0;
 }
 function runGateScript(script, field, envName) {
   if (!fs.existsSync(script)) {
@@ -215,9 +209,7 @@ function runJsonScript(script, cwd, failures, warnings) {
     if (parsed.autoCommit !== false) failures.push({ id: 'script.autoCommit', message: `${script} must emit autoCommit:false` });
     if (parsed.autoPush !== false) failures.push({ id: 'script.autoPush', message: `${script} must emit autoPush:false` });
   }
-  const unsafeKeys = ['rawDiff', 'rawLogs', 'secretValue', 'endpointValue', 'privatePath', 'payload', 'productionData', 'personalData'];
-  const out = JSON.stringify(parsed);
-  if (unsafeKeys.some((key) => out.includes(key)) || safeForbiddenArtifactHit(parsed)) {
+  if (safeForbiddenArtifactHit(parsed)) {
     failures.push({ id: 'script.output.unsafe', message: `${script} emitted unsafe output shape` });
   }
   if (parsed.status && parsed.status !== 'pass' && parsed.status !== 'suggestion_only') {
@@ -425,7 +417,14 @@ function computeOutputShapeStatus(report) {
     'evidenceIntegrityStatus',
     'hermesInvariantStatus',
     'humanConfirmationStatus',
+    'evidencePackStatus',
+    'humanConfirmationObjectStatus',
+    'safeOutputScanStatus',
+    'ciReplayStatus',
+    'prBodyLintStatus',
+    'failureReasonCatalogStatus',
     'v071SelfTestStatus',
+    'v072SelfTestStatus',
     'qualityScoreStatus',
   ];
   const missing = required.filter((key) => report[key] === undefined);
@@ -444,6 +443,9 @@ function computeQualityScoreStatus(report) {
     'productionReadinessStatus',
     'evidenceIntegrityStatus',
     'hermesInvariantStatus',
+    'ciReplayStatus',
+    'prBodyLintStatus',
+    'evidencePackStatus',
   ]);
   const scored = [
     'sourceHarnessValidationStatus',
@@ -459,7 +461,14 @@ function computeQualityScoreStatus(report) {
     'evidenceIntegrityStatus',
     'hermesInvariantStatus',
     'humanConfirmationStatus',
+    'evidencePackStatus',
+    'humanConfirmationObjectStatus',
+    'safeOutputScanStatus',
+    'ciReplayStatus',
+    'prBodyLintStatus',
+    'failureReasonCatalogStatus',
     'v071SelfTestStatus',
+    'v072SelfTestStatus',
     'safeArtifactValidation',
     'outputShapeStatus',
   ];
@@ -467,7 +476,9 @@ function computeQualityScoreStatus(report) {
     const status = report[key]?.status || 'missing';
     let effectiveStatus = status;
     if (!prContext && allowedNonPrNotApplicable.has(key) && status === 'not_applicable') effectiveStatus = 'pass';
+    if (key === 'ciReplayStatus' && status === 'not_applicable') effectiveStatus = 'pass';
     if (key === 'humanConfirmationStatus' && status === 'not_required') effectiveStatus = 'pass';
+    if (key === 'humanConfirmationObjectStatus' && status === 'not_required') effectiveStatus = 'pass';
     return { key, status, effectiveStatus };
   });
   const fail = statuses.filter((item) => item.effectiveStatus === 'fail' || item.effectiveStatus === 'missing');
@@ -492,6 +503,45 @@ function computeQualityScoreStatus(report) {
     gateStatuses: statuses,
     safeSummaryOnly: true,
   };
+}
+function computeFailureReasonCatalogStatus() {
+  const file = path.join('docs', 'process', 'CODEX_FAILURE_REASON_CATALOG.json');
+  const required = [
+    'missing_head_sha',
+    'head_sha_mismatch',
+    'stale_evidence',
+    'missing_remote_evidence',
+    'missing_command_result',
+    'weak_evidence_phrase',
+    'unsafe_claim_wording',
+    'missing_human_confirmation',
+    'human_confirmation_incomplete',
+    'non_overridable_failure_present',
+    'unsafe_value_detected',
+    'scope_mismatch',
+    'forbidden_path_changed',
+    'local_ci_parity_mismatch',
+    'evidence_pack_missing',
+    'evidence_pack_invalid',
+    'manual_confirmation_invalid',
+  ];
+  if (!fs.existsSync(file)) return { status: 'fail', missingReasonCodes: required, safeSummaryOnly: true };
+  try {
+    const catalog = readJsonFile(file);
+    const found = new Set((catalog.reasonCodes || []).map((item) => item.reasonCode));
+    const missingReasonCodes = required.filter((code) => !found.has(code));
+    const incomplete = (catalog.reasonCodes || []).filter((item) =>
+      !item.reasonCode || !item.gate || !item.severity || !item.safeMessage || !item.nextBestFix ||
+      typeof item.canManualConfirmationOverride !== 'boolean');
+    return {
+      status: missingReasonCodes.length || incomplete.length || safeForbiddenArtifactHit(catalog) ? 'fail' : 'pass',
+      missingReasonCodes,
+      incompleteCount: incomplete.length,
+      safeSummaryOnly: true,
+    };
+  } catch {
+    return { status: 'fail', missingReasonCodes: required, safeSummaryOnly: true };
+  }
 }
 function applyStatusOutcome(key, value, failures, warnings) {
   if (value?.status === 'fail') failures.push({ id: `${key}.failed`, message: `${key} failed` });
@@ -525,7 +575,14 @@ function runSourceHarnessGate() {
     evidenceIntegrityStatus: { status: 'not_run' },
     hermesInvariantStatus: { status: 'not_run' },
     humanConfirmationStatus: { status: 'not_run' },
+    evidencePackStatus: { status: 'not_run' },
+    humanConfirmationObjectStatus: { status: 'not_run' },
+    safeOutputScanStatus: { status: 'not_run' },
+    ciReplayStatus: { status: 'not_run' },
+    prBodyLintStatus: { status: 'not_run' },
+    failureReasonCatalogStatus: { status: 'not_run' },
     v071SelfTestStatus: { status: 'not_run' },
+    v072SelfTestStatus: { status: 'not_run' },
     profileTemplateCompatibilityStatus: { status: 'not_run' },
     qualityScoreStatus: { status: 'not_run' },
   };
@@ -541,7 +598,14 @@ function runSourceHarnessGate() {
   report.evidenceIntegrityStatus = runGateScript('scripts/codex-evidence-integrity-gate.mjs', 'evidenceIntegrityStatus', 'CODEX_EVIDENCE_INTEGRITY_REPORT');
   report.hermesInvariantStatus = runGateScript('scripts/codex-hermes-invariant-gate.mjs', 'hermesInvariantStatus', 'CODEX_HERMES_INVARIANT_REPORT');
   report.humanConfirmationStatus = buildHumanConfirmationStatus(process.env).humanConfirmationStatus;
+  report.evidencePackStatus = runGateScript('scripts/codex-evidence-pack-validate.mjs', 'evidencePackStatus', 'CODEX_EVIDENCE_PACK_REPORT');
+  report.humanConfirmationObjectStatus = runGateScript('scripts/codex-human-confirmation-validate.mjs', 'humanConfirmationObjectStatus', 'CODEX_HUMAN_CONFIRMATION_REPORT');
+  report.safeOutputScanStatus = runGateScript('scripts/codex-safe-output-scan.mjs', 'safeOutputScanStatus', 'CODEX_SAFE_OUTPUT_SCAN_REPORT');
+  report.ciReplayStatus = runGateScript('scripts/codex-ci-replay.mjs', 'ciReplayStatus', 'CODEX_CI_REPLAY_REPORT');
+  report.prBodyLintStatus = runGateScript('scripts/codex-pr-body-lint.mjs', 'prBodyLintStatus', 'CODEX_PR_BODY_LINT_REPORT');
+  report.failureReasonCatalogStatus = computeFailureReasonCatalogStatus();
   report.v071SelfTestStatus = runGateScript('scripts/codex-v071-self-test.mjs', 'v071SelfTestStatus', 'CODEX_V071_SELF_TEST_REPORT');
+  report.v072SelfTestStatus = runGateScript('scripts/codex-v072-self-test.mjs', 'v072SelfTestStatus', 'CODEX_V072_SELF_TEST_REPORT');
 
   for (const [key, value] of Object.entries({
     profileTemplateCompatibilityStatus: report.profileTemplateCompatibilityStatus,
@@ -555,7 +619,14 @@ function runSourceHarnessGate() {
     evidenceIntegrityStatus: report.evidenceIntegrityStatus,
     hermesInvariantStatus: report.hermesInvariantStatus,
     humanConfirmationStatus: report.humanConfirmationStatus,
+    evidencePackStatus: report.evidencePackStatus,
+    humanConfirmationObjectStatus: report.humanConfirmationObjectStatus,
+    safeOutputScanStatus: report.safeOutputScanStatus,
+    ciReplayStatus: report.ciReplayStatus,
+    prBodyLintStatus: report.prBodyLintStatus,
+    failureReasonCatalogStatus: report.failureReasonCatalogStatus,
     v071SelfTestStatus: report.v071SelfTestStatus,
+    v072SelfTestStatus: report.v072SelfTestStatus,
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }
@@ -586,7 +657,14 @@ function runSourceHarnessGate() {
     console.log(`evidenceIntegrityStatus: ${report.evidenceIntegrityStatus.status}`);
     console.log(`hermesInvariantStatus: ${report.hermesInvariantStatus.status}`);
     console.log(`humanConfirmationStatus: ${report.humanConfirmationStatus.status}`);
+    console.log(`evidencePackStatus: ${report.evidencePackStatus.status}`);
+    console.log(`humanConfirmationObjectStatus: ${report.humanConfirmationObjectStatus.status}`);
+    console.log(`safeOutputScanStatus: ${report.safeOutputScanStatus.status}`);
+    console.log(`ciReplayStatus: ${report.ciReplayStatus.status}`);
+    console.log(`prBodyLintStatus: ${report.prBodyLintStatus.status}`);
+    console.log(`failureReasonCatalogStatus: ${report.failureReasonCatalogStatus.status}`);
     console.log(`v071SelfTestStatus: ${report.v071SelfTestStatus.status}`);
+    console.log(`v072SelfTestStatus: ${report.v072SelfTestStatus.status}`);
     console.log(`safeArtifactValidation: ${report.safeArtifactValidation.status}`);
     console.log(`outputShapeStatus: ${report.outputShapeStatus.status}`);
     console.log(`qualityScoreStatus: ${report.qualityScoreStatus.status}`);

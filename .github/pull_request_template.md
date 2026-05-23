@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.7.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.7.2 -->
 ## Purpose
 
 ## Scope
@@ -60,6 +60,22 @@ Claim: no / yes with evidence
 ## Evidence Integrity
 
 Command, result, exit code or pass/fail, date, source, and head SHA:
+
+## Structured Evidence Pack
+
+Evidence pack path or reason for PR body fallback:
+
+## Structured Human Confirmation
+
+Confirmation source and status:
+
+## CI Replay
+
+Replay command or reason not applicable:
+
+## Failure Reason Summary
+
+Safe reason codes only:
 
 ## Hermes Invariants
 
