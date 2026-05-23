@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -11,7 +11,7 @@ import {
 } from './codex-production-readiness-gate.mjs';
 import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 
-export const HARNESS_VERSION = '0.8.0';
+export const HARNESS_VERSION = '0.8.1';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const requiredSections = [

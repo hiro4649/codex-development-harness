@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.1 -->
 ## Codex Method Compliance
 
 Code review status:
@@ -43,6 +43,18 @@ Human confirmation needed:
 
 ## Golden Set
 
+## Change Classification
+
+Product code changed: yes/no
+
+## Product Verification
+
+Product verification commands:
+
+## Runtime Readiness Claim
+
+Runtime readiness claimed: yes/no
+
 ## Structured Evidence Pack
 
 ## Structured Human Confirmation
@@ -66,6 +78,18 @@ Human confirmation needed:
 ## Test Coverage Evidence
 
 ## Performance Evidence
+
+## NPM/Product Checks Skip Reason
+
+CODEX_SKIP_NPM used: yes/no
+
+Skip reason:
+
+Affected entrypoints:
+
+Failure paths considered:
+
+Tests or checks run:
 
 ## Remote/Local Evidence
 

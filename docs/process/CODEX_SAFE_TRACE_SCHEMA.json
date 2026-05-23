@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.0",
-  "harnessVersion": "0.8.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.1",
+  "harnessVersion": "0.8.1",
   "requiredEventFields": ["schemaVersion", "eventId", "timestamp", "harnessVersion", "eventType", "riskLevel", "commandClass", "targetArea", "result", "safeSummary", "unsafeContentRemoved", "rawValuesStored"],
   "rawValuesStored": false,
   "automaticCaptureRequired": false

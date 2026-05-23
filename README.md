@@ -1,28 +1,32 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.1 -->
 # Codex Development Harness
 
-Version: v0.8.0
-Name: Generic Core and Golden Evidence Gate
+Version: v0.8.1
+Name: Target Verification and Context Integrity Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.0 focuses on a generic source harness core that can pass
-without any downstream project profile, deterministic golden audit cases, clean
-AGENTS.md persistent context, and practical evidence gates for real development.
+evidence tooling. v0.8.1 focuses on a generic source harness core that can pass
+without any downstream project profile, whole-file AGENTS.md context integrity,
+target change classification, and product verification rules that distinguish
+harness-only updates from product-relevant changes.
 
-## What v0.8.0 Adds
+## What v0.8.1 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
-- AGENTS context validation
+- AGENTS context integrity validation across the whole file
 - Environment readiness validation
 - Golden set regression fixtures
+- Target change classification
+- Product verification policy for `CODEX_SKIP_NPM`
+- Target quality score
 - Practical Best of N evidence checks
 - Optional task queue lite validation
 - Optional safe trace schema validation
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.0 Does Not Add
+## What v0.8.1 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM
@@ -46,3 +50,13 @@ propagation task explicitly updates them.
 Target repository installs use `docs/process/CODEX_HARNESS_MANIFEST.json`.
 They must not copy or depend on `CODEX_SOURCE_HARNESS_MANIFEST.json`, which is
 only for this source harness repository.
+
+Target mode is explicit:
+
+```bash
+CODEX_HARNESS_MODE=target CODEX_PROFILE_COMPAT_MODE=off CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs
+```
+
+`CODEX_SKIP_NPM=1` remains valid for harness-only changes with no runtime
+readiness claim. Product source, tests, specs, package, lockfile, runtime asset,
+or config changes require product verification evidence.

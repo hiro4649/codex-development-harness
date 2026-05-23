@@ -1,9 +1,11 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.0",
-  "harnessVersion": "0.8.0",
-  "sourceHarnessVersion": "0.8.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.1",
+  "harnessVersion": "0.8.1",
+  "sourceHarnessVersion": "0.8.1",
   "profileTemplateVersion": "0.7.0",
-  "compatibleProfileTemplateVersions": ["0.7.0"],
+  "compatibleProfileTemplateVersions": [
+    "0.7.0"
+  ],
   "schemaVersion": "1.0.0",
   "sourceRepoMode": true,
   "genericCore": {
@@ -11,7 +13,11 @@
     "profileCompatibility": "optional",
     "profileTemplateRequiredForCore": false
   },
-  "profiles": ["funky", "iris", "iris-live2d-renderer"],
+  "profiles": [
+    "funky",
+    "iris",
+    "iris-live2d-renderer"
+  ],
   "managedFiles": [
     ".github/pull_request_template.md",
     ".github/workflows/quality-gate.yml",
@@ -63,7 +69,14 @@
     "docs/process/CODEX_PERFORMANCE_EVIDENCE_POLICY.json",
     "docs/process/CODEX_TASK_BRIEF_TEMPLATE.md",
     "docs/process/CODEX_PLAN_TEMPLATE.md",
-    "docs/process/code_review.md"
+    "docs/process/code_review.md",
+    "docs/process/CODEX_AGENTS_CONTEXT_INTEGRITY_POLICY.md",
+    "docs/process/CODEX_AGENTS_CONTEXT_INTEGRITY_POLICY.json",
+    "docs/process/CODEX_CHANGE_CLASSIFICATION_POLICY.md",
+    "docs/process/CODEX_CHANGE_CLASSIFICATION_POLICY.json",
+    "docs/process/CODEX_PRODUCT_VERIFICATION_POLICY.md",
+    "docs/process/CODEX_PRODUCT_VERIFICATION_POLICY.json",
+    "docs/process/CODEX_TARGET_AGENTS_REPAIR_GUIDE.md"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -97,7 +110,10 @@
     "codex-v072-self-test.mjs",
     "codex-v080-self-test.mjs",
     "codex-v080-fixtures.mjs",
-    "codex-v080-lib.mjs"
+    "codex-v080-lib.mjs",
+    "codex-change-classification-gate.mjs",
+    "codex-product-verification-gate.mjs",
+    "codex-v081-self-test.mjs"
   ],
   "optionalFiles": []
 }

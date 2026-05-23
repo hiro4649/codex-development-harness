@@ -1,0 +1,95 @@
+#!/usr/bin/env node
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
+import { fileURLToPath } from 'node:url';
+import { prBodyText, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
+import { classifyChange, changedFiles } from './codex-change-classification-gate.mjs';
+
+function hasSkipReason(body, env) {
+  return Boolean(env.CODEX_NPM_SKIP_REASON) || /\bskip reason\s*:\s*\S+/i.test(body) ||
+    /\bCODEX_SKIP_NPM\b[\s\S]{0,100}\b(reason|harness-only|docs-only|not applicable)\b/i.test(body);
+}
+
+function verificationEvidence(body) {
+  const commands = [];
+  if (/\bproduct verification commands?\s*:/i.test(body)) commands.push('product_verification_commands');
+  if (/\btests? or checks? run\s*:/i.test(body)) commands.push('tests_or_checks_run');
+  if (/\b(?:npm test|npm run test|npm run build|node scripts\/run-tests)\b/i.test(body)) commands.push('repo_command_named');
+  return commands;
+}
+
+export function buildProductVerificationReport(env = process.env) {
+  const body = prBodyText(env);
+  const classified = classifyChange(changedFiles(env), env);
+  const c = classified.classification;
+  const skipNpm = env.CODEX_SKIP_NPM === '1';
+  const reasonCodes = [...classified.reasonCodes.filter((item) => item !== 'no_pr_context')];
+  const requiredCommands = [];
+  const providedEvidence = verificationEvidence(body);
+  const missingEvidence = [];
+  let skipAllowed = false;
+  let skipReason = '';
+
+  if (classified.status === 'not_applicable') {
+    return simpleStatus('productVerificationStatus', 'not_applicable', {
+      skipAllowed: true,
+      skipReason: 'no_pr_context',
+      requiredCommands,
+      providedEvidence,
+      missingEvidence,
+      reasonCodes: ['no_pr_context'],
+    });
+  }
+
+  if (c.harnessOnly && !c.runtimeReadinessClaimed) {
+    skipAllowed = true;
+    skipReason = 'harness_only_no_runtime_claim';
+  } else if (c.docsOnly && !c.runtimeReadinessClaimed) {
+    skipAllowed = !skipNpm || hasSkipReason(body, env);
+    skipReason = skipAllowed ? 'docs_only_with_skip_reason' : 'docs_only_skip_reason_missing';
+    if (!skipAllowed) reasonCodes.push('product_verification_required');
+  }
+
+  const productRelevant = classified.productRelevantChanged;
+  if (productRelevant) {
+    requiredCommands.push('repository_test_or_build_or_project_defined_check');
+    if (skipNpm) reasonCodes.push('npm_skip_not_allowed_for_product_change');
+    if (!providedEvidence.length) missingEvidence.push('product_verification_commands');
+  }
+  if (c.runtimeReadinessClaimed) {
+    requiredCommands.push('runtime_or_smoke_verification');
+    if (skipNpm) reasonCodes.push('runtime_claim_requires_product_checks');
+    if (!providedEvidence.length) missingEvidence.push('runtime_verification_evidence');
+  }
+  if (c.packageChanged || c.lockfileChanged) {
+    requiredCommands.push('package_verification');
+    reasonCodes.push('package_change_requires_package_verification');
+    if (!providedEvidence.length) missingEvidence.push('package_verification_evidence');
+  }
+  if (classified.status === 'fail') reasonCodes.push('unknown_change_classification');
+  if (missingEvidence.length && productRelevant) reasonCodes.push('product_verification_required');
+
+  const emergency = env.CODEX_EMERGENCY_MANUAL_REVIEW_REQUIRED === '1';
+  let status = 'pass';
+  if (reasonCodes.length) status = emergency ? 'manual_confirmation_required' : 'fail';
+
+  return simpleStatus('productVerificationStatus', status, {
+    skipAllowed,
+    skipReason,
+    requiredCommands: [...new Set(requiredCommands)],
+    providedEvidence: [...new Set(providedEvidence)],
+    missingEvidence: [...new Set(missingEvidence)],
+    reasonCodes: [...new Set(reasonCodes)],
+  });
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  try {
+    const report = buildProductVerificationReport();
+    writeJsonReport(report, 'CODEX_PRODUCT_VERIFICATION_REPORT');
+    exitFor(report);
+  } catch {
+    const report = simpleStatus('productVerificationStatus', 'fail', { reasonCodes: ['unexpected_error'] });
+    writeJsonReport(report, 'CODEX_PRODUCT_VERIFICATION_REPORT');
+    process.exit(1);
+  }
+}

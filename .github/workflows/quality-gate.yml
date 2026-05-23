@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.8.0
+# CODEX_QUALITY_HARNESS_FILE v0.8.1
 name: quality-gate
 
 on:
@@ -43,11 +43,7 @@ jobs:
       - name: Run source harness quality gate
         shell: bash
         env:
-          CODEX_HARNESS_SOURCE_REPO: "1"
-          CODEX_HARNESS_MODE: "core"
-          CODEX_PROFILE_COMPAT_MODE: "optional"
           CODEX_QUALITY_REPORT: "json"
-
           CODEX_OPENAI_METHOD_REPORT: "json"
           CODEX_EVIDENCE_PACK_STRICT: "1"
           CODEX_HUMAN_CONFIRMATION_STRICT: "1"
@@ -57,9 +53,18 @@ jobs:
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           CODEX_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
-          CODEX_REQUIRE_NPM: "1"
         run: |
           set -euo pipefail
+          if [ -f CODEX_SOURCE_HARNESS_MANIFEST.json ]; then
+            export CODEX_HARNESS_SOURCE_REPO=1
+            export CODEX_HARNESS_MODE=core
+            export CODEX_PROFILE_COMPAT_MODE=optional
+            export CODEX_REQUIRE_NPM=1
+          else
+            export CODEX_HARNESS_MODE=target
+            export CODEX_PROFILE_COMPAT_MODE=off
+            export CODEX_SKIP_NPM="${CODEX_SKIP_NPM:-1}"
+          fi
           gate_exit=0
           node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-source-gate.json" || gate_exit=$?
           node - "$RUNNER_TEMP/codex-source-gate.json" "$gate_exit" <<'NODE'
@@ -67,14 +72,17 @@ jobs:
           const file = process.argv[2];
           const gateExit = Number(process.argv[3] || 0);
           const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+          const targetMode = Boolean(report.targetQualityScoreStatus) && !report.sourceHarnessValidationStatus;
 
-          const requiredPass = [
+          const sourceRequiredPass = [
             'sourceHarnessValidationStatus',
             'profileTemplateCompatibilityStatus',
             'genericHarnessCoreStatus',
             'agentsContextStatus',
             'environmentReadinessStatus',
             'goldenSetStatus',
+            'changeClassificationStatus',
+            'productVerificationStatus',
             'bestOfNEvidenceStatus',
             'taskQueueLiteStatus',
             'safeTraceSchemaStatus',
@@ -102,8 +110,24 @@ jobs:
             'v071SelfTestStatus',
             'v072SelfTestStatus',
             'v080SelfTestStatus',
+            'v081SelfTestStatus',
             'qualityScoreStatus',
           ];
+          const targetRequiredPass = [
+            'targetManifestStatus',
+            'secretScan',
+            'agentsContextStatus',
+            'environmentReadinessStatus',
+            'changeClassificationStatus',
+            'productVerificationStatus',
+            'safeOutputScanStatus',
+            'v080SelfTestStatus',
+            'v081SelfTestStatus',
+            'safeArtifactValidation',
+            'outputShapeStatus',
+            'targetQualityScoreStatus',
+          ];
+          const requiredPass = targetMode ? targetRequiredPass : sourceRequiredPass;
 
           const failures = [];
           const prDependent = new Set([
@@ -124,6 +148,9 @@ jobs:
             'testCoverageEvidenceStatus',
             'performanceEvidenceStatus',
             'bestOfNEvidenceStatus',
+            'changeClassificationStatus',
+            'productVerificationStatus',
+            'goldenSetStatus',
           ]);
           for (const key of requiredPass) {
             const status = report[key]?.status || 'missing';
@@ -145,16 +172,24 @@ jobs:
 
           console.log(`report.status: ${report.status}`);
           console.log(`mergeReady: ${report.mergeReady}`);
+          console.log(`targetMergeReady: ${report.targetMergeReady ?? 'not_applicable'}`);
           console.log(`humanReviewRequired: ${report.humanReviewRequired}`);
           console.log(`humanConfirmationStatus: ${report.humanConfirmationStatus?.status || 'missing'}`);
           console.log(`qualityScoreStatus: ${report.qualityScoreStatus?.status || 'missing'}`);
           console.log(`qualityScore: ${report.qualityScoreStatus?.score ?? 'missing'}`);
+          console.log(`targetQualityScoreStatus: ${report.targetQualityScoreStatus?.status || 'missing'}`);
+          console.log(`targetQualityScore: ${report.targetQualityScoreStatus?.score ?? 'missing'}`);
+          console.log(`changeClassificationStatus: ${report.changeClassificationStatus?.status || 'missing'}`);
+          console.log(`productVerificationStatus: ${report.productVerificationStatus?.status || 'missing'}`);
+          console.log(`agentsContextStatus: ${report.agentsContextStatus?.status || 'missing'}`);
+          console.log(`secretScan: ${report.secretScan?.status || 'missing'}`);
 
           const safeSummary = {
             status: report.status,
             mergeReady: report.mergeReady,
+            targetMergeReady: report.targetMergeReady ?? null,
             humanReviewRequired: report.humanReviewRequired,
-            qualityScoreStatus: report.qualityScoreStatus,
+            qualityScoreStatus: report.qualityScoreStatus || report.targetQualityScoreStatus,
             failureCount: Array.isArray(report.failures) ? report.failures.length : 0,
             warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
           };

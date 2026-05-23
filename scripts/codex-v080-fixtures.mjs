@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.0
+// CODEX_QUALITY_HARNESS_FILE v0.8.1
 
 export const GOLDEN_HEAD = '1111111111111111111111111111111111111111';
 export const GOLDEN_BASE = '2222222222222222222222222222222222222222';
@@ -16,7 +16,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
     riskLevel: 'R3',
     confirmedByRole: options.omitManualRole ? undefined : 'project-owner',
     confirmedAt: '2026-05-23T00:00:00Z',
-    reviewedItems: ['v0.8.0 core gate'],
+    reviewedItems: ['v0.8.1 core gate'],
     residualRisks: ['downstream propagation separate'],
     qualityGateNotWeakened: true,
     riskLevelNotLowered: true,
@@ -24,8 +24,8 @@ export function buildStructuredEvidencePrBody(options = {}) {
   };
   const evidence = {
     codexEvidencePack: {
-      schemaVersion: '0.8.0',
-      harnessVersion: '0.8.0',
+      schemaVersion: '0.8.1',
+      harnessVersion: '0.8.1',
       repository: 'owner/repo',
       prNumber: 1,
       headSha: evidenceHead,
@@ -70,7 +70,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
   const manual = { codexManualConfirmation: confirmation };
   return [
     '## Goal',
-    'v0.8.0 source harness test.',
+    'v0.8.1 source harness test.',
     '## Risk level',
     'R3',
     options.profileRequired ? 'profile_required_fixture' : 'profile optional fixture',
@@ -87,12 +87,28 @@ export function buildStructuredEvidencePrBody(options = {}) {
 
 export function cleanAgentsContext() {
   return [
-    'source harness boundary',
-    'plan-first',
-    'safe output',
-    'merge-ready claim',
-    'manual confirmation',
-    'profile/core separation',
+    '<!-- CODEX_QUALITY_HARNESS_BEGIN -->',
+    'CODEX_QUALITY_HARNESS_FILE v0.8.1',
+    '',
+    '## Source Harness Boundary',
+    'This repository uses harness-managed checks only.',
+    '',
+    '## Plan-First Rule',
+    'Use plan-first for risky or ambiguous work.',
+    '',
+    '## Safe Output Rule',
+    'Use safe summary only. Do not output endpoint values.',
+    '',
+    '## Merge-Ready Claim Rule',
+    'Do not claim merge-ready without current-head evidence.',
+    '',
+    '## Manual Confirmation Limit',
+    'Manual confirmation cannot override non-overridable failures.',
+    '',
+    '## Profile/Core Separation',
+    'Core mode does not require source profiles.',
+    '',
+    '<!-- CODEX_QUALITY_HARNESS_END -->',
     '',
   ].join('\n');
 }
@@ -103,9 +119,9 @@ export function mojibakeAgentsContext() {
 
 export function sourceManifest(profileCompatibility = 'optional') {
   return {
-    marker: 'CODEX_QUALITY_HARNESS_FILE v0.8.0',
-    harnessVersion: '0.8.0',
-    sourceHarnessVersion: '0.8.0',
+    marker: 'CODEX_QUALITY_HARNESS_FILE v0.8.1',
+    harnessVersion: '0.8.1',
+    sourceHarnessVersion: '0.8.1',
     profileTemplateVersion: '0.7.0',
     compatibleProfileTemplateVersions: ['0.7.0'],
     genericCore: {
@@ -126,10 +142,10 @@ export function sourceManifest(profileCompatibility = 'optional') {
 
 export function safeTraceEvent(overrides = {}) {
   return {
-    schemaVersion: '0.8.0',
+    schemaVersion: '0.8.1',
     eventId: 'evt1',
     timestamp: '2026-05-23T00:00:00Z',
-    harnessVersion: '0.8.0',
+    harnessVersion: '0.8.1',
     eventType: 'gate',
     riskLevel: 'R3',
     commandClass: 'node',
