@@ -14,8 +14,8 @@ function statusOf(key) {
 }
 
 const lines = [
-  '## v0.7.2 purpose',
-  'Structured Evidence and CI Replay Gate: structured evidence, structured confirmation, CI replay, PR body lint, safe output scanning, and failure reasons reduce prose-only readiness risk.',
+  '## v0.8.0 purpose',
+  'Generic Core and Golden Evidence Gate: generic core checks, deterministic golden fixtures, structured evidence, structured confirmation, CI replay, PR body lint, safe output scanning, and failure reasons reduce prose-only readiness risk.',
   '',
   '## Changed files',
   'See git diff file list for harness-managed source/profile files only.',
