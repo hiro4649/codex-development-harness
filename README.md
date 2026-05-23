@@ -40,3 +40,9 @@ CODEX_HARNESS_SOURCE_REPO=1 CODEX_HARNESS_MODE=core CODEX_REQUIRE_NPM=1 CODEX_QU
 
 Profiles remain v0.7.0-compatible optional artifacts unless a downstream
 propagation task explicitly updates them.
+
+## Target Repositories
+
+Target repository installs use `docs/process/CODEX_HARNESS_MANIFEST.json`.
+They must not copy or depend on `CODEX_SOURCE_HARNESS_MANIFEST.json`, which is
+only for this source harness repository.

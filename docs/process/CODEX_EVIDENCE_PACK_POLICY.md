@@ -31,8 +31,8 @@ The pack must use safe summary only. It must not contain raw diff, raw logs,
 raw payloads, endpoint values, secret values, private paths, production data, or
 personal data.
 
-If the pack is absent, v0.7.2 gates may fall back to PR body evidence for legacy
-or downstream non-strict PRs. In source-harness pull request context, or when
+If the pack is absent, legacy-compatible non-strict gates may fall back to PR
+body evidence for downstream or older PRs. In source-harness pull request context, or when
 `CODEX_EVIDENCE_PACK_STRICT=1` is set, PR body fallback is reported as
 `legacy_fallback` and must not be counted as score 100 evidence. Missing
 structured evidence in strict mode returns `manual_confirmation_required` with
@@ -43,7 +43,7 @@ PR body or comment object format:
 BEGIN_CODEX_EVIDENCE_PACK_JSON
 {
   "codexEvidencePack": {
-    "schemaVersion": "0.7.2",
+    "schemaVersion": "0.8.0",
     "harnessVersion": "0.8.0",
     "repository": "owner/repo",
     "prNumber": 1,
