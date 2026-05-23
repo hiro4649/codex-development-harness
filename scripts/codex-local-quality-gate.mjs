@@ -476,7 +476,7 @@ function computeQualityScoreStatus(report) {
     const status = report[key]?.status || 'missing';
     let effectiveStatus = status;
     if (!prContext && allowedNonPrNotApplicable.has(key) && status === 'not_applicable') effectiveStatus = 'pass';
-    if (key === 'ciReplayStatus' && status === 'not_applicable') effectiveStatus = 'pass';
+    if (!prContext && key === 'ciReplayStatus' && status === 'not_applicable') effectiveStatus = 'pass';
     if (key === 'humanConfirmationStatus' && status === 'not_required') effectiveStatus = 'pass';
     if (key === 'humanConfirmationObjectStatus' && status === 'not_required') effectiveStatus = 'pass';
     return { key, status, effectiveStatus };

@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildHumanConfirmationStatus } from './codex-production-readiness-gate.mjs';
+import { buildHumanConfirmationStatus, readPrBody } from './codex-production-readiness-gate.mjs';
 import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
@@ -47,6 +47,21 @@ function confirmationPath(env = process.env) {
 
 function expectedHead(env = process.env) {
   return env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '';
+}
+
+function isPrContext(env = process.env) {
+  return env.CODEX_EVENT_NAME === 'pull_request' ||
+    Boolean(env.CODEX_PR_NUMBER) ||
+    Boolean(env.GITHUB_REF && env.GITHUB_REF.includes('/pull/'));
+}
+
+function isSourceHarnessMode(env = process.env) {
+  return env.CODEX_HARNESS_SOURCE_REPO === '1';
+}
+
+function isStrictHumanConfirmationMode(env = process.env) {
+  return env.CODEX_HUMAN_CONFIRMATION_STRICT === '1' ||
+    (isSourceHarnessMode(env) && isPrContext(env));
 }
 
 function normalizeBoolean(value) {
@@ -123,8 +138,26 @@ function confirmationFromEvidencePack(env) {
   return pack?.humanConfirmation || null;
 }
 
+function confirmationFromFencedJson(env) {
+  const body = readPrBody(env).body || '';
+  const blockPattern = /```(?:json)?\s*([\s\S]*?)```/gi;
+  let match;
+  while ((match = blockPattern.exec(body)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed?.codexManualConfirmation && typeof parsed.codexManualConfirmation === 'object') {
+        return parsed.codexManualConfirmation;
+      }
+    } catch {
+      // Continue scanning later blocks; invalid fenced JSON is handled as no structured object.
+    }
+  }
+  return null;
+}
+
 export function buildHumanConfirmationObjectReport(env = process.env) {
   const file = confirmationPath(env);
+  const strict = isStrictHumanConfirmationMode(env);
   let object = null;
   let source = 'none';
   if (file) {
@@ -134,6 +167,10 @@ export function buildHumanConfirmationObjectReport(env = process.env) {
   if (!object) {
     object = confirmationFromEvidencePack(env);
     if (object) source = 'evidence_pack_human_confirmation';
+  }
+  if (!object) {
+    object = confirmationFromFencedJson(env);
+    if (object) source = 'pr_body_fenced_json';
   }
 
   if (object) {
@@ -155,6 +192,25 @@ export function buildHumanConfirmationObjectReport(env = process.env) {
   }
 
   const fallback = buildHumanConfirmationStatus(env).humanConfirmationStatus;
+  if (strict && fallback.status === 'pass') {
+    return {
+      marker,
+      harnessVersion: HARNESS_VERSION,
+      humanConfirmationObjectStatus: {
+        status: 'manual_confirmation_required',
+        source: 'pr_body_fallback',
+        reasonCodes: ['missing_human_confirmation'],
+        missingFields: ['structuredHumanConfirmation'],
+        safeSummaryOnly: true,
+      },
+      normalizedHumanConfirmation: {
+        fallbackStatus: fallback.status,
+        headShaStatus: fallback.evidence?.headShaStatus || 'not_applicable',
+      },
+      valuesPrinted: false,
+      status: 'manual_confirmation_required',
+    };
+  }
   const status = fallback.status === 'fail' ? 'fail'
     : fallback.status === 'manual_confirmation_required' ? 'manual_confirmation_required'
       : fallback.status === 'pass' ? 'pass'

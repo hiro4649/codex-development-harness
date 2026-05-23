@@ -31,5 +31,8 @@ raw payloads, endpoint values, secret values, private paths, production data, or
 personal data.
 
 If the pack is absent, v0.7.2 gates may fall back to PR body evidence for legacy
-PRs. Strict source-harness mode may require the pack by setting
-`CODEX_EVIDENCE_PACK_STRICT=1`.
+or downstream non-strict PRs. In source-harness pull request context, or when
+`CODEX_EVIDENCE_PACK_STRICT=1` is set, PR body fallback is reported as
+`legacy_fallback` and must not be counted as score 100 evidence. Missing
+structured evidence in strict mode returns `manual_confirmation_required` with
+safe reason code `evidence_pack_missing`.

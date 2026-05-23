@@ -129,6 +129,15 @@ function buildReport() {
   cases.push({ name: 'invalid evidence pack missing headSha', status: packInvalid.evidencePackStatus.status });
   assertCase('invalid evidence pack missing headSha fails', packInvalid.evidencePackStatus.status === 'fail', failures);
 
+  const packStrictMissing = buildEvidencePackReport({
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_HARNESS_SOURCE_REPO: '1',
+    CODEX_PR_BODY: validBody(),
+    CODEX_PR_HEAD_SHA: expectedHead,
+  });
+  cases.push({ name: 'source harness strict evidence pack missing', status: packStrictMissing.evidencePackStatus.status });
+  assertCase('source harness strict evidence pack missing requires manual confirmation', packStrictMissing.evidencePackStatus.status === 'manual_confirmation_required', failures);
+
   const confirmationPass = buildHumanConfirmationObjectReport({ CODEX_MANUAL_CONFIRMATION_PATH: validConfirmationFile, CODEX_PR_HEAD_SHA: expectedHead });
   cases.push({ name: 'manual confirmation valid object', status: confirmationPass.humanConfirmationObjectStatus.status });
   assertCase('manual confirmation valid object passes', confirmationPass.humanConfirmationObjectStatus.status === 'pass', failures);
@@ -137,6 +146,25 @@ function buildReport() {
   cases.push({ name: 'manual confirmation stale head', status: confirmationStale.humanConfirmationObjectStatus.status });
   assertCase('manual confirmation stale head fails', confirmationStale.humanConfirmationObjectStatus.status === 'fail', failures);
 
+  const fencedBody = `${validBody()}\n\n\`\`\`json\n${JSON.stringify({ codexManualConfirmation: validConfirmation() })}\n\`\`\`\n`;
+  const confirmationStrictFallback = buildHumanConfirmationObjectReport({
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_HUMAN_CONFIRMATION_STRICT: '1',
+    CODEX_PR_HEAD_SHA: expectedHead,
+    CODEX_PR_BODY: validBody(),
+  });
+  cases.push({ name: 'strict human confirmation rejects prose fallback', status: confirmationStrictFallback.humanConfirmationObjectStatus.status });
+  assertCase('strict human confirmation prose fallback requires manual confirmation', confirmationStrictFallback.humanConfirmationObjectStatus.status === 'manual_confirmation_required', failures);
+
+  const confirmationFenced = buildHumanConfirmationObjectReport({
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_HUMAN_CONFIRMATION_STRICT: '1',
+    CODEX_PR_HEAD_SHA: expectedHead,
+    CODEX_PR_BODY: fencedBody,
+  });
+  cases.push({ name: 'strict human confirmation fenced JSON', status: confirmationFenced.humanConfirmationObjectStatus.status });
+  assertCase('strict human confirmation fenced JSON passes', confirmationFenced.humanConfirmationObjectStatus.status === 'pass', failures);
+
   const githubPath = buildPrBodyLintReport({ GITHUB_EVENT_PATH: eventFile, CODEX_EVENT_NAME: 'pull_request', CODEX_PR_HEAD_SHA: expectedHead }, ['node', 'codex-pr-body-lint.mjs', '--json']);
   cases.push({ name: 'PR body current GitHub API path', status: githubPath.prBodyLintStatus.status });
   assertCase('PR body current GitHub API path passes', githubPath.prBodyLintStatus.status === 'pass', failures);
@@ -144,6 +172,13 @@ function buildReport() {
   const replay = buildCiReplayReport(['node', 'codex-ci-replay.mjs', '--repo', 'owner/repo', '--pr', '1', '--head', expectedHead, '--body', bodyFile, '--json'], { CODEX_PR_HEAD_SHA: expectedHead });
   cases.push({ name: 'remote/local parity replay fixture', status: replay.ciReplayStatus.status });
   assertCase('remote/local parity replay fixture passes', replay.ciReplayStatus.status === 'pass', failures);
+
+  const replayApiUnavailable = buildCiReplayReport(['node', 'codex-ci-replay.mjs', '--repo', 'owner/repo', '--pr', '1', '--head', expectedHead, '--json'], {
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_PR_HEAD_SHA: expectedHead,
+  });
+  cases.push({ name: 'CI replay PR context without API evidence', status: replayApiUnavailable.ciReplayStatus.status });
+  assertCase('CI replay PR context without API evidence requires manual confirmation', replayApiUnavailable.ciReplayStatus.status === 'manual_confirmation_required', failures);
 
   const safePolicy = buildSafeOutputScanReport({ policyText: 'Do not output raw payload, secret value, endpoint value, private path, production data, or personal data.' });
   cases.push({ name: 'safe policy vocabulary allowed fixture', status: safePolicy.safeOutputScanStatus.status });

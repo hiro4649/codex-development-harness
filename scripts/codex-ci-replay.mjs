@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // CODEX_QUALITY_HARNESS_FILE v0.7.2
 import fs from 'node:fs';
+import https from 'node:https';
 import { fileURLToPath } from 'node:url';
 import { buildPrBodyLintReport } from './codex-pr-body-lint.mjs';
 import { buildHumanConfirmationObjectReport } from './codex-human-confirmation-validate.mjs';
@@ -45,8 +46,126 @@ function confirmationSource(env) {
   return 'missing';
 }
 
+function effectiveArgs(args, env) {
+  return {
+    ...args,
+    repo: args.repo || env.CODEX_REPOSITORY || env.GITHUB_REPOSITORY || '',
+    pr: args.pr || env.CODEX_PR_NUMBER || '',
+    head: args.head || env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '',
+    base: args.base || env.CODEX_PR_BASE_SHA || '',
+  };
+}
+
+function isPrContext(env, args) {
+  return env.CODEX_EVENT_NAME === 'pull_request' ||
+    Boolean(env.CODEX_PR_NUMBER) ||
+    Boolean(env.GITHUB_REF && env.GITHUB_REF.includes('/pull/')) ||
+    Boolean(args.repo && args.pr && args.head);
+}
+
+function githubToken(env) {
+  return env.CODEX_GITHUB_TOKEN || env.GITHUB_TOKEN || '';
+}
+
+function requestJson(url, token) {
+  return new Promise((resolve) => {
+    const req = https.request(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'codex-development-harness',
+        'X-GitHub-Api-Version': '2022-11-28',
+        Authorization: `Bearer ${token}`,
+      },
+    }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          resolve({ ok: false, statusCode: res.statusCode });
+          return;
+        }
+        try {
+          resolve({ ok: true, value: JSON.parse(data) });
+        } catch {
+          resolve({ ok: false, statusCode: res.statusCode, parseFailed: true });
+        }
+      });
+    });
+    req.on('error', () => resolve({ ok: false }));
+    req.end();
+  });
+}
+
+function githubUrl(repo, suffix) {
+  return `https://api.github.com/repos/${repo}/${suffix}`;
+}
+
+function confirmationSourceFromRemote(prBody, comments, reviews) {
+  const confirmationPattern = /\b(?:human|manual)\s+confirmation\b|\bconfirmedByRole\b|\bcodexManualConfirmation\b/i;
+  if (confirmationPattern.test(prBody || '')) return 'github_api_pr_body';
+  if ((comments || []).some((item) => confirmationPattern.test(item.body || ''))) return 'github_api_comment';
+  if ((reviews || []).some((item) => confirmationPattern.test(item.body || ''))) return 'github_api_review';
+  if ((reviews || []).some((item) => String(item.state || '').toUpperCase() === 'APPROVED')) return 'github_api_review_approval';
+  return 'missing';
+}
+
+async function fetchGithubReplayInputs(args, env) {
+  const token = githubToken(env);
+  if (!token) return { ok: false, reasonCode: 'github_api_unavailable' };
+  const pr = await requestJson(githubUrl(args.repo, `pulls/${args.pr}`), token);
+  const comments = await requestJson(githubUrl(args.repo, `issues/${args.pr}/comments?per_page=100`), token);
+  const reviews = await requestJson(githubUrl(args.repo, `pulls/${args.pr}/reviews?per_page=100`), token);
+  if (!pr.ok || !comments.ok || !reviews.ok) return { ok: false, reasonCode: 'missing_remote_evidence' };
+  return {
+    ok: true,
+    pr: pr.value,
+    comments: Array.isArray(comments.value) ? comments.value : [],
+    reviews: Array.isArray(reviews.value) ? reviews.value : [],
+  };
+}
+
+function classifyReplay(args, replayEnv, bodySource, confirmationSourceLabel, lint, confirmation, extraReasons = []) {
+  const reasonCodes = [...extraReasons];
+  if (bodySource === 'missing') reasonCodes.push('missing_remote_evidence');
+
+  const parityReasons = [];
+  if (lint.status === 'fail') parityReasons.push('local_ci_parity_mismatch');
+  if (confirmation.status === 'fail') parityReasons.push('manual_confirmation_invalid');
+  if (confirmation.status === 'manual_confirmation_required') parityReasons.push('missing_human_confirmation');
+
+  const status = reasonCodes.includes('head_sha_mismatch') ||
+    reasonCodes.includes('stale_evidence') ||
+    parityReasons.includes('local_ci_parity_mismatch') ||
+    parityReasons.includes('manual_confirmation_invalid')
+    ? 'fail'
+    : reasonCodes.length || parityReasons.length ? 'manual_confirmation_required' : 'pass';
+
+  return {
+    marker,
+    harnessVersion: HARNESS_VERSION,
+    ciReplayStatus: {
+      status,
+      reasonCodes: [...new Set([...reasonCodes, ...parityReasons])],
+      safeSummaryOnly: true,
+    },
+    localRemoteParityStatus: {
+      status: status === 'fail' ? 'fail' : status === 'manual_confirmation_required' ? 'manual_confirmation_required' : 'pass',
+      reasonCodes: [...new Set(parityReasons)],
+      safeSummaryOnly: true,
+    },
+    prBodySource: bodySource,
+    confirmationSource: confirmationSourceLabel || confirmationSource(replayEnv),
+    valuesPrinted: false,
+    status,
+  };
+}
+
 export function buildCiReplayReport(argv = process.argv, env = process.env) {
-  const args = parseArgs(argv);
+  const args = effectiveArgs(parseArgs(argv), env);
   const reasonCodes = [];
   if (!args.repo || !args.pr || !args.head) {
     return {
@@ -81,38 +200,112 @@ export function buildCiReplayReport(argv = process.argv, env = process.env) {
   if (args.body) replayEnv.CODEX_PR_BODY_PATH = args.body;
 
   const bodySource = prBodySource(args, replayEnv);
-  if (bodySource.source === 'missing') reasonCodes.push('missing_remote_evidence');
+  if (bodySource.source === 'missing') {
+    const status = isPrContext(env, args) ? 'manual_confirmation_required' : 'not_applicable';
+    return {
+      marker,
+      harnessVersion: HARNESS_VERSION,
+      ciReplayStatus: {
+        status,
+        reasonCodes: [status === 'not_applicable' ? 'ci_replay_not_requested' : 'missing_remote_evidence'],
+        safeSummaryOnly: true,
+      },
+      localRemoteParityStatus: {
+        status,
+        reasonCodes: [status === 'not_applicable' ? 'ci_replay_not_requested' : 'missing_remote_evidence'],
+        safeSummaryOnly: true,
+      },
+      prBodySource: 'missing',
+      confirmationSource: confirmationSource(replayEnv),
+      valuesPrinted: false,
+      status,
+    };
+  }
 
   const lint = buildPrBodyLintReport(replayEnv, ['node', 'codex-pr-body-lint.mjs', '--json', ...(args.body ? ['--body', args.body] : []), '--head', args.head]);
   const confirmation = buildHumanConfirmationObjectReport(replayEnv);
+  return classifyReplay(args, replayEnv, bodySource.source, confirmationSource(replayEnv), lint, confirmation, reasonCodes);
+}
 
-  const parityReasons = [];
-  if (lint.status === 'fail') parityReasons.push('local_ci_parity_mismatch');
-  if (confirmation.status === 'fail') parityReasons.push('manual_confirmation_invalid');
-  if (confirmation.status === 'manual_confirmation_required') parityReasons.push('missing_human_confirmation');
+export async function buildCiReplayReportAsync(argv = process.argv, env = process.env) {
+  const args = effectiveArgs(parseArgs(argv), env);
+  if (!args.repo || !args.pr || !args.head) return buildCiReplayReport(argv, env);
+  const token = githubToken(env);
+  if (!token) {
+    const base = buildCiReplayReport(argv, env);
+    if (!isPrContext(env, args)) return base;
+    return {
+      ...base,
+      ciReplayStatus: {
+        status: 'manual_confirmation_required',
+        reasonCodes: ['github_api_unavailable'],
+        safeSummaryOnly: true,
+      },
+      localRemoteParityStatus: {
+        status: 'manual_confirmation_required',
+        reasonCodes: ['github_api_unavailable'],
+        safeSummaryOnly: true,
+      },
+      status: 'manual_confirmation_required',
+    };
+  }
 
-  const status = reasonCodes.length || parityReasons.includes('local_ci_parity_mismatch') || parityReasons.includes('manual_confirmation_invalid')
-    ? 'fail'
-    : parityReasons.length ? 'manual_confirmation_required' : 'pass';
+  const remote = await fetchGithubReplayInputs(args, env);
+  if (!remote.ok) {
+    return {
+      marker,
+      harnessVersion: HARNESS_VERSION,
+      ciReplayStatus: {
+        status: 'manual_confirmation_required',
+        reasonCodes: [remote.reasonCode || 'github_api_unavailable'],
+        safeSummaryOnly: true,
+      },
+      localRemoteParityStatus: {
+        status: 'manual_confirmation_required',
+        reasonCodes: [remote.reasonCode || 'github_api_unavailable'],
+        safeSummaryOnly: true,
+      },
+      prBodySource: 'github_api_unavailable',
+      confirmationSource: 'unknown',
+      valuesPrinted: false,
+      status: 'manual_confirmation_required',
+    };
+  }
 
-  return {
-    marker,
-    harnessVersion: HARNESS_VERSION,
-    ciReplayStatus: {
-      status,
-      reasonCodes: [...new Set([...reasonCodes, ...parityReasons])],
-      safeSummaryOnly: true,
-    },
-    localRemoteParityStatus: {
-      status: status === 'fail' ? 'fail' : status === 'manual_confirmation_required' ? 'manual_confirmation_required' : 'pass',
-      reasonCodes: [...new Set(parityReasons)],
-      safeSummaryOnly: true,
-    },
-    prBodySource: bodySource.source,
-    confirmationSource: confirmationSource(replayEnv),
-    valuesPrinted: false,
-    status,
+  const remoteHead = remote.pr?.head?.sha || '';
+  const remoteBase = remote.pr?.base?.sha || args.base || '';
+  const reasons = [];
+  if (!remoteHead) reasons.push('missing_head_sha');
+  else if (String(remoteHead).toLowerCase() !== String(args.head).toLowerCase()) {
+    reasons.push('head_sha_mismatch', 'stale_evidence');
+  }
+
+  const prBody = remote.pr?.body || '';
+  const commentsText = remote.comments.map((item) => item.body || '').filter(Boolean).join('\n');
+  const reviewsText = remote.reviews.map((item) => item.body || '').filter(Boolean).join('\n');
+  const confirmationBody = [prBody, commentsText, reviewsText].filter(Boolean).join('\n');
+  const replayEnv = {
+    ...env,
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_PR_NUMBER: String(args.pr),
+    CODEX_PR_HEAD_SHA: String(args.head),
+    CODEX_PR_BASE_SHA: String(remoteBase),
+    CODEX_REPOSITORY: String(args.repo),
+    CODEX_GITHUB_API_AVAILABLE: '1',
   };
+  const lintEnv = { ...replayEnv, CODEX_PR_BODY: prBody };
+  const confirmationEnv = { ...replayEnv, CODEX_PR_BODY: confirmationBody };
+  const lint = buildPrBodyLintReport(lintEnv, ['node', 'codex-pr-body-lint.mjs', '--json', '--head', args.head]);
+  const confirmation = buildHumanConfirmationObjectReport(confirmationEnv);
+  return classifyReplay(
+    args,
+    replayEnv,
+    prBody ? 'github_api_pr_body' : 'missing',
+    confirmationSourceFromRemote(prBody, remote.comments, remote.reviews),
+    lint,
+    confirmation,
+    reasons,
+  );
 }
 
 function printReport(report) {
@@ -132,7 +325,7 @@ function isMain() {
 
 if (isMain()) {
   try {
-    const report = buildCiReplayReport();
+    const report = await buildCiReplayReportAsync();
     printReport(report);
     process.exit(report.status === 'fail' ? 1 : 0);
   } catch {

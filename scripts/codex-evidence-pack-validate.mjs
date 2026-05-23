@@ -57,6 +57,15 @@ function isPrContext(env = process.env) {
     Boolean(env.GITHUB_REF && env.GITHUB_REF.includes('/pull/'));
 }
 
+function isSourceHarnessMode(env = process.env) {
+  return env.CODEX_HARNESS_SOURCE_REPO === '1';
+}
+
+function isStrictEvidencePackMode(env = process.env) {
+  return env.CODEX_EVIDENCE_PACK_STRICT === '1' ||
+    (isSourceHarnessMode(env) && isPrContext(env));
+}
+
 function hasPrBodyFallback(env = process.env) {
   if (env.CODEX_PR_BODY && env.CODEX_PR_BODY.trim()) return true;
   if (env.CODEX_PR_BODY_PATH && readText(env.CODEX_PR_BODY_PATH)?.trim()) return true;
@@ -143,21 +152,22 @@ export function validateEvidencePack(pack, env = process.env) {
 
 export function buildEvidencePackReport(env = process.env) {
   const file = evidencePackPath(env);
-  const strict = env.CODEX_EVIDENCE_PACK_STRICT === '1';
+  const strict = isStrictEvidencePackMode(env);
   if (!file) {
     if (strict) {
       return {
         marker,
         harnessVersion: HARNESS_VERSION,
         evidencePackStatus: {
-          status: 'fail',
-          source: 'missing',
+          status: 'manual_confirmation_required',
+          source: hasPrBodyFallback(env) ? 'legacy_fallback' : 'missing',
           reasonCodes: ['evidence_pack_missing'],
+          warnings: hasPrBodyFallback(env) ? ['evidence_pack_missing_legacy_fallback'] : [],
           safeSummaryOnly: true,
         },
         normalizedEvidencePack: null,
         valuesPrinted: false,
-        status: 'fail',
+        status: 'manual_confirmation_required',
       };
     }
     if (isPrContext(env) || hasPrBodyFallback(env)) {

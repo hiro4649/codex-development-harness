@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
+  issues: read
 
 jobs:
   quality-gate:
@@ -45,10 +47,14 @@ jobs:
           CODEX_QUALITY_REPORT: "json"
 
           CODEX_OPENAI_METHOD_REPORT: "json"
+          CODEX_EVIDENCE_PACK_STRICT: "1"
+          CODEX_HUMAN_CONFIRMATION_STRICT: "1"
           CODEX_EVENT_NAME: ${{ github.event_name }}
           CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
           CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          CODEX_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ github.token }}
           CODEX_REQUIRE_NPM: "1"
         run: |
           set -euo pipefail
@@ -75,6 +81,7 @@ jobs:
             'evidencePackStatus',
             'humanConfirmationObjectStatus',
             'safeOutputScanStatus',
+            'ciReplayStatus',
             'prBodyLintStatus',
             'failureReasonCatalogStatus',
             'v071SelfTestStatus',
@@ -89,16 +96,13 @@ jobs:
             'evidenceIntegrityStatus',
             'hermesInvariantStatus',
           ]);
-          const policyNotApplicable = new Set([
-            'ciReplayStatus',
-          ]);
           for (const key of requiredPass) {
             const status = report[key]?.status || 'missing';
             console.log(`${key}: ${status}`);
             if (prDependent.has(key) && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
               continue;
             }
-            if (policyNotApplicable.has(key) && status === 'not_applicable') {
+            if (key === 'ciReplayStatus' && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
               continue;
             }
             if (status !== 'pass') failures.push(`${key}=${status}`);
