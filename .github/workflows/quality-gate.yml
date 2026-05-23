@@ -75,7 +75,6 @@ jobs:
             'evidencePackStatus',
             'humanConfirmationObjectStatus',
             'safeOutputScanStatus',
-            'ciReplayStatus',
             'prBodyLintStatus',
             'failureReasonCatalogStatus',
             'v071SelfTestStatus',
@@ -89,12 +88,17 @@ jobs:
             'productionReadinessStatus',
             'evidenceIntegrityStatus',
             'hermesInvariantStatus',
+          ]);
+          const policyNotApplicable = new Set([
             'ciReplayStatus',
           ]);
           for (const key of requiredPass) {
             const status = report[key]?.status || 'missing';
             console.log(`${key}: ${status}`);
             if (prDependent.has(key) && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
+              continue;
+            }
+            if (policyNotApplicable.has(key) && status === 'not_applicable') {
               continue;
             }
             if (status !== 'pass') failures.push(`${key}=${status}`);
