@@ -30,6 +30,7 @@
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.json",
+    "docs/process/CODEX_GENERIC_HARNESS_CORE_POLICY.md",
     "docs/process/CODEX_PRODUCTION_READINESS_POLICY.md",
     "docs/process/CODEX_PRODUCTION_READINESS_POLICY.json",
     "docs/process/CODEX_EVIDENCE_INTEGRITY_POLICY.md",
@@ -95,6 +96,7 @@
     "codex-v071-self-test.mjs",
     "codex-v072-self-test.mjs",
     "codex-v080-self-test.mjs",
+    "codex-v080-fixtures.mjs",
     "codex-v080-lib.mjs"
   ],
   "optionalFiles": []

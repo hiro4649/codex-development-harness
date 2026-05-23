@@ -20,6 +20,18 @@ const requiredPhrases = [
   /profile\/core separation/i,
 ];
 
+function storedUnsafeContentFindings(text) {
+  const findings = [];
+  const safePolicyContext = /\b(do not|must not|never|forbidden|avoid|safe output|policy|rule|cannot|no raw)\b/i;
+  const unsafeStoredContent = /\b(raw logs?|raw diffs?|raw payloads?|production data|personal data)\s*:/i;
+  String(text || '').split(/\r?\n/).forEach((line) => {
+    if (!unsafeStoredContent.test(line)) return;
+    if (safePolicyContext.test(line)) return;
+    findings.push('agents_context_unsafe_value');
+  });
+  return findings;
+}
+
 function buildReport() {
   const text = readText('AGENTS.md');
   const reasonCodes = [];
@@ -27,6 +39,7 @@ function buildReport() {
   else {
     reasonCodes.push(...mojibakeFindings(text));
     if (concreteUnsafeFindings(text, 'AGENTS.md').length) reasonCodes.push('agents_context_unsafe_value');
+    reasonCodes.push(...storedUnsafeContentFindings(text));
     for (const pattern of requiredPhrases) {
       if (!pattern.test(text)) reasonCodes.push('agents_context_required_section_missing');
     }

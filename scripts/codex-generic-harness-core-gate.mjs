@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // CODEX_QUALITY_HARNESS_FILE v0.8.0
-import fs from 'node:fs';
 import {
   HARNESS_VERSION,
   marker,
+  listFiles,
+  normalizePath,
   readJson,
   readText,
   simpleStatus,
@@ -18,9 +19,59 @@ const coreFiles = [
   '.github/workflows/weekly-health-check.yml',
 ];
 
+const couplingRoots = [
+  'scripts',
+  '.github/workflows',
+  'docs/process',
+];
+
+const projectNamePattern = /\b(IRIS-live2d-renderer|iris-live2d-renderer|FUNKY|funky|IRIS|iris|renderer)\b/;
+const requiredCouplingPattern = /\b(required|requiredPass|blocking|must pass|must run|mergeReady|qualityScore|source harness pass|source harness quality)\b/i;
+
+function isAllowedCompatibilityLine(file, line) {
+  const normalized = normalizePath(file);
+  if (normalized === 'CODEX_SOURCE_HARNESS_MANIFEST.json') {
+    return /"profiles"|"compatibleProfileTemplateVersions"|"profileTemplateVersion"|profileCompatibility/i.test(line);
+  }
+  if (normalized.endsWith('CODEX_PROJECT_AUTHORITY_REGISTRY.json')) {
+    return true;
+  }
+  return /\b(optional|compatibility|compatible|historical|downstream|profile template|residual risk)\b/i.test(line) &&
+    !/\b(required|requiredPass|must pass|blocking)\b/i.test(line);
+}
+
+function scanProjectCoupling() {
+  const files = [
+    'CODEX_SOURCE_HARNESS_MANIFEST.json',
+    ...couplingRoots.flatMap((root) => listFiles(root)),
+  ].filter((file) => {
+    const normalized = normalizePath(file);
+    return normalized === 'CODEX_SOURCE_HARNESS_MANIFEST.json' ||
+      normalized.endsWith('.mjs') ||
+      normalized.endsWith('.yml') ||
+      normalized.endsWith('.yaml') ||
+      normalized.endsWith('.md') ||
+      normalized.endsWith('.json');
+  });
+  const findings = [];
+  for (const file of files) {
+    const text = readText(file);
+    if (text === null) continue;
+    const lines = text.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      if (!projectNamePattern.test(line)) return;
+      if (!requiredCouplingPattern.test(line)) return;
+      if (isAllowedCompatibilityLine(file, line)) return;
+      findings.push({ file: normalizePath(file), line: index + 1 });
+    });
+  }
+  return findings;
+}
+
 function buildReport(env = process.env) {
   const manifest = readJson('CODEX_SOURCE_HARNESS_MANIFEST.json');
   const reasonCodes = [];
+  const findings = [];
   const mode = env.CODEX_HARNESS_MODE || 'compat';
   const profileMode = env.CODEX_PROFILE_COMPAT_MODE || (mode === 'core' ? 'optional' : 'on');
   if (!manifest.ok) reasonCodes.push('generic_core_manifest_missing');
@@ -47,11 +98,16 @@ function buildReport(env = process.env) {
       reasonCodes.push('profile_required_in_core_mode');
     }
   }
+  if (mode === 'core') {
+    findings.push(...scanProjectCoupling());
+    if (findings.length) reasonCodes.push('generic_core_project_coupling');
+  }
   const status = reasonCodes.length ? 'fail' : 'pass';
   return simpleStatus('genericHarnessCoreStatus', status, {
     mode,
     profileCompatibilityMode: profileMode,
     reasonCodes: [...new Set(reasonCodes)],
+    projectCouplingFindingsCount: findings.length,
   });
 }
 

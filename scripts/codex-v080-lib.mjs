@@ -107,7 +107,7 @@ export function scanObjectForUnsafe(value, pathLabel = 'report') {
 export function mojibakeFindings(text) {
   const value = String(text || '');
   const patterns = [
-    /邵|繝|郢|竏|隴|髫|陞|荳|縺|譁|蜷|諛|貅|逕|蛹|荵|鬮|陷/,
+    /驍|邵|繝|郢|竏|隴|髫|陞|荳|縺|譁|蜷|諛|貅|逕|蛹|荵|鬮|鬩|陷/,
     /\uFFFD/,
   ];
   return patterns.some((pattern) => pattern.test(value)) ? ['agents_context_mojibake'] : [];
