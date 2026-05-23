@@ -116,7 +116,12 @@ export function weakEvidenceLineLabels(body) {
 
 export function hasProductionClaim(body) {
   const lower = normalizeText(body);
-  return /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b|\bgo no go\b|\bgo\b|\b隴幢ｽｬ騾｡・ｪ陷ｿ・ｯ\b|\b陷・ｽｺ髣包ｽｷ陷ｿ・ｯ\b/.test(lower);
+  const rawLower = String(body || '').toLowerCase();
+  const explicitReadyClaim = /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b/.test(lower);
+  const legacyLocalizedClaim = /\b隴幢ｽｬ騾｡・ｪ陷ｿ・ｯ\b|\b陷・ｽｺ髣包ｽｷ陷ｿ・ｯ\b/.test(lower);
+  const explicitGoDecision = /\bgo\s*(?:\/|-|\s+)\s*no\s*(?:\/|-|\s+)\s*go\s*:\s*(?:go|yes|approved|pass)\b/i.test(rawLower) ||
+    /\bgo\s+(?:decision|status|conclusion)\s*:\s*(?:go|yes|approved|pass)\b/i.test(rawLower);
+  return explicitReadyClaim || legacyLocalizedClaim || explicitGoDecision;
 }
 
 export function isRiskyContext(body) {
