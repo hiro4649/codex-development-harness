@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.7.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.0 -->
 
 # Codex Evidence Pack Policy
 
@@ -44,7 +44,7 @@ BEGIN_CODEX_EVIDENCE_PACK_JSON
 {
   "codexEvidencePack": {
     "schemaVersion": "0.7.2",
-    "harnessVersion": "0.7.2",
+    "harnessVersion": "0.8.0",
     "repository": "owner/repo",
     "prNumber": 1,
     "headSha": "current head SHA",

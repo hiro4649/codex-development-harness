@@ -1,0 +1,158 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.0",
+  "schemaVersion": "0.8.0",
+  "description": "Deterministic safe-summary fixtures for the v0.8.0 generic core harness.",
+  "rules": {
+    "network": "forbidden",
+    "externalApi": "forbidden",
+    "llmJudge": "forbidden",
+    "rawUnsafeValues": "forbidden",
+    "output": "safe_json_only"
+  },
+  "cases": [
+    {
+      "caseId": "safe-output-blocks-concrete-endpoint",
+      "gate": "safeOutputScanStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Concrete endpoint-like values are blocked even in policy-looking text."
+    },
+    {
+      "caseId": "safe-output-allows-policy-vocabulary",
+      "gate": "safeOutputScanStatus",
+      "expectedStatus": "pass",
+      "safeSummary": "Forbidden-category vocabulary is allowed when no concrete value is present."
+    },
+    {
+      "caseId": "evidence-pack-missing-head",
+      "gate": "evidencePackStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Structured evidence without headSha fails."
+    },
+    {
+      "caseId": "evidence-pack-head-mismatch",
+      "gate": "evidencePackStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Structured evidence with stale headSha fails."
+    },
+    {
+      "caseId": "manual-confirmation-missing-role",
+      "gate": "humanConfirmationObjectStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Structured human confirmation without confirmedByRole fails."
+    },
+    {
+      "caseId": "manual-confirmation-head-mismatch",
+      "gate": "humanConfirmationObjectStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Structured human confirmation with stale headSha fails."
+    },
+    {
+      "caseId": "ci-replay-missing-pr-evidence",
+      "gate": "ciReplayStatus",
+      "expectedStatus": "manual_confirmation_required",
+      "safeSummary": "PR-context CI replay without remote evidence requires manual confirmation."
+    },
+    {
+      "caseId": "generic-core-profile-required-fails",
+      "gate": "genericHarnessCoreStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Core mode fails when profiles are required."
+    },
+    {
+      "caseId": "generic-core-profile-optional-passes",
+      "gate": "genericHarnessCoreStatus",
+      "expectedStatus": "pass",
+      "safeSummary": "Core mode passes when profile compatibility is optional."
+    },
+    {
+      "caseId": "agents-mojibake-fails",
+      "gate": "agentsContextStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "AGENTS context with mojibake fails."
+    },
+    {
+      "caseId": "agents-clean-context-passes",
+      "gate": "agentsContextStatus",
+      "expectedStatus": "pass",
+      "safeSummary": "Short clean AGENTS context passes."
+    },
+    {
+      "caseId": "best-of-n-r3-missing-fails",
+      "gate": "bestOfNEvidenceStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "R3 without Best of N evidence fails."
+    },
+    {
+      "caseId": "best-of-n-r1-docs-not-required",
+      "gate": "bestOfNEvidenceStatus",
+      "expectedStatus": "not_applicable",
+      "safeSummary": "R1 docs-only work does not require Best of N evidence."
+    },
+    {
+      "caseId": "safe-trace-absent-not-applicable",
+      "gate": "safeTraceSchemaStatus",
+      "expectedStatus": "not_applicable",
+      "safeSummary": "Absent safe trace is not applicable with trace_not_enabled."
+    },
+    {
+      "caseId": "safe-trace-valid-passes",
+      "gate": "safeTraceSchemaStatus",
+      "expectedStatus": "pass",
+      "safeSummary": "Valid safe trace fixture passes."
+    },
+    {
+      "caseId": "safe-trace-raw-values-true-fails",
+      "gate": "safeTraceSchemaStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Safe trace with rawValuesStored true fails."
+    },
+    {
+      "caseId": "curator-absent-not-applicable",
+      "gate": "curatorReportStatus",
+      "expectedStatus": "not_applicable",
+      "safeSummary": "Absent curator report is not applicable with curator_not_enabled."
+    },
+    {
+      "caseId": "curator-auto-apply-fails",
+      "gate": "curatorReportStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Curator report with autoApply true fails."
+    },
+    {
+      "caseId": "offline-evolution-absent-not-applicable",
+      "gate": "offlineEvolutionProposalStatus",
+      "expectedStatus": "not_applicable",
+      "safeSummary": "Absent offline evolution proposal is not applicable."
+    },
+    {
+      "caseId": "offline-evolution-auto-commit-fails",
+      "gate": "offlineEvolutionProposalStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Offline evolution proposal with autoCommit true fails."
+    },
+    {
+      "caseId": "performance-claim-without-evidence-fails",
+      "gate": "performanceEvidenceStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Performance claim without baseline and new measurement evidence fails."
+    },
+    {
+      "caseId": "performance-no-claim-not-applicable",
+      "gate": "performanceEvidenceStatus",
+      "expectedStatus": "not_applicable",
+      "safeSummary": "No performance claim is not applicable."
+    },
+    {
+      "caseId": "test-coverage-behavior-change-required",
+      "gate": "testCoverageEvidenceStatus",
+      "expectedStatus": "fail",
+      "safeSummary": "Behavior change without test coverage evidence fails."
+    },
+    {
+      "caseId": "test-coverage-docs-only-not-required",
+      "gate": "testCoverageEvidenceStatus",
+      "expectedStatus": "not_applicable",
+      "safeSummary": "Docs-only change does not require test coverage evidence."
+    }
+  ]
+}

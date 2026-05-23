@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.7.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.0
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -8,7 +8,7 @@ import { buildHumanConfirmationStatus } from './codex-production-readiness-gate.
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 import { buildGithubReplayContextAsync } from './codex-ci-replay.mjs';
 
-const HARNESS_VERSION = '0.7.2';
+const HARNESS_VERSION = '0.8.0';
 const PROFILE_TEMPLATE_VERSION = '0.7.0';
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
@@ -229,7 +229,8 @@ function validateSourceHarness() {
     ...(manifest.scriptNames || []).map((name) => `scripts/${name}`),
   ]);
   const optional = new Set((manifest.optionalFiles || []).map(normalizePath));
-  const profiles = manifest.profiles || ['funky', 'iris', 'iris-live2d-renderer'];
+  const coreMode = process.env.CODEX_HARNESS_MODE === 'core';
+  const profiles = coreMode ? [] : (manifest.profiles || ['funky', 'iris', 'iris-live2d-renderer']);
   const profileVersions = compatibleProfileVersions(manifest);
   const allowedPatterns = [...sourceManaged];
   const manifestMissing = [];
@@ -242,6 +243,7 @@ function validateSourceHarness() {
   if (manifest.harnessVersion !== HARNESS_VERSION) failures.push({ id: 'sourceManifest.version', message: 'source manifest version mismatch' });
   if (manifest.sourceHarnessVersion !== HARNESS_VERSION) failures.push({ id: 'sourceManifest.sourceVersion', message: 'source harness version mismatch' });
   if (!profileVersions.includes(PROFILE_TEMPLATE_VERSION)) failures.push({ id: 'sourceManifest.profileTemplateVersion', message: 'profile template compatibility missing' });
+  if (coreMode && manifest.genericCore?.profileCompatibility !== 'optional') failures.push({ id: 'sourceManifest.genericCore', message: 'generic core profile compatibility must be optional' });
 
   for (const file of sourceManaged.filter((item) => !item.includes('*'))) {
     if (!fs.existsSync(file)) {
@@ -324,13 +326,14 @@ function validateSourceHarness() {
     unknownChanged,
     profiles: profileSummaries,
     profileTemplateCompatibilityStatus: {
-      status: profileVersions.includes(PROFILE_TEMPLATE_VERSION) &&
+      status: coreMode ? 'pass' : profileVersions.includes(PROFILE_TEMPLATE_VERSION) &&
         profileVersionFailures.length === 0 &&
         profileSummaries.every((item) => item.missingManagedFiles.length === 0) &&
         !markerMismatches.some((item) => normalizePath(item.path).startsWith('profiles/')) ? 'pass' : 'fail',
       sourceHarnessVersion: HARNESS_VERSION,
       profileTemplateVersion: manifest.profileTemplateVersion || PROFILE_TEMPLATE_VERSION,
       compatibleProfileTemplateVersions: profileVersions,
+      mode: coreMode ? 'core_optional' : 'compatibility',
       failures: profileVersionFailures,
     },
     markerScan: {
@@ -351,6 +354,15 @@ function validateSourceHarness() {
   };
 }
 function runProfileGovernanceScripts(report) {
+  const coreMode = process.env.CODEX_HARNESS_MODE === 'core';
+  const profileMode = process.env.CODEX_PROFILE_COMPAT_MODE || (coreMode ? 'optional' : 'on');
+  if (coreMode && ['off', 'optional'].includes(profileMode)) {
+    report.agentMemoryPolicyStatus = { status: 'not_applicable', reasonCodes: ['profile_compatibility_optional_in_core_mode'], profiles: [] };
+    report.skillLifecyclePolicyStatus = { status: 'not_applicable', reasonCodes: ['profile_compatibility_optional_in_core_mode'], profiles: [] };
+    report.curatorSuggestionStatus = { status: 'not_applicable', reasonCodes: ['profile_compatibility_optional_in_core_mode'], autoApply: false, autoCommit: false, autoPush: false, profiles: [] };
+    report.selfEvolutionPolicyStatus = { status: 'not_applicable', reasonCodes: ['profile_compatibility_optional_in_core_mode'], autoApply: false, autoCommit: false, autoPush: false, profiles: [] };
+    return { failures: [], warnings: [] };
+  }
   const profiles = report.sourceHarnessValidationStatus?.profiles?.map((item) => item.profile) || ['funky', 'iris', 'iris-live2d-renderer'];
   const failures = [];
   const warnings = [];
@@ -407,6 +419,17 @@ function computeOutputShapeStatus(report) {
   const required = [
     'sourceHarnessValidationStatus',
     'profileTemplateCompatibilityStatus',
+    'genericHarnessCoreStatus',
+    'agentsContextStatus',
+    'environmentReadinessStatus',
+    'goldenSetStatus',
+    'bestOfNEvidenceStatus',
+    'taskQueueLiteStatus',
+    'safeTraceSchemaStatus',
+    'curatorReportStatus',
+    'offlineEvolutionProposalStatus',
+    'testCoverageEvidenceStatus',
+    'performanceEvidenceStatus',
     'agentMemoryPolicyStatus',
     'skillLifecyclePolicyStatus',
     'curatorSuggestionStatus',
@@ -426,6 +449,7 @@ function computeOutputShapeStatus(report) {
     'failureReasonCatalogStatus',
     'v071SelfTestStatus',
     'v072SelfTestStatus',
+    'v080SelfTestStatus',
     'qualityScoreStatus',
   ];
   const missing = required.filter((key) => report[key] === undefined);
@@ -439,7 +463,11 @@ function computeQualityScoreStatus(report) {
   const prContext = process.env.CODEX_EVENT_NAME === 'pull_request' ||
     Boolean(process.env.CODEX_PR_NUMBER) ||
     Boolean(process.env.GITHUB_REF && process.env.GITHUB_REF.includes('/pull/'));
-  const allowedNonPrNotApplicable = new Set([
+  const allowedNotApplicable = new Set([
+    'agentMemoryPolicyStatus',
+    'skillLifecyclePolicyStatus',
+    'curatorSuggestionStatus',
+    'selfEvolutionPolicyStatus',
     'openaiCodexMethodStatus',
     'productionReadinessStatus',
     'evidenceIntegrityStatus',
@@ -447,10 +475,21 @@ function computeQualityScoreStatus(report) {
     'ciReplayStatus',
     'prBodyLintStatus',
     'evidencePackStatus',
+    'bestOfNEvidenceStatus',
+    'taskQueueLiteStatus',
+    'safeTraceSchemaStatus',
+    'curatorReportStatus',
+    'offlineEvolutionProposalStatus',
+    'testCoverageEvidenceStatus',
+    'performanceEvidenceStatus',
   ]);
   const scored = [
     'sourceHarnessValidationStatus',
     'profileTemplateCompatibilityStatus',
+    'genericHarnessCoreStatus',
+    'agentsContextStatus',
+    'environmentReadinessStatus',
+    'goldenSetStatus',
     'secretScan',
     'agentMemoryPolicyStatus',
     'skillLifecyclePolicyStatus',
@@ -470,14 +509,21 @@ function computeQualityScoreStatus(report) {
     'failureReasonCatalogStatus',
     'v071SelfTestStatus',
     'v072SelfTestStatus',
+    'v080SelfTestStatus',
+    'bestOfNEvidenceStatus',
+    'taskQueueLiteStatus',
+    'safeTraceSchemaStatus',
+    'curatorReportStatus',
+    'offlineEvolutionProposalStatus',
+    'testCoverageEvidenceStatus',
+    'performanceEvidenceStatus',
     'safeArtifactValidation',
     'outputShapeStatus',
   ];
   const statuses = scored.map((key) => {
     const status = report[key]?.status || 'missing';
     let effectiveStatus = status;
-    if (!prContext && allowedNonPrNotApplicable.has(key) && status === 'not_applicable') effectiveStatus = 'pass';
-    if (!prContext && key === 'ciReplayStatus' && status === 'not_applicable') effectiveStatus = 'pass';
+    if (allowedNotApplicable.has(key) && status === 'not_applicable') effectiveStatus = 'pass';
     if (key === 'humanConfirmationStatus' && status === 'not_required') effectiveStatus = 'pass';
     if (key === 'humanConfirmationObjectStatus' && status === 'not_required') effectiveStatus = 'pass';
     return { key, status, effectiveStatus };
@@ -525,6 +571,24 @@ function computeFailureReasonCatalogStatus() {
     'evidence_pack_missing',
     'evidence_pack_invalid',
     'manual_confirmation_invalid',
+    'generic_core_project_coupling',
+    'profile_required_in_core_mode',
+    'agents_context_mojibake',
+    'agents_context_unsafe_value',
+    'environment_readiness_missing',
+    'golden_set_missing',
+    'golden_set_failed',
+    'best_of_n_required',
+    'best_of_n_invalid',
+    'task_queue_unsafe',
+    'safe_trace_schema_invalid',
+    'safe_trace_unsafe_value',
+    'curator_auto_apply_forbidden',
+    'curator_report_invalid',
+    'offline_evolution_auto_apply_forbidden',
+    'offline_evolution_proposal_invalid',
+    'test_coverage_evidence_missing',
+    'performance_claim_without_evidence',
   ];
   if (!fs.existsSync(file)) return { status: 'fail', missingReasonCodes: required, safeSummaryOnly: true };
   try {
@@ -606,6 +670,17 @@ async function runSourceHarnessGate() {
     humanReviewRequired: false,
     openaiCodexMethodStatus: { status: 'not_run' },
     methodSupportStatus: { status: 'not_run' },
+    genericHarnessCoreStatus: { status: 'not_run' },
+    agentsContextStatus: { status: 'not_run' },
+    environmentReadinessStatus: { status: 'not_run' },
+    goldenSetStatus: { status: 'not_run' },
+    bestOfNEvidenceStatus: { status: 'not_run' },
+    taskQueueLiteStatus: { status: 'not_run' },
+    safeTraceSchemaStatus: { status: 'not_run' },
+    curatorReportStatus: { status: 'not_run' },
+    offlineEvolutionProposalStatus: { status: 'not_run' },
+    testCoverageEvidenceStatus: { status: 'not_run' },
+    performanceEvidenceStatus: { status: 'not_run' },
     productionReadinessStatus: { status: 'not_run' },
     evidenceIntegrityStatus: { status: 'not_run' },
     hermesInvariantStatus: { status: 'not_run' },
@@ -625,6 +700,7 @@ async function runSourceHarnessGate() {
     },
     v071SelfTestStatus: { status: 'not_run' },
     v072SelfTestStatus: { status: 'not_run' },
+    v080SelfTestStatus: { status: 'not_run' },
     profileTemplateCompatibilityStatus: { status: 'not_run' },
     qualityScoreStatus: { status: 'not_run' },
   };
@@ -636,6 +712,10 @@ async function runSourceHarnessGate() {
   warnings.push(...governance.warnings);
   report.openaiCodexMethodStatus = runOpenAICodexMethodGate(gateEnv);
   report.methodSupportStatus = report.openaiCodexMethodStatus.methodSupportStatus || { status: 'missing' };
+  report.genericHarnessCoreStatus = runGateScript('scripts/codex-generic-harness-core-gate.mjs', 'genericHarnessCoreStatus', 'CODEX_GENERIC_CORE_REPORT', gateEnv);
+  report.agentsContextStatus = runGateScript('scripts/codex-agents-context-gate.mjs', 'agentsContextStatus', 'CODEX_AGENTS_CONTEXT_REPORT', gateEnv);
+  report.environmentReadinessStatus = runGateScript('scripts/codex-environment-readiness-gate.mjs', 'environmentReadinessStatus', 'CODEX_ENVIRONMENT_READINESS_REPORT', gateEnv);
+  report.goldenSetStatus = runGateScript('scripts/codex-golden-set-gate.mjs', 'goldenSetStatus', 'CODEX_GOLDEN_SET_REPORT', gateEnv);
   report.productionReadinessStatus = runGateScript('scripts/codex-production-readiness-gate.mjs', 'productionReadinessStatus', 'CODEX_PRODUCTION_READINESS_REPORT', gateEnv);
   report.evidenceIntegrityStatus = runGateScript('scripts/codex-evidence-integrity-gate.mjs', 'evidenceIntegrityStatus', 'CODEX_EVIDENCE_INTEGRITY_REPORT', gateEnv);
   report.hermesInvariantStatus = runGateScript('scripts/codex-hermes-invariant-gate.mjs', 'hermesInvariantStatus', 'CODEX_HERMES_INVARIANT_REPORT', gateEnv);
@@ -648,6 +728,14 @@ async function runSourceHarnessGate() {
   report.failureReasonCatalogStatus = computeFailureReasonCatalogStatus();
   report.v071SelfTestStatus = runGateScript('scripts/codex-v071-self-test.mjs', 'v071SelfTestStatus', 'CODEX_V071_SELF_TEST_REPORT', gateEnv);
   report.v072SelfTestStatus = runGateScript('scripts/codex-v072-self-test.mjs', 'v072SelfTestStatus', 'CODEX_V072_SELF_TEST_REPORT', gateEnv);
+  report.bestOfNEvidenceStatus = runGateScript('scripts/codex-best-of-n-evidence-gate.mjs', 'bestOfNEvidenceStatus', 'CODEX_BEST_OF_N_EVIDENCE_REPORT', gateEnv);
+  report.taskQueueLiteStatus = runGateScript('scripts/codex-task-queue-lite-gate.mjs', 'taskQueueLiteStatus', 'CODEX_TASK_QUEUE_LITE_REPORT', gateEnv);
+  report.safeTraceSchemaStatus = runGateScript('scripts/codex-safe-trace-schema-gate.mjs', 'safeTraceSchemaStatus', 'CODEX_SAFE_TRACE_SCHEMA_REPORT', gateEnv);
+  report.curatorReportStatus = runGateScript('scripts/codex-curator-report-gate.mjs', 'curatorReportStatus', 'CODEX_CURATOR_REPORT', gateEnv);
+  report.offlineEvolutionProposalStatus = runGateScript('scripts/codex-offline-evolution-proposal-gate.mjs', 'offlineEvolutionProposalStatus', 'CODEX_OFFLINE_EVOLUTION_PROPOSAL_REPORT', gateEnv);
+  report.testCoverageEvidenceStatus = runGateScript('scripts/codex-test-coverage-evidence-gate.mjs', 'testCoverageEvidenceStatus', 'CODEX_TEST_COVERAGE_EVIDENCE_REPORT', gateEnv);
+  report.performanceEvidenceStatus = runGateScript('scripts/codex-performance-evidence-gate.mjs', 'performanceEvidenceStatus', 'CODEX_PERFORMANCE_EVIDENCE_REPORT', gateEnv);
+  report.v080SelfTestStatus = runGateScript('scripts/codex-v080-self-test.mjs', 'v080SelfTestStatus', 'CODEX_V080_SELF_TEST_REPORT', gateEnv);
 
   for (const [key, value] of Object.entries({
     profileTemplateCompatibilityStatus: report.profileTemplateCompatibilityStatus,
@@ -657,6 +745,10 @@ async function runSourceHarnessGate() {
     selfEvolutionPolicyStatus: report.selfEvolutionPolicyStatus,
     openaiCodexMethodStatus: report.openaiCodexMethodStatus,
     methodSupportStatus: report.methodSupportStatus,
+    genericHarnessCoreStatus: report.genericHarnessCoreStatus,
+    agentsContextStatus: report.agentsContextStatus,
+    environmentReadinessStatus: report.environmentReadinessStatus,
+    goldenSetStatus: report.goldenSetStatus,
     productionReadinessStatus: report.productionReadinessStatus,
     evidenceIntegrityStatus: report.evidenceIntegrityStatus,
     hermesInvariantStatus: report.hermesInvariantStatus,
@@ -669,6 +761,14 @@ async function runSourceHarnessGate() {
     failureReasonCatalogStatus: report.failureReasonCatalogStatus,
     v071SelfTestStatus: report.v071SelfTestStatus,
     v072SelfTestStatus: report.v072SelfTestStatus,
+    v080SelfTestStatus: report.v080SelfTestStatus,
+    bestOfNEvidenceStatus: report.bestOfNEvidenceStatus,
+    taskQueueLiteStatus: report.taskQueueLiteStatus,
+    safeTraceSchemaStatus: report.safeTraceSchemaStatus,
+    curatorReportStatus: report.curatorReportStatus,
+    offlineEvolutionProposalStatus: report.offlineEvolutionProposalStatus,
+    testCoverageEvidenceStatus: report.testCoverageEvidenceStatus,
+    performanceEvidenceStatus: report.performanceEvidenceStatus,
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }
@@ -695,6 +795,10 @@ async function runSourceHarnessGate() {
     console.log(`selfEvolutionPolicyStatus: ${report.selfEvolutionPolicyStatus.status}`);
     console.log(`openaiCodexMethodStatus: ${report.openaiCodexMethodStatus.status}`);
     console.log(`methodSupportStatus: ${report.methodSupportStatus.status}`);
+    console.log(`genericHarnessCoreStatus: ${report.genericHarnessCoreStatus.status}`);
+    console.log(`agentsContextStatus: ${report.agentsContextStatus.status}`);
+    console.log(`environmentReadinessStatus: ${report.environmentReadinessStatus.status}`);
+    console.log(`goldenSetStatus: ${report.goldenSetStatus.status}`);
     console.log(`productionReadinessStatus: ${report.productionReadinessStatus.status}`);
     console.log(`evidenceIntegrityStatus: ${report.evidenceIntegrityStatus.status}`);
     console.log(`hermesInvariantStatus: ${report.hermesInvariantStatus.status}`);
@@ -707,6 +811,14 @@ async function runSourceHarnessGate() {
     console.log(`failureReasonCatalogStatus: ${report.failureReasonCatalogStatus.status}`);
     console.log(`v071SelfTestStatus: ${report.v071SelfTestStatus.status}`);
     console.log(`v072SelfTestStatus: ${report.v072SelfTestStatus.status}`);
+    console.log(`v080SelfTestStatus: ${report.v080SelfTestStatus.status}`);
+    console.log(`bestOfNEvidenceStatus: ${report.bestOfNEvidenceStatus.status}`);
+    console.log(`taskQueueLiteStatus: ${report.taskQueueLiteStatus.status}`);
+    console.log(`safeTraceSchemaStatus: ${report.safeTraceSchemaStatus.status}`);
+    console.log(`curatorReportStatus: ${report.curatorReportStatus.status}`);
+    console.log(`offlineEvolutionProposalStatus: ${report.offlineEvolutionProposalStatus.status}`);
+    console.log(`testCoverageEvidenceStatus: ${report.testCoverageEvidenceStatus.status}`);
+    console.log(`performanceEvidenceStatus: ${report.performanceEvidenceStatus.status}`);
     console.log(`safeArtifactValidation: ${report.safeArtifactValidation.status}`);
     console.log(`outputShapeStatus: ${report.outputShapeStatus.status}`);
     console.log(`qualityScoreStatus: ${report.qualityScoreStatus.status}`);

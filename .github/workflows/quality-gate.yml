@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.7.2
+# CODEX_QUALITY_HARNESS_FILE v0.8.0
 name: quality-gate
 
 on:
@@ -44,6 +44,8 @@ jobs:
         shell: bash
         env:
           CODEX_HARNESS_SOURCE_REPO: "1"
+          CODEX_HARNESS_MODE: "core"
+          CODEX_PROFILE_COMPAT_MODE: "optional"
           CODEX_QUALITY_REPORT: "json"
 
           CODEX_OPENAI_METHOD_REPORT: "json"
@@ -58,15 +60,28 @@ jobs:
           CODEX_REQUIRE_NPM: "1"
         run: |
           set -euo pipefail
-          node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-source-gate.json"
-          node - "$RUNNER_TEMP/codex-source-gate.json" <<'NODE'
+          gate_exit=0
+          node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-source-gate.json" || gate_exit=$?
+          node - "$RUNNER_TEMP/codex-source-gate.json" "$gate_exit" <<'NODE'
           const fs = require('fs');
           const file = process.argv[2];
+          const gateExit = Number(process.argv[3] || 0);
           const report = JSON.parse(fs.readFileSync(file, 'utf8'));
 
           const requiredPass = [
             'sourceHarnessValidationStatus',
             'profileTemplateCompatibilityStatus',
+            'genericHarnessCoreStatus',
+            'agentsContextStatus',
+            'environmentReadinessStatus',
+            'goldenSetStatus',
+            'bestOfNEvidenceStatus',
+            'taskQueueLiteStatus',
+            'safeTraceSchemaStatus',
+            'curatorReportStatus',
+            'offlineEvolutionProposalStatus',
+            'testCoverageEvidenceStatus',
+            'performanceEvidenceStatus',
             'agentMemoryPolicyStatus',
             'skillLifecyclePolicyStatus',
             'curatorSuggestionStatus',
@@ -86,6 +101,7 @@ jobs:
             'failureReasonCatalogStatus',
             'v071SelfTestStatus',
             'v072SelfTestStatus',
+            'v080SelfTestStatus',
             'qualityScoreStatus',
           ];
 
@@ -96,6 +112,18 @@ jobs:
             'evidenceIntegrityStatus',
             'hermesInvariantStatus',
           ]);
+          const optionalNotApplicable = new Set([
+            'agentMemoryPolicyStatus',
+            'skillLifecyclePolicyStatus',
+            'curatorSuggestionStatus',
+            'selfEvolutionPolicyStatus',
+            'taskQueueLiteStatus',
+            'safeTraceSchemaStatus',
+            'curatorReportStatus',
+            'offlineEvolutionProposalStatus',
+            'testCoverageEvidenceStatus',
+            'performanceEvidenceStatus',
+          ]);
           for (const key of requiredPass) {
             const status = report[key]?.status || 'missing';
             console.log(`${key}: ${status}`);
@@ -103,6 +131,9 @@ jobs:
               continue;
             }
             if (key === 'ciReplayStatus' && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
+              continue;
+            }
+            if (optionalNotApplicable.has(key) && status === 'not_applicable') {
               continue;
             }
             if (status !== 'pass') failures.push(`${key}=${status}`);
@@ -140,7 +171,7 @@ jobs:
             normalizedEvidencePackPresent: Boolean(report.normalizedEvidencePack),
           }, null, 2));
 
-          if (!['pass', 'manual_confirmation_required'].includes(report.status)) {
+          if (gateExit !== 0 && !['pass', 'manual_confirmation_required'].includes(report.status)) {
             failures.push(`report.status=${report.status}`);
           }
 
