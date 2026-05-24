@@ -1,0 +1,39 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "schemaVersion": "0.8.3",
+  "title": "Codex Remote Product Baseline",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "harnessVersion",
+    "repository",
+    "baseSha",
+    "baselineType",
+    "commands",
+    "result",
+    "date",
+    "source",
+    "safeSummary",
+    "knownFailures",
+    "expiresAt",
+    "rawValuesStored",
+    "safeSummaryOnly"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.8.3" },
+    "harnessVersion": { "const": "0.8.3" },
+    "repository": { "type": "string" },
+    "baseSha": { "type": "string" },
+    "baselineType": { "type": "string" },
+    "commands": { "type": "array" },
+    "result": { "enum": ["pass", "fail", "warning"] },
+    "date": { "type": "string" },
+    "source": { "type": "string" },
+    "safeSummary": { "type": "string" },
+    "knownFailures": { "type": "array" },
+    "expiresAt": { "type": "string" },
+    "rawValuesStored": { "const": false },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": false
+}

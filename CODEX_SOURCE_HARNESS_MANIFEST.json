@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
-  "harnessVersion": "0.8.2",
-  "sourceHarnessVersion": "0.8.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "harnessVersion": "0.8.3",
+  "sourceHarnessVersion": "0.8.3",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -87,6 +87,18 @@
     "docs/process/CODEX_REASON_SUMMARY_POLICY.md",
     "docs/process/CODEX_WORKFLOW_RUNNER_POLICY.md",
     "docs/process/CODEX_WORKFLOW_RUNNER_POLICY.json",
+    "docs/process/CODEX_REMOTE_PRODUCT_BASELINE_POLICY.md",
+    "docs/process/CODEX_REMOTE_PRODUCT_BASELINE_POLICY.json",
+    "docs/process/CODEX_REMOTE_PRODUCT_BASELINE_SCHEMA.json",
+    "docs/process/CODEX_REMOTE_NPM_DIAGNOSTIC_POLICY.md",
+    "docs/process/CODEX_REMOTE_NPM_DIAGNOSTIC_SCHEMA.json",
+    "docs/process/CODEX_WORKFLOW_PREFLIGHT_POLICY.md",
+    "docs/process/CODEX_WORKFLOW_PREFLIGHT_POLICY.json",
+    "docs/process/CODEX_SAFE_ARTIFACT_INDEX_POLICY.md",
+    "docs/process/CODEX_SAFE_ARTIFACT_INDEX_SCHEMA.json",
+    "docs/process/CODEX_OPEN_PR_HYGIENE_POLICY.md",
+    "docs/process/CODEX_OPEN_PR_HYGIENE_SCHEMA.json",
+    "docs/process/CODEX_TARGET_FINAL_SUMMARY_POLICY.md",
     "docs/process/CODEX_TARGET_AGENTS_REPAIR_GUIDE.md"
   ],
   "scriptNames": [
@@ -129,8 +141,15 @@
     "codex-stale-pr-audit-gate.mjs",
     "codex-reason-summary.mjs",
     "codex-workflow-quality-runner.mjs",
+    "codex-remote-product-baseline-gate.mjs",
+    "codex-remote-npm-diagnostic-classify.mjs",
+    "codex-workflow-preflight.mjs",
+    "codex-safe-artifact-index.mjs",
+    "codex-open-pr-hygiene-report.mjs",
+    "codex-target-final-summary.mjs",
     "codex-v081-self-test.mjs",
-    "codex-v082-self-test.mjs"
+    "codex-v082-self-test.mjs",
+    "codex-v083-self-test.mjs"
   ],
   "optionalFiles": []
 }

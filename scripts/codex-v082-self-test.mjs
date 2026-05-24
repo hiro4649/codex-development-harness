@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -63,6 +63,12 @@ function sourcePassReport() {
     'productVerificationStatus',
     'productVerificationEvidenceStatus',
     'testMetricsStatus',
+    'remoteProductBaselineStatus',
+    'remoteNpmDiagnosticStatus',
+    'workflowPreflightStatus',
+    'safeArtifactIndexStatus',
+    'openPrHygieneStatus',
+    'targetFinalSummaryStatus',
     'stalePrAuditStatus',
     'reasonSummaryStatus',
     'bestOfNEvidenceStatus',
@@ -94,6 +100,7 @@ function sourcePassReport() {
     'v080SelfTestStatus',
     'v081SelfTestStatus',
     'v082SelfTestStatus',
+    'v083SelfTestStatus',
   ]) report[key] = passStatus();
   return report;
 }
@@ -114,12 +121,19 @@ function targetPassReport() {
     'productVerificationStatus',
     'productVerificationEvidenceStatus',
     'testMetricsStatus',
+    'remoteProductBaselineStatus',
+    'remoteNpmDiagnosticStatus',
+    'workflowPreflightStatus',
+    'safeArtifactIndexStatus',
+    'openPrHygieneStatus',
+    'targetFinalSummaryStatus',
     'stalePrAuditStatus',
     'reasonSummaryStatus',
     'safeOutputScanStatus',
     'v080SelfTestStatus',
     'v081SelfTestStatus',
     'v082SelfTestStatus',
+    'v083SelfTestStatus',
     'safeArtifactValidation',
     'outputShapeStatus',
   ]) report[key] = passStatus();
@@ -206,6 +220,22 @@ function buildReport() {
     CODEX_CHANGED_FILES: 'src/app.js',
     CODEX_PRODUCT_VERIFICATION_COMMANDS: 'npm test',
     CODEX_PRODUCT_VERIFICATION_RESULT: 'pass',
+    CODEX_REMOTE_PRODUCT_BASELINE_JSON: JSON.stringify({
+      schemaVersion: '0.8.3',
+      harnessVersion: HARNESS_VERSION,
+      repository: 'example/repo',
+      baseSha: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      baselineType: 'npm_test',
+      commands: [{ name: 'npm test', result: 'pass' }],
+      result: 'pass',
+      date: '2026-05-24T00:00:00Z',
+      source: 'fixture',
+      safeSummary: 'safe baseline summary',
+      knownFailures: [],
+      expiresAt: '2099-01-01T00:00:00Z',
+      rawValuesStored: false,
+      safeSummaryOnly: true,
+    }),
   });
   assertCase('npm test pass evidence with duration/testCount normalizes to pass', result.productVerificationStatus.status === 'pass', failures, cases, result.productVerificationStatus.status);
   const unsafeEvidence = path.join(os.tmpdir(), `codex-unsafe-evidence-${Date.now()}.json`);

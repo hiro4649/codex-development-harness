@@ -1,0 +1,35 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "schemaVersion": "0.8.3",
+  "title": "Codex Safe Artifact Index",
+  "type": "object",
+  "required": ["schemaVersion", "harnessVersion", "mode", "artifacts", "safeSummaryOnly"],
+  "properties": {
+    "schemaVersion": { "const": "0.8.3" },
+    "harnessVersion": { "const": "0.8.3" },
+    "mode": { "type": "string" },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["artifactName", "path", "producer", "status", "mode", "safeSummaryOnly"],
+        "properties": {
+          "artifactName": { "type": "string" },
+          "path": { "type": "string" },
+          "producer": { "type": "string" },
+          "status": { "enum": ["present", "missing", "not_applicable"] },
+          "mode": { "type": "string" },
+          "safeSummaryOnly": { "const": true },
+          "rawLogIncluded": { "const": false },
+          "containsSecrets": { "const": false },
+          "containsEndpointValues": { "const": false },
+          "nextAction": { "type": "string" },
+          "reasonCodes": { "type": "array" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": false
+}

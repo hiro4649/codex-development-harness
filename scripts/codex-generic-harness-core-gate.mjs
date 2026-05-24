@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import {
   HARNESS_VERSION,
   marker,

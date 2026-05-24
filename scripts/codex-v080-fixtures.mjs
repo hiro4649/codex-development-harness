@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
+import { HARNESS_VERSION } from './codex-v080-lib.mjs';
 
 export const GOLDEN_HEAD = '1111111111111111111111111111111111111111';
 export const GOLDEN_BASE = '2222222222222222222222222222222222222222';
@@ -16,7 +17,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
     riskLevel: 'R3',
     confirmedByRole: options.omitManualRole ? undefined : 'project-owner',
     confirmedAt: '2026-05-23T00:00:00Z',
-    reviewedItems: ['v0.8.1 core gate'],
+    reviewedItems: ['v0.8.3 core gate'],
     residualRisks: ['downstream propagation separate'],
     qualityGateNotWeakened: true,
     riskLevelNotLowered: true,
@@ -24,8 +25,8 @@ export function buildStructuredEvidencePrBody(options = {}) {
   };
   const evidence = {
     codexEvidencePack: {
-      schemaVersion: '0.8.1',
-      harnessVersion: '0.8.1',
+      schemaVersion: HARNESS_VERSION,
+      harnessVersion: HARNESS_VERSION,
       repository: 'owner/repo',
       prNumber: 1,
       headSha: evidenceHead,
@@ -70,7 +71,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
   const manual = { codexManualConfirmation: confirmation };
   return [
     '## Goal',
-    'v0.8.1 source harness test.',
+    'v0.8.3 source harness test.',
     '## Risk level',
     'R3',
     options.profileRequired ? 'profile_required_fixture' : 'profile optional fixture',
@@ -88,7 +89,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
 export function cleanAgentsContext() {
   return [
     '<!-- CODEX_QUALITY_HARNESS_BEGIN -->',
-    'CODEX_QUALITY_HARNESS_FILE v0.8.2',
+    'CODEX_QUALITY_HARNESS_FILE v0.8.3',
     '',
     '## Source Harness Boundary',
     'This repository uses harness-managed checks only.',
@@ -114,14 +115,14 @@ export function cleanAgentsContext() {
 }
 
 export function mojibakeAgentsContext() {
-  return `${cleanAgentsContext()}鬩搾ｽｵ繝ｻ・ｺ\n`;
+  return `${cleanAgentsContext()}\u9b2f\u9b2e\u9a5b\u90e2\n`;
 }
 
 export function sourceManifest(profileCompatibility = 'optional') {
   return {
-    marker: 'CODEX_QUALITY_HARNESS_FILE v0.8.2',
-    harnessVersion: '0.8.2',
-    sourceHarnessVersion: '0.8.2',
+    marker: `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`,
+    harnessVersion: HARNESS_VERSION,
+    sourceHarnessVersion: HARNESS_VERSION,
     profileTemplateVersion: '0.7.0',
     compatibleProfileTemplateVersions: ['0.7.0'],
     genericCore: {
@@ -142,10 +143,10 @@ export function sourceManifest(profileCompatibility = 'optional') {
 
 export function safeTraceEvent(overrides = {}) {
   return {
-    schemaVersion: '0.8.1',
+    schemaVersion: HARNESS_VERSION,
     eventId: 'evt1',
     timestamp: '2026-05-23T00:00:00Z',
-    harnessVersion: '0.8.1',
+    harnessVersion: HARNESS_VERSION,
     eventType: 'gate',
     riskLevel: 'R3',
     commandClass: 'node',

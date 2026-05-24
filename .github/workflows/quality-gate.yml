@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.8.2
+# CODEX_QUALITY_HARNESS_FILE v0.8.3
 name: quality-gate
 
 on:
@@ -65,6 +65,7 @@ jobs:
             export CODEX_PROFILE_COMPAT_MODE=off
             export CODEX_SKIP_NPM="${CODEX_SKIP_NPM:-1}"
           fi
+          node scripts/codex-workflow-preflight.mjs --write-artifact
           gate_exit=0
           node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-quality-gate.json" || gate_exit=$?
           node scripts/codex-workflow-quality-runner.mjs --report "$RUNNER_TEMP/codex-quality-gate.json" --gate-exit "$gate_exit"
@@ -110,5 +111,9 @@ jobs:
             codex-evidence-pack.normalized.json
             codex-failure-reasons.json
             codex-target-quality-summary.json
+            codex-source-final-summary.json
+            codex-target-final-summary.json
+            codex-safe-artifact-index.json
+            codex-workflow-preflight.safe.json
             codex-test-metrics.safe.json
           if-no-files-found: ignore
