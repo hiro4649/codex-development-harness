@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.4 -->
 # Codex Task Brief Template
 
 Goal:

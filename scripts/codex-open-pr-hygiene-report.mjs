@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.3
+// CODEX_QUALITY_HARNESS_FILE v0.8.4
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 
@@ -25,10 +25,12 @@ function flagPr(pr) {
   if (pr.oldHarnessVersion) flags.push('oldHarnessVersion');
   if (pr.staleEvidence) flags.push('staleEvidence');
   if (pr.staleConfirmation) flags.push('staleConfirmation');
+  if (pr.overlapsCurrentHarnessFiles) flags.push('overlapsCurrentHarnessFiles');
   if (pr.touchesProductFiles) flags.push('touchesProductFiles');
   if (pr.needsOwnerDecision) flags.push('needsOwnerDecision');
-  const recommendation = pr.needsOwnerDecision ? 'blocked_until_baseline' :
-    flags.length ? 'refresh' : 'keep_open';
+  const overlapOwnerDecision = Boolean(pr.overlapsCurrentHarnessFiles && (pr.incompatibleBase || pr.staleEvidence || pr.staleConfirmation));
+  const recommendation = overlapOwnerDecision || pr.needsOwnerDecision ? 'owner_decision_required' :
+    flags.length ? 'refresh_required' : 'keep_open';
   return {
     prNumber: String(pr.prNumber || pr.number || '').slice(0, 20),
     flags,
@@ -40,6 +42,7 @@ function flagPr(pr) {
     touchesProductFiles: Boolean(pr.touchesProductFiles),
     needsRebase: Boolean(pr.needsRebase),
     needsOwnerDecision: Boolean(pr.needsOwnerDecision),
+    overlapOwnerDecision,
     recommendation,
     safeSummaryOnly: true,
   };
@@ -57,6 +60,7 @@ export function buildOpenPrHygieneReport(env = process.env) {
   const reasonCodes = [
     ...(flagged.length ? ['open_pr_hygiene_stale_pr'] : []),
     ...(summaries.some((item) => item.needsOwnerDecision) ? ['open_pr_hygiene_needs_owner_decision'] : []),
+    ...(summaries.some((item) => item.overlapOwnerDecision) ? ['open_pr_overlap_owner_decision'] : []),
   ];
   return simpleStatus('openPrHygieneStatus', reasonCodes.length ? 'warning' : 'pass', {
     reasonCodes: [...new Set(reasonCodes)],

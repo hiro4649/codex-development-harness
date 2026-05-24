@@ -1,0 +1,17 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
+  "schemaVersion": "0.8.4",
+  "required": [
+    "reportPresent",
+    "jsonParseStatus",
+    "safeInvalidReportReason",
+    "safeInvalidReportPathLabels",
+    "fallbackArtifactsWritten",
+    "rawReportStored",
+    "rawValuesStored",
+    "safeSummaryOnly"
+  ],
+  "rawReportStored": false,
+  "rawValuesStored": false,
+  "safeSummaryOnly": true
+}

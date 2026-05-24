@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
+  "harnessVersion": "0.8.4",
+  "classes": {
+    "public_github_url_value": "allow_if_safe_context",
+    "documentation_url_value": "allow_if_safe_context",
+    "internal_endpoint_value": "fail_required",
+    "secret_like_value": "fail_required",
+    "private_path_value": "fail_required",
+    "raw_payload_value": "fail_required",
+    "raw_log_value": "fail_required",
+    "production_data_value": "fail_required",
+    "personal_data_value": "fail_required",
+    "unknown_unsafe_value": "manual_review_required"
+  },
+  "falsePositiveSuppression": "field_scoped_only",
+  "safeSummaryOnly": true
+}

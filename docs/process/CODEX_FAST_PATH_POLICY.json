@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
+  "harnessVersion": "0.8.4",
+  "pathModes": [
+    "harness_only_fast_path",
+    "docs_only_fast_path",
+    "source_harness_fast_path",
+    "target_harness_fast_path",
+    "full_product_path"
+  ],
+  "fastPathRequiredStatuses": [
+    "secretScan",
+    "safeOutputScanStatus",
+    "agentsContextStatus",
+    "changeClassificationStatus",
+    "evidenceIntegrityStatus"
+  ],
+  "safeSummaryOnly": true
+}

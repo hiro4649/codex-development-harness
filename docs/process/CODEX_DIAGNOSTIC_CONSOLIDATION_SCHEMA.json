@@ -1,0 +1,23 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
+  "schemaVersion": "0.8.4",
+  "required": [
+    "schemaVersion",
+    "harnessVersion",
+    "mode",
+    "score",
+    "pathMode",
+    "blockingReasons",
+    "manualReasons",
+    "optionalReasons",
+    "nextActions",
+    "safeSummaryOnly"
+  ],
+  "limits": {
+    "blockingReasons": 10,
+    "manualReasons": 10,
+    "optionalReasons": 10,
+    "nextActions": 5
+  },
+  "safeSummaryOnly": true
+}

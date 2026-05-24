@@ -1,0 +1,16 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
+  "harnessVersion": "0.8.4",
+  "profiles": [
+    "docs_only_r1_r2",
+    "harness_only_r2",
+    "harness_workflow_r3",
+    "product_minor_r2",
+    "product_r3",
+    "security_r3",
+    "release_r3",
+    "readiness_claim_r3"
+  ],
+  "r3RequiresCurrentHeadEvidence": true,
+  "safeSummaryOnly": true
+}
