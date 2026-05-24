@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -7,8 +7,9 @@ import { spawnSync } from 'node:child_process';
 import { buildHumanConfirmationStatus } from './codex-production-readiness-gate.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 import { buildGithubReplayContextAsync } from './codex-ci-replay.mjs';
+import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
 
-const HARNESS_VERSION = '0.8.1';
+const HARNESS_VERSION = '0.8.2';
 const PROFILE_TEMPLATE_VERSION = '0.7.0';
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
@@ -425,6 +426,10 @@ function computeOutputShapeStatus(report) {
     'goldenSetStatus',
     'changeClassificationStatus',
     'productVerificationStatus',
+    'productVerificationEvidenceStatus',
+    'testMetricsStatus',
+    'stalePrAuditStatus',
+    'reasonSummaryStatus',
     'bestOfNEvidenceStatus',
     'taskQueueLiteStatus',
     'safeTraceSchemaStatus',
@@ -453,6 +458,7 @@ function computeOutputShapeStatus(report) {
     'v072SelfTestStatus',
     'v080SelfTestStatus',
     'v081SelfTestStatus',
+    'v082SelfTestStatus',
     'qualityScoreStatus',
   ];
   const missing = required.filter((key) => report[key] === undefined);
@@ -477,6 +483,9 @@ function computeQualityScoreStatus(report) {
     'hermesInvariantStatus',
     'changeClassificationStatus',
     'productVerificationStatus',
+    'productVerificationEvidenceStatus',
+    'testMetricsStatus',
+    'stalePrAuditStatus',
     'ciReplayStatus',
     'prBodyLintStatus',
     'evidencePackStatus',
@@ -497,6 +506,10 @@ function computeQualityScoreStatus(report) {
     'goldenSetStatus',
     'changeClassificationStatus',
     'productVerificationStatus',
+    'productVerificationEvidenceStatus',
+    'testMetricsStatus',
+    'stalePrAuditStatus',
+    'reasonSummaryStatus',
     'secretScan',
     'agentMemoryPolicyStatus',
     'skillLifecyclePolicyStatus',
@@ -518,6 +531,7 @@ function computeQualityScoreStatus(report) {
     'v072SelfTestStatus',
     'v080SelfTestStatus',
     'v081SelfTestStatus',
+    'v082SelfTestStatus',
     'bestOfNEvidenceStatus',
     'taskQueueLiteStatus',
     'safeTraceSchemaStatus',
@@ -567,6 +581,10 @@ function computeTargetOutputShapeStatus(report) {
     'environmentReadinessStatus',
     'changeClassificationStatus',
     'productVerificationStatus',
+    'productVerificationEvidenceStatus',
+    'testMetricsStatus',
+    'stalePrAuditStatus',
+    'reasonSummaryStatus',
     'safeOutputScanStatus',
     'goldenSetStatus',
     'bestOfNEvidenceStatus',
@@ -578,6 +596,7 @@ function computeTargetOutputShapeStatus(report) {
     'performanceEvidenceStatus',
     'v080SelfTestStatus',
     'v081SelfTestStatus',
+    'v082SelfTestStatus',
     'safeArtifactValidation',
     'targetQualityScoreStatus',
   ];
@@ -596,6 +615,10 @@ function computeTargetQualityScoreStatus(report) {
     'environmentReadinessStatus',
     'changeClassificationStatus',
     'productVerificationStatus',
+    'productVerificationEvidenceStatus',
+    'testMetricsStatus',
+    'stalePrAuditStatus',
+    'reasonSummaryStatus',
     'safeOutputScanStatus',
     'goldenSetStatus',
     'bestOfNEvidenceStatus',
@@ -607,12 +630,16 @@ function computeTargetQualityScoreStatus(report) {
     'performanceEvidenceStatus',
     'v080SelfTestStatus',
     'v081SelfTestStatus',
+    'v082SelfTestStatus',
     'safeArtifactValidation',
     'outputShapeStatus',
   ];
   const allowedNotApplicable = new Set([
     'changeClassificationStatus',
     'productVerificationStatus',
+    'productVerificationEvidenceStatus',
+    'testMetricsStatus',
+    'stalePrAuditStatus',
     'goldenSetStatus',
     'bestOfNEvidenceStatus',
     'taskQueueLiteStatus',
@@ -700,6 +727,22 @@ function computeFailureReasonCatalogStatus() {
     'package_change_requires_package_verification',
     'target_quality_score_unavailable',
     'target_quality_score_blocking_failure',
+    'workflow_runner_failed',
+    'workflow_runner_invalid_report',
+    'classification_rules_missing',
+    'classification_rules_invalid',
+    'classification_unknown_in_pr_context',
+    'product_verification_evidence_missing',
+    'product_verification_evidence_invalid',
+    'product_verification_evidence_unsafe',
+    'test_metrics_missing',
+    'test_metrics_invalid',
+    'test_metrics_unsafe',
+    'performance_metrics_required',
+    'stale_pr_detected',
+    'stale_confirmation_detected',
+    'stale_harness_version_in_pr',
+    'reason_summary_invalid',
   ];
   if (!fs.existsSync(file)) return { status: 'fail', missingReasonCodes: required, safeSummaryOnly: true };
   try {
@@ -787,6 +830,10 @@ async function runSourceHarnessGate() {
     goldenSetStatus: { status: 'not_run' },
     changeClassificationStatus: { status: 'not_run' },
     productVerificationStatus: { status: 'not_run' },
+    productVerificationEvidenceStatus: { status: 'not_run' },
+    testMetricsStatus: { status: 'not_run' },
+    stalePrAuditStatus: { status: 'not_run' },
+    reasonSummaryStatus: { status: 'not_run' },
     bestOfNEvidenceStatus: { status: 'not_run' },
     taskQueueLiteStatus: { status: 'not_run' },
     safeTraceSchemaStatus: { status: 'not_run' },
@@ -815,6 +862,7 @@ async function runSourceHarnessGate() {
     v072SelfTestStatus: { status: 'not_run' },
     v080SelfTestStatus: { status: 'not_run' },
     v081SelfTestStatus: { status: 'not_run' },
+    v082SelfTestStatus: { status: 'not_run' },
     profileTemplateCompatibilityStatus: { status: 'not_run' },
     qualityScoreStatus: { status: 'not_run' },
   };
@@ -832,6 +880,9 @@ async function runSourceHarnessGate() {
   report.goldenSetStatus = runGateScript('scripts/codex-golden-set-gate.mjs', 'goldenSetStatus', 'CODEX_GOLDEN_SET_REPORT', gateEnv);
   report.changeClassificationStatus = runGateScript('scripts/codex-change-classification-gate.mjs', 'changeClassificationStatus', 'CODEX_CHANGE_CLASSIFICATION_REPORT', gateEnv);
   report.productVerificationStatus = runGateScript('scripts/codex-product-verification-gate.mjs', 'productVerificationStatus', 'CODEX_PRODUCT_VERIFICATION_REPORT', gateEnv);
+  report.productVerificationEvidenceStatus = runGateScript('scripts/codex-product-verification-evidence-normalize.mjs', 'productVerificationEvidenceStatus', 'CODEX_PRODUCT_VERIFICATION_EVIDENCE_REPORT', gateEnv);
+  report.testMetricsStatus = runGateScript('scripts/codex-test-metrics-collect.mjs', 'testMetricsStatus', 'CODEX_TEST_METRICS_REPORT', gateEnv);
+  report.stalePrAuditStatus = runGateScript('scripts/codex-stale-pr-audit-gate.mjs', 'stalePrAuditStatus', 'CODEX_STALE_PR_AUDIT_REPORT', gateEnv);
   report.productionReadinessStatus = runGateScript('scripts/codex-production-readiness-gate.mjs', 'productionReadinessStatus', 'CODEX_PRODUCTION_READINESS_REPORT', gateEnv);
   report.evidenceIntegrityStatus = runGateScript('scripts/codex-evidence-integrity-gate.mjs', 'evidenceIntegrityStatus', 'CODEX_EVIDENCE_INTEGRITY_REPORT', gateEnv);
   report.hermesInvariantStatus = runGateScript('scripts/codex-hermes-invariant-gate.mjs', 'hermesInvariantStatus', 'CODEX_HERMES_INVARIANT_REPORT', gateEnv);
@@ -855,6 +906,16 @@ async function runSourceHarnessGate() {
   report.v081SelfTestStatus = process.env.CODEX_SKIP_V081_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v081-self-test.mjs', 'v081SelfTestStatus', 'CODEX_V081_SELF_TEST_REPORT', gateEnv);
+  report.v082SelfTestStatus = process.env.CODEX_SKIP_V082_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v082-self-test.mjs', 'v082SelfTestStatus', 'CODEX_V082_SELF_TEST_REPORT', gateEnv);
+  const reasonSummary = buildCompactReasonSummary(report);
+  report.reasonSummaryStatus = {
+    status: reasonSummary.status,
+    reasonCodes: reasonSummary.reasonCodes,
+    summary: reasonSummary.summary,
+    safeSummaryOnly: true,
+  };
 
   for (const [key, value] of Object.entries({
     profileTemplateCompatibilityStatus: report.profileTemplateCompatibilityStatus,
@@ -870,6 +931,10 @@ async function runSourceHarnessGate() {
     goldenSetStatus: report.goldenSetStatus,
     changeClassificationStatus: report.changeClassificationStatus,
     productVerificationStatus: report.productVerificationStatus,
+    productVerificationEvidenceStatus: report.productVerificationEvidenceStatus,
+    testMetricsStatus: report.testMetricsStatus,
+    stalePrAuditStatus: report.stalePrAuditStatus,
+    reasonSummaryStatus: report.reasonSummaryStatus,
     productionReadinessStatus: report.productionReadinessStatus,
     evidenceIntegrityStatus: report.evidenceIntegrityStatus,
     hermesInvariantStatus: report.hermesInvariantStatus,
@@ -884,6 +949,7 @@ async function runSourceHarnessGate() {
     v072SelfTestStatus: report.v072SelfTestStatus,
     v080SelfTestStatus: report.v080SelfTestStatus,
     v081SelfTestStatus: report.v081SelfTestStatus,
+    v082SelfTestStatus: report.v082SelfTestStatus,
     bestOfNEvidenceStatus: report.bestOfNEvidenceStatus,
     taskQueueLiteStatus: report.taskQueueLiteStatus,
     safeTraceSchemaStatus: report.safeTraceSchemaStatus,
@@ -923,6 +989,10 @@ async function runSourceHarnessGate() {
     console.log(`goldenSetStatus: ${report.goldenSetStatus.status}`);
     console.log(`changeClassificationStatus: ${report.changeClassificationStatus.status}`);
     console.log(`productVerificationStatus: ${report.productVerificationStatus.status}`);
+    console.log(`productVerificationEvidenceStatus: ${report.productVerificationEvidenceStatus.status}`);
+    console.log(`testMetricsStatus: ${report.testMetricsStatus.status}`);
+    console.log(`stalePrAuditStatus: ${report.stalePrAuditStatus.status}`);
+    console.log(`reasonSummaryStatus: ${report.reasonSummaryStatus.status}`);
     console.log(`productionReadinessStatus: ${report.productionReadinessStatus.status}`);
     console.log(`evidenceIntegrityStatus: ${report.evidenceIntegrityStatus.status}`);
     console.log(`hermesInvariantStatus: ${report.hermesInvariantStatus.status}`);
@@ -937,6 +1007,7 @@ async function runSourceHarnessGate() {
     console.log(`v072SelfTestStatus: ${report.v072SelfTestStatus.status}`);
     console.log(`v080SelfTestStatus: ${report.v080SelfTestStatus.status}`);
     console.log(`v081SelfTestStatus: ${report.v081SelfTestStatus.status}`);
+    console.log(`v082SelfTestStatus: ${report.v082SelfTestStatus.status}`);
     console.log(`bestOfNEvidenceStatus: ${report.bestOfNEvidenceStatus.status}`);
     console.log(`taskQueueLiteStatus: ${report.taskQueueLiteStatus.status}`);
     console.log(`safeTraceSchemaStatus: ${report.safeTraceSchemaStatus.status}`);
@@ -1002,6 +1073,10 @@ async function runTargetHarnessGate() {
     environmentReadinessStatus: { status: 'not_run' },
     changeClassificationStatus: { status: 'not_run' },
     productVerificationStatus: { status: 'not_run' },
+    productVerificationEvidenceStatus: { status: 'not_run' },
+    testMetricsStatus: { status: 'not_run' },
+    stalePrAuditStatus: { status: 'not_run' },
+    reasonSummaryStatus: { status: 'not_run' },
     safeOutputScanStatus: { status: 'not_run' },
     goldenSetStatus: { status: 'not_run' },
     bestOfNEvidenceStatus: { status: 'not_run' },
@@ -1013,6 +1088,7 @@ async function runTargetHarnessGate() {
     performanceEvidenceStatus: { status: 'not_run' },
     v080SelfTestStatus: { status: 'not_run' },
     v081SelfTestStatus: { status: 'not_run' },
+    v082SelfTestStatus: { status: 'not_run' },
     safeArtifactValidation: { status: 'not_run' },
     outputShapeStatus: { status: 'not_run' },
     targetQualityScoreStatus: { status: 'not_run' },
@@ -1025,6 +1101,9 @@ async function runTargetHarnessGate() {
   report.environmentReadinessStatus = runGateScript('scripts/codex-environment-readiness-gate.mjs', 'environmentReadinessStatus', 'CODEX_ENVIRONMENT_READINESS_REPORT', gateEnv);
   report.changeClassificationStatus = runGateScript('scripts/codex-change-classification-gate.mjs', 'changeClassificationStatus', 'CODEX_CHANGE_CLASSIFICATION_REPORT', gateEnv);
   report.productVerificationStatus = runGateScript('scripts/codex-product-verification-gate.mjs', 'productVerificationStatus', 'CODEX_PRODUCT_VERIFICATION_REPORT', gateEnv);
+  report.productVerificationEvidenceStatus = runGateScript('scripts/codex-product-verification-evidence-normalize.mjs', 'productVerificationEvidenceStatus', 'CODEX_PRODUCT_VERIFICATION_EVIDENCE_REPORT', gateEnv);
+  report.testMetricsStatus = runGateScript('scripts/codex-test-metrics-collect.mjs', 'testMetricsStatus', 'CODEX_TEST_METRICS_REPORT', gateEnv);
+  report.stalePrAuditStatus = runGateScript('scripts/codex-stale-pr-audit-gate.mjs', 'stalePrAuditStatus', 'CODEX_STALE_PR_AUDIT_REPORT', gateEnv);
   report.safeOutputScanStatus = runGateScript('scripts/codex-safe-output-scan.mjs', 'safeOutputScanStatus', 'CODEX_SAFE_OUTPUT_SCAN_REPORT', gateEnv);
   report.goldenSetStatus = fs.existsSync(path.join('docs', 'process', 'golden', 'cases.json'))
     ? runGateScript('scripts/codex-golden-set-gate.mjs', 'goldenSetStatus', 'CODEX_GOLDEN_SET_REPORT', gateEnv)
@@ -1040,6 +1119,16 @@ async function runTargetHarnessGate() {
   report.v081SelfTestStatus = process.env.CODEX_SKIP_V081_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v081-self-test.mjs', 'v081SelfTestStatus', 'CODEX_V081_SELF_TEST_REPORT', gateEnv);
+  report.v082SelfTestStatus = process.env.CODEX_SKIP_V082_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v082-self-test.mjs', 'v082SelfTestStatus', 'CODEX_V082_SELF_TEST_REPORT', gateEnv);
+  const reasonSummary = buildCompactReasonSummary(report);
+  report.reasonSummaryStatus = {
+    status: reasonSummary.status,
+    reasonCodes: reasonSummary.reasonCodes,
+    summary: reasonSummary.summary,
+    safeSummaryOnly: true,
+  };
 
   for (const [key, value] of Object.entries({
     targetManifestStatus: report.targetManifestStatus,
@@ -1048,6 +1137,10 @@ async function runTargetHarnessGate() {
     environmentReadinessStatus: report.environmentReadinessStatus,
     changeClassificationStatus: report.changeClassificationStatus,
     productVerificationStatus: report.productVerificationStatus,
+    productVerificationEvidenceStatus: report.productVerificationEvidenceStatus,
+    testMetricsStatus: report.testMetricsStatus,
+    stalePrAuditStatus: report.stalePrAuditStatus,
+    reasonSummaryStatus: report.reasonSummaryStatus,
     safeOutputScanStatus: report.safeOutputScanStatus,
     goldenSetStatus: report.goldenSetStatus,
     bestOfNEvidenceStatus: report.bestOfNEvidenceStatus,
@@ -1059,6 +1152,7 @@ async function runTargetHarnessGate() {
     performanceEvidenceStatus: report.performanceEvidenceStatus,
     v080SelfTestStatus: report.v080SelfTestStatus,
     v081SelfTestStatus: report.v081SelfTestStatus,
+    v082SelfTestStatus: report.v082SelfTestStatus,
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }

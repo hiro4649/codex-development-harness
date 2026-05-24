@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.1",
-  "harnessVersion": "0.8.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
+  "harnessVersion": "0.8.2",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -239,7 +239,7 @@
       "gate": "safeTrace",
       "severity": "error",
       "safeMessage": "Safe trace schema is invalid.",
-      "nextBestFix": "Use the v0.8.1 safe trace schema.",
+      "nextBestFix": "Use the v0.8.2 safe trace schema.",
       "canManualConfirmationOverride": false
     },
     {
@@ -319,7 +319,7 @@
       "gate": "agentsContext",
       "severity": "error",
       "safeMessage": "AGENTS.md is missing the current harness block.",
-      "nextBestFix": "Add one current v0.8.1 harness block.",
+      "nextBestFix": "Add one current v0.8.2 harness block.",
       "canManualConfirmationOverride": true
     },
     {
@@ -384,6 +384,134 @@
       "severity": "error",
       "safeMessage": "Target quality score has a blocking gate.",
       "nextBestFix": "Fix the blocking target gate before merge.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_runner_failed",
+      "gate": "workflowRunner",
+      "severity": "error",
+      "safeMessage": "Workflow quality runner found a blocking failure.",
+      "nextBestFix": "Fix the reported required status or gate failure.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_runner_invalid_report",
+      "gate": "workflowRunner",
+      "severity": "error",
+      "safeMessage": "Workflow quality runner received invalid or unsafe report data.",
+      "nextBestFix": "Regenerate the local quality gate JSON report.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "classification_rules_missing",
+      "gate": "changeClassification",
+      "severity": "error",
+      "safeMessage": "Change classification rules are missing.",
+      "nextBestFix": "Add docs/process/CODEX_CHANGE_CLASSIFICATION_RULES.json.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "classification_rules_invalid",
+      "gate": "changeClassification",
+      "severity": "error",
+      "safeMessage": "Change classification rules are invalid or unsafe.",
+      "nextBestFix": "Fix the classification rules JSON.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "classification_unknown_in_pr_context",
+      "gate": "changeClassification",
+      "severity": "error",
+      "safeMessage": "Unknown files were changed in PR context.",
+      "nextBestFix": "Classify the files or narrow the PR scope.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "product_verification_evidence_missing",
+      "gate": "productVerification",
+      "severity": "error",
+      "safeMessage": "Required product verification evidence is missing.",
+      "nextBestFix": "Add safe command evidence for product-relevant changes.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "product_verification_evidence_invalid",
+      "gate": "productVerification",
+      "severity": "error",
+      "safeMessage": "Product verification evidence is invalid.",
+      "nextBestFix": "Fix the normalized evidence schema.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_verification_evidence_unsafe",
+      "gate": "productVerification",
+      "severity": "error",
+      "safeMessage": "Product verification evidence contains unsafe content.",
+      "nextBestFix": "Remove unsafe values and keep safe summaries only.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "test_metrics_missing",
+      "gate": "testMetrics",
+      "severity": "warning",
+      "safeMessage": "Test metrics are missing when claimed.",
+      "nextBestFix": "Provide safe test metrics or remove the runtime metric claim.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "test_metrics_invalid",
+      "gate": "testMetrics",
+      "severity": "error",
+      "safeMessage": "Test metrics are invalid.",
+      "nextBestFix": "Use the v0.8.2 safe test metrics schema.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "test_metrics_unsafe",
+      "gate": "testMetrics",
+      "severity": "error",
+      "safeMessage": "Test metrics contain unsafe content.",
+      "nextBestFix": "Remove raw logs and unsafe values from metrics.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "performance_metrics_required",
+      "gate": "performance",
+      "severity": "error",
+      "safeMessage": "Performance or runtime metric claim requires safe metrics.",
+      "nextBestFix": "Add safe baseline and new measurement summaries.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "stale_pr_detected",
+      "gate": "stalePrAudit",
+      "severity": "error",
+      "safeMessage": "PR metadata is stale for the current harness context.",
+      "nextBestFix": "Refresh the PR or rerun evidence on the current base and head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "stale_confirmation_detected",
+      "gate": "stalePrAudit",
+      "severity": "error",
+      "safeMessage": "Structured confirmation does not match the current head.",
+      "nextBestFix": "Add current-head structured confirmation.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "stale_harness_version_in_pr",
+      "gate": "stalePrAudit",
+      "severity": "error",
+      "safeMessage": "PR text presents an old harness version as current.",
+      "nextBestFix": "Update PR evidence to the current source harness version.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "reason_summary_invalid",
+      "gate": "reasonSummary",
+      "severity": "error",
+      "safeMessage": "Compact reason summary is invalid or unsafe.",
+      "nextBestFix": "Regenerate safe reason summary from the report.",
       "canManualConfirmationOverride": false
     }
   ]

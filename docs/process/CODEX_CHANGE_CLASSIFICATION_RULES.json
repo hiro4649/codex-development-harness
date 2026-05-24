@@ -1,0 +1,70 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
+  "harnessVersion": "0.8.2",
+  "harnessFiles": [
+    "AGENTS.md",
+    ".github/pull_request_template.md",
+    ".github/workflows/quality-gate.yml",
+    ".github/workflows/weekly-health-check.yml",
+    "CODEX_SOURCE_HARNESS_MANIFEST.json",
+    "docs/process/",
+    "docs/codex/",
+    "scripts/codex-*",
+    ".codex/"
+  ],
+  "docsFiles": [
+    "README.md",
+    "docs/"
+  ],
+  "productSourceFiles": [
+    "src/",
+    "apps/",
+    "contracts/",
+    "packages/",
+    "lib/",
+    "server/",
+    "client/"
+  ],
+  "testFiles": [
+    "test/",
+    "tests/",
+    "__tests__/",
+    "scripts/run-tests.js"
+  ],
+  "specFiles": [
+    "specs/",
+    "docs/specs/"
+  ],
+  "packageFiles": [
+    "package.json",
+    "npm-shrinkwrap.json"
+  ],
+  "lockFiles": [
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml"
+  ],
+  "workflowFiles": [
+    ".github/workflows/"
+  ],
+  "runtimeAssetFiles": [
+    "public/",
+    "assets/",
+    "runtime/"
+  ],
+  "configFiles": [
+    "tsconfig.json",
+    "vite.config.*",
+    "next.config.*",
+    "webpack.config.*",
+    "eslint.config.*",
+    ".env*"
+  ],
+  "authorityFiles": [
+    "IRIS_SPEC_AUTHORITY.md",
+    "*_SPEC_AUTHORITY.md",
+    "docs/process/*AUTHORITY*.md"
+  ],
+  "unknownPolicy": "fail_in_pr_context"
+}
+

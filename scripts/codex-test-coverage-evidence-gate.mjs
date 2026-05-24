@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 import { HARNESS_VERSION, marker, prBodyText, isPrContext, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 
 function docsOnly(body) {

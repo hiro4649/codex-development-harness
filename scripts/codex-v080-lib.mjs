@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const HARNESS_VERSION = '0.8.1';
+export const HARNESS_VERSION = '0.8.2';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 export function readText(file) {
@@ -107,7 +107,9 @@ export function scanObjectForUnsafe(value, pathLabel = 'report') {
 export function mojibakeFindings(text) {
   const value = String(text || '');
   const patterns = [
-    /驍|邵|繝|郢|竏|隴|髫|陞|荳|縺|譁|蜷|諛|貅|逕|蛹|荵|鬮|鬩|陷/,
+    /鬩鋼驍ｵ|郢掟驛｢|遶楯髫ｴ|鬮ｫ|髯桍闕ｳ|邵ｺ|隴－陷ｷ|隲斈雋・騾怖陋ｹ|闕ｵ|鬯ｮ|鬯ｩ|髯ｷ/,
+    /(?:鬯|鬮|驛|髫|郢|繝|譁)[^\n]{0,24}(?:ｽ|・|繝|鬯|鬮|郢)/,
+    /(?:ｽ|・|繝)[^\n]{0,24}(?:鬯|鬮|驛|髫|郢|譁)/,
     /\uFFFD/,
   ];
   return patterns.some((pattern) => pattern.test(value)) ? ['agents_context_mojibake'] : [];

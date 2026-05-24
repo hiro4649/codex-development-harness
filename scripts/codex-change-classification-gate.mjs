@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 import { spawnSync } from 'node:child_process';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   HARNESS_VERSION,
@@ -8,9 +9,11 @@ import {
   isPrContext,
   normalizePath,
   prBodyText,
+  readJson,
   simpleStatus,
   writeJsonReport,
   exitFor,
+  scanObjectForUnsafe,
 } from './codex-v080-lib.mjs';
 
 function gitLines(args) {
@@ -31,35 +34,110 @@ export function changedFiles(env = process.env) {
   ])].sort();
 }
 
-function matches(file, patterns) {
+function globToRegExp(pattern) {
+  let out = '^';
+  const text = normalizePath(pattern);
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    const next = text[i + 1];
+    if (ch === '*' && next === '*') {
+      out += '.*';
+      i += 1;
+    } else if (ch === '*') {
+      out += '[^/]*';
+    } else {
+      out += ch.replace(/[|\\{}()[\]^$+?.]/g, '\\$&');
+    }
+  }
+  return new RegExp(`${out}$`);
+}
+
+function matches(file, patterns = []) {
   return patterns.some((pattern) => {
-    if (pattern.endsWith('/')) return file.startsWith(pattern);
-    if (pattern.endsWith('/**')) return file.startsWith(pattern.slice(0, -2));
-    if (pattern.endsWith('*')) return file.startsWith(pattern.slice(0, -1));
-    return file === pattern || file.startsWith(`${pattern}/`);
+    const normalized = normalizePath(pattern);
+    if (!normalized) return false;
+    if (normalized.includes('*')) return globToRegExp(normalized).test(file);
+    if (normalized.endsWith('/')) return file.startsWith(normalized);
+    return file === normalized || file.startsWith(`${normalized}/`);
   });
 }
 
-const harnessPatterns = [
-  'AGENTS.md',
-  '.github/pull_request_template.md',
-  '.github/workflows/quality-gate.yml',
-  '.github/workflows/weekly-health-check.yml',
-  'CODEX_SOURCE_HARNESS_MANIFEST.json',
-  'docs/process/',
-  'docs/codex/',
-  'scripts/codex-*',
-  '.codex/',
-];
+const defaultRules = {
+  harnessFiles: [
+    'AGENTS.md',
+    '.github/pull_request_template.md',
+    '.github/workflows/quality-gate.yml',
+    '.github/workflows/weekly-health-check.yml',
+    'CODEX_SOURCE_HARNESS_MANIFEST.json',
+    'docs/process/',
+    'docs/codex/',
+    'scripts/codex-*',
+    '.codex/',
+  ],
+  docsFiles: ['README.md', 'docs/'],
+  productSourceFiles: ['src/', 'apps/', 'contracts/', 'packages/', 'lib/', 'server/', 'client/'],
+  testFiles: ['test/', 'tests/', '__tests__/', 'scripts/run-tests.js'],
+  specFiles: ['specs/', 'docs/specs/'],
+  packageFiles: ['package.json', 'npm-shrinkwrap.json'],
+  lockFiles: ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'],
+  workflowFiles: ['.github/workflows/'],
+  runtimeAssetFiles: ['public/', 'assets/', 'runtime/'],
+  configFiles: ['tsconfig.json', 'vite.config.*', 'next.config.*', 'webpack.config.*', 'eslint.config.*', '.env*'],
+  authorityFiles: ['IRIS_SPEC_AUTHORITY.md', '*_SPEC_AUTHORITY.md', 'docs/process/*AUTHORITY*.md'],
+  unknownPolicy: 'fail_in_pr_context',
+};
 
-const docsPatterns = ['README.md', 'docs/'];
-const productPatterns = ['src/', 'apps/', 'contracts/', 'packages/', 'lib/', 'server/', 'client/', 'public/', 'assets/', 'runtime/'];
-const testPatterns = ['test/', 'tests/', '__tests__/'];
-const specPatterns = ['specs/', 'docs/specs/', 'IRIS_SPEC_AUTHORITY.md'];
-const packagePatterns = ['package.json', 'npm-shrinkwrap.json'];
-const lockPatterns = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'];
-const workflowPatterns = ['.github/workflows/'];
-const configPatterns = ['tsconfig.json', 'vite.config.', 'next.config.', 'webpack.config.', 'eslint.config.', '.env'];
+function safeStringArray(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function validateRules(value) {
+  const required = [
+    'harnessFiles',
+    'docsFiles',
+    'productSourceFiles',
+    'testFiles',
+    'specFiles',
+    'packageFiles',
+    'lockFiles',
+    'workflowFiles',
+    'runtimeAssetFiles',
+    'configFiles',
+    'authorityFiles',
+  ];
+  if (!value || typeof value !== 'object') return false;
+  if (scanObjectForUnsafe(value).length) return false;
+  return required.every((key) => safeStringArray(value[key]));
+}
+
+export function loadClassificationRules(env = process.env) {
+  const explicit = env.CODEX_CHANGE_CLASSIFICATION_RULES_PATH;
+  const basePath = explicit || path.join('docs', 'process', 'CODEX_CHANGE_CLASSIFICATION_RULES.json');
+  const base = readJson(basePath);
+  if (!base.ok) {
+    return {
+      ok: false,
+      reasonCode: base.reasonCode === 'file_missing' ? 'classification_rules_missing' : 'classification_rules_invalid',
+      rules: defaultRules,
+      source: basePath,
+    };
+  }
+  if (!validateRules(base.value)) {
+    return { ok: false, reasonCode: 'classification_rules_invalid', rules: defaultRules, source: basePath };
+  }
+  let rules = { ...defaultRules, ...base.value };
+  const localPath = path.join('docs', 'process', 'CODEX_CHANGE_CLASSIFICATION_RULES.local.json');
+  if (env.CODEX_ALLOW_CLASSIFICATION_LOCAL_OVERRIDE !== '0') {
+    const local = readJson(localPath);
+    if (local.ok) {
+      if (!validateRules({ ...rules, ...local.value })) {
+        return { ok: false, reasonCode: 'classification_rules_invalid', rules, source: localPath };
+      }
+      rules = { ...rules, ...local.value };
+    }
+  }
+  return { ok: true, reasonCode: null, rules, source: basePath };
+}
 
 function runtimeClaimed(body) {
   return String(body || '').split(/\r?\n/).some((line) =>
@@ -73,6 +151,8 @@ function performanceClaimed(body) {
 
 export function classifyChange(files = changedFiles(), env = process.env) {
   const body = prBodyText(env);
+  const loaded = loadClassificationRules(env);
+  const rules = loaded.rules;
   const flags = {
     harnessOnly: false,
     docsOnly: false,
@@ -93,17 +173,17 @@ export function classifyChange(files = changedFiles(), env = process.env) {
   const unknownFiles = [];
   for (const raw of files) {
     const file = normalizePath(raw);
-    const harness = matches(file, harnessPatterns);
-    const docs = matches(file, docsPatterns);
-    const workflow = matches(file, workflowPatterns);
-    const product = matches(file, productPatterns);
-    const test = matches(file, testPatterns);
-    const spec = matches(file, specPatterns);
-    const authority = file === 'IRIS_SPEC_AUTHORITY.md';
-    const packageFile = matches(file, packagePatterns);
-    const lockfile = matches(file, lockPatterns);
-    const runtimeAsset = /^(assets|public|runtime)\//.test(file);
-    const config = matches(file, configPatterns) || /\bconfig\b/i.test(file);
+    const harness = matches(file, rules.harnessFiles);
+    const docs = matches(file, rules.docsFiles);
+    const workflow = matches(file, rules.workflowFiles);
+    const product = matches(file, rules.productSourceFiles);
+    const test = matches(file, rules.testFiles);
+    const spec = matches(file, rules.specFiles);
+    const authority = matches(file, rules.authorityFiles);
+    const packageFile = matches(file, rules.packageFiles);
+    const lockfile = matches(file, rules.lockFiles);
+    const runtimeAsset = matches(file, rules.runtimeAssetFiles);
+    const config = matches(file, rules.configFiles) || /\bconfig\b/i.test(file);
     if (workflow) flags.workflowChanged = true;
     if (product) flags.productSourceChanged = true;
     if (test) flags.testsChanged = true;
@@ -122,14 +202,20 @@ export function classifyChange(files = changedFiles(), env = process.env) {
   const productRelevantChanged = flags.productSourceChanged || flags.testsChanged || flags.specsChanged ||
     flags.packageChanged || flags.lockfileChanged || flags.runtimeAssetsChanged || flags.configChanged ||
     flags.authorityChanged;
-  flags.harnessOnly = files.length > 0 && files.every((file) => matches(normalizePath(file), harnessPatterns));
-  flags.docsOnly = files.length > 0 && !productRelevantChanged && files.every((file) => matches(normalizePath(file), docsPatterns) || matches(normalizePath(file), harnessPatterns));
+  flags.harnessOnly = files.length > 0 && files.every((file) => matches(normalizePath(file), rules.harnessFiles));
+  flags.docsOnly = files.length > 0 && !productRelevantChanged && files.every((file) => matches(normalizePath(file), rules.docsFiles) || matches(normalizePath(file), rules.harnessFiles));
   flags.unknownRisk = unknownFiles.length > 0;
 
   const reasonCodes = [];
-  if (flags.unknownRisk) reasonCodes.push('change_classification_unknown');
+  if (!loaded.ok) reasonCodes.push(loaded.reasonCode);
+  if (flags.unknownRisk) {
+    reasonCodes.push('change_classification_unknown');
+    if (isPrContext(env)) reasonCodes.push('classification_unknown_in_pr_context');
+  }
   if (!files.length && !isPrContext(env)) reasonCodes.push('no_pr_context');
-  const status = reasonCodes.includes('change_classification_unknown')
+  const status = reasonCodes.includes('classification_rules_missing') || reasonCodes.includes('classification_rules_invalid')
+    ? (isPrContext(env) ? 'fail' : 'warning')
+    : reasonCodes.includes('change_classification_unknown')
     ? (isPrContext(env) ? 'fail' : 'warning')
     : reasonCodes.includes('no_pr_context') ? 'not_applicable' : 'pass';
 
@@ -141,6 +227,8 @@ export function classifyChange(files = changedFiles(), env = process.env) {
     runtimeReadinessClaimed: flags.runtimeReadinessClaimed,
     packageOrLockfileChanged: flags.packageChanged || flags.lockfileChanged,
     reasonCodes,
+    rulesSource: loaded.source,
+    unknownFiles: unknownFiles.length,
   };
 }
 

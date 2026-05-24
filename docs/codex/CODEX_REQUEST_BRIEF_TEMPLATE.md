@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
 # Codex Request Brief Template
 
 Use this before asking Codex to start work.

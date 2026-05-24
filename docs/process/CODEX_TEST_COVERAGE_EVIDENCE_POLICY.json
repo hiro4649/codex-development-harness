@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.1",
-  "harnessVersion": "0.8.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
+  "harnessVersion": "0.8.2",
   "requiredFor": ["bug_fix", "refactor", "migration", "implementation_change", "behavior_change"],
   "notApplicableFor": ["docs_only", "policy_only"],
   "coverageToolRequired": false

@@ -1,0 +1,13 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
+  "harnessVersion": "0.8.2",
+  "safeSummaryOnly": true,
+  "artifacts": [
+    "codex-quality-gate-safe-summary.json",
+    "codex-failure-reasons.json",
+    "codex-evidence-pack.normalized.json",
+    "codex-target-quality-summary.json"
+  ],
+  "mustPreserveManualConfirmation": true
+}
+

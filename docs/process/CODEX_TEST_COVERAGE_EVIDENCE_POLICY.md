@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
 # Test Coverage Evidence Policy
 
 Coverage percentage tools are not required. For bug fixes, refactors,

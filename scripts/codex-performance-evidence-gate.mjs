@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
-import { HARNESS_VERSION, marker, prBodyText, isPrContext, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
+import { HARNESS_VERSION, marker, prBodyText, isPrContext, readJson, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 
 function hasPerformanceClaim(body) {
   const claimPattern = /\b(faster|lower memory|lower latency|more efficient|optimized|reduced cost|performance improvement|speedup)\b/i;
@@ -16,6 +16,15 @@ function hasEvidence(body) {
     /new measurement summary/i.test(body);
 }
 
+function hasSafeMetricEvidence(env) {
+  const file = env.CODEX_TEST_METRICS_PATH || env.CODEX_TEST_METRICS_INPUT_PATH;
+  if (!file) return false;
+  const parsed = readJson(file);
+  if (!parsed.ok) return false;
+  const value = parsed.value || {};
+  return Boolean(value.baselineSummary && value.newMeasurementSummary);
+}
+
 function buildReport(env = process.env) {
   const body = prBodyText(env);
   if (!isPrContext(env) && !body.trim()) {
@@ -24,9 +33,9 @@ function buildReport(env = process.env) {
   if (!hasPerformanceClaim(body)) {
     return simpleStatus('performanceEvidenceStatus', 'not_applicable', { reasonCodes: ['performance_claim_not_present'] });
   }
-  const status = hasEvidence(body) ? 'pass' : 'fail';
+  const status = hasEvidence(body) || hasSafeMetricEvidence(env) ? 'pass' : 'fail';
   return simpleStatus('performanceEvidenceStatus', status, {
-    reasonCodes: status === 'pass' ? [] : ['performance_claim_without_evidence'],
+    reasonCodes: status === 'pass' ? [] : ['performance_metrics_required', 'performance_claim_without_evidence'],
   });
 }
 

@@ -1,0 +1,17 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
+  "schemaVersion": "0.8.2",
+  "fields": [
+    "command",
+    "result",
+    "durationMs",
+    "testCount",
+    "failedCount",
+    "skippedCount",
+    "source",
+    "headSha",
+    "safeSummary",
+    "safeSummaryOnly"
+  ]
+}
+
