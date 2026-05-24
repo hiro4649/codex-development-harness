@@ -99,6 +99,8 @@ export function buildV084SelfTestReport() {
   assertCase('PR body docs-only profile is light', result.prProfileStatus.status === 'pass', failures, cases, result.prProfileStatus.status);
   result = buildPrProfileReport({ CODEX_EVENT_NAME: 'pull_request', CODEX_CHANGED_FILES: 'scripts/codex-example.mjs', CODEX_PR_BODY: 'PR profile: harness_workflow_r3\n\nGoal:\nHarness.' });
   assertCase('PR body R3 harness workflow profile requires evidence', result.prProfileStatus.status === 'fail', failures, cases, result.prProfileStatus.status);
+  result = buildPrProfileReport({ CODEX_EVENT_NAME: 'pull_request', CODEX_CHANGED_FILES: '.github/workflows/quality-gate.yml,README.md', CODEX_PR_BODY: 'PR profile: harness_workflow_r3\n\nGoal:\nHarness.\n\nRisk level:\nR3\n\nFiles or scope:\nHarness files.\n\nEvidence Integrity:\nCurrent head evidence.\n\nValidation commands:\nSelf-tests pass.\n\nResidual risks:\nOwner confirmation pending.\n\nHuman confirmation needed:\nyes.' });
+  assertCase('PR body harness workflow profile matches workflow change', result.prProfileStatus.status === 'pass', failures, cases, result.prProfileStatus.status);
 
   result = buildOpenPrHygieneReport({ CODEX_OPEN_PR_HYGIENE_JSON: JSON.stringify([{ prNumber: 1, staleEvidence: true }]) });
   assertCase('open PR hygiene report-only does not block unrelated PR', result.openPrHygieneStatus.status === 'warning' && result.openPrHygieneStatus.reportOnly, failures, cases, result.openPrHygieneStatus.status);
