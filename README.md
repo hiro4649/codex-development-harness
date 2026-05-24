@@ -1,16 +1,16 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.3 -->
 # Codex Development Harness
 
-Version: v0.8.2
-Name: Workflow Runner and Evidence Normalization Gate
+Version: v0.8.3
+Name: Remote Baseline and Diagnostic Stability Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.2 preserves the v0.8.1 target verification model while
-moving fragile workflow evaluation into a reusable runner, loading change
-classification from policy JSON, normalizing product verification evidence, and
-adding compact safe reason summaries for audit and resume workflows.
+evidence tooling. v0.8.3 preserves the v0.8.2 workflow runner and evidence
+normalization model while adding remote baseline checks, safe npm diagnostics,
+workflow preflight, safe artifact indexing, open PR hygiene, and one-screen
+final summaries for audit and resume workflows.
 
-## What v0.8.2 Adds
+## What v0.8.3 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -22,6 +22,12 @@ adding compact safe reason summaries for audit and resume workflows.
 - Workflow quality runner for GitHub Actions safe artifacts
 - Policy-driven change classification rules
 - Normalized product verification evidence
+- Remote product baseline gate for product-relevant PRs
+- Remote npm diagnostic classifier using safe metadata only
+- Workflow preflight runner
+- Safe artifact index
+- Open PR hygiene report
+- One-screen source and target final summaries
 - Optional safe test metrics artifacts
 - Stale PR audit checks
 - Compact failure reason summaries
@@ -32,7 +38,7 @@ adding compact safe reason summaries for audit and resume workflows.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.2 Does Not Add
+## What v0.8.3 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM

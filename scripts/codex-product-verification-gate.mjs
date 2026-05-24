@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import { fileURLToPath } from 'node:url';
 import { prBodyText, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import { classifyChange, changedFiles } from './codex-change-classification-gate.mjs';
 import { normalizeProductVerificationEvidence } from './codex-product-verification-evidence-normalize.mjs';
+import { buildRemoteProductBaselineReport } from './codex-remote-product-baseline-gate.mjs';
 
 function hasSkipReason(body, env) {
   return Boolean(env.CODEX_NPM_SKIP_REASON) || /\bskip reason\s*:\s*\S+/i.test(body) ||
@@ -22,6 +23,7 @@ export function buildProductVerificationReport(env = process.env) {
   const body = prBodyText(env);
   const classified = classifyChange(changedFiles(env), env);
   const normalized = normalizeProductVerificationEvidence(env);
+  const baseline = buildRemoteProductBaselineReport(env).remoteProductBaselineStatus;
   const c = classified.classification;
   const skipNpm = env.CODEX_SKIP_NPM === '1';
   const reasonCodes = [...classified.reasonCodes.filter((item) => item !== 'no_pr_context')];
@@ -31,6 +33,7 @@ export function buildProductVerificationReport(env = process.env) {
     ...((normalized.normalized?.commands || []).filter((item) => item.result === 'pass').map((item) => item.name || 'normalized_command')),
   ];
   const missingEvidence = [];
+  const failingEvidence = [];
   let skipAllowed = false;
   let skipReason = '';
 
@@ -76,10 +79,28 @@ export function buildProductVerificationReport(env = process.env) {
   if (classified.status === 'fail') reasonCodes.push('unknown_change_classification');
   if (missingEvidence.length && productRelevant) reasonCodes.push('product_verification_required');
   if (normalized.status === 'fail') reasonCodes.push(...normalized.reasonCodes);
+  for (const command of normalized.normalized?.commands || []) {
+    if (command.result === 'fail') failingEvidence.push(command.name || 'product_verification_command');
+  }
+  if (productRelevant || c.runtimeReadinessClaimed || c.packageChanged || c.lockfileChanged || c.performanceClaimed) {
+    if (baseline.status === 'fail' && (baseline.reasonCodes || []).includes('remote_product_baseline_missing')) {
+      reasonCodes.push('remote_product_baseline_missing');
+    } else if (baseline.status === 'fail') {
+      reasonCodes.push(...(baseline.reasonCodes || ['remote_product_baseline_invalid']));
+    } else if (baseline.status === 'manual_confirmation_required') {
+      reasonCodes.push(...(baseline.reasonCodes || ['remote_product_baseline_failing']));
+    }
+  }
+  if (failingEvidence.length) {
+    reasonCodes.push(baseline.baselineResult === 'fail' ? 'baseline_failure' : 'candidate_regression');
+  }
 
   const emergency = env.CODEX_EMERGENCY_MANUAL_REVIEW_REQUIRED === '1';
   let status = 'pass';
-  if (reasonCodes.length) status = emergency ? 'manual_confirmation_required' : 'fail';
+  if (reasonCodes.length) {
+    const manualOnly = reasonCodes.every((code) => ['remote_product_baseline_missing', 'remote_product_baseline_failing', 'baseline_failure'].includes(code));
+    status = emergency || manualOnly ? 'manual_confirmation_required' : 'fail';
+  }
 
   return simpleStatus('productVerificationStatus', status, {
     skipAllowed,
@@ -87,6 +108,9 @@ export function buildProductVerificationReport(env = process.env) {
     requiredCommands: [...new Set(requiredCommands)],
     providedEvidence: [...new Set(providedEvidence)],
     missingEvidence: [...new Set(missingEvidence)],
+    failingEvidence: [...new Set(failingEvidence)],
+    baselineStatus: baseline.status,
+    baselineResult: baseline.baselineResult || null,
     reasonCodes: [...new Set(reasonCodes)],
     normalizedEvidence: normalized.normalized,
   });

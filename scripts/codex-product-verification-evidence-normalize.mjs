@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -14,6 +14,7 @@ import {
   exitFor,
 } from './codex-v080-lib.mjs';
 import { classifyChange, changedFiles } from './codex-change-classification-gate.mjs';
+import { buildRemoteProductBaselineReport } from './codex-remote-product-baseline-gate.mjs';
 
 function parseJsonSource(env) {
   const file = env.CODEX_PRODUCT_VERIFICATION_EVIDENCE_PATH;
@@ -70,12 +71,13 @@ function envCommands(env) {
 }
 
 function hasNamedProductEvidence(commands) {
-  return commands.some((item) => item.result === 'pass' || item.result === 'not_run');
+  return commands.some((item) => ['pass', 'fail', 'not_run'].includes(item.result));
 }
 
 export function normalizeProductVerificationEvidence(env = process.env) {
   const body = prBodyText(env);
   const classified = classifyChange(changedFiles(env), env);
+  const baseline = buildRemoteProductBaselineReport(env).remoteProductBaselineStatus;
   const c = classified.classification;
   const fileEvidence = parseJsonSource(env);
   if (fileEvidence?.error) {
@@ -126,7 +128,7 @@ export function normalizeProductVerificationEvidence(env = process.env) {
   if (requiredEvidenceMissing.length) reasonCodes.push('product_verification_evidence_missing');
 
   const normalized = {
-    schemaVersion: '0.8.2',
+    schemaVersion: '0.8.3',
     harnessVersion: HARNESS_VERSION,
     mode: env.CODEX_HARNESS_SOURCE_REPO === '1' ? 'source' : (env.CODEX_HARNESS_MODE || 'target'),
     repository: env.CODEX_REPOSITORY || '',
@@ -143,6 +145,12 @@ export function normalizeProductVerificationEvidence(env = process.env) {
     skipAllowed,
     skipReason,
     commands,
+    baseline: {
+      status: baseline.status,
+      required: Boolean(baseline.baselineRequired),
+      result: baseline.baselineResult || null,
+      reasonCodes: baseline.reasonCodes || [],
+    },
     requiredEvidenceMissing: [...new Set(requiredEvidenceMissing)],
     safeSummaryOnly: true,
   };

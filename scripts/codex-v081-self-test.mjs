@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -99,7 +99,7 @@ function buildReport() {
   const cases = [];
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v081-'));
 
-  write(path.join(tmp, 'AGENTS.md'), `${cleanAgents()}\né¬¯ï½©é©ªï½¼é¬©æ¾ï½½ï½µ\n`);
+  write(path.join(tmp, 'AGENTS.md'), `${cleanAgents()}\né¬¯E©é©ªE¼é¬©æ¾E½Eµ\n`);
   let result = run('scripts/codex-agents-context-gate.mjs', { cwd: tmp });
   assertCase('AGENTS entire-file mojibake fails', result.parsed?.agentsContextStatus?.status === 'fail', failures, cases, result.parsed?.agentsContextStatus?.status);
 

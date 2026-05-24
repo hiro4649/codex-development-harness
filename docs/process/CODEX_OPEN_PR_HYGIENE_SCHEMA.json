@@ -1,0 +1,12 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "schemaVersion": "0.8.3",
+  "title": "Codex Open PR Hygiene Report",
+  "type": "object",
+  "required": ["pullRequests", "safeSummaryOnly"],
+  "properties": {
+    "pullRequests": { "type": "array" },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,17 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "harnessVersion": "0.8.3",
+  "policy": "remote_product_baseline",
+  "requiredWhen": [
+    "productRelevantChanged",
+    "packageOrLockfileChanged",
+    "runtimeReadinessClaimed",
+    "performanceClaimed"
+  ],
+  "notRequiredWhen": [
+    "harnessOnlyWithoutRuntimeClaim",
+    "docsOnlyWithoutRuntimeClaim"
+  ],
+  "safeSummaryOnly": true,
+  "rawValuesStored": false
+}

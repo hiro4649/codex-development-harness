@@ -1,9 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, scanObjectForUnsafe, simpleStatus, writeJsonReport } from './codex-v080-lib.mjs';
 import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
+import { buildSafeArtifactIndex } from './codex-safe-artifact-index.mjs';
+import { buildFinalSummary } from './codex-target-final-summary.mjs';
 
 const sourceRequiredPass = [
   'sourceHarnessValidationStatus',
@@ -16,6 +18,12 @@ const sourceRequiredPass = [
   'productVerificationStatus',
   'productVerificationEvidenceStatus',
   'testMetricsStatus',
+  'remoteProductBaselineStatus',
+  'remoteNpmDiagnosticStatus',
+  'workflowPreflightStatus',
+  'safeArtifactIndexStatus',
+  'openPrHygieneStatus',
+  'targetFinalSummaryStatus',
   'stalePrAuditStatus',
   'reasonSummaryStatus',
   'bestOfNEvidenceStatus',
@@ -47,6 +55,7 @@ const sourceRequiredPass = [
   'v080SelfTestStatus',
   'v081SelfTestStatus',
   'v082SelfTestStatus',
+  'v083SelfTestStatus',
   'qualityScoreStatus',
 ];
 
@@ -59,12 +68,19 @@ const targetRequiredPass = [
   'productVerificationStatus',
   'productVerificationEvidenceStatus',
   'testMetricsStatus',
+  'remoteProductBaselineStatus',
+  'remoteNpmDiagnosticStatus',
+  'workflowPreflightStatus',
+  'safeArtifactIndexStatus',
+  'openPrHygieneStatus',
+  'targetFinalSummaryStatus',
   'stalePrAuditStatus',
   'reasonSummaryStatus',
   'safeOutputScanStatus',
   'v080SelfTestStatus',
   'v081SelfTestStatus',
   'v082SelfTestStatus',
+  'v083SelfTestStatus',
   'safeArtifactValidation',
   'outputShapeStatus',
   'targetQualityScoreStatus',
@@ -86,6 +102,11 @@ const optionalNotApplicable = new Set([
   'productVerificationStatus',
   'productVerificationEvidenceStatus',
   'testMetricsStatus',
+  'remoteProductBaselineStatus',
+  'remoteNpmDiagnosticStatus',
+  'safeArtifactIndexStatus',
+  'openPrHygieneStatus',
+  'targetFinalSummaryStatus',
   'stalePrAuditStatus',
   'goldenSetStatus',
   'evidencePackStatus',
@@ -196,6 +217,19 @@ function writeArtifacts(result, report) {
       safeSummaryOnly: true,
     }, null, 2));
   }
+  const final = buildFinalSummary(report, result.mode);
+  fs.writeFileSync(`codex-${result.mode}-final-summary.json`, JSON.stringify(final.summary, null, 2));
+  const index = buildSafeArtifactIndex([
+    { artifactName: 'codex-quality-gate-safe-summary.json', path: 'codex-quality-gate-safe-summary.json', status: 'present' },
+    { artifactName: 'codex-failure-reasons.json', path: 'codex-failure-reasons.json', status: 'present' },
+    { artifactName: 'codex-evidence-pack.normalized.json', path: 'codex-evidence-pack.normalized.json', status: 'present' },
+    { artifactName: `codex-${result.mode}-final-summary.json`, path: `codex-${result.mode}-final-summary.json`, status: 'present' },
+    { artifactName: 'codex-safe-artifact-index.json', path: 'codex-safe-artifact-index.json', status: 'present' },
+    ...(result.mode === 'target' ? [{ artifactName: 'codex-target-quality-summary.json', path: 'codex-target-quality-summary.json', status: 'present' }] : []),
+    { artifactName: 'codex-workflow-preflight.safe.json', path: 'codex-workflow-preflight.safe.json', status: fs.existsSync('codex-workflow-preflight.safe.json') ? 'present' : 'missing', reasonCodes: fs.existsSync('codex-workflow-preflight.safe.json') ? [] : ['safe_artifact_missing'] },
+    { artifactName: 'codex-test-metrics.safe.json', path: 'codex-test-metrics.safe.json', status: fs.existsSync('codex-test-metrics.safe.json') ? 'present' : 'not_applicable' },
+  ], result.mode);
+  fs.writeFileSync('codex-safe-artifact-index.json', JSON.stringify(index, null, 2));
 }
 
 export function buildWorkflowQualityRunnerReport(report, options = {}) {

@@ -1,6 +1,6 @@
 # Generic Harness Core Policy
 
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.3 -->
 
 The source harness core must run as a generic Codex development and audit
 harness. In `CODEX_HARNESS_MODE=core`, profile checks are optional

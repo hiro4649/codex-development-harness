@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.3 -->
 # Task Queue Lite Policy
 
 Task queue evidence is optional. If present at `.codex/task-queue.json`, it must

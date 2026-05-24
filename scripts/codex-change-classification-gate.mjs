@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -146,7 +146,11 @@ function runtimeClaimed(body) {
 }
 
 function performanceClaimed(body) {
-  return /\b(faster|optimized|optimised|lower latency|lower memory|reduced memory|reduced cost|more efficient|performance)\b/i.test(body);
+  const claimPattern = /\b(faster|optimized|optimised|lower latency|lower memory|reduced memory|reduced cost|more efficient|performance improvement|speedup)\b/i;
+  return String(body || '').split(/\r?\n/).some((line) =>
+    claimPattern.test(line) &&
+    !/\b(no|not|without)\b.{0,80}\b(performance|faster|latency|memory|efficient|optimized|optimised|cost|speedup|claim)\b/i.test(line) &&
+    !/\b(performance claim|performance evidence)\s*:\s*(not applicable|none|no)\b/i.test(line));
 }
 
 export function classifyChange(files = changedFiles(), env = process.env) {

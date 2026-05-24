@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.3 -->
 # Performance Evidence Policy
 
 Performance evidence is required only when a PR claims faster, lower memory,

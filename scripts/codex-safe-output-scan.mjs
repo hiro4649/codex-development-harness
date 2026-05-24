@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-export const HARNESS_VERSION = '0.8.2';
+export const HARNESS_VERSION = '0.8.3';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const forbiddenFieldNames = new Set([

@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.8.2
+# CODEX_QUALITY_HARNESS_FILE v0.8.3
 name: weekly-health-check
 
 on:
@@ -40,5 +40,7 @@ jobs:
           CODEX_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
+          node scripts/codex-workflow-preflight.mjs > "$RUNNER_TEMP/codex-workflow-preflight.json"
           node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-weekly-health.json"
+          node scripts/codex-workflow-preflight.mjs --write-artifact > "$RUNNER_TEMP/codex-workflow-preflight-artifact.json"
           node scripts/codex-workflow-quality-runner.mjs --report "$RUNNER_TEMP/codex-weekly-health.json" --gate-exit 0

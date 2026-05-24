@@ -1,0 +1,52 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "schemaVersion": "0.8.3",
+  "title": "Codex Remote NPM Diagnostic",
+  "type": "object",
+  "required": [
+    "npmExitCode",
+    "nodeMajor",
+    "platform",
+    "os",
+    "packageManager",
+    "commandClass",
+    "safeFailureCategory",
+    "rawLogUploaded",
+    "rawValuesStored",
+    "safeSummaryOnly"
+  ],
+  "properties": {
+    "npmExitCode": { "type": ["number", "null"] },
+    "nodeMajor": { "type": ["number", "null"] },
+    "platform": { "type": "string" },
+    "os": { "type": "string" },
+    "packageManager": { "type": "string" },
+    "commandClass": { "type": "string" },
+    "safeFailureCategory": {
+      "enum": [
+        "test_assertion_failure",
+        "lint_failure",
+        "typecheck_failure",
+        "module_resolution_failure",
+        "missing_dependency",
+        "script_missing",
+        "node_version_mismatch",
+        "timeout",
+        "process_signal",
+        "env_config_missing",
+        "snapshot_mismatch",
+        "package_manager_error",
+        "baseline_failure",
+        "unknown_npm_failure"
+      ]
+    },
+    "safeMarkerCount": { "type": ["number", "null"] },
+    "testCountDetected": { "type": ["number", "null"] },
+    "durationMs": { "type": ["number", "null"] },
+    "knownBaselineMatched": { "type": "boolean" },
+    "rawLogUploaded": { "const": false },
+    "rawValuesStored": { "const": false },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": false
+}

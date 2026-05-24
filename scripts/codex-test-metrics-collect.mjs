@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.2
+// CODEX_QUALITY_HARNESS_FILE v0.8.3
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -11,7 +11,7 @@ function numberOrNull(value) {
 
 export function normalizeTestMetrics(input = {}) {
   const metrics = {
-    schemaVersion: '0.8.2',
+    schemaVersion: '0.8.3',
     harnessVersion: HARNESS_VERSION,
     command: String(input.command || input.commandName || process.env.CODEX_TEST_METRICS_COMMAND || 'unspecified').slice(0, 100),
     result: ['pass', 'fail', 'not_run'].includes(input.result || process.env.CODEX_TEST_METRICS_RESULT)

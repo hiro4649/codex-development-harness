@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
-  "harnessVersion": "0.8.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "harnessVersion": "0.8.3",
   "policy": "agents_context_integrity",
   "required": [
     "exactly_one_current_harness_block",

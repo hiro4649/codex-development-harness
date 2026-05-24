@@ -1,0 +1,8 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "harnessVersion": "0.8.3",
+  "policy": "workflow_preflight",
+  "expectedNodeMajor": 20,
+  "writes": ["codex-workflow-preflight.safe.json"],
+  "safeSummaryOnly": true
+}

@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
-  "harnessVersion": "0.8.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
+  "harnessVersion": "0.8.3",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -239,7 +239,7 @@
       "gate": "safeTrace",
       "severity": "error",
       "safeMessage": "Safe trace schema is invalid.",
-      "nextBestFix": "Use the v0.8.2 safe trace schema.",
+      "nextBestFix": "Use the v0.8.3 safe trace schema.",
       "canManualConfirmationOverride": false
     },
     {
@@ -319,7 +319,7 @@
       "gate": "agentsContext",
       "severity": "error",
       "safeMessage": "AGENTS.md is missing the current harness block.",
-      "nextBestFix": "Add one current v0.8.2 harness block.",
+      "nextBestFix": "Add one current v0.8.3 harness block.",
       "canManualConfirmationOverride": true
     },
     {
@@ -463,7 +463,7 @@
       "gate": "testMetrics",
       "severity": "error",
       "safeMessage": "Test metrics are invalid.",
-      "nextBestFix": "Use the v0.8.2 safe test metrics schema.",
+      "nextBestFix": "Use the v0.8.3 safe test metrics schema.",
       "canManualConfirmationOverride": false
     },
     {
@@ -512,6 +512,142 @@
       "severity": "error",
       "safeMessage": "Compact reason summary is invalid or unsafe.",
       "nextBestFix": "Regenerate safe reason summary from the report.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_baseline_missing",
+      "gate": "remoteProductBaseline",
+      "severity": "error",
+      "safeMessage": "Required remote product baseline evidence is missing.",
+      "nextBestFix": "Attach a safe current-base baseline evidence object.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_baseline_stale",
+      "gate": "remoteProductBaseline",
+      "severity": "error",
+      "safeMessage": "Remote product baseline evidence is stale.",
+      "nextBestFix": "Refresh baseline evidence for the current base.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_baseline_failing",
+      "gate": "remoteProductBaseline",
+      "severity": "manual",
+      "safeMessage": "Remote product baseline is already failing.",
+      "nextBestFix": "Treat candidate failures as baseline-blocked until baseline is repaired or accepted.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_baseline_invalid",
+      "gate": "remoteProductBaseline",
+      "severity": "error",
+      "safeMessage": "Remote product baseline evidence is invalid or unsafe.",
+      "nextBestFix": "Regenerate safe baseline evidence using the schema.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_diagnostic_missing",
+      "gate": "remoteNpmDiagnostic",
+      "severity": "info",
+      "safeMessage": "Remote npm diagnostic evidence is not present.",
+      "nextBestFix": "Add safe diagnostic metadata if an npm failure needs classification.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "remote_npm_diagnostic_invalid",
+      "gate": "remoteNpmDiagnostic",
+      "severity": "error",
+      "safeMessage": "Remote npm diagnostic evidence is invalid.",
+      "nextBestFix": "Regenerate diagnostic evidence from safe metadata only.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_diagnostic_unknown",
+      "gate": "remoteNpmDiagnostic",
+      "severity": "manual",
+      "safeMessage": "Remote npm failure category is unknown.",
+      "nextBestFix": "Classify the failure with safe markers or request owner review.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_diagnostic_unsafe",
+      "gate": "remoteNpmDiagnostic",
+      "severity": "error",
+      "safeMessage": "Remote npm diagnostic evidence contains unsafe content.",
+      "nextBestFix": "Remove raw logs and unsafe values from diagnostic evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_preflight_failed",
+      "gate": "workflowPreflight",
+      "severity": "error",
+      "safeMessage": "Workflow preflight failed.",
+      "nextBestFix": "Fix the safe preflight setup issue before running the quality gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_preflight_missing_required_file",
+      "gate": "workflowPreflight",
+      "severity": "error",
+      "safeMessage": "Workflow preflight found a missing required harness file.",
+      "nextBestFix": "Restore the required harness file or update target manifest correctly.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "safe_artifact_index_invalid",
+      "gate": "safeArtifactIndex",
+      "severity": "error",
+      "safeMessage": "Safe artifact index is invalid or unsafe.",
+      "nextBestFix": "Regenerate the safe artifact index from safe artifact names only.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "safe_artifact_missing",
+      "gate": "safeArtifactIndex",
+      "severity": "warning",
+      "safeMessage": "An expected safe artifact is missing.",
+      "nextBestFix": "Generate the missing safe artifact or record a safe not-applicable reason.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "open_pr_hygiene_stale_pr",
+      "gate": "openPrHygiene",
+      "severity": "warning",
+      "safeMessage": "Open PR hygiene report found stale PR evidence.",
+      "nextBestFix": "Refresh or close stale PRs after owner decision.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "open_pr_hygiene_needs_owner_decision",
+      "gate": "openPrHygiene",
+      "severity": "manual",
+      "safeMessage": "Open PR hygiene report needs owner decision.",
+      "nextBestFix": "Ask the owner whether to refresh, keep, or close candidate PRs.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "baseline_failure",
+      "gate": "productVerification",
+      "severity": "manual",
+      "safeMessage": "Candidate failure matches a known failing baseline.",
+      "nextBestFix": "Repair or accept the failing baseline before treating candidate as ready.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "candidate_regression",
+      "gate": "productVerification",
+      "severity": "error",
+      "safeMessage": "Candidate failed while baseline was passing.",
+      "nextBestFix": "Fix the candidate regression or update evidence if classification is wrong.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_final_summary_invalid",
+      "gate": "targetFinalSummary",
+      "severity": "error",
+      "safeMessage": "Target final summary is invalid or unsafe.",
+      "nextBestFix": "Regenerate the final summary from safe report fields.",
       "canManualConfirmationOverride": false
     }
   ]
