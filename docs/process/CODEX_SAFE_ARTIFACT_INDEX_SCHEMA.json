@@ -1,35 +1,32 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
-  "schemaVersion": "0.8.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
+  "schemaVersion": "0.8.4",
   "title": "Codex Safe Artifact Index",
   "type": "object",
-  "required": ["schemaVersion", "harnessVersion", "mode", "artifacts", "safeSummaryOnly"],
+  "required": [
+    "schemaVersion",
+    "harnessVersion",
+    "mode",
+    "artifacts",
+    "artifactBudget",
+    "requiredArtifacts",
+    "primaryHumanArtifacts",
+    "machineArtifacts",
+    "safeSummaryOnly"
+  ],
   "properties": {
-    "schemaVersion": { "const": "0.8.3" },
-    "harnessVersion": { "const": "0.8.3" },
+    "schemaVersion": { "const": "0.8.4" },
+    "harnessVersion": { "const": "0.8.4" },
     "mode": { "type": "string" },
-    "artifacts": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["artifactName", "path", "producer", "status", "mode", "safeSummaryOnly"],
-        "properties": {
-          "artifactName": { "type": "string" },
-          "path": { "type": "string" },
-          "producer": { "type": "string" },
-          "status": { "enum": ["present", "missing", "not_applicable"] },
-          "mode": { "type": "string" },
-          "safeSummaryOnly": { "const": true },
-          "rawLogIncluded": { "const": false },
-          "containsSecrets": { "const": false },
-          "containsEndpointValues": { "const": false },
-          "nextAction": { "type": "string" },
-          "reasonCodes": { "type": "array" }
-        },
-        "additionalProperties": false
-      }
-    },
+    "artifacts": { "type": "array" },
+    "artifactBudget": { "type": "object" },
+    "requiredArtifacts": { "type": "array" },
+    "optionalArtifacts": { "type": "array" },
+    "missingArtifacts": { "type": "array" },
+    "duplicateArtifacts": { "type": "array" },
+    "primaryHumanArtifacts": { "type": "array", "maxItems": 3 },
+    "machineArtifacts": { "type": "array" },
     "safeSummaryOnly": { "const": true }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
-  "harnessVersion": "0.8.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
+  "harnessVersion": "0.8.4",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -239,7 +239,7 @@
       "gate": "safeTrace",
       "severity": "error",
       "safeMessage": "Safe trace schema is invalid.",
-      "nextBestFix": "Use the v0.8.3 safe trace schema.",
+      "nextBestFix": "Use the current safe trace schema.",
       "canManualConfirmationOverride": false
     },
     {
@@ -319,7 +319,7 @@
       "gate": "agentsContext",
       "severity": "error",
       "safeMessage": "AGENTS.md is missing the current harness block.",
-      "nextBestFix": "Add one current v0.8.3 harness block.",
+      "nextBestFix": "Add one current harness block.",
       "canManualConfirmationOverride": true
     },
     {
@@ -463,7 +463,7 @@
       "gate": "testMetrics",
       "severity": "error",
       "safeMessage": "Test metrics are invalid.",
-      "nextBestFix": "Use the v0.8.3 safe test metrics schema.",
+      "nextBestFix": "Use the current safe test metrics schema.",
       "canManualConfirmationOverride": false
     },
     {
@@ -648,6 +648,150 @@
       "severity": "error",
       "safeMessage": "Target final summary is invalid or unsafe.",
       "nextBestFix": "Regenerate the final summary from safe report fields.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_required_status_failure",
+      "gate": "workflowQualityRunner",
+      "severity": "error",
+      "safeMessage": "A workflow-required status did not pass.",
+      "nextBestFix": "Fix the reported status and rerun the workflow on the current head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "missing_required_method_sections",
+      "gate": "prBodyLint",
+      "severity": "error",
+      "safeMessage": "The PR body is missing required method sections.",
+      "nextBestFix": "Add the required compact PR sections for the declared profile.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "quality_gate_failure",
+      "gate": "localQualityGate",
+      "severity": "error",
+      "safeMessage": "A quality gate failure was reported.",
+      "nextBestFix": "Review safe failure reasons and rerun the failed gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_profile_invalid",
+      "gate": "prProfile",
+      "severity": "error",
+      "safeMessage": "The PR profile is invalid.",
+      "nextBestFix": "Use one of the supported safe PR profile labels.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "fast_path_precondition_failed",
+      "gate": "fastPath",
+      "severity": "error",
+      "safeMessage": "Fast path preconditions were not met.",
+      "nextBestFix": "Use full verification or fix the precondition failure.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "fast_path_not_allowed_for_product_change",
+      "gate": "fastPath",
+      "severity": "manual",
+      "safeMessage": "Fast path is not allowed for product-relevant changes.",
+      "nextBestFix": "Run the full product verification path.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "diagnostic_consolidation_invalid",
+      "gate": "diagnosticConsolidation",
+      "severity": "error",
+      "safeMessage": "Diagnostic consolidation is invalid or unsafe.",
+      "nextBestFix": "Regenerate the consolidated diagnostic summary from safe fields.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "diagnostic_consolidation_missing",
+      "gate": "diagnosticConsolidation",
+      "severity": "error",
+      "safeMessage": "Diagnostic consolidation artifact is missing.",
+      "nextBestFix": "Run the workflow quality runner to produce the consolidated summary.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "unsafe_value_class_unknown",
+      "gate": "safeOutput",
+      "severity": "error",
+      "safeMessage": "An unsafe value class could not be classified safely.",
+      "nextBestFix": "Redact or reclassify the value in a constrained safe field.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "unsafe_value_action_required",
+      "gate": "safeOutput",
+      "severity": "error",
+      "safeMessage": "Unsafe value action matrix requires redaction or failure.",
+      "nextBestFix": "Remove concrete unsafe values and keep only safe labels or booleans.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "invalid_report_recovery_failed",
+      "gate": "workflowRunner",
+      "severity": "error",
+      "safeMessage": "Invalid report recovery did not complete safely.",
+      "nextBestFix": "Regenerate fallback artifacts without storing the raw report.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "artifact_budget_exceeded",
+      "gate": "safeArtifactIndex",
+      "severity": "warning",
+      "safeMessage": "Safe artifact count exceeded the configured budget.",
+      "nextBestFix": "Keep primary human artifacts compact and rely on indexed machine artifacts.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "artifact_required_missing",
+      "gate": "safeArtifactIndex",
+      "severity": "error",
+      "safeMessage": "A required safe artifact is missing.",
+      "nextBestFix": "Regenerate required workflow artifacts.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_profile_missing",
+      "gate": "prProfile",
+      "severity": "warning",
+      "safeMessage": "PR profile is missing and was inferred.",
+      "nextBestFix": "Add a concise PR profile label that matches the change.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "pr_profile_conflict",
+      "gate": "prProfile",
+      "severity": "warning",
+      "safeMessage": "Declared PR profile conflicts with inferred risk profile.",
+      "nextBestFix": "Update the PR profile or explain the mismatch.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "open_pr_overlap_owner_decision",
+      "gate": "openPrHygiene",
+      "severity": "manual",
+      "safeMessage": "Open PR hygiene found overlapping harness-managed files.",
+      "nextBestFix": "Ask the owner whether to refresh or sequence the overlapping PRs.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "actions_runtime_advisory_warning",
+      "gate": "actionsRuntimeAdvisory",
+      "severity": "warning",
+      "safeMessage": "GitHub Actions runtime advisory needs follow-up.",
+      "nextBestFix": "Track action runtime migration without changing versions automatically.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "actions_runtime_deprecation_blocked",
+      "gate": "actionsRuntimeAdvisory",
+      "severity": "error",
+      "safeMessage": "Actions runtime deprecation has become blocking.",
+      "nextBestFix": "Update action runtime configuration or affected actions.",
       "canManualConfirmationOverride": false
     }
   ]

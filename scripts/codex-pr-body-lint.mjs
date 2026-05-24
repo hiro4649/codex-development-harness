@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.3
+// CODEX_QUALITY_HARNESS_FILE v0.8.4
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -10,8 +10,9 @@ import {
   buildHumanConfirmationStatus,
 } from './codex-production-readiness-gate.mjs';
 import { buildEvidencePackReport, isStructuredEvidencePackSource } from './codex-evidence-pack-validate.mjs';
+import { buildPrProfileReport } from './codex-pr-profile-gate.mjs';
 
-export const HARNESS_VERSION = '0.8.3';
+export const HARNESS_VERSION = '0.8.4';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const requiredSections = [
@@ -77,6 +78,7 @@ export function buildPrBodyLintReport(env = process.env, argv = process.argv) {
   if (args.head) scopedEnv.CODEX_PR_HEAD_SHA = args.head;
   const bodyInfo = bodyFromArgs(args, scopedEnv);
   const body = bodyInfo.body || '';
+  scopedEnv.CODEX_PR_BODY = body;
   const failures = [];
   const warnings = [];
   const missingSections = [];
@@ -105,6 +107,7 @@ export function buildPrBodyLintReport(env = process.env, argv = process.argv) {
   const facts = evidenceFacts(body, scopedEnv);
   const human = buildHumanConfirmationStatus(scopedEnv).humanConfirmationStatus;
   const evidencePack = buildEvidencePackReport(scopedEnv).evidencePackStatus;
+  const profile = buildPrProfileReport(scopedEnv).prProfileStatus;
   const unsafe = unsafeLabels('prBody', body);
   failures.push(...unsafe);
 
@@ -132,6 +135,7 @@ export function buildPrBodyLintReport(env = process.env, argv = process.argv) {
       reasonCodes: [...new Set([...failures, ...warnings])],
       missingSections,
       evidencePackSource: evidencePack.source || 'none',
+      prProfile: profile.profile || null,
       safeSummaryOnly: true,
     },
     valuesPrinted: false,

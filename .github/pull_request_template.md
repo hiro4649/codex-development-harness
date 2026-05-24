@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.4 -->
 ## Codex Method Compliance
 
 Code review status:
@@ -47,6 +47,28 @@ Human confirmation needed:
 
 Workflow runner artifact summary:
 
+## Harness Fast Path
+
+Path mode:
+
+Fast path allowed: yes/no
+
+## Diagnostic Consolidation
+
+Consolidated summary status:
+
+## Unsafe Value Class Handling
+
+Unsafe value classes found:
+
+## Invalid Report Recovery
+
+Recovery artifact needed: yes/no
+
+## PR Profile
+
+Profile:
+
 ## Workflow Preflight
 
 Preflight status:
@@ -80,6 +102,14 @@ Test metrics artifact: present/not applicable
 ## Safe Artifact Index
 
 Artifact index status:
+
+Primary human artifacts:
+
+Artifact budget status:
+
+## Actions Runtime Advisory
+
+Advisory status:
 
 ## Final Summary
 

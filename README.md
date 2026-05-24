@@ -1,16 +1,16 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.4 -->
 # Codex Development Harness
 
-Version: v0.8.3
-Name: Remote Baseline and Diagnostic Stability Gate
+Version: v0.8.4
+Name: Fast Path and Diagnostic Consolidation Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.3 preserves the v0.8.2 workflow runner and evidence
-normalization model while adding remote baseline checks, safe npm diagnostics,
-workflow preflight, safe artifact indexing, open PR hygiene, and one-screen
-final summaries for audit and resume workflows.
+evidence tooling. v0.8.4 preserves the v0.8.3 safety model while adding fast
+path classification for harness/docs changes, consolidated diagnostics, field
+aware unsafe value actions, invalid-report recovery, artifact budgets, PR
+profiles, and Actions runtime advisories.
 
-## What v0.8.3 Adds
+## What v0.8.4 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -25,8 +25,14 @@ final summaries for audit and resume workflows.
 - Remote product baseline gate for product-relevant PRs
 - Remote npm diagnostic classifier using safe metadata only
 - Workflow preflight runner
-- Safe artifact index
-- Open PR hygiene report
+- Harness fast path gate for safe harness/docs changes
+- Diagnostic consolidation runner
+- Unsafe value class action matrix
+- Invalid report recovery v2
+- Safe artifact index with budget and primary human artifacts
+- PR body profile optimizer
+- Open PR hygiene report v2
+- GitHub Actions runtime advisory
 - One-screen source and target final summaries
 - Optional safe test metrics artifacts
 - Stale PR audit checks
@@ -38,7 +44,7 @@ final summaries for audit and resume workflows.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.3 Does Not Add
+## What v0.8.4 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM

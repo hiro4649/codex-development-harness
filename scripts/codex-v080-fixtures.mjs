@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.3
+// CODEX_QUALITY_HARNESS_FILE v0.8.4
 import { HARNESS_VERSION } from './codex-v080-lib.mjs';
 
 export const GOLDEN_HEAD = '1111111111111111111111111111111111111111';
@@ -17,7 +17,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
     riskLevel: 'R3',
     confirmedByRole: options.omitManualRole ? undefined : 'project-owner',
     confirmedAt: '2026-05-23T00:00:00Z',
-    reviewedItems: ['v0.8.3 core gate'],
+    reviewedItems: ['v0.8.4 core gate'],
     residualRisks: ['downstream propagation separate'],
     qualityGateNotWeakened: true,
     riskLevelNotLowered: true,
@@ -71,7 +71,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
   const manual = { codexManualConfirmation: confirmation };
   return [
     '## Goal',
-    'v0.8.3 source harness test.',
+    'v0.8.4 source harness test.',
     '## Risk level',
     'R3',
     options.profileRequired ? 'profile_required_fixture' : 'profile optional fixture',
@@ -89,7 +89,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
 export function cleanAgentsContext() {
   return [
     '<!-- CODEX_QUALITY_HARNESS_BEGIN -->',
-    'CODEX_QUALITY_HARNESS_FILE v0.8.3',
+    'CODEX_QUALITY_HARNESS_FILE v0.8.4',
     '',
     '## Source Harness Boundary',
     'This repository uses harness-managed checks only.',

@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.3",
-  "harnessVersion": "0.8.3",
-  "sourceHarnessVersion": "0.8.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
+  "harnessVersion": "0.8.4",
+  "sourceHarnessVersion": "0.8.4",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -99,7 +99,18 @@
     "docs/process/CODEX_OPEN_PR_HYGIENE_POLICY.md",
     "docs/process/CODEX_OPEN_PR_HYGIENE_SCHEMA.json",
     "docs/process/CODEX_TARGET_FINAL_SUMMARY_POLICY.md",
-    "docs/process/CODEX_TARGET_AGENTS_REPAIR_GUIDE.md"
+    "docs/process/CODEX_TARGET_AGENTS_REPAIR_GUIDE.md",
+    "docs/process/CODEX_FAST_PATH_POLICY.md",
+    "docs/process/CODEX_FAST_PATH_POLICY.json",
+    "docs/process/CODEX_DIAGNOSTIC_CONSOLIDATION_POLICY.md",
+    "docs/process/CODEX_DIAGNOSTIC_CONSOLIDATION_SCHEMA.json",
+    "docs/process/CODEX_UNSAFE_VALUE_CLASS_ACTION_POLICY.md",
+    "docs/process/CODEX_UNSAFE_VALUE_CLASS_ACTION_MATRIX.json",
+    "docs/process/CODEX_INVALID_REPORT_RECOVERY_POLICY.md",
+    "docs/process/CODEX_INVALID_REPORT_RECOVERY_SCHEMA.json",
+    "docs/process/CODEX_PR_PROFILE_POLICY.md",
+    "docs/process/CODEX_PR_PROFILE_POLICY.json",
+    "docs/process/CODEX_ACTIONS_RUNTIME_ADVISORY_POLICY.md"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -149,7 +160,14 @@
     "codex-target-final-summary.mjs",
     "codex-v081-self-test.mjs",
     "codex-v082-self-test.mjs",
-    "codex-v083-self-test.mjs"
+    "codex-v083-self-test.mjs",
+    "codex-fast-path-gate.mjs",
+    "codex-diagnostic-consolidation-runner.mjs",
+    "codex-unsafe-value-action-matrix.mjs",
+    "codex-invalid-report-recovery.mjs",
+    "codex-pr-profile-gate.mjs",
+    "codex-actions-runtime-advisory.mjs",
+    "codex-v084-self-test.mjs"
   ],
   "optionalFiles": []
 }
