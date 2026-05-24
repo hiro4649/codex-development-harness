@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
 ## Codex Method Compliance
 
 Code review status:
@@ -43,6 +43,10 @@ Human confirmation needed:
 
 ## Golden Set
 
+## Workflow Runner
+
+Workflow runner artifact summary:
+
 ## Change Classification
 
 Product code changed: yes/no
@@ -50,6 +54,18 @@ Product code changed: yes/no
 ## Product Verification
 
 Product verification commands:
+
+## Product Verification Evidence
+
+Normalized evidence source:
+
+## Test Metrics
+
+Test metrics artifact: present/not applicable
+
+## Stale PR Audit
+
+Current-head evidence checked: yes/no
 
 ## Runtime Readiness Claim
 

@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.8.1
+# CODEX_QUALITY_HARNESS_FILE v0.8.2
 name: weekly-health-check
 
 on:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -27,16 +29,7 @@ jobs:
           if [ -f package.json ]; then
             npm install --no-package-lock
           fi
-      - name: Install monorepo dependencies if present
-        shell: bash
-        run: |
-          set -euo pipefail
-          for dir in apps/backend apps/frontend contracts; do
-            if [ -f "$dir/package.json" ]; then
-              (cd "$dir" && npm install --no-package-lock)
-            fi
-          done
-      - name: Run local quality gate
+      - name: Run source/core health gate
         shell: bash
         env:
           CODEX_HARNESS_SOURCE_REPO: "1"
@@ -44,39 +37,8 @@ jobs:
           CODEX_PROFILE_COMPAT_MODE: "optional"
           CODEX_REQUIRE_NPM: "1"
           CODEX_QUALITY_REPORT: "json"
+          CODEX_EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-weekly-health.json"
-          node - "$RUNNER_TEMP/codex-weekly-health.json" <<'NODE'
-          const fs = require('fs');
-          const report = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-          const required = [
-            'sourceHarnessValidationStatus',
-            'genericHarnessCoreStatus',
-            'agentsContextStatus',
-            'environmentReadinessStatus',
-            'goldenSetStatus',
-            'v081SelfTestStatus',
-            'safeArtifactValidation',
-            'outputShapeStatus',
-            'qualityScoreStatus',
-          ];
-          const failures = [];
-          for (const key of required) {
-            const status = report[key]?.status || 'missing';
-            console.log(`${key}: ${status}`);
-            if (status !== 'pass') failures.push(`${key}=${status}`);
-          }
-          console.log(`report.status: ${report.status}`);
-          console.log(`mergeReady: ${report.mergeReady}`);
-          console.log(`qualityScoreStatus: ${report.qualityScoreStatus?.status || 'missing'}`);
-          console.log(`qualityScore: ${report.qualityScoreStatus?.score ?? 'missing'}`);
-          if (report.status !== 'pass') failures.push(`report.status=${report.status}`);
-          if (failures.length) {
-            for (const item of failures) {
-              const safe = String(item).replace(/[^A-Za-z0-9_.:= -]/g, '_').slice(0, 180);
-              console.error(`::error title=codex-weekly-health::${safe}`);
-            }
-            process.exit(1);
-          }
-          NODE
+          node scripts/codex-workflow-quality-runner.mjs --report "$RUNNER_TEMP/codex-weekly-health.json" --gate-exit 0

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
 # Golden Set Policy
 
 Golden cases are deterministic regression fixtures for harness audit behavior.

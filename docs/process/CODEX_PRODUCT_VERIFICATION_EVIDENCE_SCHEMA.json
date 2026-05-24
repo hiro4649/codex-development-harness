@@ -1,0 +1,16 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
+  "schemaVersion": "0.8.2",
+  "requiredFields": [
+    "schemaVersion",
+    "harnessVersion",
+    "mode",
+    "classification",
+    "skipNpm",
+    "skipAllowed",
+    "commands",
+    "requiredEvidenceMissing",
+    "safeSummaryOnly"
+  ]
+}
+

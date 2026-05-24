@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 import fs from 'node:fs';
 import process from 'node:process';
 
@@ -14,7 +14,7 @@ function statusOf(key) {
 }
 
 const lines = [
-  '## v0.8.1 purpose',
+  '## v0.8.2 purpose',
   'Target Verification and Context Integrity Gate: generic core checks, deterministic golden fixtures, whole-file AGENTS integrity, target change classification, product verification, structured evidence, CI replay, safe output scanning, and failure reasons reduce prose-only readiness risk.',
   '',
   '## Changed files',

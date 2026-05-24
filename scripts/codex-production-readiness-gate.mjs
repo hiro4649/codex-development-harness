@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEvidencePackReport, isStructuredEvidencePackSource } from './codex-evidence-pack-validate.mjs';
 
-export const HARNESS_VERSION = '0.8.1';
+export const HARNESS_VERSION = '0.8.2';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 export const forbiddenOutputKeys = [
   'rawDiff',
@@ -118,7 +118,7 @@ export function hasProductionClaim(body) {
   const lower = normalizeText(body);
   const rawLower = String(body || '').toLowerCase();
   const explicitReadyClaim = /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b/.test(lower);
-  const legacyLocalizedClaim = /\b譛ｬ逡�E�蜿�E�\b|\b蜁E��闕ｷ蜿�E�\b/.test(lower);
+  const legacyLocalizedClaim = /\b隴幢ｽｬ騾｡・ｽE・ｽ陷ｿ・ｽE・ｽ\b|\b陷・・ｽ・ｽ髣包ｽｷ陷ｿ・ｽE・ｽ\b/.test(lower);
   const explicitGoDecision = /\bgo\s*(?:\/|-|\s+)\s*no\s*(?:\/|-|\s+)\s*go\s*:\s*(?:go|yes|approved|pass)\b/i.test(rawLower) ||
     /\bgo\s+(?:decision|status|conclusion)\s*:\s*(?:go|yes|approved|pass)\b/i.test(rawLower);
   return explicitReadyClaim || legacyLocalizedClaim || explicitGoDecision;

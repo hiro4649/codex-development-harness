@@ -1,0 +1,10 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
+  "harnessVersion": "0.8.2",
+  "safeSummaryOnly": true,
+  "skipAllowedForHarnessOnly": true,
+  "skipForbiddenForProductChanges": true,
+  "runtimeClaimsRequireEvidence": true,
+  "packageChangesRequireEvidence": true
+}
+

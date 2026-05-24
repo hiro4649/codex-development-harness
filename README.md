@@ -1,16 +1,16 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.2 -->
 # Codex Development Harness
 
-Version: v0.8.1
-Name: Target Verification and Context Integrity Gate
+Version: v0.8.2
+Name: Workflow Runner and Evidence Normalization Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.1 focuses on a generic source harness core that can pass
-without any downstream project profile, whole-file AGENTS.md context integrity,
-target change classification, and product verification rules that distinguish
-harness-only updates from product-relevant changes.
+evidence tooling. v0.8.2 preserves the v0.8.1 target verification model while
+moving fragile workflow evaluation into a reusable runner, loading change
+classification from policy JSON, normalizing product verification evidence, and
+adding compact safe reason summaries for audit and resume workflows.
 
-## What v0.8.1 Adds
+## What v0.8.2 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -19,6 +19,12 @@ harness-only updates from product-relevant changes.
 - Golden set regression fixtures
 - Target change classification
 - Product verification policy for `CODEX_SKIP_NPM`
+- Workflow quality runner for GitHub Actions safe artifacts
+- Policy-driven change classification rules
+- Normalized product verification evidence
+- Optional safe test metrics artifacts
+- Stale PR audit checks
+- Compact failure reason summaries
 - Target quality score
 - Practical Best of N evidence checks
 - Optional task queue lite validation
@@ -26,7 +32,7 @@ harness-only updates from product-relevant changes.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.1 Does Not Add
+## What v0.8.2 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM

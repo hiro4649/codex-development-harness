@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.8.1
+# CODEX_QUALITY_HARNESS_FILE v0.8.2
 name: quality-gate
 
 on:
@@ -40,7 +40,7 @@ jobs:
               (cd "$dir" && npm install --no-package-lock)
             fi
           done
-      - name: Run source harness quality gate
+      - name: Run Codex quality gate
         shell: bash
         env:
           CODEX_QUALITY_REPORT: "json"
@@ -66,186 +66,8 @@ jobs:
             export CODEX_SKIP_NPM="${CODEX_SKIP_NPM:-1}"
           fi
           gate_exit=0
-          node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-source-gate.json" || gate_exit=$?
-          node - "$RUNNER_TEMP/codex-source-gate.json" "$gate_exit" <<'NODE'
-          const fs = require('fs');
-          const file = process.argv[2];
-          const gateExit = Number(process.argv[3] || 0);
-          const report = JSON.parse(fs.readFileSync(file, 'utf8'));
-          const targetMode = Boolean(report.targetQualityScoreStatus) && !report.sourceHarnessValidationStatus;
-
-          const sourceRequiredPass = [
-            'sourceHarnessValidationStatus',
-            'profileTemplateCompatibilityStatus',
-            'genericHarnessCoreStatus',
-            'agentsContextStatus',
-            'environmentReadinessStatus',
-            'goldenSetStatus',
-            'changeClassificationStatus',
-            'productVerificationStatus',
-            'bestOfNEvidenceStatus',
-            'taskQueueLiteStatus',
-            'safeTraceSchemaStatus',
-            'curatorReportStatus',
-            'offlineEvolutionProposalStatus',
-            'testCoverageEvidenceStatus',
-            'performanceEvidenceStatus',
-            'agentMemoryPolicyStatus',
-            'skillLifecyclePolicyStatus',
-            'curatorSuggestionStatus',
-            'selfEvolutionPolicyStatus',
-            'safeArtifactValidation',
-            'outputShapeStatus',
-            'openaiCodexMethodStatus',
-            'methodSupportStatus',
-            'productionReadinessStatus',
-            'evidenceIntegrityStatus',
-            'hermesInvariantStatus',
-            'evidencePackStatus',
-            'humanConfirmationObjectStatus',
-            'safeOutputScanStatus',
-            'ciReplayStatus',
-            'prBodyLintStatus',
-            'failureReasonCatalogStatus',
-            'v071SelfTestStatus',
-            'v072SelfTestStatus',
-            'v080SelfTestStatus',
-            'v081SelfTestStatus',
-            'qualityScoreStatus',
-          ];
-          const targetRequiredPass = [
-            'targetManifestStatus',
-            'secretScan',
-            'agentsContextStatus',
-            'environmentReadinessStatus',
-            'changeClassificationStatus',
-            'productVerificationStatus',
-            'safeOutputScanStatus',
-            'v080SelfTestStatus',
-            'v081SelfTestStatus',
-            'safeArtifactValidation',
-            'outputShapeStatus',
-            'targetQualityScoreStatus',
-          ];
-          const requiredPass = targetMode ? targetRequiredPass : sourceRequiredPass;
-
-          const failures = [];
-          const prDependent = new Set([
-            'openaiCodexMethodStatus',
-            'productionReadinessStatus',
-            'evidenceIntegrityStatus',
-            'hermesInvariantStatus',
-          ]);
-          const optionalNotApplicable = new Set([
-            'agentMemoryPolicyStatus',
-            'skillLifecyclePolicyStatus',
-            'curatorSuggestionStatus',
-            'selfEvolutionPolicyStatus',
-            'taskQueueLiteStatus',
-            'safeTraceSchemaStatus',
-            'curatorReportStatus',
-            'offlineEvolutionProposalStatus',
-            'testCoverageEvidenceStatus',
-            'performanceEvidenceStatus',
-            'bestOfNEvidenceStatus',
-            'changeClassificationStatus',
-            'productVerificationStatus',
-            'goldenSetStatus',
-          ]);
-          for (const key of requiredPass) {
-            const status = report[key]?.status || 'missing';
-            console.log(`${key}: ${status}`);
-            if (prDependent.has(key) && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
-              continue;
-            }
-            if (key === 'ciReplayStatus' && status === 'not_applicable' && process.env.CODEX_EVENT_NAME !== 'pull_request') {
-              continue;
-            }
-            if (optionalNotApplicable.has(key) && status === 'not_applicable') {
-              continue;
-            }
-            if (key === 'humanConfirmationObjectStatus' && status === 'not_required') {
-              continue;
-            }
-            if (status !== 'pass') failures.push(`${key}=${status}`);
-          }
-
-          console.log(`report.status: ${report.status}`);
-          console.log(`mergeReady: ${report.mergeReady}`);
-          console.log(`targetMergeReady: ${report.targetMergeReady ?? 'not_applicable'}`);
-          console.log(`humanReviewRequired: ${report.humanReviewRequired}`);
-          console.log(`humanConfirmationStatus: ${report.humanConfirmationStatus?.status || 'missing'}`);
-          console.log(`qualityScoreStatus: ${report.qualityScoreStatus?.status || 'missing'}`);
-          console.log(`qualityScore: ${report.qualityScoreStatus?.score ?? 'missing'}`);
-          console.log(`targetQualityScoreStatus: ${report.targetQualityScoreStatus?.status || 'missing'}`);
-          console.log(`targetQualityScore: ${report.targetQualityScoreStatus?.score ?? 'missing'}`);
-          console.log(`changeClassificationStatus: ${report.changeClassificationStatus?.status || 'missing'}`);
-          console.log(`productVerificationStatus: ${report.productVerificationStatus?.status || 'missing'}`);
-          console.log(`agentsContextStatus: ${report.agentsContextStatus?.status || 'missing'}`);
-          console.log(`secretScan: ${report.secretScan?.status || 'missing'}`);
-
-          const safeSummary = {
-            status: report.status,
-            mergeReady: report.mergeReady,
-            targetMergeReady: report.targetMergeReady ?? null,
-            humanReviewRequired: report.humanReviewRequired,
-            qualityScoreStatus: report.qualityScoreStatus || report.targetQualityScoreStatus,
-            failureCount: Array.isArray(report.failures) ? report.failures.length : 0,
-            warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
-          };
-          const failureReasons = [
-            ...(Array.isArray(report.failures) ? report.failures : []).map((item) => ({
-              reasonCode: item.id || 'quality_gate_failure',
-              safeMessage: item.message || 'Quality gate failure.',
-            })),
-            ...failures.map((item) => ({
-              reasonCode: 'workflow_required_status_failure',
-              safeMessage: item,
-            })),
-          ];
-          fs.writeFileSync('codex-quality-gate-safe-summary.json', JSON.stringify(safeSummary, null, 2));
-          fs.writeFileSync('codex-failure-reasons.json', JSON.stringify(failureReasons, null, 2));
-          fs.writeFileSync('codex-evidence-pack.normalized.json', JSON.stringify({
-            evidencePackStatus: report.evidencePackStatus || { status: 'missing' },
-            normalizedEvidencePackPresent: Boolean(report.normalizedEvidencePack),
-          }, null, 2));
-
-          if (gateExit !== 0 && !['pass', 'manual_confirmation_required'].includes(report.status)) {
-            failures.push(`report.status=${report.status}`);
-          }
-
-          const unsafe = [
-            /rawDiff/i,
-            /rawLogs/i,
-            /secretValue/i,
-            /endpointValue/i,
-            /privatePath/i,
-            /"(?:rawPayload|payload)"\s*:/i,
-            /productionData/i,
-            /personalData/i,
-            /(?:https?|postgres(?:ql)?|mysql|mongodb):\/\/\S+/i,
-            /\b(?:gh[pousr]_|sk-|AKIA|glpat-|npm_|xox[baprs]-)[A-Za-z0-9_-]{8,}\b/,
-            /-----BEGIN [^-]+PRIVATE KEY-----/i,
-          ];
-          const raw = fs.readFileSync(file, 'utf8');
-          if (unsafe.some((pattern) => pattern.test(raw))) {
-            failures.push('unsafe output pattern detected');
-          }
-
-          if (failures.length) {
-            console.error('Source harness gate verification failed:');
-            for (const item of failures) {
-              const safe = String(item).replace(/[^A-Za-z0-9_.:= -]/g, '_').slice(0, 180);
-              console.error(`::error title=codex-quality-gate::${safe}`);
-              console.error(`- ${safe}`);
-            }
-            for (const warning of report.warnings || []) {
-              const safe = String(warning.id || warning.message || 'quality_gate_warning').replace(/[^A-Za-z0-9_.:= -]/g, '_').slice(0, 180);
-              console.warn(`::warning title=codex-quality-gate::${safe}`);
-            }
-            process.exit(1);
-          }
-          NODE
+          node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-quality-gate.json" || gate_exit=$?
+          node scripts/codex-workflow-quality-runner.mjs --report "$RUNNER_TEMP/codex-quality-gate.json" --gate-exit "$gate_exit"
       - name: Write safe quality summary
         if: always()
         shell: bash
@@ -262,7 +84,9 @@ jobs:
           console.log('## Codex quality gate safe summary');
           if (summary) {
             console.log(`- status: ${summary.status || 'missing'}`);
+            console.log(`- mode: ${summary.mode || 'missing'}`);
             console.log(`- mergeReady: ${summary.mergeReady}`);
+            console.log(`- targetMergeReady: ${summary.targetMergeReady ?? 'not_applicable'}`);
             console.log(`- humanReviewRequired: ${summary.humanReviewRequired}`);
             console.log(`- qualityScoreStatus: ${summary.qualityScoreStatus?.status || 'missing'}`);
             console.log(`- qualityScore: ${summary.qualityScoreStatus?.score ?? 'missing'}`);
@@ -285,4 +109,6 @@ jobs:
             codex-quality-gate-safe-summary.json
             codex-evidence-pack.normalized.json
             codex-failure-reasons.json
+            codex-target-quality-summary.json
+            codex-test-metrics.safe.json
           if-no-files-found: ignore

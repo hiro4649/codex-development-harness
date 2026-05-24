@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -39,7 +39,7 @@ function assertCase(name, ok, failures, cases, status = ok ? 'pass' : 'fail') {
   if (!ok) failures.push(name);
 }
 
-function cleanAgents(version = '0.8.1') {
+function cleanAgents(version = HARNESS_VERSION) {
   return `# AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
@@ -78,8 +78,8 @@ function initTargetFixture(tmp) {
   copyHarnessScripts(tmp);
   write(path.join(tmp, 'AGENTS.md'), cleanAgents());
   write(path.join(tmp, 'docs', 'process', 'CODEX_HARNESS_MANIFEST.json'), JSON.stringify({
-    harnessVersion: '0.8.1',
-    sourceHarnessVersion: '0.8.1',
+    harnessVersion: HARNESS_VERSION,
+    sourceHarnessVersion: HARNESS_VERSION,
     targetRepoMode: true,
     profileCompatibility: 'off',
     managedFiles: ['AGENTS.md', 'docs/process/', 'scripts/codex-'],
@@ -99,7 +99,7 @@ function buildReport() {
   const cases = [];
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v081-'));
 
-  write(path.join(tmp, 'AGENTS.md'), `${cleanAgents()}\n鬩鋼驍ｵ\n`);
+  write(path.join(tmp, 'AGENTS.md'), `${cleanAgents()}\n鬯ｩ驪ｼ鬩搾ｽｵ\n`);
   let result = run('scripts/codex-agents-context-gate.mjs', { cwd: tmp });
   assertCase('AGENTS entire-file mojibake fails', result.parsed?.agentsContextStatus?.status === 'fail', failures, cases, result.parsed?.agentsContextStatus?.status);
 
@@ -158,6 +158,7 @@ function buildReport() {
       CODEX_QUALITY_REPORT: 'json',
       CODEX_SKIP_NPM: '1',
       CODEX_SKIP_V081_SELF_TEST: '1',
+      CODEX_SKIP_V082_SELF_TEST: '1',
       CODEX_NPM_SKIP_REASON: 'harness-only fixture',
     },
   });
@@ -234,7 +235,7 @@ BEGIN_CODEX_EVIDENCE_PACK_JSON
 {
   "codexEvidencePack": {
     "schemaVersion": "0.8.1",
-    "harnessVersion": "0.8.1",
+    "harnessVersion": "0.8.2",
     "repository": "example/repo",
     "prNumber": 1,
     "headSha": "${structuredHead}",

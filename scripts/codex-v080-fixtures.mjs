@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 
 export const GOLDEN_HEAD = '1111111111111111111111111111111111111111';
 export const GOLDEN_BASE = '2222222222222222222222222222222222222222';
@@ -88,7 +88,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
 export function cleanAgentsContext() {
   return [
     '<!-- CODEX_QUALITY_HARNESS_BEGIN -->',
-    'CODEX_QUALITY_HARNESS_FILE v0.8.1',
+    'CODEX_QUALITY_HARNESS_FILE v0.8.2',
     '',
     '## Source Harness Boundary',
     'This repository uses harness-managed checks only.',
@@ -114,14 +114,14 @@ export function cleanAgentsContext() {
 }
 
 export function mojibakeAgentsContext() {
-  return `${cleanAgentsContext()}驍ｵ・ｺ\n`;
+  return `${cleanAgentsContext()}鬩搾ｽｵ繝ｻ・ｺ\n`;
 }
 
 export function sourceManifest(profileCompatibility = 'optional') {
   return {
-    marker: 'CODEX_QUALITY_HARNESS_FILE v0.8.1',
-    harnessVersion: '0.8.1',
-    sourceHarnessVersion: '0.8.1',
+    marker: 'CODEX_QUALITY_HARNESS_FILE v0.8.2',
+    harnessVersion: '0.8.2',
+    sourceHarnessVersion: '0.8.2',
     profileTemplateVersion: '0.7.0',
     compatibleProfileTemplateVersions: ['0.7.0'],
     genericCore: {

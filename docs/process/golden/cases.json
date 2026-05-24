@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.1",
-  "schemaVersion": "0.8.1",
-  "description": "Deterministic safe-summary fixtures for the v0.8.1 generic core harness.",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.2",
+  "schemaVersion": "0.8.2",
+  "description": "Deterministic safe-summary fixtures for the v0.8.2 generic core harness.",
   "rules": {
     "network": "forbidden",
     "externalApi": "forbidden",

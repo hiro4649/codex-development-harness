@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.1
+// CODEX_QUALITY_HARNESS_FILE v0.8.2
 import { fileURLToPath } from 'node:url';
 import { prBodyText, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import { classifyChange, changedFiles } from './codex-change-classification-gate.mjs';
+import { normalizeProductVerificationEvidence } from './codex-product-verification-evidence-normalize.mjs';
 
 function hasSkipReason(body, env) {
   return Boolean(env.CODEX_NPM_SKIP_REASON) || /\bskip reason\s*:\s*\S+/i.test(body) ||
@@ -20,11 +21,15 @@ function verificationEvidence(body) {
 export function buildProductVerificationReport(env = process.env) {
   const body = prBodyText(env);
   const classified = classifyChange(changedFiles(env), env);
+  const normalized = normalizeProductVerificationEvidence(env);
   const c = classified.classification;
   const skipNpm = env.CODEX_SKIP_NPM === '1';
   const reasonCodes = [...classified.reasonCodes.filter((item) => item !== 'no_pr_context')];
   const requiredCommands = [];
-  const providedEvidence = verificationEvidence(body);
+  const providedEvidence = [
+    ...verificationEvidence(body),
+    ...((normalized.normalized?.commands || []).filter((item) => item.result === 'pass').map((item) => item.name || 'normalized_command')),
+  ];
   const missingEvidence = [];
   let skipAllowed = false;
   let skipReason = '';
@@ -37,6 +42,7 @@ export function buildProductVerificationReport(env = process.env) {
       providedEvidence,
       missingEvidence,
       reasonCodes: ['no_pr_context'],
+      normalizedEvidence: normalized.normalized,
     });
   }
 
@@ -62,11 +68,14 @@ export function buildProductVerificationReport(env = process.env) {
   }
   if (c.packageChanged || c.lockfileChanged) {
     requiredCommands.push('package_verification');
-    reasonCodes.push('package_change_requires_package_verification');
-    if (!providedEvidence.length) missingEvidence.push('package_verification_evidence');
+    if (!providedEvidence.length) {
+      reasonCodes.push('package_change_requires_package_verification');
+      missingEvidence.push('package_verification_evidence');
+    }
   }
   if (classified.status === 'fail') reasonCodes.push('unknown_change_classification');
   if (missingEvidence.length && productRelevant) reasonCodes.push('product_verification_required');
+  if (normalized.status === 'fail') reasonCodes.push(...normalized.reasonCodes);
 
   const emergency = env.CODEX_EMERGENCY_MANUAL_REVIEW_REQUIRED === '1';
   let status = 'pass';
@@ -79,6 +88,7 @@ export function buildProductVerificationReport(env = process.env) {
     providedEvidence: [...new Set(providedEvidence)],
     missingEvidence: [...new Set(missingEvidence)],
     reasonCodes: [...new Set(reasonCodes)],
+    normalizedEvidence: normalized.normalized,
   });
 }
 
