@@ -202,6 +202,12 @@ function buildReport() {
   assertCase('remote product baseline missing fails for product change', result.remoteProductBaselineStatus.status === 'fail', failures, cases, result.remoteProductBaselineStatus.status);
   result = buildRemoteProductBaselineReport({ CODEX_EVENT_NAME: 'pull_request', CODEX_CHANGED_FILES: 'scripts/codex-local-quality-gate.mjs' });
   assertCase('remote product baseline not required for harness-only', result.remoteProductBaselineStatus.status === 'not_applicable', failures, cases, result.remoteProductBaselineStatus.status);
+  result = buildRemoteProductBaselineReport({
+    CODEX_EVENT_NAME: 'pull_request',
+    CODEX_CHANGED_FILES: 'README.md',
+    CODEX_PR_BODY: '## Performance Evidence\nNo performance claim is made.',
+  });
+  assertCase('performance evidence denial does not require baseline', result.remoteProductBaselineStatus.status === 'not_applicable', failures, cases, result.remoteProductBaselineStatus.status);
   result = buildRemoteProductBaselineReport({ CODEX_EVENT_NAME: 'pull_request', CODEX_CHANGED_FILES: 'src/app.js', CODEX_REMOTE_PRODUCT_BASELINE_JSON: staleBaseline() });
   assertCase('stale baseline fails', result.remoteProductBaselineStatus.status === 'fail', failures, cases, result.remoteProductBaselineStatus.status);
 
