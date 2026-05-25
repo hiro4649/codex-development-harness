@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.8
+// CODEX_QUALITY_HARNESS_FILE v0.8.9
 import { fileURLToPath } from 'node:url';
 import {
   HARNESS_VERSION,
@@ -14,6 +14,7 @@ import {
   exitFor,
 } from './codex-v080-lib.mjs';
 import { changedFiles } from './codex-change-classification-gate.mjs';
+import { effectiveSurfacesForComplexity } from './codex-pr-body-surface-normalizer.mjs';
 
 const allowedModes = new Set(['off', 'report', 'enforce', 'strict']);
 const allowedStatuses = new Set(['pass', 'warning', 'manual_confirmation_required', 'fail', 'not_applicable']);
@@ -119,13 +120,13 @@ function artifactType(body) {
 }
 
 function surfaceSummary(files, body) {
-  const text = lowerText(files, body);
+  const normalized = effectiveSurfacesForComplexity(files, body);
   return {
-    auth: /\bauth|security|permission|role|session|token|login|oauth\b/.test(text),
-    storage: /\bstorage|database|postgres|sqlite|migration|schema|concurrency|json-store|repository\b/.test(text),
-    api: /\bapi|route|controller|handler|request\/response|request response|compatibility\b/.test(text),
-    runtime: /\bruntime|worker|adapter|queue|server|client|readiness\b/.test(text),
-    release: /\brelease_gate|release|deploy|production|go\/no-go|go no-go\b/.test(text),
+    auth: normalized.auth,
+    storage: normalized.storage,
+    api: normalized.api,
+    runtime: normalized.runtime,
+    release: normalized.release,
     harness: files.some(isHarnessFile),
     product: files.some(isProductFile),
     pkg: files.some(isPackageFile),

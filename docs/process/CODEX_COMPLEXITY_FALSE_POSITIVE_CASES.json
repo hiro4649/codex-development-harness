@@ -1,0 +1,13 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
+  "harnessVersion": "0.8.9",
+  "cases": [
+    "no_auth_changes_should_not_trigger_auth_oracle",
+    "forbidden_scope_auth_should_not_trigger_auth_surface",
+    "residual_risk_runtime_should_not_trigger_runtime_change",
+    "not_included_storage_should_not_trigger_storage_surface",
+    "product_file_auth_changed_still_triggers_auth_surface",
+    "runtime_ready_claim_still_requires_oracle"
+  ],
+  "safeSummaryOnly": true
+}

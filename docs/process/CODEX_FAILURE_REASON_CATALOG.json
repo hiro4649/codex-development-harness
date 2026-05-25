@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
-  "harnessVersion": "0.8.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
+  "harnessVersion": "0.8.9",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -1576,6 +1576,174 @@
       "severity": "error",
       "safeMessage": "A complexity eval case failed.",
       "nextBestFix": "Fix complexity gate behavior or the deterministic fixture expectation.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "baseline_health_failed",
+      "gate": "baselineHealth",
+      "severity": "error",
+      "safeMessage": "Baseline health validation failed.",
+      "nextBestFix": "Review baseline health inputs and product relevance.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "baseline_evidence_missing",
+      "gate": "baselineHealth",
+      "severity": "error",
+      "safeMessage": "Required baseline evidence is missing.",
+      "nextBestFix": "Provide current baseline evidence or confirm harness-only scope.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "baseline_evidence_stale",
+      "gate": "baselineHealth",
+      "severity": "error",
+      "safeMessage": "Baseline evidence is stale.",
+      "nextBestFix": "Refresh the baseline evidence for the current head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_skip_npm_without_verification",
+      "gate": "baselineHealth",
+      "severity": "error",
+      "safeMessage": "Product-relevant work used skip-npm without verification.",
+      "nextBestFix": "Run product verification or remove product-relevant scope.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "baseline_candidate_regression_not_separated",
+      "gate": "baselineHealth",
+      "severity": "error",
+      "safeMessage": "Baseline and candidate regression are not separated.",
+      "nextBestFix": "Separate baseline failure from candidate failure evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "evidence_continuity_failed",
+      "gate": "evidenceContinuity",
+      "severity": "error",
+      "safeMessage": "Evidence continuity validation failed.",
+      "nextBestFix": "Restore the missing safe evidence path.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_evidence_path_lost",
+      "gate": "evidenceContinuity",
+      "severity": "error",
+      "safeMessage": "Remote product baseline evidence path was lost.",
+      "nextBestFix": "Propagate baseline evidence into workflow summaries.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_verification_path_lost",
+      "gate": "evidenceContinuity",
+      "severity": "error",
+      "safeMessage": "Product verification evidence path was lost.",
+      "nextBestFix": "Propagate product verification status safely.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "evidence_pack_human_confirmation_path_lost",
+      "gate": "evidenceContinuity",
+      "severity": "error",
+      "safeMessage": "Evidence pack lost human confirmation.",
+      "nextBestFix": "Include humanConfirmation in the current-head evidence pack.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "complexity_status_path_lost",
+      "gate": "evidenceContinuity",
+      "severity": "error",
+      "safeMessage": "Complexity or oracle status path was lost.",
+      "nextBestFix": "Propagate complexity governance status into summaries.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "self_test_case_export_failed",
+      "gate": "selfTestCaseExport",
+      "severity": "error",
+      "safeMessage": "Self-test case export failed.",
+      "nextBestFix": "Emit safe failed case IDs without raw logs.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "self_test_failed_case_export_missing",
+      "gate": "selfTestCaseExport",
+      "severity": "error",
+      "safeMessage": "A failed self-test did not export a failed case ID.",
+      "nextBestFix": "Add safe failed case export metadata.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_body_surface_normalizer_failed",
+      "gate": "prBodySurfaceNormalizer",
+      "severity": "error",
+      "safeMessage": "PR body surface normalization failed.",
+      "nextBestFix": "Review PR body surface labels.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "surface_false_positive_detected",
+      "gate": "prBodySurfaceNormalizer",
+      "severity": "warning",
+      "safeMessage": "A PR body surface false positive was detected.",
+      "nextBestFix": "Use changed files and negation-aware surface labels.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "required_heading_hint_available",
+      "gate": "prBodySurfaceNormalizer",
+      "severity": "warning",
+      "safeMessage": "A safe heading hint is available.",
+      "nextBestFix": "Add the suggested exact heading if required.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "required_heading_missing_exact",
+      "gate": "prBodySurfaceNormalizer",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "A required heading is missing.",
+      "nextBestFix": "Add the exact required heading.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "required_heading_near_miss",
+      "gate": "prBodySurfaceNormalizer",
+      "severity": "warning",
+      "safeMessage": "A heading near miss was detected.",
+      "nextBestFix": "Use the exact heading text.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "score_decomposition_failed",
+      "gate": "scoreDecomposition",
+      "severity": "error",
+      "safeMessage": "Score decomposition failed.",
+      "nextBestFix": "Review score cap and top reason metadata.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "self_test_profile_not_allowed",
+      "gate": "selfTestProfile",
+      "severity": "error",
+      "safeMessage": "The requested self-test profile is not allowed.",
+      "nextBestFix": "Use a full or standard profile for product-relevant work.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "old_harness_marker_detected",
+      "gate": "oldHarnessMarker",
+      "severity": "warning",
+      "safeMessage": "Old harness marker was detected.",
+      "nextBestFix": "Update active harness-managed markers.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "old_source_marker_detected",
+      "gate": "oldHarnessMarker",
+      "severity": "error",
+      "safeMessage": "Old source harness marker was detected.",
+      "nextBestFix": "Update active source-managed markers to the current version.",
       "canManualConfirmationOverride": false
     }
   ]

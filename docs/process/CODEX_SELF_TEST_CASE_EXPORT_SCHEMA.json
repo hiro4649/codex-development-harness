@@ -1,0 +1,10 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
+  "harnessVersion": "0.8.9",
+  "schemaVersion": "1.0.0",
+  "artifact": "codex-self-test-cases.safe.json",
+  "requiredFields": ["suite", "caseCount", "failedCaseCount", "failedCases", "safeSummaryOnly"],
+  "failedCaseFields": ["caseId", "expectedStatus", "actualStatus", "reasonCodes", "safeMessage"],
+  "forbidden": ["rawLogs", "rawDiffs", "rawPayloads", "privatePaths", "endpointValues", "productionData", "personalData"],
+  "safeSummaryOnly": true
+}

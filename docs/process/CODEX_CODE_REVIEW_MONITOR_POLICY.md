@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.9 -->
 # Code Review Monitor Policy
 
 The Code Review Monitor is a lightweight path, evidence, and existing-status

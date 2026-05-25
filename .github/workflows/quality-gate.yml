@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.8.8
+# CODEX_QUALITY_HARNESS_FILE v0.8.9
 name: quality-gate
 
 on:
@@ -93,6 +93,13 @@ jobs:
             console.log(`- humanReviewRequired: ${summary.humanReviewRequired}`);
             console.log(`- qualityScoreStatus: ${summary.qualityScoreStatus?.status || 'missing'}`);
             console.log(`- qualityScore: ${summary.qualityScoreStatus?.score ?? 'missing'}`);
+            console.log(`- baselineHealthStatus: ${summary.baselineHealthStatus?.status || 'missing'}`);
+            console.log(`- evidenceContinuityStatus: ${summary.evidenceContinuityStatus?.status || 'missing'}`);
+            console.log(`- prBodySurfaceNormalizerStatus: ${summary.prBodySurfaceNormalizerStatus?.status || 'missing'}`);
+            console.log(`- selfTestCaseExportStatus: ${summary.selfTestCaseExportStatus?.status || 'missing'}`);
+            console.log(`- scoreDecompositionStatus: ${summary.scoreDecompositionStatus?.status || 'missing'}`);
+            console.log(`- oldHarnessMarkerStatus: ${summary.oldHarnessMarkerStatus?.status || 'missing'}`);
+            console.log(`- v089SelfTestStatus: ${summary.v089SelfTestStatus?.status || 'missing'}`);
             console.log(`- pathMode: ${diagnostic?.pathMode || 'missing'}`);
             console.log(`- topNextAction: ${diagnostic?.nextActions?.[0] || 'missing'}`);
           } else {
@@ -114,6 +121,7 @@ jobs:
             codex-quality-gate-safe-summary.json
             codex-diagnostic-consolidated-summary.json
             codex-evidence-pack.normalized.json
+            codex-self-test-cases.safe.json
             codex-failure-reasons.json
             codex-invalid-report-recovery-summary.json
             codex-target-quality-summary.json

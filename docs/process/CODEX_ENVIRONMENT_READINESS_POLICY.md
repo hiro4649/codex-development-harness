@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.9 -->
 # Environment Readiness Policy
 
 The source harness must explain how to run its local gates without assuming

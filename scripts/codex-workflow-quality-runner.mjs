@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.8
+// CODEX_QUALITY_HARNESS_FILE v0.8.9
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, simpleStatus, writeJsonReport } from './codex-v080-lib.mjs';
@@ -37,6 +37,14 @@ const sourceRequiredPass = [
   'knowledgeGovernanceStatus',
   'contractGovernanceStatus',
   'complexityGovernanceStatus',
+  'baselineHealthStatus',
+  'evidenceContinuityStatus',
+  'prBodySurfaceNormalizerStatus',
+  'requiredHeadingHintStatus',
+  'selfTestCaseExportStatus',
+  'scoreDecompositionStatus',
+  'selfTestProfileStatus',
+  'oldHarnessMarkerStatus',
   'openPrHygieneStatus',
   'targetFinalSummaryStatus',
   'stalePrAuditStatus',
@@ -76,6 +84,7 @@ const sourceRequiredPass = [
   'v086SelfTestStatus',
   'v087SelfTestStatus',
   'v088SelfTestStatus',
+  'v089SelfTestStatus',
   'qualityScoreStatus',
 ];
 
@@ -104,6 +113,14 @@ const targetRequiredPass = [
   'knowledgeGovernanceStatus',
   'contractGovernanceStatus',
   'complexityGovernanceStatus',
+  'baselineHealthStatus',
+  'evidenceContinuityStatus',
+  'prBodySurfaceNormalizerStatus',
+  'requiredHeadingHintStatus',
+  'selfTestCaseExportStatus',
+  'scoreDecompositionStatus',
+  'selfTestProfileStatus',
+  'oldHarnessMarkerStatus',
   'openPrHygieneStatus',
   'targetFinalSummaryStatus',
   'stalePrAuditStatus',
@@ -118,6 +135,7 @@ const targetRequiredPass = [
   'v086SelfTestStatus',
   'v087SelfTestStatus',
   'v088SelfTestStatus',
+  'v089SelfTestStatus',
   'safeArtifactValidation',
   'outputShapeStatus',
   'targetQualityScoreStatus',
@@ -153,6 +171,7 @@ const optionalNotApplicable = new Set([
   'knowledgeGovernanceStatus',
   'contractGovernanceStatus',
   'complexityGovernanceStatus',
+  'baselineHealthStatus',
   'openPrHygieneStatus',
   'targetFinalSummaryStatus',
   'stalePrAuditStatus',
@@ -227,17 +246,30 @@ export function evaluateWorkflowReport(report, options = {}) {
     'complexityGovernanceStatus',
     'v088SelfTestStatus',
   ]);
+  const v089Fields = new Set([
+    'baselineHealthStatus',
+    'evidenceContinuityStatus',
+    'prBodySurfaceNormalizerStatus',
+    'requiredHeadingHintStatus',
+    'selfTestCaseExportStatus',
+    'scoreDecompositionStatus',
+    'selfTestProfileStatus',
+    'oldHarnessMarkerStatus',
+    'v089SelfTestStatus',
+  ]);
   const hasV084Shape = report.harnessVersion === HARNESS_VERSION || [...v084Fields].some((key) => report[key]);
   const hasV085Shape = report.harnessVersion === HARNESS_VERSION || [...v085Fields].some((key) => report[key]);
   const hasV086Shape = report.harnessVersion === HARNESS_VERSION || [...v086Fields].some((key) => report[key]);
   const hasV087Shape = report.harnessVersion === HARNESS_VERSION || [...v087Fields].some((key) => report[key]);
   const hasV088Shape = report.harnessVersion === HARNESS_VERSION || [...v088Fields].some((key) => report[key]);
+  const hasV089Shape = report.harnessVersion === HARNESS_VERSION || [...v089Fields].some((key) => report[key]);
   const required = (mode === 'target' ? targetRequiredPass : sourceRequiredPass)
     .filter((key) => hasV084Shape || !v084Fields.has(key))
     .filter((key) => hasV085Shape || !v085Fields.has(key))
     .filter((key) => hasV086Shape || !v086Fields.has(key))
     .filter((key) => hasV087Shape || !v087Fields.has(key))
-    .filter((key) => hasV088Shape || !v088Fields.has(key));
+    .filter((key) => hasV088Shape || !v088Fields.has(key))
+    .filter((key) => hasV089Shape || !v089Fields.has(key));
   const failures = [];
   for (const key of required) {
     const status = report[key]?.status || 'missing';
@@ -272,6 +304,13 @@ export function evaluateWorkflowReport(report, options = {}) {
     knowledgeGovernanceStatus: report.knowledgeGovernanceStatus || { status: 'missing' },
     contractGovernanceStatus: report.contractGovernanceStatus || { status: 'missing' },
     complexityGovernanceStatus: report.complexityGovernanceStatus || { status: 'missing' },
+    baselineHealthStatus: report.baselineHealthStatus || { status: 'missing' },
+    evidenceContinuityStatus: report.evidenceContinuityStatus || { status: 'missing' },
+    prBodySurfaceNormalizerStatus: report.prBodySurfaceNormalizerStatus || { status: 'missing' },
+    selfTestCaseExportStatus: report.selfTestCaseExportStatus || { status: 'missing' },
+    scoreDecompositionStatus: report.scoreDecompositionStatus || { status: 'missing' },
+    oldHarnessMarkerStatus: report.oldHarnessMarkerStatus || { status: 'missing' },
+    v089SelfTestStatus: report.v089SelfTestStatus || { status: 'missing' },
     failureCount: Array.isArray(report.failures) ? report.failures.length : 0,
     warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
     safeSummaryOnly: true,
@@ -312,6 +351,13 @@ function writeArtifacts(result, report) {
     normalizedEvidencePackPresent: Boolean(report.normalizedEvidencePack),
     safeSummaryOnly: true,
   }, null, 2));
+  fs.writeFileSync('codex-self-test-cases.safe.json', JSON.stringify({
+    suite: report.selfTestCaseExportStatus?.suite || 'local_quality_gate',
+    caseCount: report.selfTestCaseExportStatus?.caseCount ?? 0,
+    failedCaseCount: report.selfTestCaseExportStatus?.failedCaseCount ?? 0,
+    failedCases: Array.isArray(report.selfTestCaseExportStatus?.failedCases) ? report.selfTestCaseExportStatus.failedCases.slice(0, 20) : [],
+    safeSummaryOnly: true,
+  }, null, 2));
   if (result.mode === 'target') {
     fs.writeFileSync('codex-target-quality-summary.json', JSON.stringify({
       targetQualityScoreStatus: report.targetQualityScoreStatus || { status: 'missing' },
@@ -326,6 +372,7 @@ function writeArtifacts(result, report) {
     { artifactName: 'codex-quality-gate-safe-summary.json', path: 'codex-quality-gate-safe-summary.json', status: 'present' },
     { artifactName: 'codex-failure-reasons.json', path: 'codex-failure-reasons.json', status: 'present' },
     { artifactName: 'codex-evidence-pack.normalized.json', path: 'codex-evidence-pack.normalized.json', status: 'present' },
+    { artifactName: 'codex-self-test-cases.safe.json', path: 'codex-self-test-cases.safe.json', status: 'present' },
     { artifactName: `codex-${result.mode}-final-summary.json`, path: `codex-${result.mode}-final-summary.json`, status: 'present' },
     { artifactName: 'codex-safe-artifact-index.json', path: 'codex-safe-artifact-index.json', status: 'present' },
     ...(result.mode === 'target' ? [{ artifactName: 'codex-target-quality-summary.json', path: 'codex-target-quality-summary.json', status: 'present' }] : []),

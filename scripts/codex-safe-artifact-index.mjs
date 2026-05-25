@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.8
+// CODEX_QUALITY_HARNESS_FILE v0.8.9
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -45,7 +45,7 @@ export function buildSafeArtifactIndex(artifacts = [], mode = process.env.CODEX_
     artifactCount: entries.length,
     budgetExceeded: entries.length > Number(process.env.CODEX_ARTIFACT_BUDGET || DEFAULT_ARTIFACT_BUDGET),
   };
-  const unsafePath = entries.some((item) => RAW_LOOKING.test(item.path) && !/safe-summary|failure-reasons|normalized|safe\.json|final-summary|artifact-index|preflight|target-quality|diagnostic-consolidated-summary|reason-summary|test-metrics|quality-gate/i.test(item.path));
+  const unsafePath = entries.some((item) => RAW_LOOKING.test(item.path) && !/safe-summary|failure-reasons|normalized|safe\.json|final-summary|artifact-index|preflight|target-quality|diagnostic-consolidated-summary|reason-summary|test-metrics|quality-gate|self-test-cases/i.test(item.path));
   const unsafe = unsafePath || entries.some((item) => scanObjectForUnsafe(item).length || !item.safeSummaryOnly || item.rawLogIncluded || item.containsSecrets || item.containsEndpointValues);
   const requiredMissing = missingArtifacts.length > 0;
   return {
@@ -76,6 +76,7 @@ function defaultArtifacts(mode) {
     'codex-quality-gate-safe-summary.json',
     'codex-failure-reasons.json',
     'codex-evidence-pack.normalized.json',
+    'codex-self-test-cases.safe.json',
     'codex-safe-artifact-index.json',
     mode === 'target' ? 'codex-target-quality-summary.json' : 'codex-source-final-summary.json',
     mode === 'target' ? 'codex-target-final-summary.json' : '',

@@ -1,0 +1,16 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
+  "harnessVersion": "0.8.9",
+  "statusName": "evidenceContinuityStatus",
+  "pathsChecked": [
+    "remote_product_baseline",
+    "product_verification",
+    "npm_diagnostic",
+    "evidence_pack",
+    "human_confirmation",
+    "complexity_oracle",
+    "self_test_case_export",
+    "score_decomposition"
+  ],
+  "safeSummaryOnly": true
+}

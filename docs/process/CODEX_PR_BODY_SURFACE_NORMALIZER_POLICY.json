@@ -1,0 +1,13 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
+  "harnessVersion": "0.8.9",
+  "statusName": "prBodySurfaceNormalizerStatus",
+  "rules": [
+    "forbidden_scope_mentions_do_not_count_as_changed_surfaces",
+    "negated_surface_mentions_do_not_count_as_changed_surfaces",
+    "residual_risk_mentions_do_not_count_as_changed_surfaces",
+    "changed_files_override_body_denial",
+    "runtime_readiness_claim_overrides_simple_denial"
+  ],
+  "safeSummaryOnly": true
+}
