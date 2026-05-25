@@ -11,6 +11,7 @@ import { buildReviewEvalSuiteReport } from './codex-review-eval-suite.mjs';
 import { buildPromptVariantSuggestionReport } from './codex-prompt-variant-suggest.mjs';
 import { buildKnowledgeGovernanceReport } from './codex-knowledge-governance-gate.mjs';
 import { buildContractGovernanceReport } from './codex-contract-governance-gate.mjs';
+import { buildHumanConfirmationObjectReport } from './codex-human-confirmation-validate.mjs';
 
 function assertCase(name, ok, failures, cases, detail = '') {
   cases.push({ name, status: ok ? 'pass' : 'fail', detail: String(detail || '').slice(0, 120), safeSummaryOnly: true });
@@ -81,6 +82,42 @@ Default mode: enforce for PR context
 ## Testing
 Validation commands pass.
 `;
+}
+
+function confirmationFixture(overrides = {}) {
+  return {
+    target: 'pull_request',
+    repository: 'hiro4649/codex-development-harness',
+    prNumber: 14,
+    headSha: 'abc123',
+    riskLevel: 'R3',
+    confirmedByRole: 'project-owner',
+    confirmedAt: '2026-05-25T00:00:00Z',
+    reviewedItems: ['source harness managed files only'],
+    residualRisks: ['target rollout remains separate'],
+    qualityGateNotWeakened: true,
+    riskLevelNotLowered: true,
+    nonOverridableFailuresAcknowledged: true,
+    ...overrides,
+  };
+}
+
+function manualConfirmationBlock(object) {
+  return `BEGIN_CODEX_MANUAL_CONFIRMATION_JSON\n${JSON.stringify({ codexManualConfirmation: object }, null, 2)}\nEND_CODEX_MANUAL_CONFIRMATION_JSON`;
+}
+
+function evidencePackConfirmationBlock(object) {
+  return `BEGIN_CODEX_EVIDENCE_PACK_JSON\n${JSON.stringify({ codexEvidencePack: { humanConfirmation: object } }, null, 2)}\nEND_CODEX_EVIDENCE_PACK_JSON`;
+}
+
+function humanConfirmationEnv(overrides = {}) {
+  return prEnv({
+    CODEX_HARNESS_SOURCE_REPO: '1',
+    CODEX_HUMAN_CONFIRMATION_STRICT: '1',
+    CODEX_PR_COMMENTS: '',
+    CODEX_PR_REVIEWS: '',
+    ...overrides,
+  });
 }
 
 export function buildV087SelfTestReport() {
@@ -202,6 +239,41 @@ Stop condition: stop`,
     CODEX_PR_BODY: 'manual confirmation can override non-overridable failures',
   })).promptGovernanceStatus;
   assertCase('manual override weakening text -> fail', result.status === 'fail' && result.reasonCodes.includes('manual_override_policy_weakened'), failures, cases, result.status);
+
+  result = buildHumanConfirmationObjectReport(humanConfirmationEnv({
+    CODEX_PR_COMMENTS: [
+      manualConfirmationBlock({ headSha: 'abc123', status: 'pending_current_head_project_owner_confirmation' }),
+      manualConfirmationBlock(confirmationFixture()),
+    ].join('\n'),
+  })).humanConfirmationObjectStatus;
+  assertCase('human_confirmation_multiple_blocks_prefers_current_head_valid', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
+
+  result = buildHumanConfirmationObjectReport(humanConfirmationEnv({
+    CODEX_PR_COMMENTS: [
+      manualConfirmationBlock(confirmationFixture({ headSha: 'stale-head' })),
+      manualConfirmationBlock(confirmationFixture()),
+    ].join('\n'),
+  })).humanConfirmationObjectStatus;
+  assertCase('human_confirmation_stale_first_valid_second_pass', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
+
+  result = buildHumanConfirmationObjectReport(humanConfirmationEnv({
+    CODEX_PR_COMMENTS: manualConfirmationBlock(confirmationFixture({ headSha: 'stale-head' })),
+  })).humanConfirmationObjectStatus;
+  assertCase('human_confirmation_only_stale_fails', result.status === 'fail' && result.reasonCodes.includes('head_sha_mismatch'), failures, cases, result.status);
+
+  result = buildHumanConfirmationObjectReport(humanConfirmationEnv({
+    CODEX_PR_COMMENTS: manualConfirmationBlock({ target: 'pull_request', headSha: 'abc123' }),
+    CODEX_PR_BODY: manualConfirmationBlock(confirmationFixture()),
+  })).humanConfirmationObjectStatus;
+  assertCase('human_confirmation_incomplete_first_valid_body_pass', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
+
+  result = buildHumanConfirmationObjectReport(humanConfirmationEnv({
+    CODEX_PR_COMMENTS: [
+      evidencePackConfirmationBlock({ status: 'pending_current_head_project_owner_confirmation', target: 'pull_request', headSha: 'abc123' }),
+      manualConfirmationBlock(confirmationFixture()),
+    ].join('\n'),
+  })).humanConfirmationObjectStatus;
+  assertCase('human_confirmation_evidence_pack_pending_first_valid_second_pass', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
 
   result = buildPromptVariantSuggestionReport().promptVariantSuggestionStatus;
   assertCase('variant suggestion autoApply=false -> suggestion_only', result.status === 'suggestion_only' && result.autoApply === false, failures, cases, result.status);
