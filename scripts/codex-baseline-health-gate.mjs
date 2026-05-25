@@ -50,13 +50,13 @@ export function buildBaselineHealthReport(env = process.env) {
   const npmStatus = statusOf(npmDiagnostic);
   const reasonCodes = [];
   if (!productRelevantChange) {
-    const result = simpleStatus('baselineHealthStatus', isPrContext(env) ? 'warning' : 'not_applicable', {
+    const result = simpleStatus('baselineHealthStatus', 'not_applicable', {
       baselineRequired: false,
       baselinePresent: baselineStatus !== 'missing',
       baselineFresh: baselineStatus === 'pass',
       baselineResult: baselineStatus,
       productRelevantSkipOnly: false,
-      reasonCodes: isPrContext(env) ? ['baseline_evidence_missing'] : ['baseline_not_required_for_harness_only'],
+      reasonCodes: ['baseline_not_required_for_harness_only'],
     });
     return result;
   }
