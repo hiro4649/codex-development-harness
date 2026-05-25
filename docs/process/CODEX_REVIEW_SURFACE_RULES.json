@@ -1,0 +1,21 @@
+{
+  "schemaVersion": "0.8.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.6",
+  "harnessVersion": "0.8.6",
+  "authPatterns": ["auth", "security", "admin", "permission", "role", "session", "token", "login", "oauth"],
+  "storagePatterns": ["db", "database", "postgres", "sqlite", "json-store", "repository", "migration", "schema"],
+  "apiPatterns": ["api", "route", "routes", "controller", "handler", "endpoint", "request", "response"],
+  "runtimePatterns": ["src", "server", "client", "runtime", "worker", "adapter", "queue"],
+  "configPatterns": ["config", "env", "workflow", "docker", "deploy"],
+  "testPatterns": ["test", "tests", "__tests__", "spec"],
+  "packagePatterns": ["package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "npm-shrinkwrap.json"],
+  "harnessPatterns": ["AGENTS.md", "docs/process", "scripts/codex-", ".github/workflows", ".github/pull_request_template.md", ".agents/skills"],
+  "docsPatterns": ["README.md", "docs/"],
+  "largeDiff": {
+    "warningFiles": 8,
+    "manualFiles": 15,
+    "warningLines": 300,
+    "manualLines": 800
+  },
+  "safeSummaryOnly": true
+}

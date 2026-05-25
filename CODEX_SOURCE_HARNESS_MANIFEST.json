@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
-  "harnessVersion": "0.8.5",
-  "sourceHarnessVersion": "0.8.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.6",
+  "harnessVersion": "0.8.6",
+  "sourceHarnessVersion": "0.8.6",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -117,7 +117,11 @@
     "docs/process/CODEX_BUGFIX_EVIDENCE_SCHEMA.json",
     "docs/process/CODEX_IMPORT_SMOKE_CONFIG_SCHEMA.json",
     "docs/process/CODEX_RUNTIME_RISK_REGISTER_SCHEMA.json",
-    "docs/process/CODEX_VERIFICATION_HINTS_SCHEMA.json"
+    "docs/process/CODEX_VERIFICATION_HINTS_SCHEMA.json",
+    "docs/process/CODEX_CODE_REVIEW_MONITOR_POLICY.md",
+    "docs/process/CODEX_CODE_REVIEW_MONITOR_POLICY.json",
+    "docs/process/CODEX_REVIEW_SURFACE_RULES_SCHEMA.json",
+    "docs/process/CODEX_REVIEW_SURFACE_RULES.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -176,7 +180,9 @@
     "codex-actions-runtime-advisory.mjs",
     "codex-v084-self-test.mjs",
     "codex-v085-stability-gate.mjs",
-    "codex-v085-self-test.mjs"
+    "codex-v085-self-test.mjs",
+    "codex-code-review-monitor.mjs",
+    "codex-v086-self-test.mjs"
   ],
   "optionalFiles": []
 }

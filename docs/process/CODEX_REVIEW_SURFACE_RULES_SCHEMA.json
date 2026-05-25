@@ -1,0 +1,22 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.6",
+  "harnessVersion": "0.8.6",
+  "schemaName": "codex_review_surface_rules",
+  "required": [
+    "schemaVersion",
+    "marker",
+    "harnessVersion",
+    "authPatterns",
+    "storagePatterns",
+    "apiPatterns",
+    "runtimePatterns",
+    "configPatterns",
+    "testPatterns",
+    "packagePatterns",
+    "harnessPatterns",
+    "docsPatterns",
+    "safeSummaryOnly"
+  ],
+  "patternFieldsAreStringArrays": true,
+  "safeSummaryOnly": true
+}

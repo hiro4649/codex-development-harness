@@ -1,16 +1,16 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.6 -->
 # Codex Development Harness
 
-Version: v0.8.5
-Name: Execution Stability and Runtime Evidence Clarity Gate
+Version: v0.8.6
+Name: Code Review Monitor Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.5 preserves the v0.8.4 safety model while adding a
-lightweight stability gate for task discipline, bugfix evidence clarity, PR
-profile hints, product evidence explanations, optional import smoke checks,
-runtime risk summaries, checkout evidence priority, and one-screen diagnostics.
+evidence tooling. v0.8.6 preserves the v0.8.5 safety model while adding a
+lightweight Code Review Monitor for Codex-generated diffs. The monitor uses
+path-based, PR-evidence-based, and existing gate-status-based signals to check
+review surface clarity without raw diff storage or heavy analysis.
 
-## What v0.8.5 Adds
+## What v0.8.6 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -34,6 +34,8 @@ runtime risk summaries, checkout evidence priority, and one-screen diagnostics.
 - Open PR hygiene report v2
 - GitHub Actions runtime advisory
 - Execution stability gate for task mode and bugfix evidence
+- Code Review Monitor Gate for lightweight correctness, regression, security,
+  data integrity, runtime safety, test evidence, and diff-scope checks
 - `codex-bugfix` skill for focused bugfix work
 - Optional import smoke micro-checks when target repos explicitly configure them
 - Optional runtime risk register checks for readiness or release claims
@@ -50,11 +52,12 @@ runtime risk summaries, checkout evidence priority, and one-screen diagnostics.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.5 Does Not Add
+## What v0.8.6 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM
-judge, GEPA optimizer, or self-evolving runtime is implemented.
+judge, GEPA optimizer, self-evolving runtime, AST parser dependency, external
+API call, or product command execution is implemented by the new monitor.
 
 ## Running The Core Gate
 

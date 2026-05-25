@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.6 -->
 # Team Usage Guide
 
 ## First Read
