@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.6",
+  "harnessVersion": "0.8.6",
+  "policy": "code_review_monitor",
+  "defaultMode": {
+    "localNonPr": "report",
+    "pullRequest": "enforce"
+  },
+  "severityBehavior": {
+    "P0": "fail",
+    "P1": "manual_confirmation_required",
+    "P2": "warning"
+  },
+  "rawDiffStored": false,
+  "rawLogsStored": false,
+  "networkRequired": false,
+  "productCommandsRun": false,
+  "safeSummaryOnly": true
+}

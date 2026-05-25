@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.6 -->
 # Code Review
 
 Use this file as the review basis for Codex-managed changes.

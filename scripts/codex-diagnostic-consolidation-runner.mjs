@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.5
+// CODEX_QUALITY_HARNESS_FILE v0.8.6
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -62,6 +62,14 @@ export function buildDiagnosticConsolidatedSummary(report, options = {}) {
       taskDiscipline: report.v085StabilityStatus.taskDisciplineStatus?.status || 'missing',
       bugfixEvidence: report.v085StabilityStatus.bugfixEvidenceStatus?.status || 'missing',
       fastPathDecision: report.v085StabilityStatus.fastPathExplainabilityStatus?.decision || '',
+    } : null,
+    codeReviewMonitorSummary: report?.codeReviewMonitorStatus ? {
+      status: report.codeReviewMonitorStatus.status,
+      reviewProfile: report.codeReviewMonitorStatus.reviewProfile || 'unknown',
+      blockingCount: Array.isArray(report.codeReviewMonitorStatus.blockingFindings) ? report.codeReviewMonitorStatus.blockingFindings.length : 0,
+      manualCount: Array.isArray(report.codeReviewMonitorStatus.manualFindings) ? report.codeReviewMonitorStatus.manualFindings.length : 0,
+      warningCount: Array.isArray(report.codeReviewMonitorStatus.warnings) ? report.codeReviewMonitorStatus.warnings.length : 0,
+      safeSummaryOnly: true,
     } : null,
     oneScreenDashboard: report?.v085StabilityStatus?.oneScreenDashboardStatus || null,
     nextActions: (blocking.length ? ['fix_blocking_gate'] : manual.length ? ['provide_current_head_confirmation'] : ['ready_for_review']).slice(0, 5),

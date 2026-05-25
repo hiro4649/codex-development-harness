@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
-  "harnessVersion": "0.8.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.6",
+  "harnessVersion": "0.8.6",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -945,6 +945,118 @@
       "safeMessage": "A critical runtime risk area changed without an impact summary.",
       "nextBestFix": "Add a concise safe runtime risk impact summary.",
       "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "code_review_monitor_failed",
+      "gate": "codeReviewMonitor",
+      "severity": "error",
+      "safeMessage": "Code review monitor found a blocking review concern.",
+      "nextBestFix": "Resolve the blocking review monitor finding.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "review_surface_rules_invalid",
+      "gate": "codeReviewMonitor",
+      "severity": "error",
+      "safeMessage": "Review surface rules are missing or invalid.",
+      "nextBestFix": "Fix CODEX_REVIEW_SURFACE_RULES.json or the safe local override.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_change_without_review_surface",
+      "gate": "codeReviewMonitor",
+      "severity": "warning",
+      "safeMessage": "Product change lacks enough safe review surface evidence.",
+      "nextBestFix": "Add safe review surface and verification evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "product_change_without_test_or_reason",
+      "gate": "codeReviewMonitor",
+      "severity": "warning",
+      "safeMessage": "Product change has no test change or safe reason.",
+      "nextBestFix": "Add test evidence or a safe reason no test file changed.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "bugfix_review_evidence_missing",
+      "gate": "codeReviewMonitor",
+      "severity": "error",
+      "safeMessage": "Bugfix review evidence is missing reproduction, root cause, or verification.",
+      "nextBestFix": "Add bugfix evidence before merge.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "feature_acceptance_criteria_missing",
+      "gate": "codeReviewMonitor",
+      "severity": "warning",
+      "safeMessage": "Feature change lacks acceptance criteria.",
+      "nextBestFix": "Add acceptance criteria or Done when evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "refactor_behavior_invariant_missing",
+      "gate": "codeReviewMonitor",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Refactor lacks a behavior invariant summary.",
+      "nextBestFix": "Add a behavior invariant summary and verification evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "auth_surface_changed_without_negative_test_evidence",
+      "gate": "codeReviewMonitor",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Auth surface changed without negative test evidence.",
+      "nextBestFix": "Add negative auth/security test evidence or owner-reviewed rationale.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "storage_surface_changed_without_integrity_evidence",
+      "gate": "codeReviewMonitor",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Storage surface changed without integrity evidence.",
+      "nextBestFix": "Add data integrity, migration, or concurrency risk evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "api_surface_changed_without_compatibility_summary",
+      "gate": "codeReviewMonitor",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "API surface changed without compatibility summary.",
+      "nextBestFix": "Add request and response compatibility summary.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "runtime_surface_changed_without_smoke_or_reason",
+      "gate": "codeReviewMonitor",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Runtime surface changed without smoke evidence or safe reason.",
+      "nextBestFix": "Add smoke/import/runtime verification or a safe reason.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "large_product_diff_requires_review_scope",
+      "gate": "codeReviewMonitor",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Large product diff needs review scope evidence.",
+      "nextBestFix": "Add review scope summary and verification evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "harness_change_mixed_with_product_files",
+      "gate": "codeReviewMonitor",
+      "severity": "error",
+      "safeMessage": "Harness change includes product files.",
+      "nextBestFix": "Split product files out of the harness change.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "review_monitor_safe_summary_invalid",
+      "gate": "codeReviewMonitor",
+      "severity": "error",
+      "safeMessage": "Code review monitor summary contains unsafe or invalid output.",
+      "nextBestFix": "Redact unsafe values and keep safe summary only.",
+      "canManualConfirmationOverride": false
     }
   ]
 }

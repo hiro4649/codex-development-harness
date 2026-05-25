@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.6 -->
 ## Codex Method Compliance
 
 Code review status:
@@ -37,6 +37,12 @@ Critical runtime risk affected: yes/no/not applicable
 ## Environment setup
 
 ## Testing and review
+
+## Code Review Monitor
+
+Review surface:
+Risk summary:
+Test or verification evidence:
 
 ## Residual risks
 

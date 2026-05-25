@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.5
+// CODEX_QUALITY_HARNESS_FILE v0.8.6
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { classifyUnsafeValue } from './codex-unsafe-value-action-matrix.mjs';
 
-export const HARNESS_VERSION = '0.8.5';
+export const HARNESS_VERSION = '0.8.6';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const forbiddenFieldNames = new Set([
