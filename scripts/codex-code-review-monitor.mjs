@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.6
+// CODEX_QUALITY_HARNESS_FILE v0.8.7
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -317,6 +317,8 @@ export function buildCodeReviewMonitorReport(env = process.env) {
   const v085Warning = v085Status.status === 'warning';
   const runtimeClaimed = Boolean(classificationStatus.runtimeReadinessClaimed || /runtime readiness claimed\s*:\s*yes/i.test(body));
   const releaseClaimed = runtimeClaimed || /\b(production|release|deploy)\s+ready\b/i.test(body);
+  const stubRuntimeClaim = runtimeClaimed && /\b(stub|fixture pass|mock only|mock-only|placeholder)\b/i.test(body);
+  const displayOnlyCompleteClaim = /\b(feature complete|complete claim|done)\s*:\s*yes/i.test(body) && /\bdisplay only|display-only|visual only|ui only\b/i.test(body);
   const harnessMixedWithProduct = reviewProfile === 'harness_change' && changedSurfaceSummary.productCodeChanged && !changedSurfaceSummary.harnessOnly;
 
   if (!rulesLoaded.ok) {
@@ -405,6 +407,16 @@ export function buildCodeReviewMonitorReport(env = process.env) {
       addFinding(collections, finding('P1', 'code_review_monitor_failed', 'runtimeSafety', 'add_current_head_owner_confirmation'));
       updateChecklist(reviewChecklist, 'runtimeSafety', 'manual_confirmation_required');
     }
+  }
+
+  if (stubRuntimeClaim) {
+    addFinding(collections, finding('P0', 'stub_feature_claim_detected', 'runtimeSafety', 'replace_stub_claim_with_real_runtime_evidence'));
+    updateChecklist(reviewChecklist, 'runtimeSafety', 'fail');
+  }
+
+  if (displayOnlyCompleteClaim) {
+    addFinding(collections, finding('P1', 'display_only_feature_claim_detected', 'correctness', 'separate_display_from_completion_claim'));
+    updateChecklist(reviewChecklist, 'correctness', 'manual_confirmation_required');
   }
 
   const runtimeRisk = v085Status.runtimeRiskRegisterStatus || {};

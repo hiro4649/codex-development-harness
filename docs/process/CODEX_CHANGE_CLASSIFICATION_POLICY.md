@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.7 -->
 # Change Classification Policy
 
 Every PR should be classified before product verification is interpreted.

@@ -1,0 +1,61 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
+  "harnessVersion": "0.8.7",
+  "schemaVersion": "1.0.0",
+  "entrypoints": [
+    "AGENTS.md",
+    "README.md",
+    "CODEX_SOURCE_HARNESS_MANIFEST.json",
+    "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
+    "docs/process/code_review.md",
+    "docs/process/CODEX_CODE_REVIEW_MONITOR_POLICY.md",
+    "docs/process/CODEX_PROMPT_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_KNOWLEDGE_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_CONTRACT_GOVERNANCE_POLICY.md",
+    ".agents/skills/codex-bugfix/SKILL.md"
+  ],
+  "policyIndex": [
+    "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
+    "docs/process/CODEX_CODE_REVIEW_MONITOR_POLICY.md",
+    "docs/process/CODEX_PROMPT_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_KNOWLEDGE_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_CONTRACT_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_MANUAL_CONFIRMATION_POLICY.md",
+    "docs/process/CODEX_PRODUCT_VERIFICATION_POLICY.md",
+    "docs/process/CODEX_FAST_PATH_POLICY.md"
+  ],
+  "skillIndex": [
+    ".agents/skills/codex-bugfix/SKILL.md"
+  ],
+  "gateIndex": [
+    "scripts/codex-code-review-monitor.mjs",
+    "scripts/codex-prompt-governance-gate.mjs",
+    "scripts/codex-knowledge-governance-gate.mjs",
+    "scripts/codex-contract-governance-gate.mjs",
+    "scripts/codex-local-quality-gate.mjs"
+  ],
+  "evalIndex": [
+    "docs/process/CODEX_PROMPT_EVAL_SUITE.json",
+    "docs/process/CODEX_REVIEW_EVAL_CASES.json",
+    "scripts/codex-review-eval-suite.mjs",
+    "scripts/codex-v087-self-test.mjs"
+  ],
+  "reviewIndex": [
+    "docs/process/code_review.md",
+    "docs/process/CODEX_REVIEW_SURFACE_RULES.json",
+    "docs/process/CODEX_REVIEW_EVAL_CASES.json"
+  ],
+  "contractIndex": [
+    "docs/process/CODEX_CONTRACT_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_TASK_CONTRACT_SCHEMA.json",
+    "docs/process/CODEX_HANDOFF_SCHEMA.json",
+    "docs/process/CODEX_LOAD_BEARING_EVIDENCE_SCHEMA.json"
+  ],
+  "sourceOfRecord": [
+    "AGENTS.md",
+    "README.md",
+    "CODEX_SOURCE_HARNESS_MANIFEST.json",
+    "docs/process/"
+  ],
+  "safeSummaryOnly": true
+}

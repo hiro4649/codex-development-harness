@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.6
+// CODEX_QUALITY_HARNESS_FILE v0.8.7
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, simpleStatus, writeJsonReport } from './codex-v080-lib.mjs';
@@ -33,6 +33,9 @@ const sourceRequiredPass = [
   'actionsRuntimeAdvisoryStatus',
   'v085StabilityStatus',
   'codeReviewMonitorStatus',
+  'promptGovernanceStatus',
+  'knowledgeGovernanceStatus',
+  'contractGovernanceStatus',
   'openPrHygieneStatus',
   'targetFinalSummaryStatus',
   'stalePrAuditStatus',
@@ -70,6 +73,7 @@ const sourceRequiredPass = [
   'v084SelfTestStatus',
   'v085SelfTestStatus',
   'v086SelfTestStatus',
+  'v087SelfTestStatus',
   'qualityScoreStatus',
 ];
 
@@ -94,6 +98,9 @@ const targetRequiredPass = [
   'actionsRuntimeAdvisoryStatus',
   'v085StabilityStatus',
   'codeReviewMonitorStatus',
+  'promptGovernanceStatus',
+  'knowledgeGovernanceStatus',
+  'contractGovernanceStatus',
   'openPrHygieneStatus',
   'targetFinalSummaryStatus',
   'stalePrAuditStatus',
@@ -106,6 +113,7 @@ const targetRequiredPass = [
   'v084SelfTestStatus',
   'v085SelfTestStatus',
   'v086SelfTestStatus',
+  'v087SelfTestStatus',
   'safeArtifactValidation',
   'outputShapeStatus',
   'targetQualityScoreStatus',
@@ -137,6 +145,9 @@ const optionalNotApplicable = new Set([
   'prProfileStatus',
   'actionsRuntimeAdvisoryStatus',
   'codeReviewMonitorStatus',
+  'promptGovernanceStatus',
+  'knowledgeGovernanceStatus',
+  'contractGovernanceStatus',
   'openPrHygieneStatus',
   'targetFinalSummaryStatus',
   'stalePrAuditStatus',
@@ -201,13 +212,21 @@ export function evaluateWorkflowReport(report, options = {}) {
     'codeReviewMonitorStatus',
     'v086SelfTestStatus',
   ]);
+  const v087Fields = new Set([
+    'promptGovernanceStatus',
+    'knowledgeGovernanceStatus',
+    'contractGovernanceStatus',
+    'v087SelfTestStatus',
+  ]);
   const hasV084Shape = report.harnessVersion === HARNESS_VERSION || [...v084Fields].some((key) => report[key]);
   const hasV085Shape = report.harnessVersion === HARNESS_VERSION || [...v085Fields].some((key) => report[key]);
   const hasV086Shape = report.harnessVersion === HARNESS_VERSION || [...v086Fields].some((key) => report[key]);
+  const hasV087Shape = report.harnessVersion === HARNESS_VERSION || [...v087Fields].some((key) => report[key]);
   const required = (mode === 'target' ? targetRequiredPass : sourceRequiredPass)
     .filter((key) => hasV084Shape || !v084Fields.has(key))
     .filter((key) => hasV085Shape || !v085Fields.has(key))
-    .filter((key) => hasV086Shape || !v086Fields.has(key));
+    .filter((key) => hasV086Shape || !v086Fields.has(key))
+    .filter((key) => hasV087Shape || !v087Fields.has(key));
   const failures = [];
   for (const key of required) {
     const status = report[key]?.status || 'missing';
@@ -238,6 +257,9 @@ export function evaluateWorkflowReport(report, options = {}) {
     reasonSummary,
     v085StabilityStatus: report.v085StabilityStatus || { status: 'missing' },
     codeReviewMonitorStatus: report.codeReviewMonitorStatus || { status: 'missing' },
+    promptGovernanceStatus: report.promptGovernanceStatus || { status: 'missing' },
+    knowledgeGovernanceStatus: report.knowledgeGovernanceStatus || { status: 'missing' },
+    contractGovernanceStatus: report.contractGovernanceStatus || { status: 'missing' },
     failureCount: Array.isArray(report.failures) ? report.failures.length : 0,
     warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
     safeSummaryOnly: true,

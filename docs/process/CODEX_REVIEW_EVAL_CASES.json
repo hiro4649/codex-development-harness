@@ -1,0 +1,235 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
+  "harnessVersion": "0.8.7",
+  "schemaVersion": "1.0.0",
+  "cases": [
+    {
+      "id": "docs_only_safe",
+      "taskMode": "docs_only",
+      "changedFiles": ["README.md"],
+      "prBody": "Task mode: docs_only",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"docsOnly": true}, "productRelevantChanged": false}
+      },
+      "expected": {"status": "pass", "reasonCodes": []},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "harness_only_safe",
+      "taskMode": "harness_change",
+      "changedFiles": ["scripts/codex-local-quality-gate.mjs"],
+      "prBody": "Task mode: harness_change\n\nTesting and review: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"harnessOnly": true}, "productRelevantChanged": false}
+      },
+      "expected": {"status": "pass", "reasonCodes": []},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "harness_change_mixed_with_product_files_fail",
+      "taskMode": "harness_change",
+      "changedFiles": ["scripts/codex-local-quality-gate.mjs", "src/product.ts"],
+      "prBody": "Task mode: harness_change",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true}, "productRelevantChanged": true}
+      },
+      "expected": {"status": "fail", "reasonCodes": ["harness_change_mixed_with_product_files"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "bugfix_with_reproduction_root_cause_verification_pass",
+      "taskMode": "bugfix",
+      "changedFiles": ["src/fix.ts", "tests/fix.test.ts"],
+      "prBody": "Task mode: bugfix",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"},
+        "v085StabilityStatus": {"status": "pass", "bugfixEvidenceStatus": {"status": "pass", "reasonCodes": []}}
+      },
+      "expected": {"status": "pass", "reasonCodes": []},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "bugfix_missing_root_cause_fail",
+      "taskMode": "bugfix",
+      "changedFiles": ["src/fix.ts"],
+      "prBody": "Task mode: bugfix",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true}, "productRelevantChanged": true},
+        "v085StabilityStatus": {"status": "fail", "bugfixEvidenceStatus": {"status": "fail", "reasonCodes": ["bugfix_root_cause_missing"]}}
+      },
+      "expected": {"status": "fail", "reasonCodes": ["bugfix_review_evidence_missing"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "feature_product_change_with_acceptance_and_verification_pass",
+      "taskMode": "feature",
+      "changedFiles": ["src/feature.ts", "tests/feature.test.ts"],
+      "prBody": "Task mode: feature\n\nDone when: feature covered\n\nRisk summary: small\n\nTest or verification evidence: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "pass", "reasonCodes": []},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "feature_missing_acceptance_warning",
+      "taskMode": "feature",
+      "changedFiles": ["src/feature.ts", "tests/feature.test.ts"],
+      "prBody": "Task mode: feature\n\nTest or verification evidence: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "warning", "reasonCodes": ["feature_acceptance_criteria_missing"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "auth_surface_without_negative_test_manual",
+      "taskMode": "feature",
+      "changedFiles": ["src/auth/session.ts", "tests/auth.test.ts"],
+      "prBody": "Task mode: feature\n\nDone when: auth works\n\nTest or verification evidence: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "manual_confirmation_required", "reasonCodes": ["auth_surface_changed_without_negative_test_evidence"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "storage_surface_without_integrity_evidence_manual",
+      "taskMode": "feature",
+      "changedFiles": ["src/db/repository.ts", "tests/repository.test.ts"],
+      "prBody": "Task mode: feature\n\nDone when: storage works\n\nTest or verification evidence: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "manual_confirmation_required", "reasonCodes": ["storage_surface_changed_without_integrity_evidence"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "runtime_readiness_with_open_release_blocking_risk_fail",
+      "taskMode": "release_gate",
+      "changedFiles": ["src/runtime.ts", "tests/runtime.test.ts"],
+      "prBody": "Task mode: release_gate\n\nRuntime readiness claimed: yes\n\nRollback or stop condition: stop\n\nTest or verification evidence: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "runtimeReadinessClaimed": true, "testsChanged": true}, "productRelevantChanged": true, "runtimeReadinessClaimed": true},
+        "productVerificationStatus": {"status": "pass"},
+        "v085StabilityStatus": {"status": "fail", "runtimeRiskRegisterStatus": {"status": "fail", "reasonCodes": ["runtime_release_blocked_by_open_risk"]}}
+      },
+      "expected": {"status": "fail", "reasonCodes": ["runtime_release_blocked_by_open_risk"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "large_product_diff_without_review_scope_manual",
+      "taskMode": "feature",
+      "changedFiles": ["src/a.ts", "src/b.ts", "src/c.ts", "src/d.ts", "src/e.ts", "src/f.ts", "src/g.ts", "src/h.ts", "src/i.ts", "src/j.ts", "src/k.ts", "src/l.ts", "src/m.ts", "src/n.ts", "src/o.ts", "src/p.ts"],
+      "diffNumstat": "60\t0\tsrc/a.ts\n60\t0\tsrc/b.ts\n60\t0\tsrc/c.ts\n60\t0\tsrc/d.ts\n60\t0\tsrc/e.ts\n60\t0\tsrc/f.ts\n60\t0\tsrc/g.ts\n60\t0\tsrc/h.ts\n60\t0\tsrc/i.ts\n60\t0\tsrc/j.ts\n60\t0\tsrc/k.ts\n60\t0\tsrc/l.ts\n60\t0\tsrc/m.ts\n60\t0\tsrc/n.ts\n60\t0\tsrc/o.ts\n60\t0\tsrc/p.ts",
+      "prBody": "Task mode: feature\n\nDone when: feature works",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "manual_confirmation_required", "reasonCodes": ["large_product_diff_requires_review_scope"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "package_change_with_product_verification_fail",
+      "taskMode": "feature",
+      "changedFiles": ["package.json"],
+      "prBody": "Task mode: feature\n\nDone when: package works",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"packageChanged": true}, "productRelevantChanged": true, "packageOrLockfileChanged": true},
+        "productVerificationStatus": {"status": "fail", "reasonCodes": ["package_change_requires_package_verification"]}
+      },
+      "expected": {"status": "fail", "reasonCodes": ["code_review_monitor_failed"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "product_verification_fail_remains_fail",
+      "taskMode": "feature",
+      "changedFiles": ["src/feature.ts"],
+      "prBody": "Task mode: feature\n\nDone when: feature works",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "fail"}
+      },
+      "expected": {"status": "fail", "reasonCodes": ["code_review_monitor_failed"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "product_fast_path_misuse_fail",
+      "taskMode": "feature",
+      "changedFiles": ["src/feature.ts"],
+      "prBody": "Task mode: feature",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true}, "productRelevantChanged": true},
+        "v085StabilityStatus": {"status": "fail", "reasonCodes": ["fast_path_not_allowed_for_product_change"]}
+      },
+      "expected": {"status": "fail", "reasonCodes": ["code_review_monitor_failed"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "contract_criterion_missing_verification",
+      "taskMode": "feature",
+      "changedFiles": ["src/contract.ts"],
+      "prBody": "Task mode: feature\n\nDone when: contract exists",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true}, "productRelevantChanged": true}
+      },
+      "expected": {"status": "fail", "reasonCodes": ["product_change_without_review_surface"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "stub_feature_not_accepted_as_complete",
+      "taskMode": "feature",
+      "changedFiles": ["src/feature.ts", "tests/feature.test.ts"],
+      "prBody": "Task mode: feature\n\nRuntime readiness claimed: yes\n\nDone when: fixture pass demonstrates the stub feature",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true, "runtimeReadinessClaimed": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "fail", "reasonCodes": ["stub_feature_claim_detected"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "display_only_feature_flagged",
+      "taskMode": "feature",
+      "changedFiles": ["src/view.ts", "tests/view.test.ts"],
+      "prBody": "Task mode: feature\n\nFeature complete: yes\n\nDone when: display only screen exists\n\nTest or verification evidence: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "manual_confirmation_required", "reasonCodes": ["display_only_feature_claim_detected"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "api_route_ordering_risk_flagged",
+      "taskMode": "feature",
+      "changedFiles": ["src/routes/user.route.ts", "tests/routes.test.ts"],
+      "prBody": "Task mode: feature\n\nDone when: route works\n\nTest or verification evidence: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "manual_confirmation_required", "reasonCodes": ["api_surface_changed_without_compatibility_summary"]},
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "delete_handler_condition_risk_flagged",
+      "taskMode": "feature",
+      "changedFiles": ["src/api/delete-handler.ts", "tests/delete.test.ts"],
+      "prBody": "Task mode: feature\n\nDone when: delete works\n\nTest or verification evidence: pass",
+      "inputStatuses": {
+        "changeClassificationStatus": {"status": "pass", "classification": {"productSourceChanged": true, "testsChanged": true}, "productRelevantChanged": true},
+        "productVerificationStatus": {"status": "pass"}
+      },
+      "expected": {"status": "manual_confirmation_required", "reasonCodes": ["api_surface_changed_without_compatibility_summary"]},
+      "safeSummaryOnly": true
+    }
+  ],
+  "safeSummaryOnly": true
+}

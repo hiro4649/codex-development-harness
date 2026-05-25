@@ -1,16 +1,18 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.7 -->
 # Codex Development Harness
 
-Version: v0.8.6
-Name: Code Review Monitor Gate
+Version: v0.8.7
+Name: Eval-First Prompt, Review, Knowledge, and Contract Governance Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.6 preserves the v0.8.5 safety model while adding a
-lightweight Code Review Monitor for Codex-generated diffs. The monitor uses
-path-based, PR-evidence-based, and existing gate-status-based signals to check
-review surface clarity without raw diff storage or heavy analysis.
+evidence tooling. v0.8.7 preserves the v0.8.6 safety model while adding
+eval-first governance for prompt-like files, skills, PR templates, review
+policies, Code Review Monitor fixtures, repository knowledge maps, task
+contracts, handoff artifacts, and load-bearing evidence. The new governance
+checks use deterministic fixtures and safe summaries rather than raw prompt
+dumping, raw diff storage, or heavy analysis.
 
-## What v0.8.6 Adds
+## What v0.8.7 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -36,6 +38,14 @@ review surface clarity without raw diff storage or heavy analysis.
 - Execution stability gate for task mode and bugfix evidence
 - Code Review Monitor Gate for lightweight correctness, regression, security,
   data integrity, runtime safety, test evidence, and diff-scope checks
+- Prompt Governance Gate for deterministic eval-first checks of prompt-like
+  files, skills, PR templates, and review policies
+- Review Eval Suite for fixed Code Review Monitor regression fixtures
+- Knowledge Governance Gate and knowledge map for source-of-record indexing
+- Contract Governance Gate for task contracts, handoff safety, and load-bearing
+  evidence on risky harness changes
+- Prompt variant suggestion-only report with `autoApply`, `autoCommit`, and
+  `autoPush` fixed false
 - `codex-bugfix` skill for focused bugfix work
 - Optional import smoke micro-checks when target repos explicitly configure them
 - Optional runtime risk register checks for readiness or release claims
@@ -52,12 +62,13 @@ review surface clarity without raw diff storage or heavy analysis.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.6 Does Not Add
+## What v0.8.7 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM
-judge, GEPA optimizer, self-evolving runtime, AST parser dependency, external
-API call, or product command execution is implemented by the new monitor.
+judge, GEPA or DSPy dependency, self-evolving runtime, AST parser dependency,
+browser or Playwright requirement, external API call, prompt auto-apply, or
+product command execution is implemented by the new governance gates.
 
 ## Running The Core Gate
 

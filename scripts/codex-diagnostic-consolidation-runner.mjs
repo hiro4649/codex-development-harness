@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.6
+// CODEX_QUALITY_HARNESS_FILE v0.8.7
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -71,6 +71,12 @@ export function buildDiagnosticConsolidatedSummary(report, options = {}) {
       warningCount: Array.isArray(report.codeReviewMonitorStatus.warnings) ? report.codeReviewMonitorStatus.warnings.length : 0,
       safeSummaryOnly: true,
     } : null,
+    governanceSummary: {
+      prompt: report?.promptGovernanceStatus?.status || 'missing',
+      knowledge: report?.knowledgeGovernanceStatus?.status || 'missing',
+      contract: report?.contractGovernanceStatus?.status || 'missing',
+      safeSummaryOnly: true,
+    },
     oneScreenDashboard: report?.v085StabilityStatus?.oneScreenDashboardStatus || null,
     nextActions: (blocking.length ? ['fix_blocking_gate'] : manual.length ? ['provide_current_head_confirmation'] : ['ready_for_review']).slice(0, 5),
     safeSummaryOnly: true,
