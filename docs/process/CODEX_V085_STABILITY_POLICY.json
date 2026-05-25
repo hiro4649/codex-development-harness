@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
+  "policy": "v085_stability",
+  "networkAccess": false,
+  "runsProductTests": false,
+  "safeSummaryOnly": true,
+  "allowedTaskModes": [
+    "bugfix",
+    "feature",
+    "refactor",
+    "investigation",
+    "review",
+    "release_gate",
+    "harness_change",
+    "docs_only",
+    "unknown"
+  ]
+}

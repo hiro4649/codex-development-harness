@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
-  "harnessVersion": "0.8.4",
-  "sourceHarnessVersion": "0.8.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
+  "sourceHarnessVersion": "0.8.5",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -22,6 +22,7 @@
     ".github/pull_request_template.md",
     ".github/workflows/quality-gate.yml",
     ".github/workflows/weekly-health-check.yml",
+    ".agents/skills/codex-bugfix/SKILL.md",
     "AGENTS.md",
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
     "README.md",
@@ -110,7 +111,13 @@
     "docs/process/CODEX_INVALID_REPORT_RECOVERY_SCHEMA.json",
     "docs/process/CODEX_PR_PROFILE_POLICY.md",
     "docs/process/CODEX_PR_PROFILE_POLICY.json",
-    "docs/process/CODEX_ACTIONS_RUNTIME_ADVISORY_POLICY.md"
+    "docs/process/CODEX_ACTIONS_RUNTIME_ADVISORY_POLICY.md",
+    "docs/process/CODEX_V085_STABILITY_POLICY.md",
+    "docs/process/CODEX_V085_STABILITY_POLICY.json",
+    "docs/process/CODEX_BUGFIX_EVIDENCE_SCHEMA.json",
+    "docs/process/CODEX_IMPORT_SMOKE_CONFIG_SCHEMA.json",
+    "docs/process/CODEX_RUNTIME_RISK_REGISTER_SCHEMA.json",
+    "docs/process/CODEX_VERIFICATION_HINTS_SCHEMA.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -167,7 +174,9 @@
     "codex-invalid-report-recovery.mjs",
     "codex-pr-profile-gate.mjs",
     "codex-actions-runtime-advisory.mjs",
-    "codex-v084-self-test.mjs"
+    "codex-v084-self-test.mjs",
+    "codex-v085-stability-gate.mjs",
+    "codex-v085-self-test.mjs"
   ],
   "optionalFiles": []
 }

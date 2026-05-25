@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
-  "harnessVersion": "0.8.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
   "requiredOnClaimOnly": true,
   "requiredFields": ["baselineSummary", "newMeasurementSummary"],
   "safeOutputOnly": true

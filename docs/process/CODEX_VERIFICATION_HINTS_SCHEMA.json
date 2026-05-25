@@ -1,0 +1,12 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
+  "schemaName": "codex_verification_hints",
+  "fields": {
+    "taskMode": "string",
+    "suggestedChecks": "string[]",
+    "notRunReason": "string",
+    "safeSummaryOnly": "boolean"
+  },
+  "safeSummaryOnly": true
+}

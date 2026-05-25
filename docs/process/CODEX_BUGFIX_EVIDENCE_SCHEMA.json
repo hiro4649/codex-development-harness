@@ -1,0 +1,30 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
+  "schemaName": "codex_bugfix_evidence",
+  "required": [
+    "schemaVersion",
+    "symptom",
+    "reproductionStatus",
+    "rootCause",
+    "verification"
+  ],
+  "reproductionStatus": [
+    "reproduced",
+    "not_reproducible_with_reason",
+    "baseline_fail",
+    "not_run_with_reason"
+  ],
+  "rootCauseStatus": [
+    "identified",
+    "hypothesis",
+    "unknown"
+  ],
+  "verificationStatus": [
+    "pass",
+    "fail",
+    "partial",
+    "not_run_with_reason"
+  ],
+  "safeSummaryOnly": true
+}

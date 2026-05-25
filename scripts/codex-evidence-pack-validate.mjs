@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.4
+// CODEX_QUALITY_HARNESS_FILE v0.8.5
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
-export const HARNESS_VERSION = '0.8.4';
+export const HARNESS_VERSION = '0.8.5';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const defaultPackPath = path.join('.codex', 'evidence-pack.json');
@@ -145,7 +145,7 @@ export function validateEvidencePack(pack, env = process.env) {
   }
   if (missingFields.length) reasonCodes.push('evidence_pack_invalid');
 
-  if (pack.harnessVersion && !['0.8.1', '0.8.2', '0.8.3'].some((version) => String(pack.harnessVersion).startsWith(version))) {
+  if (pack.harnessVersion && !['0.8.1', '0.8.2', '0.8.3', '0.8.4', HARNESS_VERSION].some((version) => String(pack.harnessVersion).startsWith(version))) {
     warnings.push('evidence_pack_harness_version_compatibility_warning');
   }
   const expectedHead = env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '';
