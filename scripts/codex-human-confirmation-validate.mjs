@@ -4,7 +4,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildHumanConfirmationStatus, readPrBody } from './codex-production-readiness-gate.mjs';
-import { buildEvidencePackReport, evidencePackFromStructuredText } from './codex-evidence-pack-validate.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
 export const HARNESS_VERSION = '0.8.7';
@@ -40,17 +39,24 @@ function readJson(file) {
   }
 }
 
-function parseJsonBlock(text, beginMarker, endMarker, property) {
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function parseJsonBlocks(text, beginMarker, endMarker, property) {
   const source = String(text || '');
-  const pattern = new RegExp(`${beginMarker}\\s*([\\s\\S]*?)\\s*${endMarker}`, 'i');
-  const match = source.match(pattern);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[1]);
-    return parsed?.[property] && typeof parsed[property] === 'object' ? parsed[property] : null;
-  } catch {
-    return { __invalid: true };
+  const pattern = new RegExp(`${escapeRegExp(beginMarker)}\\s*([\\s\\S]*?)\\s*${escapeRegExp(endMarker)}`, 'gi');
+  const blocks = [];
+  let match;
+  while ((match = pattern.exec(source)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      blocks.push(parsed?.[property] && typeof parsed[property] === 'object' ? parsed[property] : { __invalid: true });
+    } catch {
+      blocks.push({ __invalid: true });
+    }
   }
+  return blocks;
 }
 
 function confirmationPath(env = process.env) {
@@ -143,101 +149,118 @@ export function validateHumanConfirmationObject(object = {}, env = process.env) 
   };
 }
 
-function confirmationFromEvidencePack(env) {
-  const packReport = buildEvidencePackReport(env);
-  const packPath = env.CODEX_EVIDENCE_PACK_PATH || (fs.existsSync(path.join('.codex', 'evidence-pack.json')) ? path.join('.codex', 'evidence-pack.json') : '');
-  if (packPath && packReport.status !== 'fail') {
-    const pack = readJson(packPath);
-    return pack?.humanConfirmation || null;
-  }
-  const structured = evidencePackFromStructuredText(env);
-  if (!structured?.pack || structured.pack.__invalid || packReport.status === 'fail') return null;
-  const pack = structured.pack;
-  return pack?.humanConfirmation || null;
-}
-
 function prBodyText(env) {
   return readPrBody(env).body || '';
 }
 
-function confirmationFromStructuredJson(env) {
-  const commentObject = parseJsonBlock(
-    env.CODEX_PR_COMMENTS || '',
-    'BEGIN_CODEX_MANUAL_CONFIRMATION_JSON',
-    'END_CODEX_MANUAL_CONFIRMATION_JSON',
-    'codexManualConfirmation',
-  );
-  if (commentObject) return { object: commentObject, source: 'pr_comment_json' };
-  const reviewObject = parseJsonBlock(
-    env.CODEX_PR_REVIEWS || '',
-    'BEGIN_CODEX_MANUAL_CONFIRMATION_JSON',
-    'END_CODEX_MANUAL_CONFIRMATION_JSON',
-    'codexManualConfirmation',
-  );
-  if (reviewObject) return { object: reviewObject, source: 'pr_review_json' };
-  const bodyObject = parseJsonBlock(
-    prBodyText(env),
-    'BEGIN_CODEX_MANUAL_CONFIRMATION_JSON',
-    'END_CODEX_MANUAL_CONFIRMATION_JSON',
-    'codexManualConfirmation',
-  );
-  if (bodyObject) return { object: bodyObject, source: 'pr_body_json' };
-  return null;
+function pushCandidate(candidates, object, source) {
+  if (!object) return;
+  const duplicateCount = candidates.filter((candidate) => candidate.source === source || candidate.source.startsWith(`${source}_`)).length;
+  candidates.push({ object, source: duplicateCount ? `${source}_${duplicateCount}` : source });
 }
 
-function confirmationFromFencedJson(env) {
+function collectEvidencePackConfirmationCandidates(env) {
+  const candidates = [];
+  const packPath = env.CODEX_EVIDENCE_PACK_PATH || (fs.existsSync(path.join('.codex', 'evidence-pack.json')) ? path.join('.codex', 'evidence-pack.json') : '');
+  if (packPath) {
+    const pack = readJson(packPath);
+    pushCandidate(candidates, pack?.humanConfirmation, 'evidence_pack_file');
+  }
+  for (const [text, source] of [
+    [env.CODEX_PR_COMMENTS || '', 'evidence_pack_pr_comment_json'],
+    [prBodyText(env), 'evidence_pack_pr_body_json'],
+  ]) {
+    const packs = parseJsonBlocks(
+      text,
+      'BEGIN_CODEX_EVIDENCE_PACK_JSON',
+      'END_CODEX_EVIDENCE_PACK_JSON',
+      'codexEvidencePack',
+    );
+    for (const pack of packs) pushCandidate(candidates, pack?.humanConfirmation, source);
+  }
+  return candidates;
+}
+
+export function collectStructuredConfirmationCandidates(env) {
+  const candidates = [];
+  for (const [text, source] of [
+    [env.CODEX_PR_COMMENTS || '', 'pr_comment_json'],
+    [env.CODEX_PR_REVIEWS || '', 'pr_review_json'],
+    [prBodyText(env), 'pr_body_json'],
+  ]) {
+    const objects = parseJsonBlocks(
+      text,
+      'BEGIN_CODEX_MANUAL_CONFIRMATION_JSON',
+      'END_CODEX_MANUAL_CONFIRMATION_JSON',
+      'codexManualConfirmation',
+    );
+    for (const object of objects) pushCandidate(candidates, object, source);
+  }
+  return candidates;
+}
+
+function collectFencedConfirmationCandidates(env) {
   const body = readPrBody(env).body || '';
+  const candidates = [];
   const blockPattern = /```(?:json)?\s*([\s\S]*?)```/gi;
   let match;
   while ((match = blockPattern.exec(body)) !== null) {
     try {
       const parsed = JSON.parse(match[1]);
       if (parsed?.codexManualConfirmation && typeof parsed.codexManualConfirmation === 'object') {
-        return parsed.codexManualConfirmation;
+        pushCandidate(candidates, parsed.codexManualConfirmation, 'pr_body_fenced_json');
       }
     } catch {
       // Continue scanning later blocks; invalid fenced JSON is handled as no structured object.
     }
   }
-  return null;
+  return candidates;
+}
+
+export function selectValidConfirmationCandidate(candidates, env) {
+  const evaluated = candidates.map((candidate) => ({
+    ...candidate,
+    validation: validateHumanConfirmationObject(candidate.object, env),
+  }));
+  return evaluated.find((candidate) => candidate.validation.status === 'pass') || evaluated[0] || null;
+}
+
+function confirmationFromStructuredJson(env) {
+  return selectValidConfirmationCandidate(collectStructuredConfirmationCandidates(env), env);
+}
+
+function confirmationFromFencedJson(env) {
+  return selectValidConfirmationCandidate(collectFencedConfirmationCandidates(env), env);
+}
+
+function collectAllConfirmationCandidates(env, file) {
+  const candidates = [];
+  if (file) {
+    let object = readJson(file);
+    if (object?.codexManualConfirmation && typeof object.codexManualConfirmation === 'object') {
+      object = object.codexManualConfirmation;
+    }
+    pushCandidate(candidates, object, 'manual_confirmation_file');
+  }
+  candidates.push(...collectEvidencePackConfirmationCandidates(env));
+  candidates.push(...collectStructuredConfirmationCandidates(env));
+  candidates.push(...collectFencedConfirmationCandidates(env));
+  return candidates;
 }
 
 export function buildHumanConfirmationObjectReport(env = process.env) {
   const file = confirmationPath(env);
   const strict = isStrictHumanConfirmationMode(env);
-  let object = null;
-  let source = 'none';
-  if (file) {
-    object = readJson(file);
-    if (object?.codexManualConfirmation && typeof object.codexManualConfirmation === 'object') {
-      object = object.codexManualConfirmation;
-    }
-    source = 'manual_confirmation_file';
-  }
-  if (!object) {
-    object = confirmationFromEvidencePack(env);
-    if (object) source = 'evidence_pack_human_confirmation';
-  }
-  if (!object) {
-    const structured = confirmationFromStructuredJson(env);
-    if (structured) {
-      object = structured.object;
-      source = structured.source;
-    }
-  }
-  if (!object) {
-    object = confirmationFromFencedJson(env);
-    if (object) source = 'pr_body_fenced_json';
-  }
+  const selected = selectValidConfirmationCandidate(collectAllConfirmationCandidates(env, file), env);
 
-  if (object) {
-    const validation = validateHumanConfirmationObject(object, env);
+  if (selected) {
+    const validation = selected.validation;
     return {
       marker,
       harnessVersion: HARNESS_VERSION,
       humanConfirmationObjectStatus: {
         status: validation.status,
-        source,
+        source: selected.source,
         reasonCodes: validation.reasonCodes,
         missingFields: validation.missingFields,
         safeSummaryOnly: true,
