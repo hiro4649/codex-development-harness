@@ -1,0 +1,38 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
+  "harnessVersion": "0.8.8",
+  "schemaVersion": "1.0.0",
+  "name": "Complexity-Aware Verification and Oracle Gate",
+  "defaultMode": {
+    "localNonPr": "report",
+    "pullRequest": "enforce"
+  },
+  "regimes": ["low", "medium", "high", "unknown"],
+  "requirements": {
+    "low": ["existing safety gates"],
+    "medium": ["plan or task contract", "verification evidence", "review surface summary"],
+    "high": [
+      "task contract",
+      "oracle",
+      "verification surface",
+      "risk surface",
+      "split plan or split reason",
+      "current-head evidence",
+      "human confirmation",
+      "rollback or stop condition"
+    ]
+  },
+  "forbidden": [
+    "hidden chain-of-thought inspection",
+    "LLM judge requirement",
+    "MCP requirement",
+    "browser requirement",
+    "network call",
+    "product command execution",
+    "raw diff or raw log storage",
+    "prompt auto-apply",
+    "auto-commit",
+    "auto-push"
+  ],
+  "safeSummaryOnly": true
+}

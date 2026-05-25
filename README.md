@@ -1,18 +1,17 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.8 -->
 # Codex Development Harness
 
-Version: v0.8.7
-Name: Eval-First Prompt, Review, Knowledge, and Contract Governance Gate
+Version: v0.8.8
+Name: Complexity-Aware Verification and Oracle Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.7 preserves the v0.8.6 safety model while adding
-eval-first governance for prompt-like files, skills, PR templates, review
-policies, Code Review Monitor fixtures, repository knowledge maps, task
-contracts, handoff artifacts, and load-bearing evidence. The new governance
-checks use deterministic fixtures and safe summaries rather than raw prompt
-dumping, raw diff storage, or heavy analysis.
+evidence tooling. v0.8.8 preserves the v0.8.7 safety model while adding
+lightweight complexity classification, oracle requirements, solvability checks,
+execution interface checks, split requirements, and algorithmic artifact
+preference. The new gate uses deterministic fixtures and safe summaries rather
+than hidden chain-of-thought inspection, raw diff storage, or heavy analysis.
 
-## What v0.8.7 Adds
+## What v0.8.8 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -44,6 +43,9 @@ dumping, raw diff storage, or heavy analysis.
 - Knowledge Governance Gate and knowledge map for source-of-record indexing
 - Contract Governance Gate for task contracts, handoff safety, and load-bearing
   evidence on risky harness changes
+- Complexity Governance Gate for low/medium/high task classification,
+  surface-specific oracle requirements, solvability checks, execution interface
+  availability, split requirements, and algorithmic artifact preference
 - Prompt variant suggestion-only report with `autoApply`, `autoCommit`, and
   `autoPush` fixed false
 - `codex-bugfix` skill for focused bugfix work
@@ -62,13 +64,14 @@ dumping, raw diff storage, or heavy analysis.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.7 Does Not Add
+## What v0.8.8 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM
 judge, GEPA or DSPy dependency, self-evolving runtime, AST parser dependency,
-browser or Playwright requirement, external API call, prompt auto-apply, or
-product command execution is implemented by the new governance gates.
+browser or Playwright requirement, external API call, prompt auto-apply, hidden
+chain-of-thought inspection, or product command execution is implemented by the
+new governance gates.
 
 ## Running The Core Gate
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.7
+// CODEX_QUALITY_HARNESS_FILE v0.8.8
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -9,7 +9,7 @@ import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 import { buildGithubReplayContextAsync } from './codex-ci-replay.mjs';
 import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
 
-const HARNESS_VERSION = '0.8.7';
+const HARNESS_VERSION = '0.8.8';
 const PROFILE_TEMPLATE_VERSION = '0.7.0';
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
@@ -443,6 +443,7 @@ function computeOutputShapeStatus(report) {
     'promptGovernanceStatus',
     'knowledgeGovernanceStatus',
     'contractGovernanceStatus',
+    'complexityGovernanceStatus',
     'openPrHygieneStatus',
     'targetFinalSummaryStatus',
     'stalePrAuditStatus',
@@ -481,6 +482,7 @@ function computeOutputShapeStatus(report) {
     'v085SelfTestStatus',
     'v086SelfTestStatus',
     'v087SelfTestStatus',
+    'v088SelfTestStatus',
     'qualityScoreStatus',
   ];
   const missing = required.filter((key) => report[key] === undefined);
@@ -522,6 +524,7 @@ function computeQualityScoreStatus(report) {
     'promptGovernanceStatus',
     'knowledgeGovernanceStatus',
     'contractGovernanceStatus',
+    'complexityGovernanceStatus',
     'openPrHygieneStatus',
     'targetFinalSummaryStatus',
     'stalePrAuditStatus',
@@ -569,6 +572,7 @@ function computeQualityScoreStatus(report) {
     'promptGovernanceStatus',
     'knowledgeGovernanceStatus',
     'contractGovernanceStatus',
+    'complexityGovernanceStatus',
     'openPrHygieneStatus',
     'targetFinalSummaryStatus',
     'stalePrAuditStatus',
@@ -600,6 +604,7 @@ function computeQualityScoreStatus(report) {
     'v085SelfTestStatus',
     'v086SelfTestStatus',
     'v087SelfTestStatus',
+    'v088SelfTestStatus',
     'bestOfNEvidenceStatus',
     'taskQueueLiteStatus',
     'safeTraceSchemaStatus',
@@ -666,6 +671,7 @@ function computeTargetOutputShapeStatus(report) {
     'promptGovernanceStatus',
     'knowledgeGovernanceStatus',
     'contractGovernanceStatus',
+    'complexityGovernanceStatus',
     'openPrHygieneStatus',
     'targetFinalSummaryStatus',
     'stalePrAuditStatus',
@@ -687,6 +693,7 @@ function computeTargetOutputShapeStatus(report) {
     'v085SelfTestStatus',
     'v086SelfTestStatus',
     'v087SelfTestStatus',
+    'v088SelfTestStatus',
     'safeArtifactValidation',
     'targetQualityScoreStatus',
   ];
@@ -722,6 +729,7 @@ function computeTargetQualityScoreStatus(report) {
     'promptGovernanceStatus',
     'knowledgeGovernanceStatus',
     'contractGovernanceStatus',
+    'complexityGovernanceStatus',
     'openPrHygieneStatus',
     'targetFinalSummaryStatus',
     'stalePrAuditStatus',
@@ -743,6 +751,7 @@ function computeTargetQualityScoreStatus(report) {
     'v085SelfTestStatus',
     'v086SelfTestStatus',
     'v087SelfTestStatus',
+    'v088SelfTestStatus',
     'safeArtifactValidation',
     'outputShapeStatus',
   ];
@@ -759,6 +768,7 @@ function computeTargetQualityScoreStatus(report) {
     'promptGovernanceStatus',
     'knowledgeGovernanceStatus',
     'contractGovernanceStatus',
+    'complexityGovernanceStatus',
     'prProfileStatus',
     'safeArtifactIndexStatus',
     'openPrHygieneStatus',
@@ -778,6 +788,7 @@ function computeTargetQualityScoreStatus(report) {
     'v085SelfTestStatus',
     'v086SelfTestStatus',
     'v087SelfTestStatus',
+    'v088SelfTestStatus',
   ]);
   const statuses = scored.map((key) => {
     const status = report[key]?.status || 'missing';
@@ -921,6 +932,28 @@ function computeFailureReasonCatalogStatus() {
     'runtime_risk_closed_without_evidence',
     'checkout_remote_discrepancy_detected',
     'fast_path_full_verification_required',
+    'complexity_governance_failed',
+    'task_complexity_unknown',
+    'high_complexity_contract_missing',
+    'high_complexity_oracle_missing',
+    'high_complexity_split_required',
+    'solvability_constraints_missing',
+    'solvability_constraints_conflict',
+    'acceptance_criteria_missing_for_complex_task',
+    'reasoning_evidence_effort_mismatch',
+    'algorithmic_artifact_required',
+    'verification_blocked_by_missing_tool',
+    'verification_weakened_by_missing_tool',
+    'output_budget_risk_detected',
+    'impossible_task_detected',
+    'fixture_not_sufficient_for_runtime_claim',
+    'oracle_required_for_auth_surface',
+    'oracle_required_for_storage_surface',
+    'oracle_required_for_release_gate',
+    'oracle_required_for_runtime_readiness',
+    'split_required_for_large_diff',
+    'split_required_for_multi_surface_change',
+    'invented_command_detected',
   ];
   if (!fs.existsSync(file)) return { status: 'fail', missingReasonCodes: required, safeSummaryOnly: true };
   try {
@@ -1025,6 +1058,7 @@ async function runSourceHarnessGate() {
     promptGovernanceStatus: { status: 'not_run' },
     knowledgeGovernanceStatus: { status: 'not_run' },
     contractGovernanceStatus: { status: 'not_run' },
+    complexityGovernanceStatus: { status: 'not_run' },
     openPrHygieneStatus: { status: 'not_run' },
     targetFinalSummaryStatus: { status: 'not_run' },
     stalePrAuditStatus: { status: 'not_run' },
@@ -1063,6 +1097,7 @@ async function runSourceHarnessGate() {
     v085SelfTestStatus: { status: 'not_run' },
     v086SelfTestStatus: { status: 'not_run' },
     v087SelfTestStatus: { status: 'not_run' },
+    v088SelfTestStatus: { status: 'not_run' },
     profileTemplateCompatibilityStatus: { status: 'not_run' },
     qualityScoreStatus: { status: 'not_run' },
   };
@@ -1106,6 +1141,13 @@ async function runSourceHarnessGate() {
   report.promptGovernanceStatus = runGateScript('scripts/codex-prompt-governance-gate.mjs', 'promptGovernanceStatus', 'CODEX_PROMPT_GOVERNANCE_REPORT', governanceEnv);
   report.knowledgeGovernanceStatus = runGateScript('scripts/codex-knowledge-governance-gate.mjs', 'knowledgeGovernanceStatus', 'CODEX_KNOWLEDGE_GOVERNANCE_REPORT', governanceEnv);
   report.contractGovernanceStatus = runGateScript('scripts/codex-contract-governance-gate.mjs', 'contractGovernanceStatus', 'CODEX_CONTRACT_GOVERNANCE_REPORT', governanceEnv);
+  const complexityEnv = {
+    ...governanceEnv,
+    CODEX_PROMPT_GOVERNANCE_JSON: JSON.stringify(report.promptGovernanceStatus),
+    CODEX_KNOWLEDGE_GOVERNANCE_JSON: JSON.stringify(report.knowledgeGovernanceStatus),
+    CODEX_CONTRACT_GOVERNANCE_JSON: JSON.stringify(report.contractGovernanceStatus),
+  };
+  report.complexityGovernanceStatus = runGateScript('scripts/codex-complexity-governance-gate.mjs', 'complexityGovernanceStatus', 'CODEX_COMPLEXITY_GOVERNANCE_REPORT', complexityEnv);
   report.safeArtifactIndexStatus = runGateScript('scripts/codex-safe-artifact-index.mjs', 'safeArtifactIndexStatus', 'CODEX_SAFE_ARTIFACT_INDEX_REPORT', gateEnv);
   report.diagnosticConsolidationStatus = runGateScript('scripts/codex-diagnostic-consolidation-runner.mjs', 'diagnosticConsolidationStatus', 'CODEX_DIAGNOSTIC_CONSOLIDATION_REPORT', gateEnv);
   report.invalidReportRecoveryStatus = runGateScript('scripts/codex-invalid-report-recovery.mjs', 'invalidReportRecoveryStatus', 'CODEX_INVALID_REPORT_RECOVERY_REPORT', gateEnv);
@@ -1156,6 +1198,9 @@ async function runSourceHarnessGate() {
   report.v087SelfTestStatus = process.env.CODEX_SKIP_V087_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v087-self-test.mjs', 'v087SelfTestStatus', 'CODEX_V087_SELF_TEST_REPORT', { ...gateEnv, CODEX_V087_SKIP_LEGACY_RECHECKS: '1' });
+  report.v088SelfTestStatus = process.env.CODEX_SKIP_V088_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v088-self-test.mjs', 'v088SelfTestStatus', 'CODEX_V088_SELF_TEST_REPORT', { ...gateEnv, CODEX_V088_SKIP_LEGACY_RECHECKS: '1' });
   const reasonSummary = buildCompactReasonSummary(report);
   report.reasonSummaryStatus = {
     status: reasonSummary.status,
@@ -1195,6 +1240,7 @@ async function runSourceHarnessGate() {
     promptGovernanceStatus: report.promptGovernanceStatus,
     knowledgeGovernanceStatus: report.knowledgeGovernanceStatus,
     contractGovernanceStatus: report.contractGovernanceStatus,
+    complexityGovernanceStatus: report.complexityGovernanceStatus,
     openPrHygieneStatus: report.openPrHygieneStatus,
     targetFinalSummaryStatus: report.targetFinalSummaryStatus,
     stalePrAuditStatus: report.stalePrAuditStatus,
@@ -1219,6 +1265,7 @@ async function runSourceHarnessGate() {
     v085SelfTestStatus: report.v085SelfTestStatus,
     v086SelfTestStatus: report.v086SelfTestStatus,
     v087SelfTestStatus: report.v087SelfTestStatus,
+    v088SelfTestStatus: report.v088SelfTestStatus,
     bestOfNEvidenceStatus: report.bestOfNEvidenceStatus,
     taskQueueLiteStatus: report.taskQueueLiteStatus,
     safeTraceSchemaStatus: report.safeTraceSchemaStatus,
@@ -1378,6 +1425,10 @@ async function runTargetHarnessGate() {
     actionsRuntimeAdvisoryStatus: { status: 'not_run' },
     v085StabilityStatus: { status: 'not_run' },
     codeReviewMonitorStatus: { status: 'not_run' },
+    promptGovernanceStatus: { status: 'not_run' },
+    knowledgeGovernanceStatus: { status: 'not_run' },
+    contractGovernanceStatus: { status: 'not_run' },
+    complexityGovernanceStatus: { status: 'not_run' },
     openPrHygieneStatus: { status: 'not_run' },
     targetFinalSummaryStatus: { status: 'not_run' },
     stalePrAuditStatus: { status: 'not_run' },
@@ -1398,6 +1449,8 @@ async function runTargetHarnessGate() {
     v084SelfTestStatus: { status: 'not_run' },
     v085SelfTestStatus: { status: 'not_run' },
     v086SelfTestStatus: { status: 'not_run' },
+    v087SelfTestStatus: { status: 'not_run' },
+    v088SelfTestStatus: { status: 'not_run' },
     safeArtifactValidation: { status: 'not_run' },
     outputShapeStatus: { status: 'not_run' },
     targetQualityScoreStatus: { status: 'not_run' },
@@ -1436,6 +1489,13 @@ async function runTargetHarnessGate() {
   report.promptGovernanceStatus = runGateScript('scripts/codex-prompt-governance-gate.mjs', 'promptGovernanceStatus', 'CODEX_PROMPT_GOVERNANCE_REPORT', governanceEnv);
   report.knowledgeGovernanceStatus = runGateScript('scripts/codex-knowledge-governance-gate.mjs', 'knowledgeGovernanceStatus', 'CODEX_KNOWLEDGE_GOVERNANCE_REPORT', governanceEnv);
   report.contractGovernanceStatus = runGateScript('scripts/codex-contract-governance-gate.mjs', 'contractGovernanceStatus', 'CODEX_CONTRACT_GOVERNANCE_REPORT', governanceEnv);
+  const complexityEnv = {
+    ...governanceEnv,
+    CODEX_PROMPT_GOVERNANCE_JSON: JSON.stringify(report.promptGovernanceStatus),
+    CODEX_KNOWLEDGE_GOVERNANCE_JSON: JSON.stringify(report.knowledgeGovernanceStatus),
+    CODEX_CONTRACT_GOVERNANCE_JSON: JSON.stringify(report.contractGovernanceStatus),
+  };
+  report.complexityGovernanceStatus = runGateScript('scripts/codex-complexity-governance-gate.mjs', 'complexityGovernanceStatus', 'CODEX_COMPLEXITY_GOVERNANCE_REPORT', complexityEnv);
   report.safeArtifactIndexStatus = runGateScript('scripts/codex-safe-artifact-index.mjs', 'safeArtifactIndexStatus', 'CODEX_SAFE_ARTIFACT_INDEX_REPORT', gateEnv);
   report.diagnosticConsolidationStatus = runGateScript('scripts/codex-diagnostic-consolidation-runner.mjs', 'diagnosticConsolidationStatus', 'CODEX_DIAGNOSTIC_CONSOLIDATION_REPORT', gateEnv);
   report.invalidReportRecoveryStatus = runGateScript('scripts/codex-invalid-report-recovery.mjs', 'invalidReportRecoveryStatus', 'CODEX_INVALID_REPORT_RECOVERY_REPORT', gateEnv);
@@ -1478,6 +1538,9 @@ async function runTargetHarnessGate() {
   report.v087SelfTestStatus = process.env.CODEX_SKIP_V087_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v087-self-test.mjs', 'v087SelfTestStatus', 'CODEX_V087_SELF_TEST_REPORT', { ...gateEnv, CODEX_V087_SKIP_LEGACY_RECHECKS: '1' });
+  report.v088SelfTestStatus = process.env.CODEX_SKIP_V088_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v088-self-test.mjs', 'v088SelfTestStatus', 'CODEX_V088_SELF_TEST_REPORT', { ...gateEnv, CODEX_V088_SKIP_LEGACY_RECHECKS: '1' });
   const reasonSummary = buildCompactReasonSummary(report);
   report.reasonSummaryStatus = {
     status: reasonSummary.status,
@@ -1510,6 +1573,7 @@ async function runTargetHarnessGate() {
     promptGovernanceStatus: report.promptGovernanceStatus,
     knowledgeGovernanceStatus: report.knowledgeGovernanceStatus,
     contractGovernanceStatus: report.contractGovernanceStatus,
+    complexityGovernanceStatus: report.complexityGovernanceStatus,
     openPrHygieneStatus: report.openPrHygieneStatus,
     targetFinalSummaryStatus: report.targetFinalSummaryStatus,
     stalePrAuditStatus: report.stalePrAuditStatus,
@@ -1531,6 +1595,7 @@ async function runTargetHarnessGate() {
     v085SelfTestStatus: report.v085SelfTestStatus,
     v086SelfTestStatus: report.v086SelfTestStatus,
     v087SelfTestStatus: report.v087SelfTestStatus,
+    v088SelfTestStatus: report.v088SelfTestStatus,
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }

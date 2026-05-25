@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
-  "harnessVersion": "0.8.7",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
+  "harnessVersion": "0.8.8",
   "schemaVersion": "1.0.0",
   "objectName": "codexTaskContract",
   "requiredFields": ["schemaVersion", "taskMode", "goal", "doneCriteria", "verificationSurface", "riskSurface", "allowedScope", "forbiddenScope", "handoffRequired", "stopCondition", "safeSummaryOnly"],

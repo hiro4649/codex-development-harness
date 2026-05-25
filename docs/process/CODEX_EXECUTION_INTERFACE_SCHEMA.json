@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
+  "harnessVersion": "0.8.8",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "required": ["status", "requiredTools", "availableTools", "missingTools", "missingToolImpact", "safeSummaryOnly"],
+  "properties": {
+    "status": { "enum": ["pass", "warning", "manual_confirmation_required", "fail", "not_applicable"] },
+    "requiredTools": { "type": "array", "items": { "type": "string" } },
+    "availableTools": { "type": "array", "items": { "type": "string" } },
+    "missingTools": { "type": "array", "items": { "type": "string" } },
+    "missingToolImpact": { "enum": ["none", "weakens_evidence", "blocks_verification"] },
+    "reasonCodes": { "type": "array", "items": { "type": "string" } },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": true,
+  "safeSummaryOnly": true
+}
