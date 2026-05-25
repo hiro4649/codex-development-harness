@@ -1,0 +1,153 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
+  "harnessVersion": "0.8.8",
+  "schemaVersion": "1.0.0",
+  "cases": [
+    {
+      "id": "low_docs_only_pass",
+      "taskMode": "docs_only",
+      "changedFiles": ["README.md"],
+      "prBody": "Task mode: docs_only\nGoal: docs update\nVerification: static check pass",
+      "expected": { "status": "pass", "regime": "low", "reasonCodes": [] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "low_marker_update_pass",
+      "taskMode": "harness_change",
+      "changedFiles": ["AGENTS.md"],
+      "prBody": "Task mode: harness_change\nGoal: marker update\nVerification: static check pass",
+      "expected": { "status": "pass", "regime": "low", "reasonCodes": [] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "medium_bugfix_with_evidence_pass",
+      "taskMode": "bugfix",
+      "changedFiles": ["scripts/codex-bug.mjs"],
+      "prBody": "Task mode: bugfix\n## Bugfix Evidence\nReproduced: yes\nRoot cause: isolated fixture issue\nVerification: self-test pass\nDone criteria: fix verified",
+      "expected": { "status": "pass", "regime": "medium", "reasonCodes": [] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "medium_bugfix_missing_root_cause_fail",
+      "taskMode": "bugfix",
+      "changedFiles": ["scripts/codex-bug.mjs"],
+      "prBody": "Task mode: bugfix\n## Bugfix Evidence\nReproduced: yes\nVerification: self-test pass",
+      "expected": { "status": "fail", "regime": "medium", "reasonCodes": ["bugfix_review_evidence_missing"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "high_auth_without_negative_test_fail",
+      "taskMode": "feature",
+      "changedFiles": ["src/auth/login.ts"],
+      "prBody": "Task mode: feature\nGoal: auth change\n## Task Contract\nDone criteria: pass\nVerification surface: test pass\nRisk surface: auth\nAllowed scope: auth\nForbidden scope: package\nStop condition: stop\nOracle provided: test",
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["oracle_required_for_auth_surface"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "high_storage_without_integrity_evidence_manual",
+      "taskMode": "feature",
+      "changedFiles": ["src/db/repository.ts"],
+      "prBody": "Task mode: feature\nGoal: storage change\n## Task Contract\nDone criteria: pass\nVerification surface: manual check\nRisk surface: storage\nAllowed scope: storage\nForbidden scope: package\nStop condition: stop\nOracle provided: manual_check",
+      "expected": { "status": "manual_confirmation_required", "regime": "high", "reasonCodes": ["oracle_required_for_storage_surface"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "high_release_claim_without_oracle_fail",
+      "taskMode": "release_gate",
+      "changedFiles": ["scripts/codex-release.mjs"],
+      "prBody": "Task mode: release_gate\nProduction readiness claimed: yes\n## Task Contract\nDone criteria: release\nVerification surface: review\nRisk surface: release\nAllowed scope: release\nForbidden scope: product\nStop condition: stop",
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["high_complexity_oracle_missing"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "high_runtime_ready_fixture_only_fail",
+      "taskMode": "release_gate",
+      "changedFiles": ["src/runtime/server.ts"],
+      "prBody": "Task mode: release_gate\nRuntime readiness claimed: yes\nOracle provided: fixture\nVerification: fixture pass\n## Task Contract\nDone criteria: ready\nVerification surface: fixture\nRisk surface: runtime\nAllowed scope: runtime\nForbidden scope: package\nStop condition: stop",
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["fixture_not_sufficient_for_runtime_claim"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "impossible_contract_detected_fail",
+      "taskMode": "harness_change",
+      "changedFiles": ["scripts/codex-rollout.mjs"],
+      "prBody": "Task mode: harness_change\nGoal: target rollout with target repo changes\nForbidden scope: target repos\n## Task Contract\nDone criteria: done\nVerification surface: gate\nRisk surface: target rollout\nAllowed scope: source harness\nStop condition: stop\nOracle provided: test",
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["solvability_constraints_conflict"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "target_rollout_with_target_changes_forbidden_conflict_fail",
+      "taskMode": "harness_change",
+      "changedFiles": ["docs/process/CODEX_HARNESS_MANIFEST.json"],
+      "prBody": "Task mode: harness_change\nGoal: target rollout with target repo changes\nForbidden scope: target repos\n## Task Contract\nDone criteria: done\nVerification surface: target gate\nRisk surface: target rollout\nAllowed scope: source harness\nStop condition: stop\nOracle provided: test",
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["solvability_constraints_conflict"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "tool_unavailable_not_counted_as_reasoning_failure",
+      "taskMode": "feature",
+      "changedFiles": ["scripts/codex-tool.mjs"],
+      "prBody": "Task mode: feature\nGoal: browser check\nRequired tools: browser\nMissing tools: browser\nOracle provided: unavailable_with_reason\n## Task Contract\nDone criteria: document risk\nVerification surface: manual check\nRisk surface: tool availability\nAllowed scope: harness\nForbidden scope: product\nStop condition: stop",
+      "expected": { "status": "manual_confirmation_required", "regime": "medium", "reasonCodes": ["verification_weakened_by_missing_tool"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "tool_unavailable_blocks_runtime_readiness_fail",
+      "taskMode": "release_gate",
+      "changedFiles": ["src/runtime/server.ts"],
+      "prBody": "Task mode: release_gate\nRuntime readiness claimed: yes\nRequired tools: smoke\nMissing tools: smoke\nVerification: pass\n## Task Contract\nDone criteria: ready\nVerification surface: smoke\nRisk surface: runtime\nAllowed scope: runtime\nForbidden scope: package\nStop condition: stop\nOracle provided: smoke",
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["verification_blocked_by_missing_tool"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "large_output_task_requires_algorithmic_artifact",
+      "taskMode": "feature",
+      "changedFiles": ["scripts/codex-large.mjs"],
+      "prBody": "Task mode: feature\nGoal: many-step large output task\n## Task Contract\nDone criteria: done\nVerification surface: manual explanation\nRisk surface: large output\nAllowed scope: harness\nForbidden scope: product\nStop condition: stop\nOracle provided: manual_check\nmanual explanation only",
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["algorithmic_artifact_required"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "large_product_diff_without_split_manual",
+      "taskMode": "feature",
+      "changedFiles": ["src/module0.ts", "src/module1.ts", "src/module2.ts", "src/module3.ts", "src/module4.ts", "src/module5.ts", "src/module6.ts", "src/module7.ts", "src/module8.ts", "src/module9.ts", "src/module10.ts", "src/module11.ts", "src/module12.ts", "src/module13.ts", "src/module14.ts", "src/module15.ts"],
+      "prBody": "Task mode: feature\nGoal: large product diff\n## Task Contract\nDone criteria: done\nVerification surface: test pass\nRisk surface: runtime\nAllowed scope: product\nForbidden scope: package\nStop condition: stop\nOracle provided: test\nVerification: test pass",
+      "expected": { "status": "manual_confirmation_required", "regime": "high", "reasonCodes": ["split_required_for_large_diff"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "harness_only_gate_change_with_self_test_pass",
+      "taskMode": "harness_change",
+      "changedFiles": ["scripts/codex-complexity-governance-gate.mjs", "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.md"],
+      "prBody": "PR profile: harness_workflow_r3\nRisk level: R3\nTask mode: harness_change\n## Complexity Governance\nComplexity regime: high\nOracle required: yes\nOracle provided: v088 self-test; complexity eval cases; source/core local gate\nSplit required: no, source harness-only governance update with bounded files\n## Task Contract\nGoal: add v0.8.8 source harness complexity governance only\nDone criteria: v088 self-test pass; source/core local gate pass\nVerification surface: source harness validation commands\nRisk surface: source harness gate behavior\nAllowed scope: source harness managed files\nForbidden scope: target repos, product runtime code, package/lockfile changes, profiles/*\nStop condition: stop if remote gate fails\n## Load-bearing evidence\nComponent: v0.8.8 complexity governance\nFailure mode caught: high-complexity work without oracle\nNot covered by existing gates: complexity classification\nNegative fixture: v088 self-test negative cases\nPositive fixture: v088 self-test source harness-only v0.8.8 fixture\nRuntime cost: low\nDefault mode: enforce for PR context\n## Testing\nv088 self-test pass; complexity eval cases pass; source/core local gate pass",
+      "expected": { "status": "pass", "regime": "high", "reasonCodes": [] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "harness_change_mixed_with_product_files_fail",
+      "taskMode": "harness_change",
+      "changedFiles": ["scripts/codex-complexity-governance-gate.mjs", "src/runtime/server.ts"],
+      "prBody": "Task mode: harness_change\nGoal: mixed harness and product\n## Task Contract\nDone criteria: done\nVerification surface: test\nRisk surface: mixed\nAllowed scope: harness\nForbidden scope: product\nStop condition: stop\nOracle provided: test\nVerification: test pass",
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["harness_change_mixed_with_product_files"] },
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "product_verification_fail_remains_fail",
+      "taskMode": "feature",
+      "changedFiles": ["src/runtime/server.ts"],
+      "prBody": "Task mode: feature\nGoal: product change\n## Task Contract\nDone criteria: done\nVerification surface: test\nRisk surface: runtime\nAllowed scope: product\nForbidden scope: package\nStop condition: stop\nOracle provided: test\nVerification: test pass",
+      "inputStatuses": {
+        "CODEX_PRODUCT_VERIFICATION_JSON": {
+          "productVerificationStatus": {
+            "status": "fail",
+            "reasonCodes": ["product_verification_failed"],
+            "safeSummaryOnly": true
+          }
+        }
+      },
+      "expected": { "status": "fail", "regime": "high", "reasonCodes": ["product_verification_failed"] },
+      "safeSummaryOnly": true
+    }
+  ],
+  "safeSummaryOnly": true
+}

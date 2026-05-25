@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
-  "harnessVersion": "0.8.7",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
+  "harnessVersion": "0.8.8",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -1385,6 +1385,198 @@
       "safeMessage": "Display-only feature was claimed complete.",
       "nextBestFix": "Separate display evidence from completion claim.",
       "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "complexity_governance_failed",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Complexity governance failed.",
+      "nextBestFix": "Review complexity governance output and fix the failing safe reason.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_complexity_unknown",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Task complexity could not be classified.",
+      "nextBestFix": "Provide task mode, PR body, changed files, or classification evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "high_complexity_contract_missing",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "High-complexity work is missing a task contract.",
+      "nextBestFix": "Add a task contract with done criteria, verification surface, risk surface, scope, and stop condition.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "high_complexity_oracle_missing",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "High-complexity work is missing required oracle evidence.",
+      "nextBestFix": "Add test, smoke, fixture, schema, validator, static check, or justified manual check evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "high_complexity_split_required",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "High-complexity work requires a split plan or split reason.",
+      "nextBestFix": "Add a split plan or explain why the bounded change should stay together.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "solvability_constraints_missing",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Required task constraints are missing.",
+      "nextBestFix": "Add constraints, allowed scope, forbidden scope, or stop condition.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "solvability_constraints_conflict",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Task constraints conflict.",
+      "nextBestFix": "Resolve the contradictory goal and forbidden scope before implementation or merge.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "acceptance_criteria_missing_for_complex_task",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Complex task lacks acceptance criteria.",
+      "nextBestFix": "Add acceptance criteria, done criteria, or an explicit done-when statement.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "reasoning_evidence_effort_mismatch",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Evidence effort is weak for task complexity.",
+      "nextBestFix": "Add plan, task contract, verification evidence, risk surface, or rollback/stop condition.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "algorithmic_artifact_required",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "A reproducible verification artifact is required.",
+      "nextBestFix": "Add a test, fixture, schema, validator, smoke command, reproduction command, migration check, or static check.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "verification_blocked_by_missing_tool",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "A required verification tool is unavailable while verification is claimed.",
+      "nextBestFix": "Provide the tool, use a safe alternative, or remove the readiness/verification claim.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "verification_weakened_by_missing_tool",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "A missing tool weakens verification evidence.",
+      "nextBestFix": "Record the missing tool impact and provide a safe alternative or owner-accepted residual risk.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "output_budget_risk_detected",
+      "gate": "complexity",
+      "severity": "warning",
+      "safeMessage": "Large output or many-step work increases review risk.",
+      "nextBestFix": "Use compact safe artifacts and reproducible validators instead of long explanations.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "impossible_task_detected",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Task appears impossible under current constraints.",
+      "nextBestFix": "Revise the goal or constraints before implementation.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "fixture_not_sufficient_for_runtime_claim",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Fixture-only evidence is insufficient for runtime readiness.",
+      "nextBestFix": "Add runtime smoke, test, schema, validator, or remove the readiness claim.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "oracle_required_for_auth_surface",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Auth or security surface change lacks required oracle evidence.",
+      "nextBestFix": "Add negative-case auth/security evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "oracle_required_for_storage_surface",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Storage or concurrency surface change lacks integrity evidence.",
+      "nextBestFix": "Add failure-path, data integrity, migration, concurrency, or rollback evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "oracle_required_for_release_gate",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Release gate lacks required oracle evidence.",
+      "nextBestFix": "Add current-head evidence plus rollback or stop condition.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "oracle_required_for_runtime_readiness",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Runtime readiness lacks required oracle evidence.",
+      "nextBestFix": "Add smoke, test, schema, validator, or current-head runtime evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "split_required_for_large_diff",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Large diff requires split plan or split reason.",
+      "nextBestFix": "Split the work or document why the bounded change is reviewable.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "split_required_for_multi_surface_change",
+      "gate": "complexity",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Multi-surface high-complexity change requires split plan or split reason.",
+      "nextBestFix": "Split by risk surface or add an explicit split reason.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "invented_command_detected",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Verification references a command that appears unavailable or invented.",
+      "nextBestFix": "Use an existing repo command or mark the check unavailable with reason.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "complexity_eval_suite_invalid",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "Complexity eval suite is invalid.",
+      "nextBestFix": "Fix the complexity eval suite schema and fixture shape.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "complexity_eval_case_failed",
+      "gate": "complexity",
+      "severity": "error",
+      "safeMessage": "A complexity eval case failed.",
+      "nextBestFix": "Fix complexity gate behavior or the deterministic fixture expectation.",
+      "canManualConfirmationOverride": false
     }
   ]
 }

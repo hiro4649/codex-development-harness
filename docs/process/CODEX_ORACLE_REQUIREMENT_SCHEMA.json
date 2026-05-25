@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
+  "harnessVersion": "0.8.8",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "required": ["status", "oracleRequired", "oracleProvided", "oracleType", "surface", "safeSummaryOnly"],
+  "properties": {
+    "status": { "enum": ["pass", "warning", "manual_confirmation_required", "fail", "not_applicable"] },
+    "oracleRequired": { "type": "boolean" },
+    "oracleProvided": { "type": "boolean" },
+    "oracleType": { "enum": ["test", "smoke", "fixture", "schema", "validator", "static_check", "manual_check", "unavailable_with_reason", "not_applicable"] },
+    "surface": { "enum": ["auth", "security", "storage", "database", "migration", "concurrency", "api", "runtime", "release", "bugfix", "refactor", "harness", "docs", "unknown"] },
+    "reasonCodes": { "type": "array", "items": { "type": "string" } },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": true,
+  "safeSummaryOnly": true
+}

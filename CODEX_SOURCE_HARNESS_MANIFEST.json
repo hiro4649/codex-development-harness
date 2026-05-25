@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
-  "harnessVersion": "0.8.7",
-  "sourceHarnessVersion": "0.8.7",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
+  "harnessVersion": "0.8.8",
+  "sourceHarnessVersion": "0.8.8",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -137,7 +137,13 @@
     "docs/process/CODEX_CONTRACT_GOVERNANCE_POLICY.json",
     "docs/process/CODEX_TASK_CONTRACT_SCHEMA.json",
     "docs/process/CODEX_HANDOFF_SCHEMA.json",
-    "docs/process/CODEX_LOAD_BEARING_EVIDENCE_SCHEMA.json"
+    "docs/process/CODEX_LOAD_BEARING_EVIDENCE_SCHEMA.json",
+    "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.json",
+    "docs/process/CODEX_ORACLE_REQUIREMENT_SCHEMA.json",
+    "docs/process/CODEX_COMPLEXITY_EVAL_CASES_SCHEMA.json",
+    "docs/process/CODEX_COMPLEXITY_EVAL_CASES.json",
+    "docs/process/CODEX_EXECUTION_INTERFACE_SCHEMA.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -204,7 +210,9 @@
     "codex-prompt-variant-suggest.mjs",
     "codex-knowledge-governance-gate.mjs",
     "codex-contract-governance-gate.mjs",
-    "codex-v087-self-test.mjs"
+    "codex-v087-self-test.mjs",
+    "codex-complexity-governance-gate.mjs",
+    "codex-v088-self-test.mjs"
   ],
   "optionalFiles": []
 }

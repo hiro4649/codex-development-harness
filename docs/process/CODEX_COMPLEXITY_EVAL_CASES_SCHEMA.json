@@ -1,0 +1,35 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
+  "harnessVersion": "0.8.8",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "required": ["cases"],
+  "properties": {
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "changedFiles", "prBody", "expected", "safeSummaryOnly"],
+        "properties": {
+          "id": { "type": "string" },
+          "taskMode": { "type": "string" },
+          "changedFiles": { "type": "array", "items": { "type": "string" } },
+          "prBody": { "type": "string" },
+          "inputStatuses": { "type": "object" },
+          "expected": {
+            "type": "object",
+            "required": ["status", "regime", "reasonCodes"],
+            "properties": {
+              "status": { "enum": ["pass", "warning", "manual_confirmation_required", "fail", "not_applicable"] },
+              "regime": { "enum": ["low", "medium", "high", "unknown"] },
+              "reasonCodes": { "type": "array", "items": { "type": "string" } }
+            }
+          },
+          "safeSummaryOnly": { "const": true }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "safeSummaryOnly": true
+}
