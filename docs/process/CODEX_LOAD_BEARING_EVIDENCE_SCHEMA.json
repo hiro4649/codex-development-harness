@@ -1,0 +1,10 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
+  "harnessVersion": "0.8.7",
+  "schemaVersion": "1.0.0",
+  "objectName": "codexLoadBearingEvidence",
+  "requiredFields": ["schemaVersion", "component", "failureModeCaught", "notCoveredByExistingGates", "negativeFixture", "positiveFixture", "runtimeCost", "defaultMode", "safeSummaryOnly"],
+  "runtimeCostAllowed": ["none", "low", "medium", "high"],
+  "defaultModeAllowed": ["off", "report", "enforce", "strict"],
+  "safeSummaryOnly": true
+}

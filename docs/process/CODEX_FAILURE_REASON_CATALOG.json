@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.6",
-  "harnessVersion": "0.8.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
+  "harnessVersion": "0.8.7",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -1057,6 +1057,334 @@
       "safeMessage": "Code review monitor summary contains unsafe or invalid output.",
       "nextBestFix": "Redact unsafe values and keep safe summary only.",
       "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "prompt_governance_failed",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Prompt governance failed.",
+      "nextBestFix": "Fix prompt governance blockers.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "prompt_like_change_without_eval",
+      "gate": "promptGovernance",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Prompt-like change lacks required eval evidence.",
+      "nextBestFix": "Add deterministic prompt eval evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "agents_change_without_prompt_eval",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "AGENTS change lacks prompt eval evidence.",
+      "nextBestFix": "Add AGENTS prompt eval coverage.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "skill_change_without_eval",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Skill change lacks matching eval evidence.",
+      "nextBestFix": "Add skill eval coverage.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "review_policy_change_without_review_eval",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Review policy change lacks review eval evidence.",
+      "nextBestFix": "Add review eval suite coverage.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "prompt_eval_suite_invalid",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Prompt eval suite is invalid.",
+      "nextBestFix": "Fix prompt eval suite schema or cases.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "prompt_eval_case_failed",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Prompt eval case failed.",
+      "nextBestFix": "Fix prompt-like file or eval case.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "review_eval_suite_invalid",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Review eval suite is invalid.",
+      "nextBestFix": "Fix review eval suite schema or cases.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "review_eval_case_failed",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Review eval case failed.",
+      "nextBestFix": "Fix review monitor behavior or fixture expectation.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "prompt_variant_report_invalid",
+      "gate": "promptGovernance",
+      "severity": "warning",
+      "safeMessage": "Prompt variant report is invalid.",
+      "nextBestFix": "Fix suggestion-only prompt variant report.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "prompt_variant_auto_apply_forbidden",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Prompt variant auto-apply behavior is forbidden.",
+      "nextBestFix": "Keep prompt variants suggestion-only.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "prompt_change_risk_unclassified",
+      "gate": "promptGovernance",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Prompt change risk is unclassified.",
+      "nextBestFix": "Classify prompt change risk.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "manual_override_policy_weakened",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Manual override policy appears weakened.",
+      "nextBestFix": "Restore non-overridable failure protection.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_verification_prompt_weakened",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Product verification policy appears weakened.",
+      "nextBestFix": "Restore product verification failure protection.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "prompt_governance_safe_summary_invalid",
+      "gate": "promptGovernance",
+      "severity": "error",
+      "safeMessage": "Prompt governance summary is unsafe or invalid.",
+      "nextBestFix": "Use safe summary fields only.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_governance_failed",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Knowledge governance failed.",
+      "nextBestFix": "Fix knowledge map or source-of-record index.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_map_missing",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Knowledge map is missing.",
+      "nextBestFix": "Add CODEX_KNOWLEDGE_MAP.json.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_map_invalid",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Knowledge map is invalid.",
+      "nextBestFix": "Fix knowledge map schema.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_source_missing",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Knowledge map references a missing source.",
+      "nextBestFix": "Update or restore referenced source file.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_marker_mismatch",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Knowledge map marker or version is stale.",
+      "nextBestFix": "Update marker and harness version.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_required_policy_not_indexed",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Required policy is not indexed.",
+      "nextBestFix": "Add required policy to knowledge map.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_required_skill_not_indexed",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Required skill is not indexed.",
+      "nextBestFix": "Add required skill to knowledge map.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_required_eval_not_indexed",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Required eval suite is not indexed.",
+      "nextBestFix": "Add required eval suite to knowledge map.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_required_contract_not_indexed",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "Required contract policy is not indexed.",
+      "nextBestFix": "Add contract entries to knowledge map.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_orphan_policy_detected",
+      "gate": "knowledgeGovernance",
+      "severity": "warning",
+      "safeMessage": "Policy may be orphaned from the knowledge map.",
+      "nextBestFix": "Index or remove obsolete policy.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "agents_context_too_manual_like",
+      "gate": "knowledgeGovernance",
+      "severity": "error",
+      "safeMessage": "AGENTS content is too manual-like.",
+      "nextBestFix": "Move task-specific detail into docs/process or skills.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "knowledge_deprecated_version_reference",
+      "gate": "knowledgeGovernance",
+      "severity": "warning",
+      "safeMessage": "Knowledge map contains deprecated version reference.",
+      "nextBestFix": "Update stale version references when required.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "contract_governance_failed",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Contract governance failed.",
+      "nextBestFix": "Fix task contract, handoff, or load-bearing evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_contract_missing",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Required task contract is missing.",
+      "nextBestFix": "Add a task contract for risky work.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_contract_invalid",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Task contract is invalid.",
+      "nextBestFix": "Fix task contract schema and fields.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_contract_verification_surface_missing",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Task contract lacks verification surface.",
+      "nextBestFix": "Add verification surface.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_contract_done_criteria_missing",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Task contract lacks done criteria.",
+      "nextBestFix": "Add done criteria.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_contract_forbidden_scope_missing",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Task contract lacks forbidden scope.",
+      "nextBestFix": "Add forbidden scope for risky work.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "handoff_artifact_invalid",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Handoff artifact is invalid.",
+      "nextBestFix": "Fix handoff schema.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "handoff_head_mismatch",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Handoff head SHA mismatches current head.",
+      "nextBestFix": "Regenerate handoff for current head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "handoff_raw_artifact_forbidden",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Handoff stores raw artifacts.",
+      "nextBestFix": "Remove raw logs or raw diffs from handoff.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "load_bearing_evidence_missing",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Load-bearing evidence is missing.",
+      "nextBestFix": "Add positive and negative fixture evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "load_bearing_evidence_invalid",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Load-bearing evidence is invalid.",
+      "nextBestFix": "Fix load-bearing evidence schema.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "load_bearing_component_cost_unjustified",
+      "gate": "contractGovernance",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Load-bearing component cost needs justification.",
+      "nextBestFix": "Justify high runtime cost or lower default mode.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "stub_feature_claim_detected",
+      "gate": "contractGovernance",
+      "severity": "error",
+      "safeMessage": "Stub or fixture pass was used with readiness claim.",
+      "nextBestFix": "Remove readiness claim or provide real evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "display_only_feature_claim_detected",
+      "gate": "contractGovernance",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Display-only feature was claimed complete.",
+      "nextBestFix": "Separate display evidence from completion claim.",
+      "canManualConfirmationOverride": true
     }
   ]
 }

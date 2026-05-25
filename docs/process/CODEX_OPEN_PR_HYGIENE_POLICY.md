@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.7 -->
 # Open PR Hygiene Policy
 
 Open PR hygiene is report-only by default.

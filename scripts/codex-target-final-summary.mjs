@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.6
+// CODEX_QUALITY_HARNESS_FILE v0.8.7
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -19,6 +19,9 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     baselineStatus: report.remoteProductBaselineStatus?.status || 'not_applicable',
     npmDiagnostic: report.remoteNpmDiagnosticStatus?.status || 'not_applicable',
     codeReviewMonitor: report.codeReviewMonitorStatus?.status || 'missing',
+    promptGovernance: report.promptGovernanceStatus?.status || 'missing',
+    knowledgeGovernance: report.knowledgeGovernanceStatus?.status || 'missing',
+    contractGovernance: report.contractGovernanceStatus?.status || 'missing',
     stalePrAudit: report.stalePrAuditStatus?.status || 'not_applicable',
     reasonSummary: report.reasonSummary?.status || report.reasonSummaryStatus?.status || 'missing',
     runtimeReadinessClaimed: Boolean(report.changeClassificationStatus?.runtimeReadinessClaimed),

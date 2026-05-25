@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.7 -->
 # Unsafe Value Class Action Policy
 
 Unsafe value handling is field-scoped. Reason codes and safe labels are checked as constrained labels. Actual values and raw output fields are checked strictly.

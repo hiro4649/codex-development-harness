@@ -1,0 +1,98 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
+  "harnessVersion": "0.8.7",
+  "schemaVersion": "1.0.0",
+  "cases": [
+    {
+      "id": "bugfix_skill_requires_reproduction",
+      "target": ".agents/skills/codex-bugfix/SKILL.md",
+      "description": "Bugfix skill requires reproduction before editing.",
+      "mustContain": ["Reproduce"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "bugfix_skill_requires_root_cause",
+      "target": ".agents/skills/codex-bugfix/SKILL.md",
+      "description": "Bugfix skill requires root-cause work.",
+      "requiredRegex": ["root[- ]cause"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "bugfix_skill_requires_verification",
+      "target": ".agents/skills/codex-bugfix/SKILL.md",
+      "description": "Bugfix skill requires verification evidence.",
+      "mustContain": ["Verify"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "bugfix_skill_forbids_unrelated_changes",
+      "target": ".agents/skills/codex-bugfix/SKILL.md",
+      "description": "Bugfix skill keeps scope minimal.",
+      "requiredRegex": ["avoid unrelated changes"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "agents_keeps_task_specific_detail_out",
+      "target": "AGENTS.md",
+      "description": "AGENTS remains a compact map, not task-specific detail.",
+      "mustContain": ["docs/process"],
+      "mustNotContain": ["IRIS runtime P1", "Live2D actual connection"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "agents_forbids_raw_logs_and_auto_approve",
+      "target": "AGENTS.md",
+      "description": "AGENTS keeps safe-output and confirmation boundaries visible.",
+      "mustContain": ["Do not print raw logs", "Manual confirmation cannot override"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "agents_points_to_docs_not_long_manual",
+      "target": "AGENTS.md",
+      "description": "AGENTS points to docs instead of carrying long workflows.",
+      "mustContain": ["docs/process"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "pr_template_keeps_task_mode_and_evidence_fields",
+      "target": ".github/pull_request_template.md",
+      "description": "PR template keeps task mode and evidence sections.",
+      "mustContain": ["Task mode:", "Testing and review"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "manual_confirmation_policy_not_weakened",
+      "target": "docs/process/CODEX_MANUAL_CONFIRMATION_POLICY.md",
+      "description": "Manual confirmation cannot override non-overridable failures.",
+      "requiredRegex": ["Manual confirmation cannot override"],
+      "forbiddenRegex": ["can override non-overridable"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "product_verification_policy_not_weakened",
+      "target": "docs/process/CODEX_PRODUCT_VERIFICATION_POLICY.md",
+      "description": "Product verification failures remain blocking.",
+      "mustNotContain": ["product verification fail may pass"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "fast_path_policy_keeps_product_denial",
+      "target": "docs/process/CODEX_FAST_PATH_POLICY.md",
+      "description": "Fast path cannot pass product-relevant changes.",
+      "requiredRegex": ["product"],
+      "expectedStatus": "pass",
+      "safeSummaryOnly": true
+    }
+  ],
+  "safeSummaryOnly": true
+}

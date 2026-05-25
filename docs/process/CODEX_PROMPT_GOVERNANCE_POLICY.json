@@ -1,0 +1,31 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
+  "harnessVersion": "0.8.7",
+  "schemaVersion": "1.0.0",
+  "modeDefault": {
+    "localNonPr": "report",
+    "prContext": "enforce"
+  },
+  "changedPromptSurfaces": [
+    "agents",
+    "skill",
+    "review_policy",
+    "pr_template",
+    "gate_policy",
+    "schema",
+    "self_test",
+    "workflow",
+    "unknown"
+  ],
+  "promptChangeRisk": ["R0", "R1", "R2", "R3", "R4", "unknown"],
+  "forbiddenBehaviors": [
+    "external_api_required",
+    "llm_judge_required",
+    "prompt_auto_apply",
+    "auto_commit",
+    "auto_push",
+    "product_verification_failure_to_pass",
+    "manual_confirmation_override_of_non_overridable_failure"
+  ],
+  "safeSummaryOnly": true
+}

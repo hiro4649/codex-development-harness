@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.7",
+  "harnessVersion": "0.8.7",
+  "schemaVersion": "1.0.0",
+  "contractRequiredFor": [
+    "R3",
+    "large_diff",
+    "multi_file_product_change",
+    "release_gate",
+    "runtime_readiness_claim",
+    "security_surface",
+    "auth_surface",
+    "storage_surface",
+    "api_surface",
+    "runtime_surface",
+    "harness_policy_or_gate_behavior_change"
+  ],
+  "safeSummaryOnly": true
+}
