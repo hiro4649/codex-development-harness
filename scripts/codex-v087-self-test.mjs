@@ -12,6 +12,7 @@ import { buildPromptVariantSuggestionReport } from './codex-prompt-variant-sugge
 import { buildKnowledgeGovernanceReport } from './codex-knowledge-governance-gate.mjs';
 import { buildContractGovernanceReport } from './codex-contract-governance-gate.mjs';
 import { buildHumanConfirmationObjectReport } from './codex-human-confirmation-validate.mjs';
+import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 
 function assertCase(name, ok, failures, cases, detail = '') {
   cases.push({ name, status: ok ? 'pass' : 'fail', detail: String(detail || '').slice(0, 120), safeSummaryOnly: true });
@@ -110,10 +111,59 @@ function evidencePackConfirmationBlock(object) {
   return `BEGIN_CODEX_EVIDENCE_PACK_JSON\n${JSON.stringify({ codexEvidencePack: { humanConfirmation: object } }, null, 2)}\nEND_CODEX_EVIDENCE_PACK_JSON`;
 }
 
+function evidencePackFixture(overrides = {}) {
+  return {
+    schemaVersion: '0.8.7',
+    harnessVersion: '0.8.7',
+    repository: 'hiro4649/codex-development-harness',
+    prNumber: 14,
+    headSha: 'abc123',
+    baseSha: 'base123',
+    changeType: 'source-harness',
+    riskLevel: 'R3',
+    scope: {
+      changedFiles: ['scripts/codex-evidence-pack-validate.mjs'],
+      allowedPaths: ['scripts/codex-evidence-pack-validate.mjs'],
+      forbiddenPaths: ['src/'],
+    },
+    commands: [{ name: 'node scripts/codex-v087-self-test.mjs', result: 'pass' }],
+    remoteRuns: [{ provider: 'github-actions', workflow: 'quality-gate', runId: 'fixture', conclusion: 'pending', headSha: 'abc123', source: 'fixture', date: '2026-05-25' }],
+    residualRisks: ['target rollout remains separate'],
+    productionClaims: {
+      claimsRuntimeReady: false,
+      claimsDeploymentReady: false,
+      claimsMergeReady: false,
+      claimsProductionReady: false,
+    },
+    rollbackOrStopCondition: 'stop on current-head remote quality-gate failure',
+    humanConfirmation: confirmationFixture(),
+    safeOutput: { status: 'pass', unsafeFindings: [] },
+    ...overrides,
+  };
+}
+
+function evidencePackBlock(object) {
+  return `BEGIN_CODEX_EVIDENCE_PACK_JSON\n${JSON.stringify({ codexEvidencePack: object }, null, 2)}\nEND_CODEX_EVIDENCE_PACK_JSON`;
+}
+
+function invalidEvidencePackBlock() {
+  return 'BEGIN_CODEX_EVIDENCE_PACK_JSON\n{ "codexEvidencePack": \nEND_CODEX_EVIDENCE_PACK_JSON';
+}
+
 function humanConfirmationEnv(overrides = {}) {
   return prEnv({
     CODEX_HARNESS_SOURCE_REPO: '1',
     CODEX_HUMAN_CONFIRMATION_STRICT: '1',
+    CODEX_PR_COMMENTS: '',
+    CODEX_PR_REVIEWS: '',
+    ...overrides,
+  });
+}
+
+function evidencePackEnv(overrides = {}) {
+  return prEnv({
+    CODEX_HARNESS_SOURCE_REPO: '1',
+    CODEX_EVIDENCE_PACK_STRICT: '1',
     CODEX_PR_COMMENTS: '',
     CODEX_PR_REVIEWS: '',
     ...overrides,
@@ -274,6 +324,41 @@ Stop condition: stop`,
     ].join('\n'),
   })).humanConfirmationObjectStatus;
   assertCase('human_confirmation_evidence_pack_pending_first_valid_second_pass', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
+
+  result = buildEvidencePackReport(evidencePackEnv({
+    CODEX_PR_COMMENTS: [
+      evidencePackBlock({ headSha: 'abc123' }),
+      evidencePackBlock(evidencePackFixture()),
+    ].join('\n'),
+  })).evidencePackStatus;
+  assertCase('evidence_pack_multiple_blocks_prefers_current_head_valid', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
+
+  result = buildEvidencePackReport(evidencePackEnv({
+    CODEX_PR_COMMENTS: [
+      evidencePackBlock(evidencePackFixture({ headSha: 'stale-head' })),
+      evidencePackBlock(evidencePackFixture()),
+    ].join('\n'),
+  })).evidencePackStatus;
+  assertCase('evidence_pack_stale_first_valid_second_pass', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
+
+  result = buildEvidencePackReport(evidencePackEnv({
+    CODEX_PR_COMMENTS: evidencePackBlock(evidencePackFixture({ headSha: 'stale-head' })),
+  })).evidencePackStatus;
+  assertCase('evidence_pack_only_stale_fails', result.status === 'fail' && result.reasonCodes.includes('head_sha_mismatch'), failures, cases, result.status);
+
+  result = buildEvidencePackReport(evidencePackEnv({
+    CODEX_PR_COMMENTS: evidencePackBlock(evidencePackFixture({ headSha: 'stale-head' })),
+    CODEX_PR_BODY: evidencePackBlock(evidencePackFixture()),
+  })).evidencePackStatus;
+  assertCase('evidence_pack_comment_stale_body_valid_pass', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
+
+  result = buildEvidencePackReport(evidencePackEnv({
+    CODEX_PR_COMMENTS: [
+      invalidEvidencePackBlock(),
+      evidencePackBlock(evidencePackFixture()),
+    ].join('\n'),
+  })).evidencePackStatus;
+  assertCase('evidence_pack_invalid_first_valid_second_pass', result.status === 'pass', failures, cases, result.reasonCodes?.join(','));
 
   result = buildPromptVariantSuggestionReport().promptVariantSuggestionStatus;
   assertCase('variant suggestion autoApply=false -> suggestion_only', result.status === 'suggestion_only' && result.autoApply === false, failures, cases, result.status);

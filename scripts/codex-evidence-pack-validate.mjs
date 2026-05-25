@@ -50,17 +50,69 @@ function readJson(file) {
   }
 }
 
-function parseJsonBlock(text, beginMarker, endMarker, property) {
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function parseJsonBlocks(text, beginMarker, endMarker, property) {
   const source = String(text || '');
-  const pattern = new RegExp(`${beginMarker}\\s*([\\s\\S]*?)\\s*${endMarker}`, 'i');
-  const match = source.match(pattern);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[1]);
-    return parsed?.[property] && typeof parsed[property] === 'object' ? parsed[property] : null;
-  } catch {
-    return { __invalid: true };
+  const pattern = new RegExp(`${escapeRegExp(beginMarker)}\\s*([\\s\\S]*?)\\s*${escapeRegExp(endMarker)}`, 'gi');
+  const blocks = [];
+  let match;
+  while ((match = pattern.exec(source)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (parsed?.[property] && typeof parsed[property] === 'object') blocks.push(parsed[property]);
+    } catch {
+      blocks.push({ __invalid: true });
+    }
   }
+  return blocks;
+}
+
+function pushStructuredCandidate(candidates, pack, source) {
+  if (!pack) return;
+  const sourceCount = candidates.filter((candidate) => candidate.source === source || candidate.source.startsWith(`${source}_`)).length;
+  candidates.push({
+    pack,
+    source: sourceCount ? `${source}_${sourceCount}` : source,
+  });
+}
+
+export function collectStructuredEvidencePackCandidates(env = process.env) {
+  const candidates = [];
+  const sources = [
+    [env.CODEX_PR_COMMENTS || '', 'evidence_pack_pr_comment'],
+    [env.CODEX_PR_REVIEWS || '', 'evidence_pack_pr_review'],
+    [prBodyText(env), 'evidence_pack_pr_body'],
+  ];
+  for (const [text, source] of sources) {
+    for (const pack of parseJsonBlocks(
+      text,
+      'BEGIN_CODEX_EVIDENCE_PACK_JSON',
+      'END_CODEX_EVIDENCE_PACK_JSON',
+      'codexEvidencePack',
+    )) {
+      pushStructuredCandidate(candidates, pack, source);
+    }
+  }
+  return candidates;
+}
+
+export function selectValidEvidencePackCandidate(candidates, env = process.env) {
+  const evaluated = candidates.map((candidate) => ({
+    ...candidate,
+    validation: candidate.pack?.__invalid
+      ? {
+        status: 'fail',
+        reasonCodes: ['evidence_pack_invalid'],
+        warnings: [],
+        missingFields: [],
+        normalized: null,
+      }
+      : validateEvidencePack(candidate.pack, env),
+  }));
+  return evaluated.find((candidate) => candidate.validation.status === 'pass') || evaluated[0] || null;
 }
 
 function evidencePackPath(env = process.env) {
@@ -114,21 +166,9 @@ function prBodyText(env = process.env) {
 }
 
 export function evidencePackFromStructuredText(env = process.env) {
-  const commentPack = parseJsonBlock(
-    env.CODEX_PR_COMMENTS || '',
-    'BEGIN_CODEX_EVIDENCE_PACK_JSON',
-    'END_CODEX_EVIDENCE_PACK_JSON',
-    'codexEvidencePack',
-  );
-  if (commentPack) return { pack: commentPack, source: 'evidence_pack_pr_comment' };
-  const bodyPack = parseJsonBlock(
-    prBodyText(env),
-    'BEGIN_CODEX_EVIDENCE_PACK_JSON',
-    'END_CODEX_EVIDENCE_PACK_JSON',
-    'codexEvidencePack',
-  );
-  if (bodyPack) return { pack: bodyPack, source: 'evidence_pack_pr_body' };
-  return null;
+  const selected = selectValidEvidencePackCandidate(collectStructuredEvidencePackCandidates(env), env);
+  if (!selected) return null;
+  return { pack: selected.pack, source: selected.source, validation: selected.validation };
 }
 
 function normalizedStatus(value, allowed) {
@@ -221,7 +261,7 @@ export function buildEvidencePackReport(env = process.env) {
           status: 'fail',
         };
       }
-      const validation = validateEvidencePack(structured.pack, env);
+      const validation = structured.validation || validateEvidencePack(structured.pack, env);
       return {
         marker,
         harnessVersion: HARNESS_VERSION,
