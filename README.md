@@ -1,17 +1,19 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.9 -->
 # Codex Development Harness
 
-Version: v0.8.8
-Name: Complexity-Aware Verification and Oracle Gate
+Version: v0.8.9
+Name: Evidence Continuity, Baseline Health, and Operational Precision Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.8 preserves the v0.8.7 safety model while adding
-lightweight complexity classification, oracle requirements, solvability checks,
-execution interface checks, split requirements, and algorithmic artifact
-preference. The new gate uses deterministic fixtures and safe summaries rather
-than hidden chain-of-thought inspection, raw diff storage, or heavy analysis.
+evidence tooling. v0.8.9 preserves the v0.8.8 safety model while improving
+npm/product baseline health, remote evidence continuity, PR body surface
+normalization, self-test failure diagnostics, score decomposition, old marker
+detection, and harness-only CI profile control. The new checks use deterministic
+fixtures and safe summaries rather than hidden chain-of-thought inspection, raw
+diff storage, browser-required gates, MCP, LLM judges, network calls, or product
+command execution added by the new gates.
 
-## What v0.8.8 Adds
+## What v0.8.9 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -46,6 +48,17 @@ than hidden chain-of-thought inspection, raw diff storage, or heavy analysis.
 - Complexity Governance Gate for low/medium/high task classification,
   surface-specific oracle requirements, solvability checks, execution interface
   availability, split requirements, and algorithmic artifact preference
+- Baseline Health Gate to keep product baseline and npm diagnostic paths from
+  bypassing product verification
+- Evidence Continuity Gate to protect baseline, product verification, evidence
+  pack, human confirmation, complexity oracle, self-test case export, and score
+  decomposition paths
+- PR Body Surface Normalizer to reduce false positives from negated or
+  forbidden-scope auth, runtime, and storage mentions
+- Self-test case export for safe failed case IDs without raw logs or fixtures
+- Score decomposition and old harness marker detection
+- Harness-only self-test profile control that cannot bypass product-relevant
+  verification
 - Prompt variant suggestion-only report with `autoApply`, `autoCommit`, and
   `autoPush` fixed false
 - `codex-bugfix` skill for focused bugfix work
@@ -64,7 +77,7 @@ than hidden chain-of-thought inspection, raw diff storage, or heavy analysis.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.8 Does Not Add
+## What v0.8.9 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM

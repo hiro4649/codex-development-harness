@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.8
+// CODEX_QUALITY_HARNESS_FILE v0.8.9
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -23,6 +23,13 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     knowledgeGovernance: report.knowledgeGovernanceStatus?.status || 'missing',
     contractGovernance: report.contractGovernanceStatus?.status || 'missing',
     complexityGovernance: report.complexityGovernanceStatus?.status || 'missing',
+    baselineHealth: report.baselineHealthStatus?.status || 'missing',
+    evidenceContinuity: report.evidenceContinuityStatus?.status || 'missing',
+    prBodySurfaceNormalizer: report.prBodySurfaceNormalizerStatus?.status || 'missing',
+    selfTestCaseExport: report.selfTestCaseExportStatus?.status || 'missing',
+    scoreDecomposition: report.scoreDecompositionStatus?.status || 'missing',
+    oldHarnessMarker: report.oldHarnessMarkerStatus?.status || 'missing',
+    v089SelfTest: report.v089SelfTestStatus?.status || 'missing',
     stalePrAudit: report.stalePrAuditStatus?.status || 'not_applicable',
     reasonSummary: report.reasonSummary?.status || report.reasonSummaryStatus?.status || 'missing',
     runtimeReadinessClaimed: Boolean(report.changeClassificationStatus?.runtimeReadinessClaimed),

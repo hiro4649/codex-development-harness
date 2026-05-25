@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.8",
-  "harnessVersion": "0.8.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
+  "harnessVersion": "0.8.9",
   "schemaVersion": "1.0.0",
   "entrypoints": [
     "AGENTS.md",
@@ -13,7 +13,10 @@
     "docs/process/CODEX_KNOWLEDGE_GOVERNANCE_POLICY.md",
     "docs/process/CODEX_CONTRACT_GOVERNANCE_POLICY.md",
     ".agents/skills/codex-bugfix/SKILL.md",
-    "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.md"
+    "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_BASELINE_HEALTH_POLICY.md",
+    "docs/process/CODEX_EVIDENCE_CONTINUITY_POLICY.md",
+    "docs/process/CODEX_PR_BODY_SURFACE_NORMALIZER_POLICY.md"
   ],
   "policyIndex": [
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
@@ -24,7 +27,10 @@
     "docs/process/CODEX_MANUAL_CONFIRMATION_POLICY.md",
     "docs/process/CODEX_PRODUCT_VERIFICATION_POLICY.md",
     "docs/process/CODEX_FAST_PATH_POLICY.md",
-    "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.md"
+    "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.md",
+    "docs/process/CODEX_BASELINE_HEALTH_POLICY.md",
+    "docs/process/CODEX_EVIDENCE_CONTINUITY_POLICY.md",
+    "docs/process/CODEX_PR_BODY_SURFACE_NORMALIZER_POLICY.md"
   ],
   "skillIndex": [
     ".agents/skills/codex-bugfix/SKILL.md"
@@ -35,7 +41,11 @@
     "scripts/codex-knowledge-governance-gate.mjs",
     "scripts/codex-contract-governance-gate.mjs",
     "scripts/codex-local-quality-gate.mjs",
-    "scripts/codex-complexity-governance-gate.mjs"
+    "scripts/codex-complexity-governance-gate.mjs",
+    "scripts/codex-baseline-health-gate.mjs",
+    "scripts/codex-evidence-continuity-gate.mjs",
+    "scripts/codex-pr-body-surface-normalizer.mjs",
+    "scripts/codex-self-test-case-export.mjs"
   ],
   "evalIndex": [
     "docs/process/CODEX_PROMPT_EVAL_SUITE.json",
@@ -43,7 +53,9 @@
     "scripts/codex-review-eval-suite.mjs",
     "scripts/codex-v087-self-test.mjs",
     "docs/process/CODEX_COMPLEXITY_EVAL_CASES.json",
-    "scripts/codex-v088-self-test.mjs"
+    "scripts/codex-v088-self-test.mjs",
+    "docs/process/CODEX_COMPLEXITY_FALSE_POSITIVE_CASES.json",
+    "scripts/codex-v089-self-test.mjs"
   ],
   "reviewIndex": [
     "docs/process/code_review.md",
@@ -56,7 +68,9 @@
     "docs/process/CODEX_HANDOFF_SCHEMA.json",
     "docs/process/CODEX_LOAD_BEARING_EVIDENCE_SCHEMA.json",
     "docs/process/CODEX_ORACLE_REQUIREMENT_SCHEMA.json",
-    "docs/process/CODEX_EXECUTION_INTERFACE_SCHEMA.json"
+    "docs/process/CODEX_EXECUTION_INTERFACE_SCHEMA.json",
+    "docs/process/CODEX_SELF_TEST_CASE_EXPORT_SCHEMA.json",
+    "docs/process/CODEX_SCORE_DECOMPOSITION_SCHEMA.json"
   ],
   "sourceOfRecord": [
     "AGENTS.md",

@@ -1,0 +1,13 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
+  "harnessVersion": "0.8.9",
+  "statusName": "baselineHealthStatus",
+  "allowedStatuses": ["pass", "warning", "manual_confirmation_required", "fail", "not_applicable"],
+  "failReasonCodes": [
+    "baseline_evidence_missing",
+    "baseline_evidence_stale",
+    "product_skip_npm_without_verification",
+    "baseline_candidate_regression_not_separated"
+  ],
+  "safeSummaryOnly": true
+}
