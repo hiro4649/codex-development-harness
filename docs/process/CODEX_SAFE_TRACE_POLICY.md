@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.5 -->
 # Safe Trace Policy
 
 Trace capture is optional in v0.8.2. If trace JSONL files exist under

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.4
+// CODEX_QUALITY_HARNESS_FILE v0.8.5
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEvidencePackReport, isStructuredEvidencePackSource } from './codex-evidence-pack-validate.mjs';
 
-export const HARNESS_VERSION = '0.8.4';
+export const HARNESS_VERSION = '0.8.5';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 export const forbiddenOutputKeys = [
   'rawDiff',

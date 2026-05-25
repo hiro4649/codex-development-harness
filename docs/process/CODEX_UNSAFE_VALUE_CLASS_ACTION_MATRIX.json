@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
-  "harnessVersion": "0.8.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
   "classes": {
     "public_github_url_value": "allow_if_safe_context",
     "documentation_url_value": "allow_if_safe_context",

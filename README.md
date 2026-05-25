@@ -1,16 +1,16 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.5 -->
 # Codex Development Harness
 
-Version: v0.8.4
-Name: Fast Path and Diagnostic Consolidation Gate
+Version: v0.8.5
+Name: Execution Stability and Runtime Evidence Clarity Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.4 preserves the v0.8.3 safety model while adding fast
-path classification for harness/docs changes, consolidated diagnostics, field
-aware unsafe value actions, invalid-report recovery, artifact budgets, PR
-profiles, and Actions runtime advisories.
+evidence tooling. v0.8.5 preserves the v0.8.4 safety model while adding a
+lightweight stability gate for task discipline, bugfix evidence clarity, PR
+profile hints, product evidence explanations, optional import smoke checks,
+runtime risk summaries, checkout evidence priority, and one-screen diagnostics.
 
-## What v0.8.4 Adds
+## What v0.8.5 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -33,6 +33,12 @@ profiles, and Actions runtime advisories.
 - PR body profile optimizer
 - Open PR hygiene report v2
 - GitHub Actions runtime advisory
+- Execution stability gate for task mode and bugfix evidence
+- `codex-bugfix` skill for focused bugfix work
+- Optional import smoke micro-checks when target repos explicitly configure them
+- Optional runtime risk register checks for readiness or release claims
+- Fast path explainability fields
+- Product verification failure explanation without changing product gate results
 - One-screen source and target final summaries
 - Optional safe test metrics artifacts
 - Stale PR audit checks
@@ -44,7 +50,7 @@ profiles, and Actions runtime advisories.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.4 Does Not Add
+## What v0.8.5 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM

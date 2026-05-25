@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.8.5 -->
 ## Codex Method Compliance
 
 Code review status:
@@ -12,6 +12,21 @@ Human confirmation needed:
 ## Files or scope
 
 ## Risk level
+
+## Task Mode
+
+Task mode:
+
+## Bugfix Evidence
+
+Reproduced:
+Root cause:
+Verification:
+
+## Runtime Risk Impact
+
+Runtime readiness claimed: yes/no
+Critical runtime risk affected: yes/no/not applicable
 
 ## Constraints
 

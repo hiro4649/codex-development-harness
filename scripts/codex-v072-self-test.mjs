@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.4
+// CODEX_QUALITY_HARNESS_FILE v0.8.5
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,7 +11,7 @@ import { buildCiReplayReport, buildCiReplayReportFromGithubData, buildGithubRepl
 import { buildPrBodyLintReport } from './codex-pr-body-lint.mjs';
 import { buildProductionReadinessReport } from './codex-production-readiness-gate.mjs';
 
-export const HARNESS_VERSION = '0.8.4';
+export const HARNESS_VERSION = '0.8.5';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const expectedHead = '1111111111111111111111111111111111111111';

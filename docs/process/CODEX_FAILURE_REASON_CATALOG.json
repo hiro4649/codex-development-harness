@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
-  "harnessVersion": "0.8.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -793,6 +793,158 @@
       "safeMessage": "Actions runtime deprecation has become blocking.",
       "nextBestFix": "Update action runtime configuration or affected actions.",
       "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_mode_missing",
+      "gate": "v085Stability",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Task mode is missing for a change that needs explicit discipline.",
+      "nextBestFix": "Add a Task mode field using an allowed safe label.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "bugfix_reproduction_missing",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "Bugfix evidence is missing reproduction status.",
+      "nextBestFix": "Record reproduced, baseline fail, or a safe reason reproduction was not possible.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "bugfix_root_cause_missing",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "Bugfix evidence is missing a root-cause status.",
+      "nextBestFix": "Record the root cause or hypothesis before changing code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "bugfix_verification_missing",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "Bugfix evidence is missing verification status.",
+      "nextBestFix": "Record pass, fail, partial, or a safe not-run reason.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "bugfix_unrelated_changes",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "Bugfix evidence reports unrelated changes.",
+      "nextBestFix": "Remove unrelated changes or split them into a separate task.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_profile_repair_hint_available",
+      "gate": "v085Stability",
+      "severity": "warning",
+      "safeMessage": "PR profile assist has a safe repair hint.",
+      "nextBestFix": "Add the missing profile sections named by the safe summary.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "product_evidence_explained",
+      "gate": "v085Stability",
+      "severity": "warning",
+      "safeMessage": "Product verification failure was explained with safe labels.",
+      "nextBestFix": "Fix the underlying product verification gate result.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "import_smoke_config_invalid",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "Import smoke configuration is invalid.",
+      "nextBestFix": "Fix the safe import smoke config schema or remove it.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "import_smoke_failed",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "Configured safe import smoke check failed.",
+      "nextBestFix": "Fix the import target or expected export list.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_risk_register_invalid",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "Runtime risk register is invalid.",
+      "nextBestFix": "Fix the safe runtime risk register schema.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_release_blocked_by_open_risk",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "Runtime or release readiness is blocked by an open release-blocking risk.",
+      "nextBestFix": "Remove the readiness claim or close the risk with required evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_risk_closed_without_evidence",
+      "gate": "v085Stability",
+      "severity": "error",
+      "safeMessage": "A critical runtime risk was closed without required evidence.",
+      "nextBestFix": "Add the required safe evidence or keep the risk open.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "checkout_remote_discrepancy_detected",
+      "gate": "v085Stability",
+      "severity": "warning",
+      "safeMessage": "Checkout and remote evidence disagree for the same head.",
+      "nextBestFix": "Use current checkout evidence first and refresh remote evidence.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "fast_path_full_verification_required",
+      "gate": "v085Stability",
+      "severity": "warning",
+      "safeMessage": "Fast path is denied and full verification is required.",
+      "nextBestFix": "Run the product or runtime evidence required by the existing gates.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "bugfix_reproduction_not_reproducible",
+      "gate": "v085Stability",
+      "severity": "warning",
+      "safeMessage": "Bugfix reproduction was not possible but a reason was provided.",
+      "nextBestFix": "Keep the reason and verify by the smallest available check.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "bugfix_root_cause_hypothesis",
+      "gate": "v085Stability",
+      "severity": "warning",
+      "safeMessage": "Bugfix root cause is a hypothesis.",
+      "nextBestFix": "Verify the hypothesis or record remaining risk.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "bugfix_verification_partial",
+      "gate": "v085Stability",
+      "severity": "warning",
+      "safeMessage": "Bugfix verification is partial.",
+      "nextBestFix": "Run the missing focused check or record why it is not available.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "bugfix_regression_test_absent_with_reason",
+      "gate": "v085Stability",
+      "severity": "warning",
+      "safeMessage": "Bugfix regression test is absent with a reason.",
+      "nextBestFix": "Add a regression test when feasible or keep the safe reason.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "runtime_risk_impact_summary_missing",
+      "gate": "v085Stability",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "A critical runtime risk area changed without an impact summary.",
+      "nextBestFix": "Add a concise safe runtime risk impact summary.",
+      "canManualConfirmationOverride": true
     }
   ]
 }

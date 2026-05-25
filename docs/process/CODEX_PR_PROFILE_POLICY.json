@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.4",
-  "harnessVersion": "0.8.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
   "profiles": [
     "docs_only_r1_r2",
     "harness_only_r2",

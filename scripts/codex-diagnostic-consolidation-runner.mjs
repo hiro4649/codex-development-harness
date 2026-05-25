@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.4
+// CODEX_QUALITY_HARNESS_FILE v0.8.5
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -57,6 +57,13 @@ export function buildDiagnosticConsolidatedSummary(report, options = {}) {
     npmDiagnosticSummary: report?.remoteNpmDiagnosticStatus ? { status: report.remoteNpmDiagnosticStatus.status } : null,
     stalePrSummary: report?.stalePrAuditStatus ? { status: report.stalePrAuditStatus.status } : null,
     artifactIndexSummary: report?.safeArtifactIndexStatus ? { status: report.safeArtifactIndexStatus.status } : null,
+    v085Summary: report?.v085StabilityStatus ? {
+      status: report.v085StabilityStatus.status,
+      taskDiscipline: report.v085StabilityStatus.taskDisciplineStatus?.status || 'missing',
+      bugfixEvidence: report.v085StabilityStatus.bugfixEvidenceStatus?.status || 'missing',
+      fastPathDecision: report.v085StabilityStatus.fastPathExplainabilityStatus?.decision || '',
+    } : null,
+    oneScreenDashboard: report?.v085StabilityStatus?.oneScreenDashboardStatus || null,
     nextActions: (blocking.length ? ['fix_blocking_gate'] : manual.length ? ['provide_current_head_confirmation'] : ['ready_for_review']).slice(0, 5),
     safeSummaryOnly: true,
   };

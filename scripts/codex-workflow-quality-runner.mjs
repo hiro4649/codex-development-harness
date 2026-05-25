@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.4
+// CODEX_QUALITY_HARNESS_FILE v0.8.5
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, simpleStatus, writeJsonReport } from './codex-v080-lib.mjs';
@@ -31,6 +31,7 @@ const sourceRequiredPass = [
   'unsafeValueActionMatrixStatus',
   'prProfileStatus',
   'actionsRuntimeAdvisoryStatus',
+  'v085StabilityStatus',
   'openPrHygieneStatus',
   'targetFinalSummaryStatus',
   'stalePrAuditStatus',
@@ -66,6 +67,7 @@ const sourceRequiredPass = [
   'v082SelfTestStatus',
   'v083SelfTestStatus',
   'v084SelfTestStatus',
+  'v085SelfTestStatus',
   'qualityScoreStatus',
 ];
 
@@ -88,6 +90,7 @@ const targetRequiredPass = [
   'unsafeValueActionMatrixStatus',
   'prProfileStatus',
   'actionsRuntimeAdvisoryStatus',
+  'v085StabilityStatus',
   'openPrHygieneStatus',
   'targetFinalSummaryStatus',
   'stalePrAuditStatus',
@@ -98,6 +101,7 @@ const targetRequiredPass = [
   'v082SelfTestStatus',
   'v083SelfTestStatus',
   'v084SelfTestStatus',
+  'v085SelfTestStatus',
   'safeArtifactValidation',
   'outputShapeStatus',
   'targetQualityScoreStatus',
@@ -184,9 +188,15 @@ export function evaluateWorkflowReport(report, options = {}) {
     'actionsRuntimeAdvisoryStatus',
     'v084SelfTestStatus',
   ]);
+  const v085Fields = new Set([
+    'v085StabilityStatus',
+    'v085SelfTestStatus',
+  ]);
   const hasV084Shape = report.harnessVersion === HARNESS_VERSION || [...v084Fields].some((key) => report[key]);
+  const hasV085Shape = report.harnessVersion === HARNESS_VERSION || [...v085Fields].some((key) => report[key]);
   const required = (mode === 'target' ? targetRequiredPass : sourceRequiredPass)
-    .filter((key) => hasV084Shape || !v084Fields.has(key));
+    .filter((key) => hasV084Shape || !v084Fields.has(key))
+    .filter((key) => hasV085Shape || !v085Fields.has(key));
   const failures = [];
   for (const key of required) {
     const status = report[key]?.status || 'missing';
@@ -215,6 +225,7 @@ export function evaluateWorkflowReport(report, options = {}) {
     humanReviewRequired: Boolean(report.humanReviewRequired),
     qualityScoreStatus: report.qualityScoreStatus || report.targetQualityScoreStatus || { status: 'missing' },
     reasonSummary,
+    v085StabilityStatus: report.v085StabilityStatus || { status: 'missing' },
     failureCount: Array.isArray(report.failures) ? report.failures.length : 0,
     warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
     safeSummaryOnly: true,

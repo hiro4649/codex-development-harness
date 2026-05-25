@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.4
+// CODEX_QUALITY_HARNESS_FILE v0.8.5
 import { fileURLToPath } from 'node:url';
 import {
   HARNESS_VERSION,
@@ -77,9 +77,15 @@ export function buildFastPathReport(env = process.env) {
   }
   if (!allowed && !productRelevantChanged && !packageOrLockfileChanged) pathMode = 'full_product_path';
 
+  const decision = allowed
+    ? 'allowed'
+    : unknownRisk ? 'denied_unknown_risk' : 'denied_full_verification_required';
   return simpleStatus('fastPathStatus', finalStatus, {
     pathMode,
     fastPathAllowed: allowed,
+    decision,
+    oneLineReason: allowed ? 'fast_path_conditions_met' : 'full_verification_required',
+    mergeInterpretation: allowed ? 'fast_path_allowed' : 'full_verification_required',
     mode,
     reasonCodes: [...new Set(reasonCodes)],
     requiredStatusesPreserved: true,

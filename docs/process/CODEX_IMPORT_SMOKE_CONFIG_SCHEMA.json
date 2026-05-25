@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
+  "schemaName": "codex_import_smoke_config",
+  "fields": {
+    "schemaVersion": "string",
+    "maxRuntimeMs": "number",
+    "criticalImports": [
+      {
+        "name": "string",
+        "specifier": "string",
+        "safeToImport": "boolean",
+        "expectedExports": "string[]"
+      }
+    ]
+  },
+  "safeSummaryOnly": true
+}

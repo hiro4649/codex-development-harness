@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.5",
+  "harnessVersion": "0.8.5",
+  "schemaName": "codex_runtime_risk_register",
+  "fields": {
+    "risks": [
+      {
+        "id": "string",
+        "severity": "string",
+        "status": "string",
+        "releaseBlocking": "boolean",
+        "evidenceRequired": "string[]",
+        "affectedAreas": "string[]"
+      }
+    ]
+  },
+  "safeSummaryOnly": true
+}

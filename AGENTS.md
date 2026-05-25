@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v0.8.4
+CODEX_QUALITY_HARNESS_FILE v0.8.5
 
 ## Source Harness Boundary
 
@@ -26,6 +26,14 @@ values, endpoint values, private paths, production data, or personal data.
 
 Do not claim merge-ready unless required gates, current-head evidence, CI replay
 where applicable, and human confirmation rules are satisfied.
+
+## Task Discipline
+
+Before editing, classify work as bugfix, feature, refactor, investigation,
+review, release-gate, harness-change, or docs-only. For bugfix work, use the
+`codex-bugfix` skill and write reproduction status plus root-cause hypothesis
+before code edits unless the change is documentation-only. Keep task-specific
+workflow detail in skills or `docs/process`, not in AGENTS.md.
 
 ## Manual Confirmation Limit
 

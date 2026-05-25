@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.4
+// CODEX_QUALITY_HARNESS_FILE v0.8.5
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,6 +72,7 @@ const defaultRules = {
     'docs/process/',
     'docs/codex/',
     'scripts/codex-*',
+    '.agents/skills/',
     '.codex/',
   ],
   docsFiles: ['README.md', 'docs/'],
