@@ -13,6 +13,8 @@ import { compilePrTemplate } from './codex-pr-template-compiler.mjs';
 import { buildPrBodySurfaceNormalizerReport } from './codex-pr-body-surface-normalizer.mjs';
 import { buildGateDecisionTrace } from './codex-gate-decision-trace.mjs';
 import { filterSourceValidationChangedFiles } from './codex-local-quality-gate.mjs';
+import { buildHumanConfirmationObjectReport } from './codex-human-confirmation-validate.mjs';
+import { buildEvidencePackReport } from './codex-evidence-pack-validate.mjs';
 
 function assertCase(id, condition, failures, cases, actualStatus = 'pass', reasonCodes = []) {
   const status = condition ? 'pass' : 'fail';
@@ -137,6 +139,14 @@ function buildV090SelfTestReport() {
   const beforeQualityGateText = workflowText.slice(0, workflowText.indexOf('node scripts/codex-local-quality-gate.mjs'));
   assertCase('workflow_no_repo_root_lifeboat_before_quality_gate', !beforeQualityGateText.includes('CODEX_LIFEBOAT_MIRROR_PATH'), failures, cases, 'pass', []);
   assertCase('workflow_uploads_runner_temp_lifeboat', workflowText.includes('${{ runner.temp }}/codex-minimal-safe-failure.json'), failures, cases, 'pass', []);
+  assertCase('workflow_dispatch_main_does_not_require_human_confirmation', buildHumanConfirmationObjectReport({ CODEX_EVENT_NAME: 'workflow_dispatch', CODEX_HARNESS_SOURCE_REPO: '1', CODEX_HUMAN_CONFIRMATION_STRICT: '0' }).humanConfirmationObjectStatus.status === 'not_required', failures, cases, 'pass', []);
+  assertCase('workflow_dispatch_main_does_not_require_evidence_pack', buildEvidencePackReport({ CODEX_EVENT_NAME: 'workflow_dispatch', CODEX_HARNESS_SOURCE_REPO: '1', CODEX_EVIDENCE_PACK_STRICT: '0' }).evidencePackStatus.status === 'not_applicable', failures, cases, 'pass', []);
+  const strictPrHumanStatus = buildHumanConfirmationObjectReport({ CODEX_EVENT_NAME: 'pull_request', CODEX_HARNESS_SOURCE_REPO: '1', CODEX_PR_NUMBER: '90' }).humanConfirmationObjectStatus.status;
+  const strictPrEvidenceStatus = buildEvidencePackReport({ CODEX_EVENT_NAME: 'pull_request', CODEX_HARNESS_SOURCE_REPO: '1', CODEX_PR_NUMBER: '90' }).evidencePackStatus.status;
+  assertCase('pull_request_still_requires_human_confirmation', ['fail', 'manual_confirmation_required'].includes(strictPrHumanStatus), failures, cases, strictPrHumanStatus, []);
+  assertCase('pull_request_still_requires_evidence_pack', ['fail', 'manual_confirmation_required'].includes(strictPrEvidenceStatus), failures, cases, strictPrEvidenceStatus, []);
+  assertCase('workflow_dispatch_source_core_remote_verification_pass', workflowText.includes('CODEX_REMOTE_VERIFICATION_MODE="${CODEX_REMOTE_VERIFICATION_MODE:-source_main_workflow_dispatch}"') && workflowText.includes('CODEX_EVIDENCE_PACK_STRICT="${CODEX_EVIDENCE_PACK_STRICT:-0}"') && workflowText.includes('CODEX_HUMAN_CONFIRMATION_STRICT="${CODEX_HUMAN_CONFIRMATION_STRICT:-0}"'), failures, cases, 'pass', []);
+  assertCase('pull_request_strictness_not_weakened', workflowText.includes('if [ "${CODEX_EVENT_NAME:-}" = "pull_request" ]; then') && workflowText.includes('export CODEX_EVIDENCE_PACK_STRICT=1') && workflowText.includes('export CODEX_HUMAN_CONFIRMATION_STRICT=1'), failures, cases, 'pass', []);
 
   const registry = JSON.parse(fs.readFileSync('docs/process/CODEX_CLASSIFICATION_REGISTRY.json', 'utf8')).entries;
   let classified = classifyFileWithRegistry('scripts/codex-local-quality-gate.mjs', registry);

@@ -87,8 +87,6 @@ jobs:
         env:
           CODEX_QUALITY_REPORT: "json"
           CODEX_OPENAI_METHOD_REPORT: "json"
-          CODEX_EVIDENCE_PACK_STRICT: "1"
-          CODEX_HUMAN_CONFIRMATION_STRICT: "1"
           CODEX_EVENT_NAME: ${{ github.event_name }}
           CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
           CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
@@ -98,6 +96,14 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          if [ "${CODEX_EVENT_NAME:-}" = "pull_request" ]; then
+            export CODEX_EVIDENCE_PACK_STRICT=1
+            export CODEX_HUMAN_CONFIRMATION_STRICT=1
+          else
+            export CODEX_EVIDENCE_PACK_STRICT="${CODEX_EVIDENCE_PACK_STRICT:-0}"
+            export CODEX_HUMAN_CONFIRMATION_STRICT="${CODEX_HUMAN_CONFIRMATION_STRICT:-0}"
+            export CODEX_REMOTE_VERIFICATION_MODE="${CODEX_REMOTE_VERIFICATION_MODE:-source_main_workflow_dispatch}"
+          fi
           if [ -f CODEX_SOURCE_HARNESS_MANIFEST.json ]; then
             export CODEX_HARNESS_SOURCE_REPO=1
             export CODEX_HARNESS_MODE=core
