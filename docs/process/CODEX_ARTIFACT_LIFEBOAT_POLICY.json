@@ -3,6 +3,9 @@
   "harnessVersion": "0.9.0",
   "policy": "artifact_lifeboat",
   "artifact": "codex-minimal-safe-failure.json",
-  "defaultPhase": "workflow_started",
+  "defaultPhase": "pre_checkout",
+  "preCheckoutRequired": true,
+  "runnerTempArtifact": true,
+  "repoScriptIndependent": true,
   "safeSummaryOnly": true
 }

@@ -16,6 +16,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Create pre-checkout lifeboat artifact
+        shell: bash
+        env:
+          CODEX_PRECHECKOUT_REPOSITORY: ${{ github.repository }}
+          CODEX_PRECHECKOUT_EVENT_NAME: ${{ github.event_name }}
+          CODEX_PRECHECKOUT_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          CODEX_PRECHECKOUT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP"
+          safe_repo="$(printf '%s' "${CODEX_PRECHECKOUT_REPOSITORY:-}" | tr -cd 'A-Za-z0-9_.-/' | cut -c1-120)"
+          safe_event="$(printf '%s' "${CODEX_PRECHECKOUT_EVENT_NAME:-unknown}" | tr -cd 'A-Za-z0-9_.:-' | cut -c1-80)"
+          safe_pr="$(printf '%s' "${CODEX_PRECHECKOUT_PR_NUMBER:-}" | tr -cd '0-9' | cut -c1-20)"
+          safe_head="$(printf '%s' "${CODEX_PRECHECKOUT_HEAD_SHA:-}" | tr -cd 'A-Fa-f0-9' | cut -c1-64)"
+          cat > "$RUNNER_TEMP/codex-minimal-safe-failure.json" <<JSON
+          {
+            "schemaVersion": "0.9.0",
+            "phase": "pre_checkout",
+            "status": "fail",
+            "safeSummaryOnly": true,
+            "lastKnownGate": "workflow_start",
+            "lastKnownReasonCodes": ["workflow_started"],
+            "safeNextAction": "Inspect safe workflow artifacts or rerun after the smallest correction.",
+            "repository": "$safe_repo",
+            "eventName": "$safe_event",
+            "prNumber": "$safe_pr",
+            "headSha": "$safe_head"
+          }
+          JSON
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -50,8 +79,10 @@ jobs:
           CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
           CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
           CODEX_REPOSITORY: ${{ github.repository }}
+          CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
+          CODEX_LIFEBOAT_MIRROR_PATH: codex-minimal-safe-failure.json
         run: |
-          node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat.json"
+          node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat.json" || true
       - name: Run Codex quality gate
         shell: bash
         env:
@@ -64,6 +95,8 @@ jobs:
           CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           CODEX_REPOSITORY: ${{ github.repository }}
+          CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
+          CODEX_LIFEBOAT_MIRROR_PATH: codex-minimal-safe-failure.json
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -81,6 +114,7 @@ jobs:
           gate_exit=0
           node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-quality-gate.json" || gate_exit=$?
           node scripts/codex-workflow-preflight.mjs --write-artifact > "$RUNNER_TEMP/codex-workflow-preflight-artifact.json"
+          CODEX_LIFEBOAT_PHASE=quality_gate_failed CODEX_LAST_KNOWN_GATE=local_quality_gate node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat-after-gate.json" || true
           node scripts/codex-workflow-quality-runner.mjs --report "$RUNNER_TEMP/codex-quality-gate.json" --gate-exit "$gate_exit"
       - name: Write safe quality summary
         if: always()
@@ -93,7 +127,8 @@ jobs:
             try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
             catch { return null; }
           }
-          const summary = readJson('codex-quality-gate-safe-summary.json') || readJson('codex-minimal-safe-failure.json');
+          const runnerTempLifeboat = process.env.RUNNER_TEMP ? `${process.env.RUNNER_TEMP}/codex-minimal-safe-failure.json` : '';
+          const summary = readJson('codex-quality-gate-safe-summary.json') || readJson('codex-minimal-safe-failure.json') || readJson(runnerTempLifeboat);
           const diagnostic = readJson('codex-diagnostic-consolidated-summary.json');
           const reasons = readJson('codex-failure-reasons.json') || [];
           console.log('## Codex quality gate safe summary');
@@ -139,6 +174,7 @@ jobs:
           path: |
             codex-quality-gate-safe-summary.json
             codex-minimal-safe-failure.json
+            ${{ runner.temp }}/codex-minimal-safe-failure.json
             codex-diagnostic-consolidated-summary.json
             codex-evidence-pack.normalized.json
             codex-self-test-cases.safe.json

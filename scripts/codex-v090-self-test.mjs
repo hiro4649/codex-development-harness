@@ -60,6 +60,66 @@ function buildV090SelfTestReport() {
   }));
   assertCase('no_artifact_failure_classified', report.noArtifactFailureStatus.status === 'fail' && report.noArtifactFailureStatus.reasonCodes.includes('no_artifact_failure_unclassified'), failures, cases, report.noArtifactFailureStatus.status, report.noArtifactFailureStatus.reasonCodes);
 
+  const preCheckoutPayload = {
+    schemaVersion: '0.9.0',
+    phase: 'pre_checkout',
+    status: 'fail',
+    safeSummaryOnly: true,
+    lastKnownGate: 'workflow_start',
+    lastKnownReasonCodes: ['workflow_started'],
+    safeNextAction: 'Inspect safe workflow artifacts or rerun after the smallest correction.',
+    repository: 'owner/repo',
+    eventName: 'pull_request',
+    prNumber: '90',
+    headSha: '1234567890abcdef1234567890abcdef12345678',
+  };
+  assertCase('artifact_lifeboat_pre_checkout_shell_payload_safe_shape', !scanObjectForUnsafe(preCheckoutPayload).length && preCheckoutPayload.phase === 'pre_checkout' && preCheckoutPayload.safeSummaryOnly === true, failures, cases, 'pass', []);
+
+  report = withTempFile('codex-minimal-safe-failure.json', (file, dir) => {
+    fs.writeFileSync(file, `${JSON.stringify(preCheckoutPayload, null, 2)}\n`);
+    return buildNoArtifactFailureReport(prEnv({
+      CODEX_ARTIFACT_EXPECTED: '1',
+      RUNNER_TEMP: dir,
+    }));
+  });
+  assertCase('artifact_lifeboat_runner_temp_path_counts_as_found', report.noArtifactFailureStatus.status === 'pass' && report.noArtifactFailureStatus.artifactFound === true, failures, cases, report.noArtifactFailureStatus.status, report.noArtifactFailureStatus.reasonCodes);
+
+  report = withTempFile('primary-lifeboat.json', (primary, dir) => {
+    const mirror = path.join(dir, 'codex-minimal-safe-failure.json');
+    return buildArtifactLifeboat(prEnv({
+      CODEX_LIFEBOAT_PATH: primary,
+      CODEX_LIFEBOAT_MIRROR_PATH: mirror,
+      CODEX_LIFEBOAT_PHASE: 'pre_checkout',
+    }));
+  });
+  assertCase('artifact_lifeboat_mirror_path_written', report.artifactLifeboatStatus.status === 'pass' && report.artifactLifeboatStatus.artifactCreated === true && report.artifactLifeboatStatus.mirrorCreated === true, failures, cases, report.artifactLifeboatStatus.status, report.artifactLifeboatStatus.reasonCodes);
+
+  report = withTempFile('codex-minimal-safe-failure.json', (file, dir) => {
+    fs.writeFileSync(file, `${JSON.stringify(preCheckoutPayload, null, 2)}\n`);
+    const missingParent = path.join(dir, 'missing', 'lifeboat.json');
+    const update = buildArtifactLifeboat(prEnv({
+      CODEX_LIFEBOAT_PATH: missingParent,
+      CODEX_LIFEBOAT_PHASE: 'quality_gate_failed',
+    }));
+    return {
+      update,
+      stillFound: fs.existsSync(file),
+      classified: buildNoArtifactFailureReport(prEnv({ CODEX_ARTIFACT_EXPECTED: '1', RUNNER_TEMP: dir })),
+    };
+  });
+  assertCase('artifact_lifeboat_node_update_failure_does_not_remove_pre_checkout_lifeboat', report.stillFound === true && report.classified.noArtifactFailureStatus.status === 'pass', failures, cases, report.update.artifactLifeboatStatus.status, report.update.artifactLifeboatStatus.reasonCodes);
+
+  const workflowText = fs.readFileSync('.github/workflows/quality-gate.yml', 'utf8');
+  const preCheckoutStep = workflowText.indexOf('- name: Create pre-checkout lifeboat artifact');
+  const checkoutStep = workflowText.indexOf('- name: Checkout');
+  const setupNodeStep = workflowText.indexOf('- name: Setup Node');
+  const installRootStep = workflowText.indexOf('- name: Install root dependencies if present');
+  const installMonorepoStep = workflowText.indexOf('- name: Install monorepo dependencies if present');
+  assertCase('upload_artifact_path_includes_runner_temp_lifeboat', workflowText.includes('${{ runner.temp }}/codex-minimal-safe-failure.json'), failures, cases, 'pass', []);
+  assertCase('workflow_lifeboat_step_before_checkout', preCheckoutStep >= 0 && checkoutStep > preCheckoutStep, failures, cases, 'pass', []);
+  assertCase('workflow_lifeboat_step_before_setup_node', preCheckoutStep >= 0 && setupNodeStep > preCheckoutStep, failures, cases, 'pass', []);
+  assertCase('workflow_lifeboat_step_before_install_dependencies', preCheckoutStep >= 0 && installRootStep > preCheckoutStep && installMonorepoStep > preCheckoutStep, failures, cases, 'pass', []);
+
   const registry = JSON.parse(fs.readFileSync('docs/process/CODEX_CLASSIFICATION_REGISTRY.json', 'utf8')).entries;
   let classified = classifyFileWithRegistry('scripts/codex-local-quality-gate.mjs', registry);
   assertCase('classification_registry_scripts_codex_harness', classified.classification === 'harness_managed', failures, cases, classified.classification, []);

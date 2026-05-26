@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // CODEX_QUALITY_HARNESS_FILE v0.9.0
 import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   isPrContext,
@@ -24,8 +25,12 @@ const phases = new Set([
 function artifactFound(env = process.env) {
   if (env.CODEX_ARTIFACT_FOUND === '1') return true;
   if (env.CODEX_ARTIFACT_FOUND === '0') return false;
+  const runnerTempLifeboat = env.RUNNER_TEMP ? path.join(env.RUNNER_TEMP, 'codex-minimal-safe-failure.json') : '';
   const candidates = [
     env.CODEX_LIFEBOAT_PATH || 'codex-minimal-safe-failure.json',
+    env.CODEX_LIFEBOAT_MIRROR_PATH,
+    env.CODEX_RUNNER_TEMP_LIFEBOAT_PATH,
+    runnerTempLifeboat,
     'codex-quality-gate-safe-summary.json',
     'codex-diagnostic-consolidated-summary.json',
   ];
