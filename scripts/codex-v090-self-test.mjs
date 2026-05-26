@@ -12,6 +12,7 @@ import { buildRemoteLocalParityReport } from './codex-remote-local-parity-gate.m
 import { compilePrTemplate } from './codex-pr-template-compiler.mjs';
 import { buildPrBodySurfaceNormalizerReport } from './codex-pr-body-surface-normalizer.mjs';
 import { buildGateDecisionTrace } from './codex-gate-decision-trace.mjs';
+import { filterSourceValidationChangedFiles } from './codex-local-quality-gate.mjs';
 
 function assertCase(id, condition, failures, cases, actualStatus = 'pass', reasonCodes = []) {
   const status = condition ? 'pass' : 'fail';
@@ -119,6 +120,23 @@ function buildV090SelfTestReport() {
   assertCase('workflow_lifeboat_step_before_checkout', preCheckoutStep >= 0 && checkoutStep > preCheckoutStep, failures, cases, 'pass', []);
   assertCase('workflow_lifeboat_step_before_setup_node', preCheckoutStep >= 0 && setupNodeStep > preCheckoutStep, failures, cases, 'pass', []);
   assertCase('workflow_lifeboat_step_before_install_dependencies', preCheckoutStep >= 0 && installRootStep > preCheckoutStep && installMonorepoStep > preCheckoutStep, failures, cases, 'pass', []);
+
+  const filteredSafeArtifacts = filterSourceValidationChangedFiles([
+    'codex-minimal-safe-failure.json',
+    'codex-quality-gate-safe-summary.json',
+  ]);
+  assertCase('lifeboat_runner_temp_does_not_dirty_worktree', !workflowText.includes('CODEX_LIFEBOAT_MIRROR_PATH: codex-minimal-safe-failure.json'), failures, cases, 'pass', []);
+  assertCase('lifeboat_repo_root_safe_artifact_ignored_by_source_manifest', filteredSafeArtifacts.length === 0, failures, cases, String(filteredSafeArtifacts.length), []);
+
+  const filteredUnknown = filterSourceValidationChangedFiles(['scratch-output.json']);
+  assertCase('unknown_untracked_file_still_fails_source_manifest', filteredUnknown.includes('scratch-output.json'), failures, cases, filteredUnknown.join(','), []);
+
+  const filteredProductLike = filterSourceValidationChangedFiles(['src/runtime-generated.js', 'package.json', 'profiles/iris/generated.json']);
+  assertCase('product_like_untracked_file_still_fails_source_manifest', filteredProductLike.length === 3, failures, cases, filteredProductLike.join(','), []);
+
+  const beforeQualityGateText = workflowText.slice(0, workflowText.indexOf('node scripts/codex-local-quality-gate.mjs'));
+  assertCase('workflow_no_repo_root_lifeboat_before_quality_gate', !beforeQualityGateText.includes('CODEX_LIFEBOAT_MIRROR_PATH'), failures, cases, 'pass', []);
+  assertCase('workflow_uploads_runner_temp_lifeboat', workflowText.includes('${{ runner.temp }}/codex-minimal-safe-failure.json'), failures, cases, 'pass', []);
 
   const registry = JSON.parse(fs.readFileSync('docs/process/CODEX_CLASSIFICATION_REGISTRY.json', 'utf8')).entries;
   let classified = classifyFileWithRegistry('scripts/codex-local-quality-gate.mjs', registry);

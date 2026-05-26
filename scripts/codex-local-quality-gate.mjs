@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { buildHumanConfirmationStatus } from './codex-production-readiness-gate.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 import { buildGithubReplayContextAsync } from './codex-ci-replay.mjs';
@@ -26,6 +27,21 @@ const forbiddenSourcePaths = [
   'IRIS_SPEC_AUTHORITY.md',
   'scripts/run-tests.js',
 ];
+export const sourceValidationIgnoredSafeArtifacts = new Set([
+  'codex-minimal-safe-failure.json',
+  'codex-quality-gate-safe-summary.json',
+  'codex-diagnostic-consolidated-summary.json',
+  'codex-evidence-pack.normalized.json',
+  'codex-self-test-cases.safe.json',
+  'codex-failure-reasons.json',
+  'codex-invalid-report-recovery-summary.json',
+  'codex-target-quality-summary.json',
+  'codex-source-final-summary.json',
+  'codex-target-final-summary.json',
+  'codex-safe-artifact-index.json',
+  'codex-workflow-preflight.safe.json',
+  'codex-test-metrics.safe.json',
+]);
 
 function npmCliPath() {
   const candidates = [
@@ -97,6 +113,9 @@ function lines(text) {
 function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean).map(normalizePath))].sort();
 }
+export function filterSourceValidationChangedFiles(files) {
+  return uniqueSorted(files).filter((file) => !sourceValidationIgnoredSafeArtifacts.has(normalizePath(file)));
+}
 function globToRegExp(pattern) {
   let out = '^';
   const text = normalizePath(pattern);
@@ -133,7 +152,7 @@ function safeJsonRead(file, failures, id) {
   }
 }
 function changedFilesSinceOriginMain() {
-  return uniqueSorted([
+  return filterSourceValidationChangedFiles([
     ...lines(git(['diff', '--name-only', 'origin/main...HEAD'])),
     ...lines(git(['diff', '--name-only'])),
     ...lines(git(['diff', '--cached', '--name-only'])),
@@ -1993,59 +2012,65 @@ async function runTargetHarnessGate() {
   process.exit(0);
 }
 
-if (process.env.CODEX_QUALITY_REPORT !== 'json') console.log('== Codex local quality gate ==');
-if (process.env.CODEX_HARNESS_SOURCE_REPO === '1') await runSourceHarnessGate();
-if (process.env.CODEX_HARNESS_MODE === 'target') await runTargetHarnessGate();
-run('node', ['scripts/codex-secret-safety-scan.mjs']);
+async function main() {
+  if (process.env.CODEX_QUALITY_REPORT !== 'json') console.log('== Codex local quality gate ==');
+  if (process.env.CODEX_HARNESS_SOURCE_REPO === '1') await runSourceHarnessGate();
+  if (process.env.CODEX_HARNESS_MODE === 'target') await runTargetHarnessGate();
+  run('node', ['scripts/codex-secret-safety-scan.mjs']);
 
-const npmDirs = ['.', 'apps/backend', 'apps/frontend', 'contracts'].filter((dir) => fs.existsSync(path.join(dir, 'package.json')));
-if (!npmDirs.length) {
-  console.log('No package.json found; npm checks skipped.');
-  console.log('Codex local quality gate passed.');
-  process.exit(0);
-}
-
-// Parse all candidate package.json files before deciding whether npm is available.
-// This catches invalid JSON and handles UTF-8 BOM package.json files safely.
-for (const dir of npmDirs) readPackage(dir);
-
-if (process.env.CODEX_SKIP_NPM === '1') {
-  console.log('CODEX_SKIP_NPM=1; npm checks skipped.');
-  console.log('Codex local quality gate passed.');
-  process.exit(0);
-}
-
-if (!commandExists('npm')) {
-  const message = 'npm was not found; npm project checks skipped in this environment. Run this gate again where npm is available before merge.';
-  if (process.env.CODEX_REQUIRE_NPM === '1') {
-    console.error(message);
-    process.exit(1);
+  const npmDirs = ['.', 'apps/backend', 'apps/frontend', 'contracts'].filter((dir) => fs.existsSync(path.join(dir, 'package.json')));
+  if (!npmDirs.length) {
+    console.log('No package.json found; npm checks skipped.');
+    console.log('Codex local quality gate passed.');
+    process.exit(0);
   }
-  console.log(message);
-  console.log('Codex local quality gate passed with npm checks skipped.');
-  process.exit(0);
+
+  // Parse all candidate package.json files before deciding whether npm is available.
+  // This catches invalid JSON and handles UTF-8 BOM package.json files safely.
+  for (const dir of npmDirs) readPackage(dir);
+
+  if (process.env.CODEX_SKIP_NPM === '1') {
+    console.log('CODEX_SKIP_NPM=1; npm checks skipped.');
+    console.log('Codex local quality gate passed.');
+    process.exit(0);
+  }
+
+  if (!commandExists('npm')) {
+    const message = 'npm was not found; npm project checks skipped in this environment. Run this gate again where npm is available before merge.';
+    if (process.env.CODEX_REQUIRE_NPM === '1') {
+      console.error(message);
+      process.exit(1);
+    }
+    console.log(message);
+    console.log('Codex local quality gate passed with npm checks skipped.');
+    process.exit(0);
+  }
+
+  if (fs.existsSync('package.json')) {
+    runScript('.', 'dev:config:doctor');
+    runScript('.', 'preflight');
+    runTest('.');
+    runScript('.', 'smoke');
+    runScript('.', 'build');
+  }
+  if (fs.existsSync('apps/backend/package.json')) {
+    runScript('apps/backend', 'prisma:validate');
+    runScript('apps/backend', 'build');
+    runTest('apps/backend', ['--', '--runInBand']);
+  }
+  if (fs.existsSync('apps/frontend/package.json')) {
+    if (fs.existsSync('apps/frontend/env.validation.test.mjs')) run('node', ['env.validation.test.mjs'], 'apps/frontend');
+    runScript('apps/frontend', 'build');
+  }
+  if (fs.existsSync('contracts/package.json')) {
+    runScript('contracts', 'compile');
+    runTest('contracts');
+    runScript('contracts', 'compile:nft');
+    runScript('contracts', 'test:nft');
+  }
+  console.log('Codex local quality gate passed.');
 }
 
-if (fs.existsSync('package.json')) {
-  runScript('.', 'dev:config:doctor');
-  runScript('.', 'preflight');
-  runTest('.');
-  runScript('.', 'smoke');
-  runScript('.', 'build');
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  await main();
 }
-if (fs.existsSync('apps/backend/package.json')) {
-  runScript('apps/backend', 'prisma:validate');
-  runScript('apps/backend', 'build');
-  runTest('apps/backend', ['--', '--runInBand']);
-}
-if (fs.existsSync('apps/frontend/package.json')) {
-  if (fs.existsSync('apps/frontend/env.validation.test.mjs')) run('node', ['env.validation.test.mjs'], 'apps/frontend');
-  runScript('apps/frontend', 'build');
-}
-if (fs.existsSync('contracts/package.json')) {
-  runScript('contracts', 'compile');
-  runTest('contracts');
-  runScript('contracts', 'compile:nft');
-  runScript('contracts', 'test:nft');
-}
-console.log('Codex local quality gate passed.');

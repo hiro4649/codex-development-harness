@@ -80,7 +80,6 @@ jobs:
           CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
           CODEX_REPOSITORY: ${{ github.repository }}
           CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
-          CODEX_LIFEBOAT_MIRROR_PATH: codex-minimal-safe-failure.json
         run: |
           node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat.json" || true
       - name: Run Codex quality gate
@@ -96,7 +95,6 @@ jobs:
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           CODEX_REPOSITORY: ${{ github.repository }}
           CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
-          CODEX_LIFEBOAT_MIRROR_PATH: codex-minimal-safe-failure.json
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
