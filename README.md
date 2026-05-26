@@ -1,19 +1,19 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.0 -->
 # Codex Development Harness
 
-Version: v0.8.9
-Name: Evidence Continuity, Baseline Health, and Operational Precision Gate
+Version: v0.9.0
+Name: Remote Parity, Classification Registry, and Artifact Lifeboat Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.8.9 preserves the v0.8.8 safety model while improving
-npm/product baseline health, remote evidence continuity, PR body surface
-normalization, self-test failure diagnostics, score decomposition, old marker
-detection, and harness-only CI profile control. The new checks use deterministic
-fixtures and safe summaries rather than hidden chain-of-thought inspection, raw
-diff storage, browser-required gates, MCP, LLM judges, network calls, or product
-command execution added by the new gates.
+evidence tooling. v0.9.0 preserves the v0.8.9 safety model while improving
+no-artifact fallback, classification coverage, entrypoint registry,
+remote/local parity, PR body template generation, and gate decision trace. The
+new checks use deterministic fixtures and safe summaries rather than hidden
+chain-of-thought inspection, raw diff storage, browser-required gates, MCP, LLM
+judges, network calls, automatic owner confirmation, or product command
+execution added by the new gates.
 
-## What v0.8.9 Adds
+## What v0.9.0 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -59,6 +59,16 @@ command execution added by the new gates.
 - Score decomposition and old harness marker detection
 - Harness-only self-test profile control that cannot bypass product-relevant
   verification
+- Artifact Lifeboat to create a minimal safe failure artifact before the quality
+  gate runs
+- No-Artifact Failure Classifier for recoverable safe diagnosis when artifacts
+  are missing
+- Classification Registry and Coverage Gate for registry-backed changed-file
+  classification, including explicit entrypoint handling
+- Remote/Local Parity Gate for safe explanations of local-vs-remote
+  classification differences
+- PR Template Compiler that emits suggestion-only safe PR body skeletons
+- Gate Decision Trace for one-screen score and next-action explanations
 - Prompt variant suggestion-only report with `autoApply`, `autoCommit`, and
   `autoPush` fixed false
 - `codex-bugfix` skill for focused bugfix work
@@ -77,7 +87,7 @@ command execution added by the new gates.
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
 
-## What v0.8.9 Does Not Add
+## What v0.9.0 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM

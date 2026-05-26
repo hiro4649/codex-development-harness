@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.0 -->
 # Codex Development Harness
 
 This document defines the default AI-assisted development flow.

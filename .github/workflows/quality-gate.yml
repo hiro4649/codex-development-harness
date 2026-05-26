@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.8.9
+# CODEX_QUALITY_HARNESS_FILE v0.9.0
 name: quality-gate
 
 on:
@@ -40,6 +40,18 @@ jobs:
               (cd "$dir" && npm install --no-package-lock)
             fi
           done
+      - name: Create Codex lifeboat artifact
+        if: always()
+        shell: bash
+        env:
+          CODEX_LIFEBOAT_PHASE: workflow_started
+          CODEX_LIFEBOAT_WRITE: "1"
+          CODEX_EVENT_NAME: ${{ github.event_name }}
+          CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          CODEX_REPOSITORY: ${{ github.repository }}
+        run: |
+          node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat.json"
       - name: Run Codex quality gate
         shell: bash
         env:
@@ -81,7 +93,7 @@ jobs:
             try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
             catch { return null; }
           }
-          const summary = readJson('codex-quality-gate-safe-summary.json');
+          const summary = readJson('codex-quality-gate-safe-summary.json') || readJson('codex-minimal-safe-failure.json');
           const diagnostic = readJson('codex-diagnostic-consolidated-summary.json');
           const reasons = readJson('codex-failure-reasons.json') || [];
           console.log('## Codex quality gate safe summary');
@@ -93,13 +105,20 @@ jobs:
             console.log(`- humanReviewRequired: ${summary.humanReviewRequired}`);
             console.log(`- qualityScoreStatus: ${summary.qualityScoreStatus?.status || 'missing'}`);
             console.log(`- qualityScore: ${summary.qualityScoreStatus?.score ?? 'missing'}`);
+            console.log(`- artifactLifeboatStatus: ${summary.artifactLifeboatStatus?.status || summary.status || 'missing'}`);
+            console.log(`- classificationCoverageStatus: ${summary.classificationCoverageStatus?.status || 'missing'}`);
+            console.log(`- remoteLocalParityStatus: ${summary.remoteLocalParityStatus?.status || 'missing'}`);
+            console.log(`- noArtifactFailureStatus: ${summary.noArtifactFailureStatus?.status || 'missing'}`);
             console.log(`- baselineHealthStatus: ${summary.baselineHealthStatus?.status || 'missing'}`);
             console.log(`- evidenceContinuityStatus: ${summary.evidenceContinuityStatus?.status || 'missing'}`);
             console.log(`- prBodySurfaceNormalizerStatus: ${summary.prBodySurfaceNormalizerStatus?.status || 'missing'}`);
+            console.log(`- prTemplateCompilerStatus: ${summary.prTemplateCompilerStatus?.status || 'missing'}`);
             console.log(`- selfTestCaseExportStatus: ${summary.selfTestCaseExportStatus?.status || 'missing'}`);
             console.log(`- scoreDecompositionStatus: ${summary.scoreDecompositionStatus?.status || 'missing'}`);
+            console.log(`- gateDecisionTraceStatus: ${summary.gateDecisionTraceStatus?.status || 'missing'}`);
             console.log(`- oldHarnessMarkerStatus: ${summary.oldHarnessMarkerStatus?.status || 'missing'}`);
             console.log(`- v089SelfTestStatus: ${summary.v089SelfTestStatus?.status || 'missing'}`);
+            console.log(`- v090SelfTestStatus: ${summary.v090SelfTestStatus?.status || 'missing'}`);
             console.log(`- pathMode: ${diagnostic?.pathMode || 'missing'}`);
             console.log(`- topNextAction: ${diagnostic?.nextActions?.[0] || 'missing'}`);
           } else {
@@ -119,6 +138,7 @@ jobs:
           name: codex-quality-gate-safe-artifacts
           path: |
             codex-quality-gate-safe-summary.json
+            codex-minimal-safe-failure.json
             codex-diagnostic-consolidated-summary.json
             codex-evidence-pack.normalized.json
             codex-self-test-cases.safe.json

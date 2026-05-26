@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
-  "harnessVersion": "0.8.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
+  "harnessVersion": "0.9.0",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -1745,6 +1745,142 @@
       "safeMessage": "Old source harness marker was detected.",
       "nextBestFix": "Update active source-managed markers to the current version.",
       "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "artifact_lifeboat_missing",
+      "gate": "artifactLifeboat",
+      "severity": "error",
+      "safeMessage": "The minimal safe failure artifact is missing.",
+      "nextBestFix": "Create the lifeboat artifact before running the quality gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "artifact_lifeboat_unsafe",
+      "gate": "artifactLifeboat",
+      "severity": "error",
+      "safeMessage": "The lifeboat artifact contains unsafe output.",
+      "nextBestFix": "Regenerate the artifact with safe reason codes only.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "no_artifact_failure_unclassified",
+      "gate": "noArtifactFailure",
+      "severity": "error",
+      "safeMessage": "A no-artifact failure was not classified safely.",
+      "nextBestFix": "Classify the failure phase and preserve a safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "classification_registry_invalid",
+      "gate": "classificationCoverage",
+      "severity": "error",
+      "safeMessage": "The classification registry is invalid.",
+      "nextBestFix": "Repair the registry schema and required entries.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "classification_unknown_file",
+      "gate": "classificationCoverage",
+      "severity": "error",
+      "safeMessage": "A changed file is not covered by the classification registry.",
+      "nextBestFix": "Add a safe registry entry or narrow the changed file set.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "classification_registry_conflict",
+      "gate": "classificationCoverage",
+      "severity": "error",
+      "safeMessage": "The classification registry conflicts with source manifest scope.",
+      "nextBestFix": "Align registry entries with source-managed manifest scope.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "entrypoint_unclassified",
+      "gate": "classificationCoverage",
+      "severity": "error",
+      "safeMessage": "An entrypoint-like file is unclassified.",
+      "nextBestFix": "Add an explicit registry entry for the entrypoint.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_local_parity_failed",
+      "gate": "remoteLocalParity",
+      "severity": "error",
+      "safeMessage": "Remote and local quality contexts differ.",
+      "nextBestFix": "Compare safe parity summaries and rerun with matching context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_changed_files_mismatch",
+      "gate": "remoteLocalParity",
+      "severity": "error",
+      "safeMessage": "Remote changed files differ from local changed files.",
+      "nextBestFix": "Refresh changed-file evidence for the current PR head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_classification_context_mismatch",
+      "gate": "remoteLocalParity",
+      "severity": "error",
+      "safeMessage": "Remote classification rules differ from local rules.",
+      "nextBestFix": "Ensure remote and local runners use the same harness version.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_registry_hash_mismatch",
+      "gate": "remoteLocalParity",
+      "severity": "error",
+      "safeMessage": "Remote registry hash differs from local registry hash.",
+      "nextBestFix": "Rerun after the current registry is present on the PR head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_unknown_file_not_seen_locally",
+      "gate": "remoteLocalParity",
+      "severity": "error",
+      "safeMessage": "Remote saw an unknown file that local classification did not see.",
+      "nextBestFix": "Refresh local changed-file context and registry coverage.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_template_compiler_failed",
+      "gate": "prTemplateCompiler",
+      "severity": "error",
+      "safeMessage": "PR template compilation failed.",
+      "nextBestFix": "Repair the safe template profile inputs.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_template_compiler_hint_available",
+      "gate": "prTemplateCompiler",
+      "severity": "warning",
+      "safeMessage": "A safe PR body template hint is available.",
+      "nextBestFix": "Use the suggested profile skeleton when updating PR body text.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "gate_decision_trace_missing",
+      "gate": "gateDecisionTrace",
+      "severity": "error",
+      "safeMessage": "Gate decision trace is missing for a failed report.",
+      "nextBestFix": "Generate a safe one-screen decision trace.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "gate_decision_trace_unsafe",
+      "gate": "gateDecisionTrace",
+      "severity": "error",
+      "safeMessage": "Gate decision trace contains unsafe output.",
+      "nextBestFix": "Regenerate the trace with safe reason summaries only.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "lifeboat_upload_missing",
+      "gate": "artifactLifeboat",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "The lifeboat artifact was generated but upload evidence is missing.",
+      "nextBestFix": "Check the artifact upload step and preserve safe failure evidence.",
+      "canManualConfirmationOverride": true
     }
   ]
 }

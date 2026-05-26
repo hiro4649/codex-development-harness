@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
-  "harnessVersion": "0.8.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
+  "harnessVersion": "0.9.0",
   "cases": [
     "no_auth_changes_should_not_trigger_auth_oracle",
     "forbidden_scope_auth_should_not_trigger_auth_surface",

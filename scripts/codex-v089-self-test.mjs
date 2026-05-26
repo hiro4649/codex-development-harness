@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.9
+// CODEX_QUALITY_HARNESS_FILE v0.9.0
 import { fileURLToPath } from 'node:url';
 import { marker, HARNESS_VERSION, scanObjectForUnsafe, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import { buildBaselineHealthReport } from './codex-baseline-health-gate.mjs';
@@ -146,7 +146,7 @@ function buildV089SelfTestReport() {
     'PR profile: harness_workflow_r3',
     'Risk level: R3',
     '## Task Contract',
-    'Goal: add v0.8.9 source harness operational precision only',
+    'Goal: add v0.9.0 source harness operational precision only',
     '## Evidence Integrity',
     'BEGIN_CODEX_EVIDENCE_PACK_JSON',
     '{"codexEvidencePack":{"headSha":"1234567890abcdef1234567890abcdef12345678","humanConfirmation":{"confirmedByRole":"project-owner"}}}',

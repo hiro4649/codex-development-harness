@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
-  "harnessVersion": "0.8.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
+  "harnessVersion": "0.9.0",
   "statusName": "evidenceContinuityStatus",
   "pathsChecked": [
     "remote_product_baseline",

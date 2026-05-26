@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.8.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.0 -->
 ## Codex Method Compliance
 
 Code review status:
@@ -50,6 +50,13 @@ Complexity regime:
 Oracle required:
 Oracle provided:
 Split required:
+
+## Evidence Continuity
+
+Baseline health:
+Evidence path continuity:
+Self-test case export:
+Surface normalization:
 
 ## Residual risks
 

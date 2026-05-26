@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-# CODEX_QUALITY_HARNESS_FILE v0.8.9
+# CODEX_QUALITY_HARNESS_FILE v0.9.0
 set -euo pipefail
 node scripts/codex-secret-safety-scan.mjs

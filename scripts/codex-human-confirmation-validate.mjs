@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.9
+// CODEX_QUALITY_HARNESS_FILE v0.9.0
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildHumanConfirmationStatus, readPrBody } from './codex-production-readiness-gate.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
-export const HARNESS_VERSION = '0.8.9';
+export const HARNESS_VERSION = '0.9.0';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const defaultConfirmationPath = path.join('.codex', 'manual-confirmation.json');

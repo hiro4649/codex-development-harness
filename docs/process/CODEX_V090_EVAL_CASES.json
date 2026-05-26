@@ -1,0 +1,22 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
+  "harnessVersion": "0.9.0",
+  "cases": [
+    "artifact_lifeboat_created_before_gate",
+    "artifact_lifeboat_safe_shape",
+    "no_artifact_failure_classified",
+    "classification_registry_scripts_codex_harness",
+    "classification_registry_dev_server_entrypoint",
+    "classification_unknown_file_fails_with_hint",
+    "classification_scripts_all_not_product",
+    "remote_local_parity_detects_unknown_remote_only",
+    "remote_local_parity_pass_same_context",
+    "pr_template_compiler_harness_r3_outputs_required_sections",
+    "required_heading_near_miss_hint",
+    "gate_decision_trace_score_70_has_top_reason",
+    "lifeboat_no_raw_log_output",
+    "old_v089_statuses_still_pass",
+    "source_harness_only_v090_pr_fixture_pass"
+  ],
+  "safeSummaryOnly": true
+}

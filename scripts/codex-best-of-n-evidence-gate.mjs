@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.8.9
+// CODEX_QUALITY_HARNESS_FILE v0.9.0
 import { HARNESS_VERSION, marker, prBodyText, isPrContext, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 
 function requiresBestOfN(body) {
