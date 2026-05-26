@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.8.9",
-  "harnessVersion": "0.8.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
+  "harnessVersion": "0.9.0",
   "schemaVersion": "1.0.0",
   "entrypoints": [
     "AGENTS.md",
@@ -16,7 +16,11 @@
     "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.md",
     "docs/process/CODEX_BASELINE_HEALTH_POLICY.md",
     "docs/process/CODEX_EVIDENCE_CONTINUITY_POLICY.md",
-    "docs/process/CODEX_PR_BODY_SURFACE_NORMALIZER_POLICY.md"
+    "docs/process/CODEX_PR_BODY_SURFACE_NORMALIZER_POLICY.md",
+    "docs/process/CODEX_ARTIFACT_LIFEBOAT_POLICY.md",
+    "docs/process/CODEX_CLASSIFICATION_REGISTRY_POLICY.md",
+    "docs/process/CODEX_REMOTE_LOCAL_PARITY_POLICY.md",
+    "docs/process/CODEX_PR_TEMPLATE_COMPILER_POLICY.md"
   ],
   "policyIndex": [
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
@@ -30,7 +34,11 @@
     "docs/process/CODEX_COMPLEXITY_GOVERNANCE_POLICY.md",
     "docs/process/CODEX_BASELINE_HEALTH_POLICY.md",
     "docs/process/CODEX_EVIDENCE_CONTINUITY_POLICY.md",
-    "docs/process/CODEX_PR_BODY_SURFACE_NORMALIZER_POLICY.md"
+    "docs/process/CODEX_PR_BODY_SURFACE_NORMALIZER_POLICY.md",
+    "docs/process/CODEX_ARTIFACT_LIFEBOAT_POLICY.md",
+    "docs/process/CODEX_CLASSIFICATION_REGISTRY_POLICY.md",
+    "docs/process/CODEX_REMOTE_LOCAL_PARITY_POLICY.md",
+    "docs/process/CODEX_PR_TEMPLATE_COMPILER_POLICY.md"
   ],
   "skillIndex": [
     ".agents/skills/codex-bugfix/SKILL.md"
@@ -45,7 +53,13 @@
     "scripts/codex-baseline-health-gate.mjs",
     "scripts/codex-evidence-continuity-gate.mjs",
     "scripts/codex-pr-body-surface-normalizer.mjs",
-    "scripts/codex-self-test-case-export.mjs"
+    "scripts/codex-self-test-case-export.mjs",
+    "scripts/codex-artifact-lifeboat.mjs",
+    "scripts/codex-classification-coverage-gate.mjs",
+    "scripts/codex-remote-local-parity-gate.mjs",
+    "scripts/codex-pr-template-compiler.mjs",
+    "scripts/codex-no-artifact-failure-classifier.mjs",
+    "scripts/codex-gate-decision-trace.mjs"
   ],
   "evalIndex": [
     "docs/process/CODEX_PROMPT_EVAL_SUITE.json",
@@ -55,7 +69,9 @@
     "docs/process/CODEX_COMPLEXITY_EVAL_CASES.json",
     "scripts/codex-v088-self-test.mjs",
     "docs/process/CODEX_COMPLEXITY_FALSE_POSITIVE_CASES.json",
-    "scripts/codex-v089-self-test.mjs"
+    "scripts/codex-v089-self-test.mjs",
+    "docs/process/CODEX_V090_EVAL_CASES.json",
+    "scripts/codex-v090-self-test.mjs"
   ],
   "reviewIndex": [
     "docs/process/code_review.md",
@@ -70,7 +86,11 @@
     "docs/process/CODEX_ORACLE_REQUIREMENT_SCHEMA.json",
     "docs/process/CODEX_EXECUTION_INTERFACE_SCHEMA.json",
     "docs/process/CODEX_SELF_TEST_CASE_EXPORT_SCHEMA.json",
-    "docs/process/CODEX_SCORE_DECOMPOSITION_SCHEMA.json"
+    "docs/process/CODEX_SCORE_DECOMPOSITION_SCHEMA.json",
+    "docs/process/CODEX_CLASSIFICATION_REGISTRY_SCHEMA.json",
+    "docs/process/CODEX_GATE_DECISION_TRACE_SCHEMA.json",
+    "docs/process/CODEX_NO_ARTIFACT_FAILURE_SCHEMA.json",
+    "docs/process/CODEX_OPERATIONAL_RECOVERY_HINTS_SCHEMA.json"
   ],
   "sourceOfRecord": [
     "AGENTS.md",

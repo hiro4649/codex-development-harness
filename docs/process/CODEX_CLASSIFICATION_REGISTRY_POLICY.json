@@ -1,0 +1,7 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
+  "harnessVersion": "0.9.0",
+  "policy": "classification_registry",
+  "unknownFilePolicy": "fail_in_pr_context",
+  "safeSummaryOnly": true
+}

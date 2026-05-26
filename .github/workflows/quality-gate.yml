@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.8.9
+# CODEX_QUALITY_HARNESS_FILE v0.9.0
 name: quality-gate
 
 on:
@@ -16,6 +16,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Create pre-checkout lifeboat artifact
+        shell: bash
+        env:
+          CODEX_PRECHECKOUT_REPOSITORY: ${{ github.repository }}
+          CODEX_PRECHECKOUT_EVENT_NAME: ${{ github.event_name }}
+          CODEX_PRECHECKOUT_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          CODEX_PRECHECKOUT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP"
+          safe_repo="$(printf '%s' "${CODEX_PRECHECKOUT_REPOSITORY:-}" | tr -cd 'A-Za-z0-9_.-/' | cut -c1-120)"
+          safe_event="$(printf '%s' "${CODEX_PRECHECKOUT_EVENT_NAME:-unknown}" | tr -cd 'A-Za-z0-9_.:-' | cut -c1-80)"
+          safe_pr="$(printf '%s' "${CODEX_PRECHECKOUT_PR_NUMBER:-}" | tr -cd '0-9' | cut -c1-20)"
+          safe_head="$(printf '%s' "${CODEX_PRECHECKOUT_HEAD_SHA:-}" | tr -cd 'A-Fa-f0-9' | cut -c1-64)"
+          cat > "$RUNNER_TEMP/codex-minimal-safe-failure.json" <<JSON
+          {
+            "schemaVersion": "0.9.0",
+            "phase": "pre_checkout",
+            "status": "fail",
+            "safeSummaryOnly": true,
+            "lastKnownGate": "workflow_start",
+            "lastKnownReasonCodes": ["workflow_started"],
+            "safeNextAction": "Inspect safe workflow artifacts or rerun after the smallest correction.",
+            "repository": "$safe_repo",
+            "eventName": "$safe_event",
+            "prNumber": "$safe_pr",
+            "headSha": "$safe_head"
+          }
+          JSON
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -40,6 +69,20 @@ jobs:
               (cd "$dir" && npm install --no-package-lock)
             fi
           done
+      - name: Create Codex lifeboat artifact
+        if: always()
+        shell: bash
+        env:
+          CODEX_LIFEBOAT_PHASE: workflow_started
+          CODEX_LIFEBOAT_WRITE: "1"
+          CODEX_EVENT_NAME: ${{ github.event_name }}
+          CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          CODEX_REPOSITORY: ${{ github.repository }}
+          CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
+          CODEX_LIFEBOAT_MIRROR_PATH: codex-minimal-safe-failure.json
+        run: |
+          node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat.json" || true
       - name: Run Codex quality gate
         shell: bash
         env:
@@ -52,6 +95,8 @@ jobs:
           CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           CODEX_REPOSITORY: ${{ github.repository }}
+          CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
+          CODEX_LIFEBOAT_MIRROR_PATH: codex-minimal-safe-failure.json
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -69,6 +114,7 @@ jobs:
           gate_exit=0
           node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-quality-gate.json" || gate_exit=$?
           node scripts/codex-workflow-preflight.mjs --write-artifact > "$RUNNER_TEMP/codex-workflow-preflight-artifact.json"
+          CODEX_LIFEBOAT_PHASE=quality_gate_failed CODEX_LAST_KNOWN_GATE=local_quality_gate node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat-after-gate.json" || true
           node scripts/codex-workflow-quality-runner.mjs --report "$RUNNER_TEMP/codex-quality-gate.json" --gate-exit "$gate_exit"
       - name: Write safe quality summary
         if: always()
@@ -81,7 +127,8 @@ jobs:
             try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
             catch { return null; }
           }
-          const summary = readJson('codex-quality-gate-safe-summary.json');
+          const runnerTempLifeboat = process.env.RUNNER_TEMP ? `${process.env.RUNNER_TEMP}/codex-minimal-safe-failure.json` : '';
+          const summary = readJson('codex-quality-gate-safe-summary.json') || readJson('codex-minimal-safe-failure.json') || readJson(runnerTempLifeboat);
           const diagnostic = readJson('codex-diagnostic-consolidated-summary.json');
           const reasons = readJson('codex-failure-reasons.json') || [];
           console.log('## Codex quality gate safe summary');
@@ -93,13 +140,20 @@ jobs:
             console.log(`- humanReviewRequired: ${summary.humanReviewRequired}`);
             console.log(`- qualityScoreStatus: ${summary.qualityScoreStatus?.status || 'missing'}`);
             console.log(`- qualityScore: ${summary.qualityScoreStatus?.score ?? 'missing'}`);
+            console.log(`- artifactLifeboatStatus: ${summary.artifactLifeboatStatus?.status || summary.status || 'missing'}`);
+            console.log(`- classificationCoverageStatus: ${summary.classificationCoverageStatus?.status || 'missing'}`);
+            console.log(`- remoteLocalParityStatus: ${summary.remoteLocalParityStatus?.status || 'missing'}`);
+            console.log(`- noArtifactFailureStatus: ${summary.noArtifactFailureStatus?.status || 'missing'}`);
             console.log(`- baselineHealthStatus: ${summary.baselineHealthStatus?.status || 'missing'}`);
             console.log(`- evidenceContinuityStatus: ${summary.evidenceContinuityStatus?.status || 'missing'}`);
             console.log(`- prBodySurfaceNormalizerStatus: ${summary.prBodySurfaceNormalizerStatus?.status || 'missing'}`);
+            console.log(`- prTemplateCompilerStatus: ${summary.prTemplateCompilerStatus?.status || 'missing'}`);
             console.log(`- selfTestCaseExportStatus: ${summary.selfTestCaseExportStatus?.status || 'missing'}`);
             console.log(`- scoreDecompositionStatus: ${summary.scoreDecompositionStatus?.status || 'missing'}`);
+            console.log(`- gateDecisionTraceStatus: ${summary.gateDecisionTraceStatus?.status || 'missing'}`);
             console.log(`- oldHarnessMarkerStatus: ${summary.oldHarnessMarkerStatus?.status || 'missing'}`);
             console.log(`- v089SelfTestStatus: ${summary.v089SelfTestStatus?.status || 'missing'}`);
+            console.log(`- v090SelfTestStatus: ${summary.v090SelfTestStatus?.status || 'missing'}`);
             console.log(`- pathMode: ${diagnostic?.pathMode || 'missing'}`);
             console.log(`- topNextAction: ${diagnostic?.nextActions?.[0] || 'missing'}`);
           } else {
@@ -119,6 +173,8 @@ jobs:
           name: codex-quality-gate-safe-artifacts
           path: |
             codex-quality-gate-safe-summary.json
+            codex-minimal-safe-failure.json
+            ${{ runner.temp }}/codex-minimal-safe-failure.json
             codex-diagnostic-consolidated-summary.json
             codex-evidence-pack.normalized.json
             codex-self-test-cases.safe.json

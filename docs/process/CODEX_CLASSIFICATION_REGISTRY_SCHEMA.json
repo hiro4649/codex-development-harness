@@ -1,0 +1,9 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
+  "schemaVersion": "0.9.0",
+  "required": ["schemaVersion", "marker", "harnessVersion", "entries", "safeSummaryOnly"],
+  "entryRequired": ["pathPattern", "classification", "surface", "risk", "requiresProductVerification", "allowsFastPath", "notes"],
+  "classificationAllowed": ["harness_managed", "docs", "test", "workflow", "product_source", "product_runtime_entrypoint", "dev_server_entrypoint", "config", "package", "lockfile", "unknown"],
+  "surfaceAllowed": ["harness", "docs", "test", "workflow", "runtime", "api", "auth", "security", "storage", "database", "dev_server", "config", "unknown"],
+  "safeSummaryOnly": true
+}
