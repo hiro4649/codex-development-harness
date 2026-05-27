@@ -17,7 +17,7 @@ const DANGEROUS = [
   ['dangerous_api_pattern_detected', /\bSELECT\b[\s\S]{0,80}\+/i],
   ['dangerous_api_pattern_detected', /auth\s*bypass|skip\s*auth|tenant\s*unfiltered/i],
 ];
-const SECRET_PREFIX = /\b(?:gh[pousr]_|sk-|AKIA|glpat-|npm_|xox[baprs]-)[A-Za-z0-9_-]{8,}\b/;
+const SECRET_PREFIX = /\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|glpat-[A-Za-z0-9_-]{20,}|npm_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{20,})\b/;
 
 function gitChangedFiles() {
   try {
@@ -43,7 +43,18 @@ function fixturePath(file) {
 
 function workflowEscalated(file, text) {
   if (!/\.github\/workflows\//.test(file)) return false;
-  return /permissions:[\s\S]*\bwrite\b/i.test(text) || /GITHUB_TOKEN[\s\S]{0,80}\bwrite\b/i.test(text);
+  const lines = String(text || '').split(/\r?\n/);
+  let inPermissions = false;
+  for (const line of lines) {
+    if (/^\s*permissions:\s*$/.test(line)) {
+      inPermissions = true;
+      continue;
+    }
+    if (inPermissions && /^\S/.test(line) && !/^permissions:\s*/.test(line)) inPermissions = false;
+    if (inPermissions && /^\s*[^#\n]+:\s*write\s*(?:#.*)?$/.test(line)) return true;
+    if (/GITHUB_TOKEN[^#\n]*:\s*write\b/i.test(line)) return true;
+  }
+  return false;
 }
 
 export function buildSecurityLifecycleReport(env = process.env) {
