@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
-  "harnessVersion": "0.9.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.4",
+  "harnessVersion": "0.9.4",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -2216,6 +2216,150 @@
       "severity": "error",
       "safeMessage": "Raw log content was found in the PR body.",
       "nextBestFix": "Remove raw logs and use safe summaries.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_context_missing",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "remote product context missing.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_relevant_evidence_missing",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "product relevant evidence missing.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_baseline_lost",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "product baseline lost.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "skip_npm_product_bypass",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "skip npm product bypass.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pull_request_context_missing",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "pull request context missing.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_dispatch_not_pr_substitute",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "workflow dispatch not pr substitute.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_context_artifact_classification_failed",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "product context artifact classification failed.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_job_safety_failed",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "runtime job safety failed.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_job_ownership_missing",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "runtime job ownership missing.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "tx_path_state_evidence_missing",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "tx path state evidence missing.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "tx_hash_receipt_policy_missing",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "tx hash receipt policy missing.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "double_send_risk_unaddressed",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "double send risk unaddressed.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "env_consistency_failed",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "env consistency failed.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "staging_no_tx_preflight_missing",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "staging no tx preflight missing.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_log_secret_scan_missing",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "runtime log secret scan missing.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "raw_runtime_log_forbidden",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "raw runtime log forbidden.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "chain_scope_conflict",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "chain scope conflict.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "false_positive_budget_failed",
+      "gate": "v094",
+      "severity": "error",
+      "safeMessage": "false positive budget failed.",
+      "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
       "canManualConfirmationOverride": false
     }
   ]

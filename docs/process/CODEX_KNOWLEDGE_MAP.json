@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
-  "harnessVersion": "0.9.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.4",
+  "harnessVersion": "0.9.4",
   "schemaVersion": "1.0.0",
   "entrypoints": [
     "AGENTS.md",
@@ -34,7 +34,13 @@
     "docs/process/CODEX_TARGET_SKIP_NPM_PRODUCT_OVERRIDE_POLICY.md",
     "docs/process/CODEX_GOAL_CONDITION_POLICY.md",
     "docs/process/CODEX_REVIEW_POLICY_CLASSIFIER_POLICY.md",
-    "docs/process/CODEX_PR_EVIDENCE_COMPACT_POLICY.md"
+    "docs/process/CODEX_PR_EVIDENCE_COMPACT_POLICY.md",
+    "docs/process/CODEX_REMOTE_PRODUCT_CONTEXT_RESTORE_POLICY.md",
+    "docs/process/CODEX_PRODUCT_RELEVANT_EVIDENCE_LOCK_POLICY.md",
+    "docs/process/CODEX_RUNTIME_JOB_SAFETY_POLICY.md",
+    "docs/process/CODEX_TX_PATH_STATE_EVIDENCE_POLICY.md",
+    "docs/process/CODEX_ENV_CONSISTENCY_POLICY.md",
+    "docs/process/CODEX_CHAIN_SCOPE_POLICY.md"
   ],
   "policyIndex": [
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
@@ -66,7 +72,19 @@
     "docs/process/CODEX_TARGET_SKIP_NPM_PRODUCT_OVERRIDE_POLICY.md",
     "docs/process/CODEX_GOAL_CONDITION_POLICY.md",
     "docs/process/CODEX_REVIEW_POLICY_CLASSIFIER_POLICY.md",
-    "docs/process/CODEX_PR_EVIDENCE_COMPACT_POLICY.md"
+    "docs/process/CODEX_PR_EVIDENCE_COMPACT_POLICY.md",
+    "docs/process/CODEX_REMOTE_PRODUCT_CONTEXT_RESTORE_POLICY.md",
+    "docs/process/CODEX_PRODUCT_RELEVANT_EVIDENCE_LOCK_POLICY.md",
+    "docs/process/CODEX_PRODUCT_BASELINE_CONTINUITY_POLICY.md",
+    "docs/process/CODEX_SKIP_NPM_PRODUCT_BYPASS_POLICY.md",
+    "docs/process/CODEX_PULL_REQUEST_CONTEXT_FIDELITY_POLICY.md",
+    "docs/process/CODEX_RUNTIME_JOB_SAFETY_POLICY.md",
+    "docs/process/CODEX_TX_PATH_STATE_EVIDENCE_POLICY.md",
+    "docs/process/CODEX_ENV_CONSISTENCY_POLICY.md",
+    "docs/process/CODEX_STAGING_NO_TX_PREFLIGHT_POLICY.md",
+    "docs/process/CODEX_RUNTIME_LOG_SECRET_SCAN_POLICY.md",
+    "docs/process/CODEX_CHAIN_SCOPE_POLICY.md",
+    "docs/process/CODEX_FALSE_POSITIVE_BUDGET_POLICY.md"
   ],
   "skillIndex": [
     ".agents/skills/codex-bugfix/SKILL.md"
@@ -108,7 +126,20 @@
     "scripts/codex-target-skip-npm-product-override-gate.mjs",
     "scripts/codex-goal-condition-gate.mjs",
     "scripts/codex-review-policy-classifier.mjs",
-    "scripts/codex-pr-evidence-compact-gate.mjs"
+    "scripts/codex-pr-evidence-compact-gate.mjs",
+    "scripts/codex-remote-product-context-restore-gate.mjs",
+    "scripts/codex-product-relevant-evidence-lock-gate.mjs",
+    "scripts/codex-product-baseline-continuity-gate.mjs",
+    "scripts/codex-skip-npm-product-bypass-gate.mjs",
+    "scripts/codex-pull-request-context-fidelity-gate.mjs",
+    "scripts/codex-product-context-safe-artifact-gate.mjs",
+    "scripts/codex-runtime-job-safety-gate.mjs",
+    "scripts/codex-tx-path-state-evidence-gate.mjs",
+    "scripts/codex-env-consistency-gate.mjs",
+    "scripts/codex-staging-no-tx-preflight-gate.mjs",
+    "scripts/codex-runtime-log-secret-scan-gate.mjs",
+    "scripts/codex-chain-scope-gate.mjs",
+    "scripts/codex-false-positive-budget-gate.mjs"
   ],
   "evalIndex": [
     "docs/process/CODEX_PROMPT_EVAL_SUITE.json",
@@ -124,7 +155,9 @@
     "docs/process/CODEX_V092_EVAL_CASES.json",
     "scripts/codex-v092-self-test.mjs",
     "docs/process/CODEX_V093_EVAL_CASES.json",
-    "scripts/codex-v093-self-test.mjs"
+    "scripts/codex-v093-self-test.mjs",
+    "docs/process/CODEX_V094_EVAL_CASES.json",
+    "scripts/codex-v094-self-test.mjs"
   ],
   "reviewIndex": [
     "docs/process/code_review.md",
@@ -151,7 +184,8 @@
     "docs/process/CODEX_ENVIRONMENT_PROFILE_SCHEMA.json",
     "docs/process/CODEX_EVIDENCE_AUTO_REPAIR_HINT_SCHEMA.json",
     "docs/process/CODEX_TARGET_PATCH_MANIFEST_SCHEMA.json",
-    "docs/process/CODEX_SAME_HEAD_ARTIFACT_EVIDENCE_SCHEMA.json"
+    "docs/process/CODEX_SAME_HEAD_ARTIFACT_EVIDENCE_SCHEMA.json",
+    "docs/process/CODEX_PRODUCT_CONTEXT_SAFE_ARTIFACT_SCHEMA.json"
   ],
   "sourceOfRecord": [
     "AGENTS.md",

@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.9.3
+# CODEX_QUALITY_HARNESS_FILE v0.9.4
 name: quality-gate
 
 on:
@@ -32,7 +32,7 @@ jobs:
           safe_head="$(printf '%s' "${CODEX_PRECHECKOUT_HEAD_SHA:-}" | tr -cd 'A-Fa-f0-9' | cut -c1-64)"
           cat > "$RUNNER_TEMP/codex-minimal-safe-failure.json" <<JSON
           {
-            "schemaVersion": "0.9.3",
+            "schemaVersion": "0.9.4",
             "phase": "pre_checkout",
             "status": "fail",
             "safeSummaryOnly": true,
@@ -170,6 +170,20 @@ jobs:
             console.log(`- v090SelfTestStatus: ${summary.v090SelfTestStatus?.status || 'missing'}`);
             console.log(`- v092SelfTestStatus: ${summary.v092SelfTestStatus?.status || 'missing'}`);
             console.log(`- v093SelfTestStatus: ${summary.v093SelfTestStatus?.status || 'missing'}`);
+            console.log(`- v094SelfTestStatus: ${summary.v094SelfTestStatus?.status || 'missing'}`);
+            console.log(`- remoteProductContextRestoreStatus: ${summary.remoteProductContextRestoreStatus?.status || 'missing'}`);
+            console.log(`- productRelevantEvidenceLockStatus: ${summary.productRelevantEvidenceLockStatus?.status || 'missing'}`);
+            console.log(`- productBaselineContinuityStatus: ${summary.productBaselineContinuityStatus?.status || 'missing'}`);
+            console.log(`- skipNpmProductBypassStatus: ${summary.skipNpmProductBypassStatus?.status || 'missing'}`);
+            console.log(`- pullRequestContextFidelityStatus: ${summary.pullRequestContextFidelityStatus?.status || 'missing'}`);
+            console.log(`- productContextSafeArtifactStatus: ${summary.productContextSafeArtifactStatus?.status || 'missing'}`);
+            console.log(`- runtimeJobSafetyStatus: ${summary.runtimeJobSafetyStatus?.status || 'missing'}`);
+            console.log(`- txPathStateEvidenceStatus: ${summary.txPathStateEvidenceStatus?.status || 'missing'}`);
+            console.log(`- envConsistencyStatus: ${summary.envConsistencyStatus?.status || 'missing'}`);
+            console.log(`- stagingNoTxPreflightStatus: ${summary.stagingNoTxPreflightStatus?.status || 'missing'}`);
+            console.log(`- runtimeLogSecretScanStatus: ${summary.runtimeLogSecretScanStatus?.status || 'missing'}`);
+            console.log(`- chainScopeStatus: ${summary.chainScopeStatus?.status || 'missing'}`);
+            console.log(`- falsePositiveBudgetStatus: ${summary.falsePositiveBudgetStatus?.status || 'missing'}`);
             console.log(`- prEvidenceCompactStatus: ${summary.prEvidenceCompactStatus?.status || 'missing'}`);
             console.log(`- reviewPolicyClassifierStatus: ${summary.reviewPolicyClassifierStatus?.status || 'missing'}`);
             console.log(`- goalConditionStatus: ${summary.goalConditionStatus?.status || 'missing'}`);
@@ -214,6 +228,12 @@ jobs:
             codex-safe-artifact-classification.safe.json
             codex-pr-evidence-rendered.safe.json
             codex-evidence-auto-repair-hint.safe.json
+            codex-same-head-artifact-evidence.safe.json
+            codex-docker-smoke-artifact.safe.json
+            codex-pr-evidence-compact.safe.json
+            codex-product-context-safe-artifact.safe.json
+            codex-product-baseline-continuity.safe.json
+            codex-false-positive-budget.safe.json
             codex-workflow-preflight.safe.json
             codex-test-metrics.safe.json
           if-no-files-found: ignore

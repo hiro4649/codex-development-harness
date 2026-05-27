@@ -1,11 +1,11 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
-  "harnessVersion": "0.9.3",
-  "policy": "version_lineage",
-  "requiredActiveVersion": "0.9.3",
-  "failReasonCodes": [
-    "version_lineage_failed",
-    "active_marker_version_mismatch"
-  ],
-  "safeSummaryOnly": true
+    "marker":  "CODEX_QUALITY_HARNESS_FILE v0.9.4",
+    "harnessVersion":  "0.9.4",
+    "policy":  "version_lineage",
+    "requiredActiveVersion":  "0.9.4",
+    "failReasonCodes":  [
+                            "version_lineage_failed",
+                            "active_marker_version_mismatch"
+                        ],
+    "safeSummaryOnly":  true
 }

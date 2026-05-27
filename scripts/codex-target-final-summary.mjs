@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.3
+// CODEX_QUALITY_HARNESS_FILE v0.9.4
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -48,6 +48,21 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     goalCondition: report.goalConditionStatus?.status || 'missing',
     reviewPolicyClassifier: report.reviewPolicyClassifierStatus?.status || 'missing',
     prEvidenceCompact: report.prEvidenceCompactStatus?.status || 'missing',
+    remoteProductContextRestore: report.remoteProductContextRestoreStatus?.status || 'missing',
+    productRelevantEvidenceLock: report.productRelevantEvidenceLockStatus?.status || 'missing',
+    productBaselineContinuity: report.productBaselineContinuityStatus?.status || 'missing',
+    skipNpmProductBypass: report.skipNpmProductBypassStatus?.status || 'missing',
+    pullRequestContextFidelity: report.pullRequestContextFidelityStatus?.status || 'missing',
+    productVerificationContext: report.productVerificationContextStatus?.status || 'missing',
+    productEvidencePropagation: report.productEvidencePropagationStatus?.status || 'missing',
+    productContextSafeArtifact: report.productContextSafeArtifactStatus?.status || 'missing',
+    runtimeJobSafety: report.runtimeJobSafetyStatus?.status || 'missing',
+    txPathStateEvidence: report.txPathStateEvidenceStatus?.status || 'missing',
+    envConsistency: report.envConsistencyStatus?.status || 'missing',
+    stagingNoTxPreflight: report.stagingNoTxPreflightStatus?.status || 'missing',
+    runtimeLogSecretScan: report.runtimeLogSecretScanStatus?.status || 'missing',
+    chainScope: report.chainScopeStatus?.status || 'missing',
+    falsePositiveBudget: report.falsePositiveBudgetStatus?.status || 'missing',
     baselineHealth: report.baselineHealthStatus?.status || 'missing',
     evidenceContinuity: report.evidenceContinuityStatus?.status || 'missing',
     prBodySurfaceNormalizer: report.prBodySurfaceNormalizerStatus?.status || 'missing',
@@ -60,6 +75,7 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     v090SelfTest: report.v090SelfTestStatus?.status || 'missing',
     v092SelfTest: report.v092SelfTestStatus?.status || 'missing',
     v093SelfTest: report.v093SelfTestStatus?.status || 'missing',
+    v094SelfTest: report.v094SelfTestStatus?.status || 'missing',
     stalePrAudit: report.stalePrAuditStatus?.status || 'not_applicable',
     reasonSummary: report.reasonSummary?.status || report.reasonSummaryStatus?.status || 'missing',
     runtimeReadinessClaimed: Boolean(report.changeClassificationStatus?.runtimeReadinessClaimed),

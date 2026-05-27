@@ -1,0 +1,25 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.4",
+  "harnessVersion": "0.9.4",
+  "classifications": [
+    "product_context_missing",
+    "baseline_missing",
+    "skip_npm_bypass_attempt",
+    "workflow_dispatch_not_substitute",
+    "same_head_mismatch",
+    "body_only_repair_allowed",
+    "code_repair_required",
+    "rerun_same_head_allowed",
+    "manual_required"
+  ],
+  "forbiddenFields": [
+    "rawLogs",
+    "rawDiffs",
+    "secret",
+    "endpoint",
+    "privateAbsolutePath",
+    "productionData",
+    "personalData"
+  ],
+  "safeSummaryOnly": true
+}
