@@ -1,0 +1,24 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
+  "harnessVersion": "0.9.3",
+  "schemaVersion": "1.0.0",
+  "fixtures": [
+    {
+      "path": "scripts/codex-local-quality-gate.mjs",
+      "expected": "harness_managed"
+    },
+    {
+      "path": "scripts/run-tests.js",
+      "expectedWhenTargetManifestSaysSo": "product_relevant"
+    },
+    {
+      "path": "scripts/dev-server.js",
+      "expectedWhenTargetManifestSaysSo": "dev_server_entrypoint"
+    },
+    {
+      "path": "scripts/unknown-tool.js",
+      "expected": "manual_required"
+    }
+  ],
+  "safeSummaryOnly": true
+}

@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
-  "harnessVersion": "0.9.2",
-  "sourceHarnessVersion": "0.9.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
+  "harnessVersion": "0.9.3",
+  "sourceHarnessVersion": "0.9.3",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -182,7 +182,22 @@
     "docs/process/CODEX_ENVIRONMENT_PROFILE_SCHEMA.json",
     "docs/process/CODEX_AGENTS_CONTEXT_BUDGET_POLICY.md",
     "docs/process/CODEX_EVIDENCE_AUTO_REPAIR_HINT_SCHEMA.json",
-    "docs/process/CODEX_V092_EVAL_CASES.json"
+    "docs/process/CODEX_V092_EVAL_CASES.json",
+    "docs/process/CODEX_TARGET_HOTFIX_PRESERVATION_POLICY.md",
+    "docs/process/CODEX_TARGET_HOTFIX_PRESERVATION_POLICY.json",
+    "docs/process/CODEX_TARGET_PATCH_MANIFEST_SCHEMA.json",
+    "docs/process/CODEX_TARGET_ROLLOUT_CONFLICT_POLICY.md",
+    "docs/process/CODEX_TARGET_ROLLOUT_CONFLICT_POLICY.json",
+    "docs/process/CODEX_REMOTE_PRODUCT_PR_CONTEXT_FIXTURES.json",
+    "docs/process/CODEX_TARGET_SCRIPT_CLASSIFICATION_FIXTURES.json",
+    "docs/process/CODEX_SAME_HEAD_ARTIFACT_EVIDENCE_SCHEMA.json",
+    "docs/process/CODEX_DOCKER_SMOKE_ARTIFACT_POLICY.md",
+    "docs/process/CODEX_DOCKER_SMOKE_ARTIFACT_POLICY.json",
+    "docs/process/CODEX_TARGET_SKIP_NPM_PRODUCT_OVERRIDE_POLICY.md",
+    "docs/process/CODEX_GOAL_CONDITION_POLICY.md",
+    "docs/process/CODEX_REVIEW_POLICY_CLASSIFIER_POLICY.md",
+    "docs/process/CODEX_PR_EVIDENCE_COMPACT_POLICY.md",
+    "docs/process/CODEX_V093_EVAL_CASES.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -274,7 +289,19 @@
     "codex-environment-profile-gate.mjs",
     "codex-agents-context-budget-gate.mjs",
     "codex-evidence-auto-repair-hint.mjs",
-    "codex-v092-self-test.mjs"
+    "codex-v092-self-test.mjs",
+    "codex-target-hotfix-preservation-gate.mjs",
+    "codex-target-patch-manifest.mjs",
+    "codex-target-rollout-conflict-gate.mjs",
+    "codex-remote-product-pr-context-fixture.mjs",
+    "codex-target-script-classification-fixture.mjs",
+    "codex-same-head-artifact-evidence-gate.mjs",
+    "codex-docker-smoke-artifact-gate.mjs",
+    "codex-target-skip-npm-product-override-gate.mjs",
+    "codex-goal-condition-gate.mjs",
+    "codex-review-policy-classifier.mjs",
+    "codex-pr-evidence-compact-gate.mjs",
+    "codex-v093-self-test.mjs"
   ],
   "optionalFiles": []
 }

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.3 -->
 # Curator Report Policy
 
 Curator output is report-only. It must not move, delete, archive, patch, commit,

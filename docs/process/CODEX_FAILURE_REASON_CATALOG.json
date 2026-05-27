@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
-  "harnessVersion": "0.9.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
+  "harnessVersion": "0.9.3",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -2048,6 +2048,174 @@
       "severity": "error",
       "safeMessage": "Suggested evidence repair would weaken a gate.",
       "nextBestFix": "Fix the underlying failure instead of editing claims.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_hotfix_overwritten",
+      "gate": "targetHotfixPreservation",
+      "severity": "error",
+      "safeMessage": "A target hotfix or adaptation would be overwritten.",
+      "nextBestFix": "Preserve or migrate the target patch with evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_patch_manifest_missing",
+      "gate": "targetPatchManifest",
+      "severity": "error",
+      "safeMessage": "Target patch manifest evidence is missing.",
+      "nextBestFix": "Add or repair the target patch manifest entry.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_rollout_conflict_detected",
+      "gate": "targetRolloutConflict",
+      "severity": "error",
+      "safeMessage": "A target rollout conflict was detected.",
+      "nextBestFix": "Resolve the conflict before applying source harness files.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_only_policy_deleted",
+      "gate": "targetRolloutConflict",
+      "severity": "error",
+      "safeMessage": "A target-only policy would be deleted.",
+      "nextBestFix": "Keep the target policy or provide migration evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_pr_context_missing",
+      "gate": "remoteProductPrContext",
+      "severity": "error",
+      "safeMessage": "Remote product PR context evidence is missing.",
+      "nextBestFix": "Run current-head PR checks with product baseline evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_dispatch_used_as_pr_substitute",
+      "gate": "remoteProductPrContext",
+      "severity": "error",
+      "safeMessage": "workflow_dispatch evidence was used as a PR substitute.",
+      "nextBestFix": "Use the pull_request check for the current head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "scripts_run_tests_misclassified",
+      "gate": "targetScriptClassification",
+      "severity": "error",
+      "safeMessage": "scripts/run-tests.js was misclassified.",
+      "nextBestFix": "Restore target script classification.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_script_classification_lost",
+      "gate": "targetScriptClassification",
+      "severity": "error",
+      "safeMessage": "Target script classification was lost.",
+      "nextBestFix": "Restore script classification fixture or manifest entry.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "same_head_artifact_mismatch",
+      "gate": "sameHeadArtifactEvidence",
+      "severity": "error",
+      "safeMessage": "Artifact evidence does not match the current head.",
+      "nextBestFix": "Regenerate same-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "same_head_artifact_missing",
+      "gate": "sameHeadArtifactEvidence",
+      "severity": "error",
+      "safeMessage": "Required same-head artifact evidence is missing.",
+      "nextBestFix": "Create current-head safe artifact evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "manual_confirmation_stale_head",
+      "gate": "sameHeadArtifactEvidence",
+      "severity": "error",
+      "safeMessage": "Manual confirmation is stale for the current head.",
+      "nextBestFix": "Regenerate current-head manual confirmation.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "docker_smoke_artifact_missing",
+      "gate": "dockerSmokeArtifact",
+      "severity": "error",
+      "safeMessage": "Docker smoke artifact is required but missing.",
+      "nextBestFix": "Run Docker smoke and upload safe current-head artifact.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "docker_smoke_head_mismatch",
+      "gate": "dockerSmokeArtifact",
+      "severity": "error",
+      "safeMessage": "Docker smoke artifact head does not match PR head.",
+      "nextBestFix": "Regenerate Docker smoke for the current PR head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "docker_smoke_fast_path_skip_forbidden",
+      "gate": "dockerSmokeArtifact",
+      "severity": "error",
+      "safeMessage": "Docker smoke was skipped by fast path or skip-npm.",
+      "nextBestFix": "Run Docker smoke for Docker-relevant changes.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_skip_npm_product_override",
+      "gate": "targetSkipNpmProductOverride",
+      "severity": "error",
+      "safeMessage": "CODEX_SKIP_NPM bypassed product verification.",
+      "nextBestFix": "Require product baseline or remove product-relevant scope.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "goal_condition_missing",
+      "gate": "goalCondition",
+      "severity": "error",
+      "safeMessage": "Goal condition is incomplete.",
+      "nextBestFix": "Add goal, measurable end state, proof command, must-not-change, stop condition, and max scope.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "goal_scope_expansion_detected",
+      "gate": "goalCondition",
+      "severity": "error",
+      "safeMessage": "Goal scope expanded beyond the requested task.",
+      "nextBestFix": "Stop at the requested scope.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "review_policy_classifier_failed",
+      "gate": "reviewPolicyClassifier",
+      "severity": "error",
+      "safeMessage": "Review policy classification failed.",
+      "nextBestFix": "Provide review evidence appropriate for the risk class.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_evidence_compact_failed",
+      "gate": "prEvidenceCompact",
+      "severity": "error",
+      "safeMessage": "PR evidence compact check failed.",
+      "nextBestFix": "Move detailed evidence to safe artifacts and keep PR body concise.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_body_too_large",
+      "gate": "prEvidenceCompact",
+      "severity": "warning",
+      "safeMessage": "PR body exceeds compact evidence budget.",
+      "nextBestFix": "Summarize large lists and link safe artifacts.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "raw_log_in_pr_body",
+      "gate": "prEvidenceCompact",
+      "severity": "error",
+      "safeMessage": "Raw log content was found in the PR body.",
+      "nextBestFix": "Remove raw logs and use safe summaries.",
       "canManualConfirmationOverride": false
     }
   ]

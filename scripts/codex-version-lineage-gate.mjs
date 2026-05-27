@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.2
+// CODEX_QUALITY_HARNESS_FILE v0.9.3
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,18 +66,19 @@ export function buildVersionLineageReport(env = process.env) {
     if (manifest.sourceHarnessVersion && manifest.sourceHarnessVersion !== HARNESS_VERSION) failures.push('version_lineage_failed');
     const scriptNames = manifest.scriptNames || [];
     if (!scriptNames.includes('codex-v092-self-test.mjs')) failures.push('version_lineage_v092_self_test_missing');
+    if (!scriptNames.includes('codex-v093-self-test.mjs')) failures.push('version_lineage_v093_self_test_missing');
   }
 
   const missing = paths.filter((file) => !fs.existsSync(file));
   for (const file of missing) failures.push(`missing:${file}`);
 
   const readme = readText('README.md');
-  if (fs.existsSync('README.md') && !readme.includes('Version: v0.9.2')) failures.push('version_lineage_readme_mismatch');
+  if (fs.existsSync('README.md') && !readme.includes('Version: v0.9.3')) failures.push('version_lineage_readme_mismatch');
 
   const localGate = readText('scripts/codex-local-quality-gate.mjs');
   const lib = readText('scripts/codex-v080-lib.mjs');
-  if (!localGate.includes("HARNESS_VERSION = '0.9.2'")) failures.push('version_lineage_local_gate_mismatch');
-  if (!lib.includes("HARNESS_VERSION = '0.9.2'")) failures.push('version_lineage_lib_mismatch');
+  if (!localGate.includes("HARNESS_VERSION = '0.9.3'")) failures.push('version_lineage_local_gate_mismatch');
+  if (!lib.includes("HARNESS_VERSION = '0.9.3'")) failures.push('version_lineage_lib_mismatch');
 
   for (const file of paths.filter((item) => fs.existsSync(item))) {
     const version = firstMarkerVersion(file);

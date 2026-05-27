@@ -1,0 +1,84 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
+  "harnessVersion": "0.9.3",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "harnessVersion",
+    "targetRepository",
+    "patches",
+    "safeSummaryOnly"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "harnessVersion": {
+      "type": "string"
+    },
+    "targetRepository": {
+      "type": "string"
+    },
+    "safeSummaryOnly": {
+      "const": true
+    },
+    "patches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "path",
+          "classification",
+          "owner",
+          "reason",
+          "introducedBy",
+          "preservationMode",
+          "expectedDuringRollout",
+          "safeSummary"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "classification": {
+            "enum": [
+              "target_hotfix",
+              "target_specific_adaptation",
+              "temporary_workaround",
+              "deprecated_patch",
+              "unknown"
+            ]
+          },
+          "owner": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "introducedBy": {
+            "type": "string"
+          },
+          "preservationMode": {
+            "enum": [
+              "preserve",
+              "migrate",
+              "remove_with_evidence",
+              "manual_required"
+            ]
+          },
+          "expectedDuringRollout": {
+            "type": "boolean"
+          },
+          "safeSummary": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

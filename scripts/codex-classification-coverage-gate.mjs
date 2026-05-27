@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.2
+// CODEX_QUALITY_HARNESS_FILE v0.9.3
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
@@ -18,6 +18,8 @@ const allowedClassifications = new Set([
   'test',
   'workflow',
   'product_source',
+  'product_relevant',
+  'verification_relevant',
   'product_runtime_entrypoint',
   'dev_server_entrypoint',
   'config',

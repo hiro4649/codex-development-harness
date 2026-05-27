@@ -1,0 +1,27 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
+  "harnessVersion": "0.9.3",
+  "schemaVersion": "1.0.0",
+  "classifications": [
+    "pure_old_harness_drift",
+    "target_hotfix",
+    "target_specific_adaptation",
+    "pre_existing_uncommitted_change",
+    "source_template_update",
+    "unknown"
+  ],
+  "failConditions": [
+    "target_hotfix_detected_not_preserved",
+    "target_specific_adaptation_overwritten",
+    "existing_uncommitted_change_mixed",
+    "target_only_policy_deleted_without_migration",
+    "target_patch_missing_manifest_entry",
+    "unknown_target_delta_overwritten"
+  ],
+  "manualConditions": [
+    "preservation_decision_missing",
+    "owner_note_missing",
+    "migration_unclear"
+  ],
+  "safeSummaryOnly": true
+}

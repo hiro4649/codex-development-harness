@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.2
+// CODEX_QUALITY_HARNESS_FILE v0.9.3
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, simpleStatus, writeJsonReport } from './codex-v080-lib.mjs';
@@ -9,6 +9,27 @@ import { buildSafeArtifactIndex } from './codex-safe-artifact-index.mjs';
 import { buildFinalSummary } from './codex-target-final-summary.mjs';
 import { buildDiagnosticConsolidatedSummary } from './codex-diagnostic-consolidation-runner.mjs';
 import { buildInvalidReportRecoverySummary } from './codex-invalid-report-recovery.mjs';
+
+const v093StatusKeys = [
+  'previousTargetHotfixPreservationStatus',
+  'targetPatchManifestStatus',
+  'targetRolloutConflictStatus',
+  'remoteProductPrContextFixtureStatus',
+  'targetScriptClassificationFixtureStatus',
+  'sameHeadArtifactEvidenceStatus',
+  'dockerSmokeCurrentHeadArtifactStatus',
+  'targetSkipNpmProductOverrideStatus',
+  'goalConditionStatus',
+  'reviewPolicyClassifierStatus',
+  'prEvidenceCompactStatus',
+  'v093SelfTestStatus',
+];
+const v093OptionalNotApplicable = new Set([
+  'previousTargetHotfixPreservationStatus',
+  'targetPatchManifestStatus',
+  'targetRolloutConflictStatus',
+  'dockerSmokeCurrentHeadArtifactStatus',
+]);
 
 const sourceRequiredPass = [
   'sourceHarnessValidationStatus',
@@ -27,6 +48,7 @@ const sourceRequiredPass = [
   'artifactLifeboatStatus',
   'classificationCoverageStatus',
   'versionLineageStatus',
+  ...v093StatusKeys,
   'remoteLocalParityStatus',
   'noArtifactFailureStatus',
   'prEvidenceRendererStatus',
@@ -121,6 +143,7 @@ const targetRequiredPass = [
   'artifactLifeboatStatus',
   'classificationCoverageStatus',
   'versionLineageStatus',
+  ...v093StatusKeys,
   'remoteLocalParityStatus',
   'noArtifactFailureStatus',
   'prEvidenceRendererStatus',
@@ -178,6 +201,7 @@ const targetRequiredPass = [
 ];
 
 const optionalNotApplicable = new Set([
+  ...v093OptionalNotApplicable,
   'agentMemoryPolicyStatus',
   'skillLifecyclePolicyStatus',
   'curatorSuggestionStatus',
@@ -309,6 +333,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   ]);
   const v092Fields = new Set([
     'versionLineageStatus',
+  ...v093StatusKeys,
     'prEvidenceRendererStatus',
     'safeArtifactClassifierStatus',
     'securityLifecycleStatus',
@@ -320,6 +345,7 @@ export function evaluateWorkflowReport(report, options = {}) {
     'evidenceAutoRepairHintStatus',
     'v092SelfTestStatus',
   ]);
+  const v093Fields = new Set(v093StatusKeys);
   const hasV084Shape = report.harnessVersion === HARNESS_VERSION || [...v084Fields].some((key) => report[key]);
   const hasV085Shape = report.harnessVersion === HARNESS_VERSION || [...v085Fields].some((key) => report[key]);
   const hasV086Shape = report.harnessVersion === HARNESS_VERSION || [...v086Fields].some((key) => report[key]);
@@ -328,6 +354,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   const hasV089Shape = report.harnessVersion === HARNESS_VERSION || [...v089Fields].some((key) => report[key]);
   const hasV090Shape = report.harnessVersion === HARNESS_VERSION || [...v090Fields].some((key) => report[key]);
   const hasV092Shape = report.harnessVersion === HARNESS_VERSION || [...v092Fields].some((key) => report[key]);
+  const hasV093Shape = report.harnessVersion === HARNESS_VERSION || [...v093Fields].some((key) => report[key]);
   const required = (mode === 'target' ? targetRequiredPass : sourceRequiredPass)
     .filter((key) => hasV084Shape || !v084Fields.has(key))
     .filter((key) => hasV085Shape || !v085Fields.has(key))
@@ -336,7 +363,8 @@ export function evaluateWorkflowReport(report, options = {}) {
     .filter((key) => hasV088Shape || !v088Fields.has(key))
     .filter((key) => hasV089Shape || !v089Fields.has(key))
     .filter((key) => hasV090Shape || !v090Fields.has(key))
-    .filter((key) => hasV092Shape || !v092Fields.has(key));
+    .filter((key) => hasV092Shape || !v092Fields.has(key))
+    .filter((key) => hasV093Shape || !v093Fields.has(key));
   const failures = [];
   for (const key of required) {
     const status = report[key]?.status || 'missing';
@@ -446,6 +474,9 @@ function writeArtifacts(result, report) {
   fs.writeFileSync('codex-safe-artifact-classification.safe.json', JSON.stringify(report.safeArtifactClassifierStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
   fs.writeFileSync('codex-pr-evidence-rendered.safe.json', JSON.stringify(report.prEvidenceRendererStatus?.blocks || { status: report.prEvidenceRendererStatus?.status || 'missing', safeSummaryOnly: true }, null, 2));
   fs.writeFileSync('codex-evidence-auto-repair-hint.safe.json', JSON.stringify(report.evidenceAutoRepairHintStatus?.hint || { status: report.evidenceAutoRepairHintStatus?.status || 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-same-head-artifact-evidence.safe.json', JSON.stringify(report.sameHeadArtifactEvidenceStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-docker-smoke-artifact.safe.json', JSON.stringify(report.dockerSmokeCurrentHeadArtifactStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-pr-evidence-compact.safe.json', JSON.stringify(report.prEvidenceCompactStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
   if (result.mode === 'target') {
     fs.writeFileSync('codex-target-quality-summary.json', JSON.stringify({
       targetQualityScoreStatus: report.targetQualityScoreStatus || { status: 'missing' },
@@ -467,11 +498,14 @@ function writeArtifacts(result, report) {
     { artifactName: 'codex-safe-artifact-classification.safe.json', path: 'codex-safe-artifact-classification.safe.json', status: 'present' },
     { artifactName: 'codex-pr-evidence-rendered.safe.json', path: 'codex-pr-evidence-rendered.safe.json', status: 'present' },
     { artifactName: 'codex-evidence-auto-repair-hint.safe.json', path: 'codex-evidence-auto-repair-hint.safe.json', status: 'present' },
+    { artifactName: 'codex-same-head-artifact-evidence.safe.json', path: 'codex-same-head-artifact-evidence.safe.json', status: 'present' },
+    { artifactName: 'codex-docker-smoke-artifact.safe.json', path: 'codex-docker-smoke-artifact.safe.json', status: 'present' },
+    { artifactName: 'codex-pr-evidence-compact.safe.json', path: 'codex-pr-evidence-compact.safe.json', status: 'present' },
     ...(result.mode === 'target' ? [{ artifactName: 'codex-target-quality-summary.json', path: 'codex-target-quality-summary.json', status: 'present' }] : []),
     { artifactName: 'codex-workflow-preflight.safe.json', path: 'codex-workflow-preflight.safe.json', status: fs.existsSync('codex-workflow-preflight.safe.json') ? 'present' : 'missing', reasonCodes: fs.existsSync('codex-workflow-preflight.safe.json') ? [] : ['safe_artifact_missing'] },
     { artifactName: 'codex-test-metrics.safe.json', path: 'codex-test-metrics.safe.json', status: fs.existsSync('codex-test-metrics.safe.json') ? 'present' : 'not_applicable' },
     { artifactName: 'codex-invalid-report-recovery-summary.json', path: 'codex-invalid-report-recovery-summary.json', status: fs.existsSync('codex-invalid-report-recovery-summary.json') ? 'present' : 'not_applicable' },
-  ], result.mode, { enforceRequired: true });
+  ], result.mode, { enforceRequired: true, maxArtifacts: 20 });
   fs.writeFileSync('codex-safe-artifact-index.json', JSON.stringify(index, null, 2));
 }
 

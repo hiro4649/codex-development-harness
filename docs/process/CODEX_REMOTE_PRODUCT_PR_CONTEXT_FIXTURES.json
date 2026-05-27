@@ -1,0 +1,29 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
+  "harnessVersion": "0.9.3",
+  "schemaVersion": "1.0.0",
+  "fixtures": [
+    {
+      "id": "pull_request_product_skip_npm_blocks",
+      "event": "pull_request",
+      "targetMode": true,
+      "productRelevantChanged": true,
+      "skipNpm": true,
+      "expectedStatus": "fail"
+    },
+    {
+      "id": "workflow_dispatch_not_pr_substitute",
+      "event": "workflow_dispatch",
+      "productRelevantChanged": true,
+      "expectedStatus": "fail"
+    },
+    {
+      "id": "same_head_required_for_remote_product_evidence",
+      "event": "pull_request",
+      "productRelevantChanged": true,
+      "sameHeadEvidenceRequired": true,
+      "expectedStatus": "fail_without_evidence"
+    }
+  ],
+  "safeSummaryOnly": true
+}
