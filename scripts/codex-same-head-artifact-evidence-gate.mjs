@@ -8,8 +8,10 @@ function parseInput(env = process.env) {
     try { return JSON.parse(env.CODEX_SAME_HEAD_EVIDENCE_JSON); }
     catch { return { invalidInput: true }; }
   }
+  const prContext = isPrContext(env);
+  const explicitLocalHead = env.CODEX_LOCAL_HEAD_SHA || (prContext ? env.CODEX_PR_HEAD_SHA : '') || env.GITHUB_SHA || '';
   return {
-    localHeadSha: env.GITHUB_SHA || env.CODEX_LOCAL_HEAD_SHA || '',
+    localHeadSha: explicitLocalHead,
     prHeadSha: env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '',
     evidencePackHeadSha: env.CODEX_EVIDENCE_PACK_HEAD_SHA || env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '',
     manualConfirmationHeadSha: env.CODEX_MANUAL_CONFIRMATION_HEAD_SHA || env.CODEX_PR_HEAD_SHA || env.GITHUB_SHA || '',
