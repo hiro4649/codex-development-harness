@@ -171,12 +171,14 @@ export function buildEvalTraceHarvestReport(input = parseJson(process.env.CODEX_
 }
 
 export function buildOperatorVisibleDeltaReport(input = parseJson(process.env.CODEX_OPERATOR_VISIBLE_DELTA_JSON) || {}) {
-  if (isHarnessOnly(input, process.env) || parseBool(input.docsOnly)) return notApplicable('operatorVisibleDeltaStatus', 'no_product_visible_delta');
   const productVisible = parseBool(input.productVisibleChange) || parseBool(input.uiApiOutputChange);
-  if (!productVisible && !parseBool(input.runtimeReadinessClaimed)) return notApplicable('operatorVisibleDeltaStatus', 'no_product_visible_delta');
+  const runtimeReadinessClaimed = parseBool(input.runtimeReadinessClaimed);
+  if (parseBool(input.docsOnly) || parseBool(input.harnessOnly)) return notApplicable('operatorVisibleDeltaStatus', 'no_product_visible_delta');
+  if (!productVisible && !runtimeReadinessClaimed && isHarnessOnly(input, process.env)) return notApplicable('operatorVisibleDeltaStatus', 'no_product_visible_delta');
+  if (!productVisible && !runtimeReadinessClaimed) return notApplicable('operatorVisibleDeltaStatus', 'no_product_visible_delta');
   const reasonCodes = [];
   if (!input.beforeVisibleBehavior || !input.afterVisibleBehavior || !input.proofCommand) reasonCodes.push('operator_visible_delta_missing');
-  if (parseBool(input.runtimeReadinessClaimed) && !input.artifactLink) reasonCodes.push('operator_visible_delta_missing');
+  if (runtimeReadinessClaimed && !input.artifactLink) reasonCodes.push('operator_visible_delta_missing');
   if (parseBool(input.productionReadinessClaimed) && !parseBool(input.goNoGoEvidencePresent)) reasonCodes.push('operator_visible_delta_missing');
   return safe('operatorVisibleDeltaStatus', reasonCodes.length ? 'fail' : 'pass', { reasonCodes });
 }
