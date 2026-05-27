@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.9.2
+# CODEX_QUALITY_HARNESS_FILE v0.9.3
 name: quality-gate
 
 on:
@@ -32,7 +32,7 @@ jobs:
           safe_head="$(printf '%s' "${CODEX_PRECHECKOUT_HEAD_SHA:-}" | tr -cd 'A-Fa-f0-9' | cut -c1-64)"
           cat > "$RUNNER_TEMP/codex-minimal-safe-failure.json" <<JSON
           {
-            "schemaVersion": "0.9.2",
+            "schemaVersion": "0.9.3",
             "phase": "pre_checkout",
             "status": "fail",
             "safeSummaryOnly": true,
@@ -169,6 +169,18 @@ jobs:
             console.log(`- v089SelfTestStatus: ${summary.v089SelfTestStatus?.status || 'missing'}`);
             console.log(`- v090SelfTestStatus: ${summary.v090SelfTestStatus?.status || 'missing'}`);
             console.log(`- v092SelfTestStatus: ${summary.v092SelfTestStatus?.status || 'missing'}`);
+            console.log(`- v093SelfTestStatus: ${summary.v093SelfTestStatus?.status || 'missing'}`);
+            console.log(`- prEvidenceCompactStatus: ${summary.prEvidenceCompactStatus?.status || 'missing'}`);
+            console.log(`- reviewPolicyClassifierStatus: ${summary.reviewPolicyClassifierStatus?.status || 'missing'}`);
+            console.log(`- goalConditionStatus: ${summary.goalConditionStatus?.status || 'missing'}`);
+            console.log(`- targetSkipNpmProductOverrideStatus: ${summary.targetSkipNpmProductOverrideStatus?.status || 'missing'}`);
+            console.log(`- dockerSmokeCurrentHeadArtifactStatus: ${summary.dockerSmokeCurrentHeadArtifactStatus?.status || 'missing'}`);
+            console.log(`- sameHeadArtifactEvidenceStatus: ${summary.sameHeadArtifactEvidenceStatus?.status || 'missing'}`);
+            console.log(`- targetScriptClassificationFixtureStatus: ${summary.targetScriptClassificationFixtureStatus?.status || 'missing'}`);
+            console.log(`- remoteProductPrContextFixtureStatus: ${summary.remoteProductPrContextFixtureStatus?.status || 'missing'}`);
+            console.log(`- targetRolloutConflictStatus: ${summary.targetRolloutConflictStatus?.status || 'missing'}`);
+            console.log(`- targetPatchManifestStatus: ${summary.targetPatchManifestStatus?.status || 'missing'}`);
+            console.log(`- previousTargetHotfixPreservationStatus: ${summary.previousTargetHotfixPreservationStatus?.status || 'missing'}`);
             console.log(`- pathMode: ${diagnostic?.pathMode || 'missing'}`);
             console.log(`- topNextAction: ${diagnostic?.nextActions?.[0] || 'missing'}`);
           } else {

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.2
+// CODEX_QUALITY_HARNESS_FILE v0.9.3
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -37,6 +37,17 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     environmentProfile: report.environmentProfileStatus?.status || 'missing',
     agentsContextBudget: report.agentsContextBudgetStatus?.status || 'missing',
     evidenceAutoRepairHint: report.evidenceAutoRepairHintStatus?.status || 'missing',
+    previousTargetHotfixPreservation: report.previousTargetHotfixPreservationStatus?.status || 'missing',
+    targetPatchManifest: report.targetPatchManifestStatus?.status || 'missing',
+    targetRolloutConflict: report.targetRolloutConflictStatus?.status || 'missing',
+    remoteProductPrContextFixture: report.remoteProductPrContextFixtureStatus?.status || 'missing',
+    targetScriptClassificationFixture: report.targetScriptClassificationFixtureStatus?.status || 'missing',
+    sameHeadArtifactEvidence: report.sameHeadArtifactEvidenceStatus?.status || 'missing',
+    dockerSmokeCurrentHeadArtifact: report.dockerSmokeCurrentHeadArtifactStatus?.status || 'missing',
+    targetSkipNpmProductOverride: report.targetSkipNpmProductOverrideStatus?.status || 'missing',
+    goalCondition: report.goalConditionStatus?.status || 'missing',
+    reviewPolicyClassifier: report.reviewPolicyClassifierStatus?.status || 'missing',
+    prEvidenceCompact: report.prEvidenceCompactStatus?.status || 'missing',
     baselineHealth: report.baselineHealthStatus?.status || 'missing',
     evidenceContinuity: report.evidenceContinuityStatus?.status || 'missing',
     prBodySurfaceNormalizer: report.prBodySurfaceNormalizerStatus?.status || 'missing',
@@ -48,6 +59,7 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     v089SelfTest: report.v089SelfTestStatus?.status || 'missing',
     v090SelfTest: report.v090SelfTestStatus?.status || 'missing',
     v092SelfTest: report.v092SelfTestStatus?.status || 'missing',
+    v093SelfTest: report.v093SelfTestStatus?.status || 'missing',
     stalePrAudit: report.stalePrAuditStatus?.status || 'not_applicable',
     reasonSummary: report.reasonSummary?.status || report.reasonSummaryStatus?.status || 'missing',
     runtimeReadinessClaimed: Boolean(report.changeClassificationStatus?.runtimeReadinessClaimed),

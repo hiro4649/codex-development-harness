@@ -1,0 +1,21 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
+  "harnessVersion": "0.9.3",
+  "schemaVersion": "1.0.0",
+  "dockerRelevantPatterns": [
+    "Dockerfile",
+    "Dockerfile.dev",
+    "docker-compose.yml",
+    "compose*.yml",
+    "scripts/docker*",
+    "scripts/*docker*",
+    ".github/workflows/quality-gate.yml"
+  ],
+  "failConditions": [
+    "docker_smoke_artifact_missing",
+    "docker_smoke_head_mismatch",
+    "docker_smoke_fast_path_skip_forbidden",
+    "workflow_dispatch_used_as_pr_substitute"
+  ],
+  "safeSummaryOnly": true
+}

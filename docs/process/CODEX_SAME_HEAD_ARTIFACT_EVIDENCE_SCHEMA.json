@@ -1,0 +1,40 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
+  "harnessVersion": "0.9.3",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "required": [
+    "localHeadSha",
+    "prHeadSha",
+    "evidencePackHeadSha",
+    "manualConfirmationHeadSha",
+    "remoteRunHeadSha",
+    "safeSummaryOnly"
+  ],
+  "properties": {
+    "localHeadSha": {
+      "type": "string"
+    },
+    "prHeadSha": {
+      "type": "string"
+    },
+    "evidencePackHeadSha": {
+      "type": "string"
+    },
+    "manualConfirmationHeadSha": {
+      "type": "string"
+    },
+    "remoteRunHeadSha": {
+      "type": "string"
+    },
+    "artifactHeadSha": {
+      "type": "string"
+    },
+    "safeSummaryHeadSha": {
+      "type": "string"
+    },
+    "safeSummaryOnly": {
+      "const": true
+    }
+  }
+}

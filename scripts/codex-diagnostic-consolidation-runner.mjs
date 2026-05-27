@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.2
+// CODEX_QUALITY_HARNESS_FILE v0.9.3
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -57,6 +57,21 @@ export function buildDiagnosticConsolidatedSummary(report, options = {}) {
     npmDiagnosticSummary: report?.remoteNpmDiagnosticStatus ? { status: report.remoteNpmDiagnosticStatus.status } : null,
     stalePrSummary: report?.stalePrAuditStatus ? { status: report.stalePrAuditStatus.status } : null,
     artifactIndexSummary: report?.safeArtifactIndexStatus ? { status: report.safeArtifactIndexStatus.status } : null,
+    v093Summary: {
+      previousTargetHotfixPreservation: report?.previousTargetHotfixPreservationStatus?.status || 'missing',
+      targetPatchManifest: report?.targetPatchManifestStatus?.status || 'missing',
+      targetRolloutConflict: report?.targetRolloutConflictStatus?.status || 'missing',
+      remoteProductPrContextFixture: report?.remoteProductPrContextFixtureStatus?.status || 'missing',
+      targetScriptClassificationFixture: report?.targetScriptClassificationFixtureStatus?.status || 'missing',
+      sameHeadArtifactEvidence: report?.sameHeadArtifactEvidenceStatus?.status || 'missing',
+      dockerSmokeCurrentHeadArtifact: report?.dockerSmokeCurrentHeadArtifactStatus?.status || 'missing',
+      targetSkipNpmProductOverride: report?.targetSkipNpmProductOverrideStatus?.status || 'missing',
+      goalCondition: report?.goalConditionStatus?.status || 'missing',
+      reviewPolicyClassifier: report?.reviewPolicyClassifierStatus?.status || 'missing',
+      prEvidenceCompact: report?.prEvidenceCompactStatus?.status || 'missing',
+      v093SelfTest: report?.v093SelfTestStatus?.status || 'missing',
+      safeSummaryOnly: true,
+    },
     v092Summary: {
       versionLineage: report?.versionLineageStatus?.status || 'missing',
       prEvidenceRenderer: report?.prEvidenceRendererStatus?.status || 'missing',

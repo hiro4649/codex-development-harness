@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.3 -->
 # Codex Complexity Governance Policy
 
 v0.8.8 adds lightweight complexity-aware verification governance.
