@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.4",
-  "harnessVersion": "0.9.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5",
+  "harnessVersion": "0.9.5",
   "harnessFiles": [
     "AGENTS.md",
     ".github/pull_request_template.md",

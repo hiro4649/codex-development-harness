@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.4
+// CODEX_QUALITY_HARNESS_FILE v0.9.5
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -74,6 +74,29 @@ export function buildDiagnosticConsolidatedSummary(report, options = {}) {
       chainScope: report?.chainScopeStatus?.status || 'missing',
       falsePositiveBudget: report?.falsePositiveBudgetStatus?.status || 'missing',
       v094SelfTest: report?.v094SelfTestStatus?.status || 'missing',
+      safeSummaryOnly: true,
+    },
+    v095Summary: {
+      agentsDoctrine: report?.agentsDoctrineStatus?.status || 'missing',
+      skillRouting: report?.skillRoutingStatus?.status || 'missing',
+      skillLoadBudget: report?.skillLoadBudgetStatus?.status || 'missing',
+      skillDrift: report?.skillDriftStatus?.status || 'missing',
+      agentSessionGovernance: report?.agentSessionGovernanceStatus?.status || 'missing',
+      agentContainmentBoundary: report?.agentContainmentBoundaryStatus?.status || 'missing',
+      evalTraceHarvest: report?.evalTraceHarvestStatus?.status || 'missing',
+      operatorVisibleDelta: report?.operatorVisibleDeltaStatus?.status || 'missing',
+      traceToEvalCandidate: report?.traceToEvalCandidateStatus?.status || 'missing',
+      subagentGovernance: report?.subagentGovernanceStatus?.status || 'missing',
+      subagentReviewMatrix: report?.subagentReviewMatrixStatus?.status || 'missing',
+      skillEvidenceLink: report?.skillEvidenceLinkStatus?.status || 'missing',
+      stateMachineSchema: report?.stateMachineSchemaStatus?.status || 'missing',
+      stateTransitionHelper: report?.stateTransitionHelperStatus?.status || 'missing',
+      receiptEvidenceSchema: report?.receiptEvidenceSchemaStatus?.status || 'missing',
+      workerReadinessSequence: report?.workerReadinessSequenceStatus?.status || 'missing',
+      evidenceMinimality: report?.evidenceMinimalityStatus?.status || 'missing',
+      evidenceDedup: report?.evidenceDedupStatus?.status || 'missing',
+      safeArtifactNextAction: report?.safeArtifactNextActionStatus?.status || 'missing',
+      v095SelfTest: report?.v095SelfTestStatus?.status || 'missing',
       safeSummaryOnly: true,
     },
     v093Summary: {

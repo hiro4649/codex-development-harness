@@ -1,30 +1,29 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.5 -->
 # Codex Development Harness
 
-Version: v0.9.4
-Name: Remote Product Context Restore, Runtime Job Safety, and Evidence Lock Gate
+Version: v0.9.5
+Name: Agent Doctrine, Skill Routing, State Machine Evidence, and Minimal Evidence Gate
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.4 preserves v0.9.3 target hotfix preservation, product context fidelity, and runtime artifact assurance while adding remote product context restore, product-relevant evidence lock, product baseline continuity, skip-npm product bypass protection, pull-request context fidelity, product-context safe artifact classification, runtime job safety, tx path state evidence, env consistency, staging no-tx preflight, runtime log secret scan, chain scope guard, and false-positive budget tracking.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.5 preserves v0.9.4 remote product context restore, product evidence lock, runtime job safety, tx path evidence, env consistency, and skip-npm bypass protection while adding AGENTS doctrine control, skill routing, skill load budget, skill drift detection, agent session governance, agent containment boundary checks, eval trace harvesting, operator-visible delta evidence, subagent governance, state machine schema evidence, state transition helper checks, receipt evidence schema, worker readiness sequence, evidence minimality, evidence dedup, safe artifact next-action classification, and skill evidence links.
 
-The new checks use deterministic fixtures and safe summaries. They add no external dependency, no LLM judge requirement, no MCP requirement, no browser or Playwright requirement, no hidden chain-of-thought inspection, no product command execution, and no product code change requirement.
+The new checks use deterministic fixtures and safe summaries. They add no external dependency, no LLM judge requirement, no MCP requirement, no browser or Playwright requirement, no hidden chain-of-thought inspection, no product command execution, and no product code change requirement. AGENTS.md remains compact, and skills are selectively routed instead of loaded wholesale.
 
-## What v0.9.4 Adds
+## What v0.9.5 Adds
 
-- Remote Product Context Restore Gate for preserving PR number, head/base SHA, changed files, product relevance, npm baseline, remote product baseline, and workflow_dispatch diagnostic-only state across the harness.
-- Product-Relevant Evidence Lock and Product Baseline Continuity gates for preventing product PR pass states when product verification, remote baseline, npm baseline, or same-head evidence is missing.
-- Skip NPM Product Bypass and Pull Request Context Fidelity gates so CODEX_SKIP_NPM and workflow_dispatch cannot substitute for PR-context product evidence.
-- Product Context Safe Artifact Gate for compact classification of product context failures without raw logs, raw diffs, endpoints, or private data.
-- Runtime Job Safety, Tx Path State Evidence, Env Consistency, Staging No-Tx Preflight, Runtime Log Secret Scan, and Chain Scope gates for lightweight runtime evidence locking without claiming runtime readiness.
-- False Positive Budget Gate to measure body-only repair loops, near-miss headings, repeated evidence repairs, and artifact pending loops without weakening non-overridable failures.
-- v0.9.4 deterministic self-test fixtures.
+- Agents Doctrine, Skill Routing, Skill Load Budget, and Skill Drift gates for keeping AGENTS.md compact while selecting only the needed skills.
+- Agent Session Governance and Agent Containment Boundary gates for multi-agent state, branch ownership, tool permission, network, credential, and external-content boundaries.
+- Eval Trace Harvest, Operator Visible Delta, Trace-to-Eval Candidate, Subagent Governance, and Subagent Review Matrix gates for safe review evidence without raw subagent output.
+- State Machine Schema, State Transition Helper, Receipt Evidence Schema, and Worker Readiness Sequence gates for runtime and tx path evidence without claiming runtime readiness.
+- Evidence Minimality, Evidence Dedup, Safe Artifact Next Action, and Skill Evidence Link gates for compact PR evidence and safe next actions.
+- v0.9.5 deterministic self-test fixtures.
 
-## Preserved v0.9.3 Capabilities
+## Preserved v0.9.4 Capabilities
 
-v0.9.4 keeps target hotfix preservation, target patch manifests, rollout conflict detection, remote product PR context fixtures, target script classification fixtures, same-head artifact evidence, Docker smoke current-head artifact enforcement, CODEX_SKIP_NPM product override protection, goal condition checks, review policy classification, and compact PR evidence.
+v0.9.5 keeps remote product context restore, product-relevant evidence lock, product baseline continuity, skip-npm product bypass protection, pull-request context fidelity, product-context safe artifact classification, runtime job safety, tx path state evidence, env consistency, staging no-tx preflight, runtime log secret scan, chain scope guard, false-positive budget tracking, target hotfix preservation, same-head artifact evidence, Docker smoke current-head artifact enforcement, and compact PR evidence.
 
-## What v0.9.4 Does Not Add
+## What v0.9.5 Does Not Add
 
-No external memory server, MCP dependency, required LLM judge, GEPA or DSPy dependency, AST parser dependency, browser or Playwright requirement, external API call, prompt auto-apply, hidden chain-of-thought inspection, product command execution, product code changes, runtime readiness claim, production readiness claim, or target rollout is implemented by this source update.
+No external memory server, MCP dependency, required LLM judge, GEPA or DSPy dependency, AST parser dependency, browser or Playwright requirement, external API call, prompt auto-apply, hidden chain-of-thought inspection, product command execution, product code changes, runtime readiness claim, production readiness claim, raw runtime log artifact, raw production trace artifact, or target rollout is implemented by this source update.
 
 ## Running The Core Gate
 

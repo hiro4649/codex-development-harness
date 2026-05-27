@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0.0",
+  "harnessVersion": "0.9.5",
+  "maxSelectedSkills": 5,
+  "preferredSelectedSkills": 4,
+  "routes": {
+    "target_rollout": [
+      "target-harness",
+      "evidence-integrity"
+    ],
+    "harness_change": [
+      "harness",
+      "evidence-integrity"
+    ],
+    "runtime_relevant": [
+      "runtime-safety",
+      "architecture",
+      "evidence-integrity"
+    ],
+    "tx_relevant": [
+      "runtime-safety",
+      "architecture",
+      "evidence-integrity"
+    ]
+  },
+  "safeSummaryOnly": true,
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5"
+}

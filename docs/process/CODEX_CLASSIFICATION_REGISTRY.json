@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "0.9.4",
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.4",
-  "harnessVersion": "0.9.4",
+  "schemaVersion": "0.9.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5",
+  "harnessVersion": "0.9.5",
   "entries": [
     {
       "pathPattern": "scripts/codex-*",

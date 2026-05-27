@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "1.0.0",
+  "harnessVersion": "0.9.5",
+  "maxAgentsBytes": 12000,
+  "requiredSections": [
+    "doctrine",
+    "routingMap",
+    "docsProcessLinks",
+    "authorityRequirement",
+    "forbiddenProductPaths"
+  ],
+  "safeSummaryOnly": true,
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5"
+}
