@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.0
+// CODEX_QUALITY_HARNESS_FILE v0.9.2
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-const HARNESS_VERSION = '0.9.0';
+const HARNESS_VERSION = '0.9.2';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const defaultPolicy = {

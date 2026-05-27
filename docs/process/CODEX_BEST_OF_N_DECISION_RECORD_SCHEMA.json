@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
+  "harnessVersion": "0.9.2",
+  "schemaName": "codex_best_of_n_decision_record",
+  "allowedModes": [
+    "not_used_with_reason",
+    "used_safe_summary_only",
+    "not_applicable"
+  ],
+  "forbiddenFields": [
+    "candidateText",
+    "rawModelOutput",
+    "privatePrompt",
+    "fullDiff",
+    "token",
+    "endpoint"
+  ],
+  "safeSummaryOnly": true
+}

@@ -1,0 +1,33 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
+  "harnessVersion": "0.9.2",
+  "suite": "v092",
+  "cases": [
+    "version_lineage_all_active_markers_match_092",
+    "version_lineage_old_active_marker_fails",
+    "pr_evidence_renderer_outputs_current_head_pack",
+    "pr_evidence_renderer_rejects_stale_head",
+    "pr_evidence_renderer_no_raw_log",
+    "safe_artifact_classifier_body_only_repair",
+    "safe_artifact_classifier_code_repair_required",
+    "safe_artifact_classifier_actions_queue_issue",
+    "safe_artifact_classifier_blocks_runtime_ready_without_oracle",
+    "security_lifecycle_eval_pattern_fails",
+    "security_lifecycle_workflow_permission_escalation_fails",
+    "security_lifecycle_test_fixture_pattern_warns",
+    "review_independence_writer_only_fails",
+    "review_independence_separate_checklist_passes",
+    "task_brief_high_complexity_requires_forbidden_scope",
+    "task_brief_target_rollout_harness_only_passes",
+    "best_of_n_used_without_reason_fails",
+    "best_of_n_raw_candidate_output_fails",
+    "environment_profile_gh_unavailable_for_rerun_fails",
+    "environment_profile_local_only_without_gh_warns",
+    "agents_context_budget_large_manual_fails",
+    "evidence_auto_repair_hint_forbidden_scope_missing",
+    "evidence_auto_repair_hint_does_not_weaken_gate",
+    "source_harness_only_v092_pr_fixture_pass",
+    "target_harness_rollout_v092_fixture_pass"
+  ],
+  "safeSummaryOnly": true
+}

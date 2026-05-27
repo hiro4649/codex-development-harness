@@ -1,0 +1,21 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
+  "harnessVersion": "0.9.2",
+  "schemaName": "codex_safe_artifact_classifier",
+  "classifications": [
+    "body_only_repair",
+    "code_repair_required",
+    "new_pr_required",
+    "rerun_same_head_allowed",
+    "merge_blocked_stale_evidence",
+    "merge_blocked_missing_r3_confirmation",
+    "remote_context_bug",
+    "actions_queue_or_runner_issue",
+    "auth_or_token_unavailable",
+    "billing_or_spending_limit",
+    "workflow_dispatch_not_pr_substitute",
+    "product_verification_required",
+    "runtime_readiness_not_proven"
+  ],
+  "safeSummaryOnly": true
+}

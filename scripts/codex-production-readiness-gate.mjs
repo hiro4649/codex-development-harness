@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.0
+// CODEX_QUALITY_HARNESS_FILE v0.9.2
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { buildEvidencePackReport, isStructuredEvidencePackSource } from './codex-evidence-pack-validate.mjs';
 
-export const HARNESS_VERSION = '0.9.0';
+export const HARNESS_VERSION = '0.9.2';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 export const forbiddenOutputKeys = [
   'rawDiff',
@@ -118,7 +118,7 @@ export function hasProductionClaim(body) {
   const lower = normalizeText(body);
   const rawLower = String(body || '').toLowerCase();
   const explicitReadyClaim = /\bproduction ready\b|\brelease ready\b|\bmerge ready\b|\bship ready\b/.test(lower);
-  const legacyLocalizedClaim = /\béš´å¹¢E½E¬é¨¾E¡ãƒ»E½Eãƒ»E½é™·E¿ãƒ»E½Eãƒ»E½\b|\bé™·ãƒ»ãƒ»E½ãƒ»E½é«£åŒE½½E·é™·E¿ãƒ»E½Eãƒ»E½\b/.test(lower);
+  const legacyLocalizedClaim = /\béš´å¹¢ï¿½Eï¿½ï¿½Eï¿½é¨¾ï¿½Eï¿½ãƒ»ï¿½Eï¿½Eãƒ»ï¿½Eï¿½é™·ï¿½Eï¿½ãƒ»ï¿½Eï¿½Eãƒ»ï¿½Eï¿½\b|\bé™·ãƒ»ãƒ»ï¿½Eï¿½ãƒ»ï¿½Eï¿½é«£åŒEï¿½ï¿½ï¿½Eï¿½é™·ï¿½Eï¿½ãƒ»ï¿½Eï¿½Eãƒ»ï¿½Eï¿½\b/.test(lower);
   const explicitGoDecision = /\bgo\s*(?:\/|-|\s+)\s*no\s*(?:\/|-|\s+)\s*go\s*:\s*(?:go|yes|approved|pass)\b/i.test(rawLower) ||
     /\bgo\s+(?:decision|status|conclusion)\s*:\s*(?:go|yes|approved|pass)\b/i.test(rawLower);
   return explicitReadyClaim || legacyLocalizedClaim || explicitGoDecision;

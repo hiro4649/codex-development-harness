@@ -1,19 +1,22 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.2 -->
 # Codex Development Harness
 
-Version: v0.9.0
-Name: Remote Parity, Classification Registry, and Artifact Lifeboat Gate
+Version: v0.9.2
+Name: Security Lifecycle, Evidence Automation, and Review Independence Gate
 
 This repository contains reusable Codex quality gates, policies, and safe
-evidence tooling. v0.9.0 preserves the v0.8.9 safety model while improving
-no-artifact fallback, classification coverage, entrypoint registry,
-remote/local parity, PR body template generation, and gate decision trace. The
-new checks use deterministic fixtures and safe summaries rather than hidden
-chain-of-thought inspection, raw diff storage, browser-required gates, MCP, LLM
-judges, network calls, automatic owner confirmation, or product command
-execution added by the new gates.
+evidence tooling. v0.9.2 preserves v0.9.0 remote reliability while adding
+version lineage, automated PR evidence block rendering, safe artifact
+classification, lightweight security lifecycle checks, review independence,
+task brief compilation, safe Best-of-N decision records, environment profile
+checks, AGENTS context budget control, and evidence repair hints.
 
-## What v0.9.0 Adds
+The new checks use deterministic fixtures and safe summaries. They add no
+external dependency, no LLM judge requirement, no MCP requirement, no browser or
+Playwright requirement, no hidden chain-of-thought inspection, no product command
+execution, and no product code change requirement.
+
+## What v0.9.2 Adds
 
 - Generic core mode: `CODEX_HARNESS_MODE=core`
 - Optional profile compatibility: `CODEX_PROFILE_COMPAT_MODE=optional`
@@ -86,15 +89,26 @@ execution added by the new gates.
 - Optional safe trace schema validation
 - Report-only curator and offline evolution proposal gates
 - Test coverage evidence and performance evidence gates when claims require them
+- Version Lineage Gate to align active source and target harness markers
+- PR Evidence Block Renderer for current-head safe evidence blocks
+- Safe Artifact Classifier with safe next actions for remote failures
+- Security Lifecycle Gate for lightweight deterministic edit/turn/commit checks
+- Review Independence Gate to separate writer and reviewer evidence fields
+- Task Brief Compiler for structured scope, risk, and verification surfaces
+- Best-of-N Decision Record for safe summary-only decision evidence
+- Environment Profile Gate for deterministic local tool availability labels
+- AGENTS Context Budget Gate to keep AGENTS.md short and policy details in docs
+- Evidence Auto-Repair Hint for safe body-only repair suggestions
+- v0.9.2 deterministic self-test fixtures
 
-## What v0.9.0 Does Not Add
+## What v0.9.2 Does Not Add
 
 No external memory server, Agentmemory dependency, MCP dependency, SQLite memory
 layer, automatic skill rewriting, automatic commit, automatic push, required LLM
 judge, GEPA or DSPy dependency, self-evolving runtime, AST parser dependency,
 browser or Playwright requirement, external API call, prompt auto-apply, hidden
-chain-of-thought inspection, or product command execution is implemented by the
-new governance gates.
+chain-of-thought inspection, product command execution, product code changes, or
+target rollout readiness claims are implemented by the new governance gates.
 
 ## Running The Core Gate
 

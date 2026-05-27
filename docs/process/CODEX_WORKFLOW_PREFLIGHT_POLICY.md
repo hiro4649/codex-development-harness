@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.2 -->
 # Workflow Preflight Policy
 
 Workflow preflight keeps GitHub Actions setup small and diagnosable.

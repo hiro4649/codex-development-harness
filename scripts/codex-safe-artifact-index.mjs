@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.0
+// CODEX_QUALITY_HARNESS_FILE v0.9.2
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -16,7 +16,7 @@ const REQUIRED_ARTIFACTS = [
   'codex-failure-reasons.json',
   'codex-safe-artifact-index.json',
 ];
-const DEFAULT_ARTIFACT_BUDGET = 14;
+const DEFAULT_ARTIFACT_BUDGET = 16;
 
 export function buildSafeArtifactIndex(artifacts = [], mode = process.env.CODEX_HARNESS_MODE || 'source', options = {}) {
   const entries = artifacts.map((item) => ({
@@ -78,6 +78,9 @@ function defaultArtifacts(mode) {
     'codex-evidence-pack.normalized.json',
     'codex-self-test-cases.safe.json',
     'codex-safe-artifact-index.json',
+    'codex-safe-artifact-classification.safe.json',
+    'codex-pr-evidence-rendered.safe.json',
+    'codex-evidence-auto-repair-hint.safe.json',
     mode === 'target' ? 'codex-target-quality-summary.json' : 'codex-source-final-summary.json',
     mode === 'target' ? 'codex-target-final-summary.json' : '',
     'codex-workflow-preflight.safe.json',
