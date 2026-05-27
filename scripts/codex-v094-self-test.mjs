@@ -17,6 +17,7 @@ import { buildRuntimeLogSecretScanReport } from './codex-runtime-log-secret-scan
 import { buildChainScopeReport } from './codex-chain-scope-gate.mjs';
 import { buildFalsePositiveBudgetReport } from './codex-false-positive-budget-gate.mjs';
 import { buildTargetScriptClassificationFixtureReport, classifyTargetScript } from './codex-target-script-classification-fixture.mjs';
+import { buildGithubReplayContextFromData } from './codex-ci-replay.mjs';
 
 const HEAD = '1234567890abcdef1234567890abcdef12345678';
 const OTHER = 'abcdef1234567890abcdef1234567890abcdef12';
@@ -33,6 +34,15 @@ export function buildV094SelfTestReport() {
 
   report = buildRemoteProductContextRestoreReport({ isPullRequest: true, prNumber: '1', headSha: HEAD, baseSha: OTHER, changedFiles: ['src/app.ts'], productRelevant: true, productVerificationRequired: true, remoteProductBaselineRequired: true });
   assertCase('remote_product_context_present_in_pull_request_pass', report.remoteProductContextRestoreStatus.status === 'pass', failures, cases, report.remoteProductContextRestoreStatus.status, report.remoteProductContextRestoreStatus.reasonCodes);
+  const replayContext = buildGithubReplayContextFromData({ repo: 'owner/repo', pr: '1', head: HEAD }, {}, {
+    ok: true,
+    pr: { body: 'PR profile: harness_workflow_r3', head: { sha: HEAD }, base: { sha: OTHER } },
+    comments: [],
+    reviews: [],
+    files: [{ filename: 'scripts/codex-local-quality-gate.mjs' }],
+  });
+  report = buildPullRequestContextFidelityReport({}, replayContext.env);
+  assertCase('remote_product_context_replay_changed_files_pass', report.pullRequestContextFidelityStatus.status === 'pass', failures, cases, report.pullRequestContextFidelityStatus.status, report.pullRequestContextFidelityStatus.reasonCodes);
 
   report = buildRemoteProductContextRestoreReport({ isPullRequest: true, changedFiles: ['src/app.ts'], productRelevant: true, productVerificationRequired: false, remoteProductBaselineRequired: true });
   assertCase('remote_product_context_missing_fails', report.remoteProductContextRestoreStatus.status === 'fail', failures, cases, report.remoteProductContextRestoreStatus.status, report.remoteProductContextRestoreStatus.reasonCodes);

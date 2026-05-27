@@ -129,12 +129,14 @@ async function fetchGithubReplayInputs(args, env) {
   const pr = await requestJson(githubUrl(args.repo, `pulls/${args.pr}`), token);
   const comments = await requestJson(githubUrl(args.repo, `issues/${args.pr}/comments?per_page=100`), token);
   const reviews = await requestJson(githubUrl(args.repo, `pulls/${args.pr}/reviews?per_page=100`), token);
-  if (!pr.ok || !comments.ok || !reviews.ok) return { ok: false, reasonCode: 'missing_remote_evidence' };
+  const files = await requestJson(githubUrl(args.repo, `pulls/${args.pr}/files?per_page=100`), token);
+  if (!pr.ok || !comments.ok || !reviews.ok || !files.ok) return { ok: false, reasonCode: 'missing_remote_evidence' };
   return {
     ok: true,
     pr: pr.value,
     comments: Array.isArray(comments.value) ? comments.value : [],
     reviews: Array.isArray(reviews.value) ? reviews.value : [],
+    files: Array.isArray(files.value) ? files.value : [],
   };
 }
 
@@ -167,6 +169,7 @@ export function buildGithubReplayContextFromData(argsInput, env = process.env, r
   const prBody = remote.pr?.body || '';
   const commentsText = (remote.comments || []).map((item) => item.body || '').filter(Boolean).join('\n');
   const reviewsText = (remote.reviews || []).map((item) => item.body || '').filter(Boolean).join('\n');
+  const changedFiles = (remote.files || []).map((item) => item.filename || '').filter(Boolean).join('\n');
   const replayEnv = {
     CODEX_EVENT_NAME: 'pull_request',
     CODEX_PR_NUMBER: String(args.pr),
@@ -174,6 +177,7 @@ export function buildGithubReplayContextFromData(argsInput, env = process.env, r
     CODEX_PR_BASE_SHA: String(remoteBase),
     CODEX_REPOSITORY: String(args.repo),
     CODEX_GITHUB_API_AVAILABLE: '1',
+    CODEX_CHANGED_FILES: changedFiles,
     CODEX_PR_BODY: prBody,
     CODEX_PR_COMMENTS: commentsText,
     CODEX_PR_REVIEWS: reviewsText,
