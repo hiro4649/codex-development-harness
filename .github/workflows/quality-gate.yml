@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.9.4
+# CODEX_QUALITY_HARNESS_FILE v0.9.5
 name: quality-gate
 
 on:
@@ -171,6 +171,7 @@ jobs:
             console.log(`- v092SelfTestStatus: ${summary.v092SelfTestStatus?.status || 'missing'}`);
             console.log(`- v093SelfTestStatus: ${summary.v093SelfTestStatus?.status || 'missing'}`);
             console.log(`- v094SelfTestStatus: ${summary.v094SelfTestStatus?.status || 'missing'}`);
+            console.log(`- v095SelfTestStatus: ${summary.v095SelfTestStatus?.status || 'missing'}`);
             console.log(`- remoteProductContextRestoreStatus: ${summary.remoteProductContextRestoreStatus?.status || 'missing'}`);
             console.log(`- productRelevantEvidenceLockStatus: ${summary.productRelevantEvidenceLockStatus?.status || 'missing'}`);
             console.log(`- productBaselineContinuityStatus: ${summary.productBaselineContinuityStatus?.status || 'missing'}`);
@@ -184,6 +185,16 @@ jobs:
             console.log(`- runtimeLogSecretScanStatus: ${summary.runtimeLogSecretScanStatus?.status || 'missing'}`);
             console.log(`- chainScopeStatus: ${summary.chainScopeStatus?.status || 'missing'}`);
             console.log(`- falsePositiveBudgetStatus: ${summary.falsePositiveBudgetStatus?.status || 'missing'}`);
+            console.log(`- agentsDoctrineStatus: ${summary.agentsDoctrineStatus?.status || 'missing'}`);
+            console.log(`- skillRoutingStatus: ${summary.skillRoutingStatus?.status || 'missing'}`);
+            console.log(`- skillLoadBudgetStatus: ${summary.skillLoadBudgetStatus?.status || 'missing'}`);
+            console.log(`- skillDriftStatus: ${summary.skillDriftStatus?.status || 'missing'}`);
+            console.log(`- agentSessionGovernanceStatus: ${summary.agentSessionGovernanceStatus?.status || 'missing'}`);
+            console.log(`- agentContainmentBoundaryStatus: ${summary.agentContainmentBoundaryStatus?.status || 'missing'}`);
+            console.log(`- stateMachineSchemaStatus: ${summary.stateMachineSchemaStatus?.status || 'missing'}`);
+            console.log(`- evidenceMinimalityStatus: ${summary.evidenceMinimalityStatus?.status || 'missing'}`);
+            console.log(`- safeArtifactNextActionStatus: ${summary.safeArtifactNextActionStatus?.status || 'missing'}`);
+            console.log(`- skillEvidenceLinkStatus: ${summary.skillEvidenceLinkStatus?.status || 'missing'}`);
             console.log(`- prEvidenceCompactStatus: ${summary.prEvidenceCompactStatus?.status || 'missing'}`);
             console.log(`- reviewPolicyClassifierStatus: ${summary.reviewPolicyClassifierStatus?.status || 'missing'}`);
             console.log(`- goalConditionStatus: ${summary.goalConditionStatus?.status || 'missing'}`);
@@ -234,6 +245,10 @@ jobs:
             codex-product-context-safe-artifact.safe.json
             codex-product-baseline-continuity.safe.json
             codex-false-positive-budget.safe.json
+            codex-agent-session-governance.safe.json
+            codex-evidence-minimality.safe.json
+            codex-safe-artifact-next-action.safe.json
+            codex-skill-evidence-link.safe.json
             codex-workflow-preflight.safe.json
             codex-test-metrics.safe.json
           if-no-files-found: ignore

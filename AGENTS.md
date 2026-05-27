@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v0.9.4
+CODEX_QUALITY_HARNESS_FILE v0.9.5
 
 ## Source Harness Boundary
 
@@ -34,6 +34,15 @@ review, release-gate, harness-change, or docs-only. For bugfix work, use the
 `codex-bugfix` skill and write reproduction status plus root-cause hypothesis
 before code edits unless the change is documentation-only. Keep task-specific
 workflow detail in skills or `docs/process`, not in AGENTS.md.
+
+## Agent Doctrine And Skill Routing
+
+Keep AGENTS.md as a compact doctrine and routing map. Load only the skills
+needed for the task, normally four or fewer and never more than five. Route
+details, review matrices, containment boundaries, state-machine evidence, and
+minimal evidence rules live in `docs/process/CODEX_AGENTS_DOCTRINE_POLICY.md`,
+`docs/process/CODEX_SKILL_ROUTING_POLICY.md`, and the related v0.9.5 policy
+files.
 
 ## Manual Confirmation Limit
 

@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.4",
-  "harnessVersion": "0.9.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5",
+  "harnessVersion": "0.9.5",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -2360,6 +2360,214 @@
       "severity": "error",
       "safeMessage": "false positive budget failed.",
       "nextBestFix": "Regenerate compact current-head evidence or fix the blocking harness context.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "agents_doctrine_failed",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "agents doctrine failed",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "agents_manual_too_large",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "agents manual too large",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "skill_routing_failed",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "skill routing failed",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "skill_count_exceeded",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "skill count exceeded",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "skill_load_budget_exceeded",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "skill load budget exceeded",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "skill_drift_detected",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "skill drift detected",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "agent_session_conflict",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "agent session conflict",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "agent_needs_input_merge_blocked",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "agent needs input merge blocked",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "agent_containment_boundary_failed",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "agent containment boundary failed",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "external_content_trust_violation",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "external content trust violation",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "tool_permission_too_broad",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "tool permission too broad",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "eval_trace_invalid",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "eval trace invalid",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "raw_production_data_forbidden",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "raw production data forbidden",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "operator_visible_delta_missing",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "operator visible delta missing",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "trace_to_eval_candidate_invalid",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "trace to eval candidate invalid",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "subagent_governance_failed",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "subagent governance failed",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "subagent_raw_output_forbidden",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "subagent raw output forbidden",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "state_machine_schema_missing",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "state machine schema missing",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "processed_boolean_only_state_machine",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "processed boolean only state machine",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "state_transition_helper_missing",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "state transition helper missing",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "receipt_evidence_schema_failed",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "receipt evidence schema failed",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "receipt_private_data_forbidden",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "receipt private data forbidden",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "worker_readiness_sequence_failed",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "worker readiness sequence failed",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "evidence_minimality_failed",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "evidence minimality failed",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "evidence_dedup_conflict",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "evidence dedup conflict",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "skill_evidence_link_missing",
+      "gate": "v095",
+      "severity": "error",
+      "safeMessage": "skill evidence link missing",
+      "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
       "canManualConfirmationOverride": false
     }
   ]

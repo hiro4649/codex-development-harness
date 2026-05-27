@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "1.0.0",
+  "harnessVersion": "0.9.5",
+  "classifications": [
+    "body_only_repair",
+    "same_head_rerun_allowed",
+    "code_change_required",
+    "new_harness_pr_required",
+    "new_product_pr_required",
+    "stale_evidence_only",
+    "manual_confirmation_only",
+    "remote_context_regression",
+    "baseline_fixture_drift",
+    "do_not_rerun_blindly"
+  ],
+  "safeSummaryOnly": true,
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5"
+}

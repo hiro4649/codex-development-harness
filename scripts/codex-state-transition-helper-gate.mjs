@@ -1,0 +1,7 @@
+#!/usr/bin/env node
+// CODEX_QUALITY_HARNESS_FILE v0.9.5
+import { buildStateTransitionHelperReport, runV095GateCli } from './codex-v095-gate-lib.mjs';
+
+export { buildStateTransitionHelperReport };
+
+runV095GateCli(import.meta.url, process.argv[1], buildStateTransitionHelperReport, 'CODEX_STATE_TRANSITION_HELPER_REPORT');

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.5 -->
 
 # Codex Manual Confirmation Policy
 

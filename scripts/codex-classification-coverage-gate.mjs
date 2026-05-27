@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.4
+// CODEX_QUALITY_HARNESS_FILE v0.9.5
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {

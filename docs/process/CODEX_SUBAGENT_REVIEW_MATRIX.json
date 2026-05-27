@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "1.0.0",
+  "harnessVersion": "0.9.5",
+  "matrix": {
+    "docs_only": [],
+    "harness_only": [
+      "evidence_integrity"
+    ],
+    "workflow_change": [
+      "security",
+      "evidence_integrity"
+    ],
+    "target_rollout": [
+      "evidence_integrity",
+      "code_quality"
+    ],
+    "product_relevant": [
+      "product_fit",
+      "code_quality",
+      "evidence_integrity"
+    ],
+    "security_relevant": [
+      "security",
+      "architecture",
+      "evidence_integrity"
+    ],
+    "runtime_relevant": [
+      "runtime_safety",
+      "architecture",
+      "evidence_integrity"
+    ],
+    "tx_relevant": [
+      "runtime_safety",
+      "architecture",
+      "evidence_integrity"
+    ],
+    "agent_orchestration": [
+      "architecture",
+      "evidence_integrity"
+    ]
+  },
+  "safeSummaryOnly": true,
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5"
+}
