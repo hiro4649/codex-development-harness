@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
-  "harnessVersion": "0.9.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
+  "harnessVersion": "0.9.2",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -1881,6 +1881,174 @@
       "safeMessage": "The lifeboat artifact was generated but upload evidence is missing.",
       "nextBestFix": "Check the artifact upload step and preserve safe failure evidence.",
       "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "version_lineage_failed",
+      "gate": "versionLineage",
+      "severity": "error",
+      "safeMessage": "Version lineage evidence is incomplete or inconsistent.",
+      "nextBestFix": "Align active harness markers, manifests, and self-test references.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "active_marker_version_mismatch",
+      "gate": "versionLineage",
+      "severity": "error",
+      "safeMessage": "An active harness-managed marker uses the wrong version.",
+      "nextBestFix": "Update the active marker to the current harness version.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_evidence_render_failed",
+      "gate": "prEvidenceRenderer",
+      "severity": "error",
+      "safeMessage": "PR evidence block rendering failed.",
+      "nextBestFix": "Regenerate safe evidence blocks for the current head.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_evidence_stale_head",
+      "gate": "prEvidenceRenderer",
+      "severity": "error",
+      "safeMessage": "Rendered PR evidence is stale for the current head.",
+      "nextBestFix": "Regenerate evidence using the current head SHA.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_evidence_missing_human_confirmation",
+      "gate": "prEvidenceRenderer",
+      "severity": "manual_confirmation_required",
+      "safeMessage": "Rendered evidence lacks required human confirmation.",
+      "nextBestFix": "Add current-head human confirmation fields.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "safe_artifact_classification_failed",
+      "gate": "safeArtifactClassifier",
+      "severity": "error",
+      "safeMessage": "Safe artifact classification failed.",
+      "nextBestFix": "Classify the failure with a safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "safe_artifact_next_action_missing",
+      "gate": "safeArtifactClassifier",
+      "severity": "error",
+      "safeMessage": "A failing artifact does not include a safe next action.",
+      "nextBestFix": "Add a safe next action that does not weaken the gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "security_lifecycle_failed",
+      "gate": "securityLifecycle",
+      "severity": "error",
+      "safeMessage": "Security lifecycle checks failed.",
+      "nextBestFix": "Fix the deterministic security finding or add required oracle evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "dangerous_api_pattern_detected",
+      "gate": "securityLifecycle",
+      "severity": "error",
+      "safeMessage": "A dangerous API pattern was detected.",
+      "nextBestFix": "Remove the pattern or confine it to a deterministic fixture.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_permission_escalation_unjustified",
+      "gate": "securityLifecycle",
+      "severity": "error",
+      "safeMessage": "Workflow permissions were escalated without task contract support.",
+      "nextBestFix": "Remove the escalation or document the required contract.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "review_independence_missing",
+      "gate": "reviewIndependence",
+      "severity": "error",
+      "safeMessage": "Independent review evidence is missing.",
+      "nextBestFix": "Separate writer evidence from reviewer checklist evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "writer_only_review_detected",
+      "gate": "reviewIndependence",
+      "severity": "error",
+      "safeMessage": "Review evidence appears to be writer-only.",
+      "nextBestFix": "Add reviewer checklist and negative case evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_brief_missing",
+      "gate": "taskBriefCompiler",
+      "severity": "error",
+      "safeMessage": "Required task brief evidence is missing.",
+      "nextBestFix": "Generate a task brief with scope, verification, and risks.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_brief_forbidden_scope_missing",
+      "gate": "taskBriefCompiler",
+      "severity": "error",
+      "safeMessage": "Task brief lacks forbidden scope.",
+      "nextBestFix": "Add forbidden scope and do-not-touch files.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "best_of_n_decision_missing",
+      "gate": "bestOfNDecision",
+      "severity": "error",
+      "safeMessage": "Best-of-N decision evidence is incomplete.",
+      "nextBestFix": "Record safe summary-only selected reason and verification delta.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "best_of_n_raw_candidate_forbidden",
+      "gate": "bestOfNDecision",
+      "severity": "error",
+      "safeMessage": "Best-of-N record contains forbidden raw candidate content.",
+      "nextBestFix": "Store only safe summary fields.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "environment_profile_failed",
+      "gate": "environmentProfile",
+      "severity": "error",
+      "safeMessage": "Environment profile does not support the claimed verification.",
+      "nextBestFix": "Use available tools or adjust verification claims safely.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "gh_auth_required_but_unavailable",
+      "gate": "environmentProfile",
+      "severity": "error",
+      "safeMessage": "GitHub auth is required but unavailable.",
+      "nextBestFix": "Restore GitHub auth before requested remote PR operation.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "agents_context_budget_exceeded",
+      "gate": "agentsContextBudget",
+      "severity": "error",
+      "safeMessage": "AGENTS.md exceeds the harness context budget or embeds policy bodies.",
+      "nextBestFix": "Keep AGENTS.md short and move policy details to docs/process.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "evidence_auto_repair_hint_available",
+      "gate": "evidenceAutoRepairHint",
+      "severity": "warning",
+      "safeMessage": "A safe evidence repair hint is available.",
+      "nextBestFix": "Apply only body-safe current-head evidence repair if allowed.",
+      "canManualConfirmationOverride": true
+    },
+    {
+      "reasonCode": "evidence_auto_repair_unsafe",
+      "gate": "evidenceAutoRepairHint",
+      "severity": "error",
+      "safeMessage": "Suggested evidence repair would weaken a gate.",
+      "nextBestFix": "Fix the underlying failure instead of editing claims.",
+      "canManualConfirmationOverride": false
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.0",
-  "harnessVersion": "0.9.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
+  "harnessVersion": "0.9.2",
   "schemaVersion": "1.0.0",
   "entrypoints": [
     "AGENTS.md",
@@ -20,7 +20,14 @@
     "docs/process/CODEX_ARTIFACT_LIFEBOAT_POLICY.md",
     "docs/process/CODEX_CLASSIFICATION_REGISTRY_POLICY.md",
     "docs/process/CODEX_REMOTE_LOCAL_PARITY_POLICY.md",
-    "docs/process/CODEX_PR_TEMPLATE_COMPILER_POLICY.md"
+    "docs/process/CODEX_PR_TEMPLATE_COMPILER_POLICY.md",
+    "docs/process/CODEX_VERSION_LINEAGE_POLICY.md",
+    "docs/process/CODEX_PR_EVIDENCE_RENDERER_POLICY.md",
+    "docs/process/CODEX_SAFE_ARTIFACT_CLASSIFIER_POLICY.md",
+    "docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md",
+    "docs/process/CODEX_REVIEW_INDEPENDENCE_POLICY.md",
+    "docs/process/CODEX_TASK_BRIEF_COMPILER_POLICY.md",
+    "docs/process/CODEX_AGENTS_CONTEXT_BUDGET_POLICY.md"
   ],
   "policyIndex": [
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
@@ -38,7 +45,14 @@
     "docs/process/CODEX_ARTIFACT_LIFEBOAT_POLICY.md",
     "docs/process/CODEX_CLASSIFICATION_REGISTRY_POLICY.md",
     "docs/process/CODEX_REMOTE_LOCAL_PARITY_POLICY.md",
-    "docs/process/CODEX_PR_TEMPLATE_COMPILER_POLICY.md"
+    "docs/process/CODEX_PR_TEMPLATE_COMPILER_POLICY.md",
+    "docs/process/CODEX_VERSION_LINEAGE_POLICY.md",
+    "docs/process/CODEX_PR_EVIDENCE_RENDERER_POLICY.md",
+    "docs/process/CODEX_SAFE_ARTIFACT_CLASSIFIER_POLICY.md",
+    "docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md",
+    "docs/process/CODEX_REVIEW_INDEPENDENCE_POLICY.md",
+    "docs/process/CODEX_TASK_BRIEF_COMPILER_POLICY.md",
+    "docs/process/CODEX_AGENTS_CONTEXT_BUDGET_POLICY.md"
   ],
   "skillIndex": [
     ".agents/skills/codex-bugfix/SKILL.md"
@@ -59,7 +73,17 @@
     "scripts/codex-remote-local-parity-gate.mjs",
     "scripts/codex-pr-template-compiler.mjs",
     "scripts/codex-no-artifact-failure-classifier.mjs",
-    "scripts/codex-gate-decision-trace.mjs"
+    "scripts/codex-gate-decision-trace.mjs",
+    "scripts/codex-version-lineage-gate.mjs",
+    "scripts/codex-pr-evidence-block-renderer.mjs",
+    "scripts/codex-safe-artifact-classifier.mjs",
+    "scripts/codex-security-lifecycle-gate.mjs",
+    "scripts/codex-review-independence-gate.mjs",
+    "scripts/codex-task-brief-compiler.mjs",
+    "scripts/codex-best-of-n-decision-record.mjs",
+    "scripts/codex-environment-profile-gate.mjs",
+    "scripts/codex-agents-context-budget-gate.mjs",
+    "scripts/codex-evidence-auto-repair-hint.mjs"
   ],
   "evalIndex": [
     "docs/process/CODEX_PROMPT_EVAL_SUITE.json",
@@ -71,7 +95,9 @@
     "docs/process/CODEX_COMPLEXITY_FALSE_POSITIVE_CASES.json",
     "scripts/codex-v089-self-test.mjs",
     "docs/process/CODEX_V090_EVAL_CASES.json",
-    "scripts/codex-v090-self-test.mjs"
+    "scripts/codex-v090-self-test.mjs",
+    "docs/process/CODEX_V092_EVAL_CASES.json",
+    "scripts/codex-v092-self-test.mjs"
   ],
   "reviewIndex": [
     "docs/process/code_review.md",
@@ -90,7 +116,13 @@
     "docs/process/CODEX_CLASSIFICATION_REGISTRY_SCHEMA.json",
     "docs/process/CODEX_GATE_DECISION_TRACE_SCHEMA.json",
     "docs/process/CODEX_NO_ARTIFACT_FAILURE_SCHEMA.json",
-    "docs/process/CODEX_OPERATIONAL_RECOVERY_HINTS_SCHEMA.json"
+    "docs/process/CODEX_OPERATIONAL_RECOVERY_HINTS_SCHEMA.json",
+    "docs/process/CODEX_PR_EVIDENCE_RENDERER_SCHEMA.json",
+    "docs/process/CODEX_SAFE_ARTIFACT_CLASSIFIER_SCHEMA.json",
+    "docs/process/CODEX_TASK_BRIEF_SCHEMA.json",
+    "docs/process/CODEX_BEST_OF_N_DECISION_RECORD_SCHEMA.json",
+    "docs/process/CODEX_ENVIRONMENT_PROFILE_SCHEMA.json",
+    "docs/process/CODEX_EVIDENCE_AUTO_REPAIR_HINT_SCHEMA.json"
   ],
   "sourceOfRecord": [
     "AGENTS.md",

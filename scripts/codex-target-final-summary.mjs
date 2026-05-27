@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.0
+// CODEX_QUALITY_HARNESS_FILE v0.9.2
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -27,6 +27,16 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     classificationCoverage: report.classificationCoverageStatus?.status || 'missing',
     remoteLocalParity: report.remoteLocalParityStatus?.status || 'missing',
     noArtifactFailure: report.noArtifactFailureStatus?.status || 'missing',
+    versionLineage: report.versionLineageStatus?.status || 'missing',
+    prEvidenceRenderer: report.prEvidenceRendererStatus?.status || 'missing',
+    safeArtifactClassifier: report.safeArtifactClassifierStatus?.status || 'missing',
+    securityLifecycle: report.securityLifecycleStatus?.status || 'missing',
+    reviewIndependence: report.reviewIndependenceStatus?.status || 'missing',
+    taskBriefCompiler: report.taskBriefCompilerStatus?.status || 'missing',
+    bestOfNDecision: report.bestOfNDecisionStatus?.status || 'missing',
+    environmentProfile: report.environmentProfileStatus?.status || 'missing',
+    agentsContextBudget: report.agentsContextBudgetStatus?.status || 'missing',
+    evidenceAutoRepairHint: report.evidenceAutoRepairHintStatus?.status || 'missing',
     baselineHealth: report.baselineHealthStatus?.status || 'missing',
     evidenceContinuity: report.evidenceContinuityStatus?.status || 'missing',
     prBodySurfaceNormalizer: report.prBodySurfaceNormalizerStatus?.status || 'missing',
@@ -37,6 +47,7 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     oldHarnessMarker: report.oldHarnessMarkerStatus?.status || 'missing',
     v089SelfTest: report.v089SelfTestStatus?.status || 'missing',
     v090SelfTest: report.v090SelfTestStatus?.status || 'missing',
+    v092SelfTest: report.v092SelfTestStatus?.status || 'missing',
     stalePrAudit: report.stalePrAuditStatus?.status || 'not_applicable',
     reasonSummary: report.reasonSummary?.status || report.reasonSummaryStatus?.status || 'missing',
     runtimeReadinessClaimed: Boolean(report.changeClassificationStatus?.runtimeReadinessClaimed),

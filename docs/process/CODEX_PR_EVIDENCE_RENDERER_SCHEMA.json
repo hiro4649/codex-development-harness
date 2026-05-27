@@ -1,0 +1,20 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
+  "harnessVersion": "0.9.2",
+  "schemaName": "codex_pr_evidence_renderer",
+  "required": [
+    "repository",
+    "prNumber",
+    "baseSha",
+    "headSha",
+    "humanConfirmation"
+  ],
+  "forbiddenValueClasses": [
+    "raw_logs",
+    "raw_diffs",
+    "token_values",
+    "endpoint_values",
+    "private_paths"
+  ],
+  "safeSummaryOnly": true
+}

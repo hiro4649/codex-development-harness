@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.0
+// CODEX_QUALITY_HARNESS_FILE v0.9.2
 import fs from 'node:fs';
 import https from 'node:https';
 import { fileURLToPath } from 'node:url';
 import { buildPrBodyLintReport } from './codex-pr-body-lint.mjs';
 import { buildHumanConfirmationObjectReport } from './codex-human-confirmation-validate.mjs';
 
-export const HARNESS_VERSION = '0.9.0';
+export const HARNESS_VERSION = '0.9.2';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 function parseArgs(argv) {

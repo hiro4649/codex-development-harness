@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.2 -->
 # Product Verification Policy
 
 `CODEX_SKIP_NPM=1` is allowed for harness-only changes with no runtime readiness claim. It is not a substitute for product verification.

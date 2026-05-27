@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.2 -->
 # Target AGENTS Repair Guide
 
 When target AGENTS.md contains mojibake, do not preserve unreadable text as working context.

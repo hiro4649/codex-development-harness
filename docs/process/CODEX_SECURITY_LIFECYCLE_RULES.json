@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.2",
+  "harnessVersion": "0.9.2",
+  "layers": [
+    "edit_pattern_scan",
+    "turn_diff_surface_scan",
+    "commit_boundary_scan",
+    "workflow_permission_scan",
+    "secret_prefix_scan",
+    "dangerous_api_scan",
+    "security_guidance_alignment"
+  ],
+  "failReasonCodes": [
+    "security_lifecycle_failed",
+    "dangerous_api_pattern_detected",
+    "workflow_permission_escalation_unjustified"
+  ],
+  "safeSummaryOnly": true
+}
