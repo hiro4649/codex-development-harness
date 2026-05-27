@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.3",
-  "harnessVersion": "0.9.3",
-  "sourceHarnessVersion": "0.9.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.4",
+  "harnessVersion": "0.9.4",
+  "sourceHarnessVersion": "0.9.4",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -197,7 +197,22 @@
     "docs/process/CODEX_GOAL_CONDITION_POLICY.md",
     "docs/process/CODEX_REVIEW_POLICY_CLASSIFIER_POLICY.md",
     "docs/process/CODEX_PR_EVIDENCE_COMPACT_POLICY.md",
-    "docs/process/CODEX_V093_EVAL_CASES.json"
+    "docs/process/CODEX_V093_EVAL_CASES.json",
+    "docs/process/CODEX_REMOTE_PRODUCT_CONTEXT_RESTORE_POLICY.md",
+    "docs/process/CODEX_REMOTE_PRODUCT_CONTEXT_RESTORE_POLICY.json",
+    "docs/process/CODEX_PRODUCT_RELEVANT_EVIDENCE_LOCK_POLICY.md",
+    "docs/process/CODEX_PRODUCT_BASELINE_CONTINUITY_POLICY.md",
+    "docs/process/CODEX_SKIP_NPM_PRODUCT_BYPASS_POLICY.md",
+    "docs/process/CODEX_PULL_REQUEST_CONTEXT_FIDELITY_POLICY.md",
+    "docs/process/CODEX_PRODUCT_CONTEXT_SAFE_ARTIFACT_SCHEMA.json",
+    "docs/process/CODEX_RUNTIME_JOB_SAFETY_POLICY.md",
+    "docs/process/CODEX_TX_PATH_STATE_EVIDENCE_POLICY.md",
+    "docs/process/CODEX_ENV_CONSISTENCY_POLICY.md",
+    "docs/process/CODEX_STAGING_NO_TX_PREFLIGHT_POLICY.md",
+    "docs/process/CODEX_RUNTIME_LOG_SECRET_SCAN_POLICY.md",
+    "docs/process/CODEX_CHAIN_SCOPE_POLICY.md",
+    "docs/process/CODEX_FALSE_POSITIVE_BUDGET_POLICY.md",
+    "docs/process/CODEX_V094_EVAL_CASES.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -301,7 +316,21 @@
     "codex-goal-condition-gate.mjs",
     "codex-review-policy-classifier.mjs",
     "codex-pr-evidence-compact-gate.mjs",
-    "codex-v093-self-test.mjs"
+    "codex-v093-self-test.mjs",
+    "codex-remote-product-context-restore-gate.mjs",
+    "codex-product-relevant-evidence-lock-gate.mjs",
+    "codex-product-baseline-continuity-gate.mjs",
+    "codex-skip-npm-product-bypass-gate.mjs",
+    "codex-pull-request-context-fidelity-gate.mjs",
+    "codex-product-context-safe-artifact-gate.mjs",
+    "codex-runtime-job-safety-gate.mjs",
+    "codex-tx-path-state-evidence-gate.mjs",
+    "codex-env-consistency-gate.mjs",
+    "codex-staging-no-tx-preflight-gate.mjs",
+    "codex-runtime-log-secret-scan-gate.mjs",
+    "codex-chain-scope-gate.mjs",
+    "codex-false-positive-budget-gate.mjs",
+    "codex-v094-self-test.mjs"
   ],
   "optionalFiles": []
 }

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.4 -->
 # Preview And Smoke Check Standard
 
 ## Purpose

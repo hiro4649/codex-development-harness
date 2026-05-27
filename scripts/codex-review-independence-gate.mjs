@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.3
+// CODEX_QUALITY_HARNESS_FILE v0.9.4
 import { fileURLToPath } from 'node:url';
 import { prBodyText, simpleStatus, writeJsonReport, exitFor, normalizePath } from './codex-v080-lib.mjs';
 

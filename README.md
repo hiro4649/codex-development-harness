@@ -1,33 +1,28 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.4 -->
 # Codex Development Harness
 
-Version: v0.9.3
-Name: Target Hotfix Preservation, Product Context Fidelity, and Runtime Artifact Assurance Gate
+Version: v0.9.4
+Name: Remote Product Context Restore, Runtime Job Safety, and Evidence Lock Gate
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.3 preserves v0.9.2 evidence automation, security lifecycle, review independence, and version lineage while adding target hotfix preservation, target patch manifests, rollout conflict detection, remote product PR context fixtures, target script classification fixtures, same-head artifact evidence, Docker smoke current-head artifact enforcement, CODEX_SKIP_NPM product override protection, goal condition checks, review policy classification, and compact PR evidence.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.4 preserves v0.9.3 target hotfix preservation, product context fidelity, and runtime artifact assurance while adding remote product context restore, product-relevant evidence lock, product baseline continuity, skip-npm product bypass protection, pull-request context fidelity, product-context safe artifact classification, runtime job safety, tx path state evidence, env consistency, staging no-tx preflight, runtime log secret scan, chain scope guard, and false-positive budget tracking.
 
 The new checks use deterministic fixtures and safe summaries. They add no external dependency, no LLM judge requirement, no MCP requirement, no browser or Playwright requirement, no hidden chain-of-thought inspection, no product command execution, and no product code change requirement.
 
-## What v0.9.3 Adds
+## What v0.9.4 Adds
 
-- Target Hotfix Preservation Gate to avoid silently overwriting target hotfixes, target-specific adaptations, or pre-existing harness-managed changes during rollout.
-- Target Patch Manifest support for target-owned harness adaptations in `docs/process/CODEX_TARGET_PATCH_MANIFEST.json`.
-- Target Rollout Conflict Gate for deleted target-only policies, missing stash or patch references, and target manifest regression.
-- Remote Product PR Context fixtures to ensure product-relevant target PRs cannot pass with `CODEX_SKIP_NPM=1`, missing remote product evidence, or workflow_dispatch-only substitutes.
-- Target Script Classification fixtures for `scripts/codex-*`, `scripts/run-tests.js`, `scripts/dev-server.js`, and unknown target scripts.
-- Same-Head Artifact Evidence Gate for PR head, evidence pack, manual confirmation, remote run, artifact, safe summary, and local HEAD consistency.
-- Docker Smoke Current-Head Artifact Gate for Docker-relevant changes.
-- Target CODEX_SKIP_NPM Product Override Gate to keep harness-only skips separate from product verification.
-- Goal Condition Gate for measurable end state, proof command, must-not-change list, stop condition, and max scope.
-- Review Policy Classifier to scale review independence by risk class.
-- PR Evidence Compact Gate to keep PR bodies short and move detail into safe artifacts.
-- v0.9.3 deterministic self-test fixtures.
+- Remote Product Context Restore Gate for preserving PR number, head/base SHA, changed files, product relevance, npm baseline, remote product baseline, and workflow_dispatch diagnostic-only state across the harness.
+- Product-Relevant Evidence Lock and Product Baseline Continuity gates for preventing product PR pass states when product verification, remote baseline, npm baseline, or same-head evidence is missing.
+- Skip NPM Product Bypass and Pull Request Context Fidelity gates so CODEX_SKIP_NPM and workflow_dispatch cannot substitute for PR-context product evidence.
+- Product Context Safe Artifact Gate for compact classification of product context failures without raw logs, raw diffs, endpoints, or private data.
+- Runtime Job Safety, Tx Path State Evidence, Env Consistency, Staging No-Tx Preflight, Runtime Log Secret Scan, and Chain Scope gates for lightweight runtime evidence locking without claiming runtime readiness.
+- False Positive Budget Gate to measure body-only repair loops, near-miss headings, repeated evidence repairs, and artifact pending loops without weakening non-overridable failures.
+- v0.9.4 deterministic self-test fixtures.
 
-## Preserved v0.9.2 Capabilities
+## Preserved v0.9.3 Capabilities
 
-v0.9.3 keeps version lineage, PR evidence rendering, safe artifact classification, security lifecycle checks, review independence, task brief compilation, Best-of-N decision records, environment profiles, AGENTS context budget control, and evidence auto-repair hints.
+v0.9.4 keeps target hotfix preservation, target patch manifests, rollout conflict detection, remote product PR context fixtures, target script classification fixtures, same-head artifact evidence, Docker smoke current-head artifact enforcement, CODEX_SKIP_NPM product override protection, goal condition checks, review policy classification, and compact PR evidence.
 
-## What v0.9.3 Does Not Add
+## What v0.9.4 Does Not Add
 
 No external memory server, MCP dependency, required LLM judge, GEPA or DSPy dependency, AST parser dependency, browser or Playwright requirement, external API call, prompt auto-apply, hidden chain-of-thought inspection, product command execution, product code changes, runtime readiness claim, production readiness claim, or target rollout is implemented by this source update.
 

@@ -1,0 +1,26 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.4",
+  "harnessVersion": "0.9.4",
+  "requiredContext": [
+    "eventName",
+    "isPullRequest",
+    "prNumber",
+    "headSha",
+    "baseSha",
+    "changedFiles",
+    "productRelevant",
+    "productVerificationRequired",
+    "npmBaselineRequired",
+    "remoteProductBaselineRequired",
+    "CODEX_SKIP_NPM state",
+    "workflowDispatchDiagnosticOnly",
+    "targetRepoMode",
+    "sourceHarnessVersion",
+    "targetHarnessVersion"
+  ],
+  "failReasonCodes": [
+    "remote_product_context_missing",
+    "workflow_dispatch_not_pr_substitute"
+  ],
+  "safeSummaryOnly": true
+}

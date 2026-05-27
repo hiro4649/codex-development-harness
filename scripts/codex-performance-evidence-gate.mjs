@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.3
+// CODEX_QUALITY_HARNESS_FILE v0.9.4
 import { HARNESS_VERSION, marker, prBodyText, isPrContext, readJson, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 
 function hasPerformanceClaim(body) {
