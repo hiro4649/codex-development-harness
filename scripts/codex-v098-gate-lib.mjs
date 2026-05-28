@@ -27,6 +27,9 @@ function readMaybeJson(file) {
   return parsed.ok ? parsed.value : null;
 }
 function evidencePathPresent(file) { return Boolean(file && fs.existsSync(file)); }
+function inputPathOrEnv(input, field, envName, env = process.env) {
+  return Object.prototype.hasOwnProperty.call(input, field) ? input[field] : env[envName];
+}
 function isPlaceholder(value) {
   if (!value || typeof value !== 'object') return false;
   const type = String(value.evidenceType || value.baselineType || value.diagnosticType || '').toLowerCase();
@@ -54,9 +57,9 @@ export function buildRemoteProductEvidenceExecutionReport(input = parseJson(proc
   const warnings = [];
   const skipNpm = input.skipNpm !== undefined ? parseBool(input.skipNpm) : process.env.CODEX_SKIP_NPM === '1';
   const npmExecuted = parseBool(input.npmExecuted) || process.env.CODEX_REMOTE_NPM_EXECUTED === '1';
-  const evidencePath = input.evidencePath || process.env.CODEX_PRODUCT_VERIFICATION_EVIDENCE_PATH;
-  const baselinePath = input.baselinePath || process.env.CODEX_REMOTE_PRODUCT_BASELINE_PATH;
-  const diagnosticPath = input.diagnosticPath || process.env.CODEX_NPM_TEST_SAFE_SUMMARY_PATH;
+  const evidencePath = inputPathOrEnv(input, 'evidencePath', 'CODEX_PRODUCT_VERIFICATION_EVIDENCE_PATH');
+  const baselinePath = inputPathOrEnv(input, 'baselinePath', 'CODEX_REMOTE_PRODUCT_BASELINE_PATH');
+  const diagnosticPath = inputPathOrEnv(input, 'diagnosticPath', 'CODEX_NPM_TEST_SAFE_SUMMARY_PATH');
   const evidence = input.evidence || readMaybeJson(evidencePath);
   const baseline = input.baseline || readMaybeJson(baselinePath);
   const diagnostic = input.diagnostic || readMaybeJson(diagnosticPath);
