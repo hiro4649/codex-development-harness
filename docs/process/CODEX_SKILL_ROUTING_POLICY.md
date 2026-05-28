@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
 # Skill Routing Policy
 
 - Select skills by task mode, risk, changed files, and target repository.

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
 # Product-Relevant Evidence Lock Policy
 
 Version: v0.9.4

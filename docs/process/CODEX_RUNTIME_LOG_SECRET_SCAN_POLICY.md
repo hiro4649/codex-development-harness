@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
 # Runtime Log Secret Scan Policy
 
 Version: v0.9.4

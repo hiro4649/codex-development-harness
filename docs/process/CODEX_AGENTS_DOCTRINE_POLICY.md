@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
 # Agents Doctrine Policy
 
 - Keep AGENTS.md compact: doctrine, routing map, authority links, and forbidden scope only.

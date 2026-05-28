@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.5
+// CODEX_QUALITY_HARNESS_FILE v0.9.6
 import { fileURLToPath } from 'node:url';
 import {
   HARNESS_VERSION,

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.5
+// CODEX_QUALITY_HARNESS_FILE v0.9.6
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -10,7 +10,7 @@ import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 import { buildGithubReplayContextAsync } from './codex-ci-replay.mjs';
 import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
 
-const HARNESS_VERSION = '0.9.5';
+const HARNESS_VERSION = '0.9.6';
 const PROFILE_TEMPLATE_VERSION = '0.7.0';
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
@@ -97,6 +97,45 @@ const V095_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS = [
   'receiptEvidenceSchemaStatus',
   'workerReadinessSequenceStatus',
 ];
+const V096_STATUS_KEYS = [
+  'kRuleCoverageStatus',
+  'live2dSpecSyncStatus',
+  'runtimeLatencyBudgetStatus',
+  'obsoleteOpenPrStatus',
+  'ownerSummaryCompactStatus',
+  'browserSmokeArtifactStatus',
+  'failureToRepairPlanStatus',
+  'runtimeStateAdoptionStatus',
+  'claimTransitionStatus',
+  'timeoutAdoptionStatus',
+  'txReconciliationServiceStatus',
+  'txHashBeforeWaitStatus',
+  'receiptResumeBoundaryStatus',
+  'migrationRolloutSafetyStatus',
+  'migrationRuntimeCompatStatus',
+  'humanReviewDigestStatus',
+  'datasetAuditReadinessStatus',
+  'gameToolAdapterContractFixtureStatus',
+  'belovedAvatarSafetyAuditStatus',
+  'v096SelfTestStatus',
+];
+const V096_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS = [
+  'kRuleCoverageStatus',
+  'live2dSpecSyncStatus',
+  'runtimeLatencyBudgetStatus',
+  'browserSmokeArtifactStatus',
+  'runtimeStateAdoptionStatus',
+  'claimTransitionStatus',
+  'timeoutAdoptionStatus',
+  'txReconciliationServiceStatus',
+  'txHashBeforeWaitStatus',
+  'receiptResumeBoundaryStatus',
+  'migrationRolloutSafetyStatus',
+  'migrationRuntimeCompatStatus',
+  'datasetAuditReadinessStatus',
+  'gameToolAdapterContractFixtureStatus',
+  'belovedAvatarSafetyAuditStatus',
+];
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
 const forbiddenSourcePaths = [
   'package.json',
@@ -137,6 +176,14 @@ export const sourceValidationIgnoredSafeArtifacts = new Set([
   'codex-product-context-safe-artifact.safe.json',
   'codex-product-baseline-continuity.safe.json',
   'codex-false-positive-budget.safe.json',
+  'codex-agent-session-governance.safe.json',
+  'codex-evidence-minimality.safe.json',
+  'codex-safe-artifact-next-action.safe.json',
+  'codex-skill-evidence-link.safe.json',
+  'codex-owner-summary-compact.safe.json',
+  'codex-browser-smoke-artifact.safe.json',
+  'codex-failure-to-repair-plan.safe.json',
+  'codex-human-review-digest.safe.json',
 ]);
 
 function npmCliPath() {
@@ -310,6 +357,25 @@ function runGateScript(script, field, envName, baseEnv = process.env) {
   }
 }
 
+function compactGateDecisionTraceInput(report) {
+  const out = { status: report?.status || 'unknown' };
+  for (const [key, value] of Object.entries(report || {})) {
+    if (!value || typeof value !== 'object' || typeof value.status !== 'string') continue;
+    out[key] = {
+      status: value.status,
+      safeSummaryOnly: true,
+    };
+    if (typeof value.score === 'number') out[key].score = value.score;
+    if (Array.isArray(value.reasonCodes) && value.reasonCodes.length) {
+      out[key].reasonCodes = value.reasonCodes.slice(0, 3);
+    }
+    if (Array.isArray(value.failures) && value.failures.length) {
+      out[key].reasonCodes = value.failures.slice(0, 3);
+    }
+  }
+  return out;
+}
+
 function runV093Gates(report, gateEnv) {
   report.targetPatchManifestStatus = runGateScript('scripts/codex-target-patch-manifest.mjs', 'targetPatchManifestStatus', 'CODEX_TARGET_PATCH_MANIFEST_REPORT', gateEnv);
   report.previousTargetHotfixPreservationStatus = runGateScript('scripts/codex-target-hotfix-preservation-gate.mjs', 'previousTargetHotfixPreservationStatus', 'CODEX_TARGET_HOTFIX_PRESERVATION_REPORT', gateEnv);
@@ -395,6 +461,30 @@ function runV095Gates(report, gateEnv) {
 }
 function initializeV095Statuses(report) {
   for (const key of V095_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' };
+}
+function runV096Gates(report, gateEnv) {
+  report.kRuleCoverageStatus = runGateScript('scripts/codex-k-rule-coverage-gate.mjs', 'kRuleCoverageStatus', 'CODEX_K_RULE_COVERAGE_REPORT', gateEnv);
+  report.live2dSpecSyncStatus = runGateScript('scripts/codex-live2d-spec-sync-gate.mjs', 'live2dSpecSyncStatus', 'CODEX_LIVE2D_SPEC_SYNC_REPORT', gateEnv);
+  report.runtimeLatencyBudgetStatus = runGateScript('scripts/codex-runtime-latency-budget-gate.mjs', 'runtimeLatencyBudgetStatus', 'CODEX_RUNTIME_LATENCY_BUDGET_REPORT', gateEnv);
+  report.obsoleteOpenPrStatus = runGateScript('scripts/codex-obsolete-open-pr-gate.mjs', 'obsoleteOpenPrStatus', 'CODEX_OBSOLETE_OPEN_PR_REPORT', gateEnv);
+  report.ownerSummaryCompactStatus = runGateScript('scripts/codex-owner-summary-compact-gate.mjs', 'ownerSummaryCompactStatus', 'CODEX_OWNER_SUMMARY_COMPACT_REPORT', gateEnv);
+  report.browserSmokeArtifactStatus = runGateScript('scripts/codex-browser-smoke-artifact-gate.mjs', 'browserSmokeArtifactStatus', 'CODEX_BROWSER_SMOKE_ARTIFACT_REPORT', gateEnv);
+  report.failureToRepairPlanStatus = runGateScript('scripts/codex-failure-to-repair-plan-gate.mjs', 'failureToRepairPlanStatus', 'CODEX_FAILURE_TO_REPAIR_PLAN_REPORT', gateEnv);
+  report.runtimeStateAdoptionStatus = runGateScript('scripts/codex-runtime-state-adoption-gate.mjs', 'runtimeStateAdoptionStatus', 'CODEX_RUNTIME_STATE_ADOPTION_REPORT', gateEnv);
+  report.claimTransitionStatus = runGateScript('scripts/codex-claim-transition-gate.mjs', 'claimTransitionStatus', 'CODEX_CLAIM_TRANSITION_REPORT', gateEnv);
+  report.timeoutAdoptionStatus = runGateScript('scripts/codex-timeout-adoption-gate.mjs', 'timeoutAdoptionStatus', 'CODEX_TIMEOUT_ADOPTION_REPORT', gateEnv);
+  report.txReconciliationServiceStatus = runGateScript('scripts/codex-tx-reconciliation-service-gate.mjs', 'txReconciliationServiceStatus', 'CODEX_TX_RECONCILIATION_SERVICE_REPORT', gateEnv);
+  report.txHashBeforeWaitStatus = runGateScript('scripts/codex-txhash-before-wait-gate.mjs', 'txHashBeforeWaitStatus', 'CODEX_TXHASH_BEFORE_WAIT_REPORT', gateEnv);
+  report.receiptResumeBoundaryStatus = runGateScript('scripts/codex-receipt-resume-boundary-gate.mjs', 'receiptResumeBoundaryStatus', 'CODEX_RECEIPT_RESUME_BOUNDARY_REPORT', gateEnv);
+  report.migrationRolloutSafetyStatus = runGateScript('scripts/codex-migration-rollout-safety-gate.mjs', 'migrationRolloutSafetyStatus', 'CODEX_MIGRATION_ROLLOUT_SAFETY_REPORT', gateEnv);
+  report.migrationRuntimeCompatStatus = runGateScript('scripts/codex-migration-runtime-compat-gate.mjs', 'migrationRuntimeCompatStatus', 'CODEX_MIGRATION_RUNTIME_COMPAT_REPORT', gateEnv);
+  report.humanReviewDigestStatus = runGateScript('scripts/codex-human-review-digest-gate.mjs', 'humanReviewDigestStatus', 'CODEX_HUMAN_REVIEW_DIGEST_REPORT', gateEnv);
+  report.datasetAuditReadinessStatus = runGateScript('scripts/codex-dataset-audit-readiness-gate.mjs', 'datasetAuditReadinessStatus', 'CODEX_DATASET_AUDIT_READINESS_REPORT', gateEnv);
+  report.gameToolAdapterContractFixtureStatus = runGateScript('scripts/codex-game-tool-adapter-contract-fixture-gate.mjs', 'gameToolAdapterContractFixtureStatus', 'CODEX_GAME_TOOL_ADAPTER_CONTRACT_FIXTURE_REPORT', gateEnv);
+  report.belovedAvatarSafetyAuditStatus = runGateScript('scripts/codex-beloved-avatar-safety-audit-gate.mjs', 'belovedAvatarSafetyAuditStatus', 'CODEX_BELOVED_AVATAR_SAFETY_AUDIT_REPORT', gateEnv);
+}
+function initializeV096Statuses(report) {
+  for (const key of V096_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' };
 }
 
 function runJsonScript(script, cwd, failures, warnings) {
@@ -640,6 +730,7 @@ function computeOutputShapeStatus(report) {
     ...V093_STATUS_KEYS,
     ...V094_STATUS_KEYS,
     ...V095_STATUS_KEYS,
+    ...V096_STATUS_KEYS,
     'remoteLocalParityStatus',
     'noArtifactFailureStatus',
     'prEvidenceRendererStatus',
@@ -733,6 +824,7 @@ function computeQualityScoreStatus(report) {
     ...V093_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     ...V094_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     ...V095_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
+    ...V096_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     'agentMemoryPolicyStatus',
     'skillLifecyclePolicyStatus',
     'curatorSuggestionStatus',
@@ -754,6 +846,7 @@ function computeQualityScoreStatus(report) {
     ...V093_STATUS_KEYS,
     ...V094_STATUS_KEYS,
     ...V095_STATUS_KEYS,
+    ...V096_STATUS_KEYS,
     'remoteLocalParityStatus',
     'noArtifactFailureStatus',
     'prEvidenceRendererStatus',
@@ -823,6 +916,7 @@ function computeQualityScoreStatus(report) {
     ...V093_STATUS_KEYS,
     ...V094_STATUS_KEYS,
     ...V095_STATUS_KEYS,
+    ...V096_STATUS_KEYS,
     'remoteLocalParityStatus',
     'noArtifactFailureStatus',
     'prEvidenceRendererStatus',
@@ -952,6 +1046,7 @@ function computeTargetOutputShapeStatus(report) {
     ...V093_STATUS_KEYS,
     ...V094_STATUS_KEYS,
     ...V095_STATUS_KEYS,
+    ...V096_STATUS_KEYS,
     'remoteLocalParityStatus',
     'noArtifactFailureStatus',
     'prEvidenceRendererStatus',
@@ -1041,6 +1136,7 @@ function computeTargetQualityScoreStatus(report) {
     ...V093_STATUS_KEYS,
     ...V094_STATUS_KEYS,
     ...V095_STATUS_KEYS,
+    ...V096_STATUS_KEYS,
     'remoteLocalParityStatus',
     'noArtifactFailureStatus',
     'prEvidenceRendererStatus',
@@ -1107,6 +1203,7 @@ function computeTargetQualityScoreStatus(report) {
     ...V093_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     ...V094_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     ...V095_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
+    ...V096_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     'changeClassificationStatus',
     'productVerificationStatus',
     'productVerificationEvidenceStatus',
@@ -1389,6 +1486,31 @@ function computeFailureReasonCatalogStatus() {
     'raw_runtime_log_forbidden',
     'chain_scope_conflict',
     'false_positive_budget_failed',
+    'k_rule_coverage_missing',
+    'k_rule_coverage_stale',
+    'live2d_spec_sync_failed',
+    'live2d_spec_future_phase_mixed',
+    'runtime_latency_budget_missing',
+    'runtime_latency_duplicate_delivery',
+    'runtime_latency_queue_drain_before_ready',
+    'obsolete_open_pr_reuse_forbidden',
+    'owner_summary_missing',
+    'browser_smoke_artifact_missing',
+    'browser_smoke_raw_output_forbidden',
+    'failure_to_repair_plan_missing',
+    'runtime_state_adoption_missing',
+    'claim_transition_atomic_missing',
+    'timeout_adoption_missing',
+    'tx_reconciliation_service_missing',
+    'txhash_before_wait_missing',
+    'receipt_resume_boundary_missing',
+    'migration_rollout_safety_failed',
+    'migration_runtime_compat_missing',
+    'human_review_digest_missing',
+    'dataset_audit_readiness_missing',
+    'dataset_audit_auto_fix_forbidden',
+    'game_tool_adapter_direct_handoff',
+    'beloved_avatar_memory_privacy_violation',
   ];
   if (!fs.existsSync(file)) return { status: 'fail', missingReasonCodes: required, safeSummaryOnly: true };
   try {
@@ -1664,6 +1786,7 @@ async function runSourceHarnessGate() {
   initializeV093Statuses(report);
   initializeV094Statuses(report);
   initializeV095Statuses(report);
+  initializeV096Statuses(report);
   report.profileTemplateCompatibilityStatus = report.sourceHarnessValidationStatus.profileTemplateCompatibilityStatus || { status: 'missing' };
   if (report.sourceHarnessValidationStatus.status === 'fail') failures.push(...report.sourceHarnessValidationStatus.failures);
   if (report.sourceHarnessValidationStatus.status === 'warning') warnings.push(...report.sourceHarnessValidationStatus.warnings);
@@ -1673,9 +1796,6 @@ async function runSourceHarnessGate() {
   report.openaiCodexMethodStatus = runOpenAICodexMethodGate(gateEnv);
   report.methodSupportStatus = report.openaiCodexMethodStatus.methodSupportStatus || { status: 'missing' };
   report.genericHarnessCoreStatus = runGateScript('scripts/codex-generic-harness-core-gate.mjs', 'genericHarnessCoreStatus', 'CODEX_GENERIC_CORE_REPORT', gateEnv);
-  initializeV093Statuses(report);
-  initializeV094Statuses(report);
-  initializeV095Statuses(report);
   report.agentsContextStatus = runGateScript('scripts/codex-agents-context-gate.mjs', 'agentsContextStatus', 'CODEX_AGENTS_CONTEXT_REPORT', gateEnv);
   report.environmentReadinessStatus = runGateScript('scripts/codex-environment-readiness-gate.mjs', 'environmentReadinessStatus', 'CODEX_ENVIRONMENT_READINESS_REPORT', gateEnv);
   report.goldenSetStatus = runGateScript('scripts/codex-golden-set-gate.mjs', 'goldenSetStatus', 'CODEX_GOLDEN_SET_REPORT', gateEnv);
@@ -1712,6 +1832,7 @@ async function runSourceHarnessGate() {
     CODEX_REMOTE_NPM_DIAGNOSTIC_JSON: JSON.stringify(report.remoteNpmDiagnosticStatus),
   });
   runV095Gates(report, gateEnv);
+  runV096Gates(report, gateEnv);
   report.workflowPreflightStatus = runGateScript('scripts/codex-workflow-preflight.mjs', 'workflowPreflightStatus', 'CODEX_WORKFLOW_PREFLIGHT_REPORT', gateEnv);
   report.securityLifecycleStatus = runGateScript('scripts/codex-security-lifecycle-gate.mjs', 'securityLifecycleStatus', 'CODEX_SECURITY_LIFECYCLE_REPORT', {
     ...gateEnv,
@@ -1842,6 +1963,9 @@ async function runSourceHarnessGate() {
   report.v095SelfTestStatus = process.env.CODEX_SKIP_V095_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v095-self-test.mjs', 'v095SelfTestStatus', 'CODEX_V095_SELF_TEST_REPORT', { ...gateEnv, CODEX_V095_SKIP_LEGACY_RECHECKS: '1' });
+  report.v096SelfTestStatus = process.env.CODEX_SKIP_V096_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v096-self-test.mjs', 'v096SelfTestStatus', 'CODEX_V096_SELF_TEST_REPORT', { ...gateEnv, CODEX_V096_SKIP_LEGACY_RECHECKS: '1' });
   report.selfTestProfileStatus = computeSelfTestProfileStatus(report, gateEnv, true);
   report.oldHarnessMarkerStatus = computeOldHarnessMarkerStatus(true);
   report.selfTestCaseExportStatus = runGateScript('scripts/codex-self-test-case-export.mjs', 'selfTestCaseExportStatus', 'CODEX_SELF_TEST_CASE_EXPORT_REPORT', {
@@ -1851,7 +1975,7 @@ async function runSourceHarnessGate() {
   report.scoreDecompositionStatus = computeScoreDecompositionStatus(report, report.qualityScoreStatus);
   report.gateDecisionTraceStatus = runGateScript('scripts/codex-gate-decision-trace.mjs', 'gateDecisionTraceStatus', 'CODEX_GATE_DECISION_TRACE_REPORT', {
     ...gateEnv,
-    CODEX_GATE_REPORT_JSON: JSON.stringify(report),
+    CODEX_GATE_REPORT_JSON: JSON.stringify(compactGateDecisionTraceInput(report)),
     CODEX_SCORE_DECOMPOSITION_JSON: JSON.stringify(report.scoreDecompositionStatus),
   });
   report.evidenceContinuityStatus = runGateScript('scripts/codex-evidence-continuity-gate.mjs', 'evidenceContinuityStatus', 'CODEX_EVIDENCE_CONTINUITY_REPORT', {
@@ -1897,6 +2021,7 @@ async function runSourceHarnessGate() {
     ...Object.fromEntries(V093_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V094_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V095_STATUS_KEYS.map((key) => [key, report[key]])),
+    ...Object.fromEntries(V096_STATUS_KEYS.map((key) => [key, report[key]])),
     remoteLocalParityStatus: report.remoteLocalParityStatus,
     noArtifactFailureStatus: report.noArtifactFailureStatus,
     prEvidenceRendererStatus: report.prEvidenceRendererStatus,
@@ -2010,6 +2135,7 @@ async function runSourceHarnessGate() {
     for (const key of V093_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V094_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V095_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
+    for (const key of V096_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     console.log(`prEvidenceRendererStatus: ${report.prEvidenceRendererStatus.status}`);
     console.log(`safeArtifactClassifierStatus: ${report.safeArtifactClassifierStatus.status}`);
     console.log(`securityLifecycleStatus: ${report.securityLifecycleStatus.status}`);
@@ -2191,6 +2317,7 @@ async function runTargetHarnessGate() {
   initializeV093Statuses(report);
   initializeV094Statuses(report);
   initializeV095Statuses(report);
+  initializeV096Statuses(report);
 
   report.agentsContextStatus = runGateScript('scripts/codex-agents-context-gate.mjs', 'agentsContextStatus', 'CODEX_AGENTS_CONTEXT_REPORT', gateEnv);
   report.environmentReadinessStatus = runGateScript('scripts/codex-environment-readiness-gate.mjs', 'environmentReadinessStatus', 'CODEX_ENVIRONMENT_READINESS_REPORT', gateEnv);
@@ -2227,6 +2354,7 @@ async function runTargetHarnessGate() {
     CODEX_REMOTE_NPM_DIAGNOSTIC_JSON: JSON.stringify(report.remoteNpmDiagnosticStatus),
   });
   runV095Gates(report, gateEnv);
+  runV096Gates(report, gateEnv);
   report.workflowPreflightStatus = runGateScript('scripts/codex-workflow-preflight.mjs', 'workflowPreflightStatus', 'CODEX_WORKFLOW_PREFLIGHT_REPORT', gateEnv);
   report.securityLifecycleStatus = runGateScript('scripts/codex-security-lifecycle-gate.mjs', 'securityLifecycleStatus', 'CODEX_SECURITY_LIFECYCLE_REPORT', {
     ...gateEnv,
@@ -2349,6 +2477,9 @@ async function runTargetHarnessGate() {
   report.v095SelfTestStatus = process.env.CODEX_SKIP_V095_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v095-self-test.mjs', 'v095SelfTestStatus', 'CODEX_V095_SELF_TEST_REPORT', { ...gateEnv, CODEX_V095_SKIP_LEGACY_RECHECKS: '1' });
+  report.v096SelfTestStatus = process.env.CODEX_SKIP_V096_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v096-self-test.mjs', 'v096SelfTestStatus', 'CODEX_V096_SELF_TEST_REPORT', { ...gateEnv, CODEX_V096_SKIP_LEGACY_RECHECKS: '1' });
   report.selfTestProfileStatus = computeSelfTestProfileStatus(report, gateEnv, false);
   report.oldHarnessMarkerStatus = computeOldHarnessMarkerStatus(false);
   report.selfTestCaseExportStatus = runGateScript('scripts/codex-self-test-case-export.mjs', 'selfTestCaseExportStatus', 'CODEX_SELF_TEST_CASE_EXPORT_REPORT', {
@@ -2358,7 +2489,7 @@ async function runTargetHarnessGate() {
   report.scoreDecompositionStatus = computeScoreDecompositionStatus(report, report.targetQualityScoreStatus);
   report.gateDecisionTraceStatus = runGateScript('scripts/codex-gate-decision-trace.mjs', 'gateDecisionTraceStatus', 'CODEX_GATE_DECISION_TRACE_REPORT', {
     ...gateEnv,
-    CODEX_GATE_REPORT_JSON: JSON.stringify(report),
+    CODEX_GATE_REPORT_JSON: JSON.stringify(compactGateDecisionTraceInput(report)),
     CODEX_SCORE_DECOMPOSITION_JSON: JSON.stringify(report.scoreDecompositionStatus),
   });
   report.evidenceContinuityStatus = runGateScript('scripts/codex-evidence-continuity-gate.mjs', 'evidenceContinuityStatus', 'CODEX_EVIDENCE_CONTINUITY_REPORT', {
@@ -2397,6 +2528,7 @@ async function runTargetHarnessGate() {
     ...Object.fromEntries(V093_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V094_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V095_STATUS_KEYS.map((key) => [key, report[key]])),
+    ...Object.fromEntries(V096_STATUS_KEYS.map((key) => [key, report[key]])),
     remoteLocalParityStatus: report.remoteLocalParityStatus,
     noArtifactFailureStatus: report.noArtifactFailureStatus,
     prEvidenceRendererStatus: report.prEvidenceRendererStatus,
@@ -2480,6 +2612,7 @@ async function runTargetHarnessGate() {
     for (const key of V093_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V094_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V095_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
+    for (const key of V096_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     console.log(`prEvidenceRendererStatus: ${report.prEvidenceRendererStatus.status}`);
     console.log(`safeArtifactClassifierStatus: ${report.safeArtifactClassifierStatus.status}`);
     console.log(`securityLifecycleStatus: ${report.securityLifecycleStatus.status}`);

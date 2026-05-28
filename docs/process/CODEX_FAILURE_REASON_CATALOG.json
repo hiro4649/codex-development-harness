@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5",
-  "harnessVersion": "0.9.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.6",
+  "harnessVersion": "0.9.6",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -2568,6 +2568,206 @@
       "severity": "error",
       "safeMessage": "skill evidence link missing",
       "nextBestFix": "Use the v0.9.5 safe next action for this gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "k_rule_coverage_missing",
+      "gate": "kRuleCoverageStatus",
+      "severity": "error",
+      "safeMessage": "K-rule coverage evidence is missing.",
+      "nextBestFix": "Add a safe K-rule coverage manifest entry and deterministic fixture.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "k_rule_coverage_stale",
+      "gate": "kRuleCoverageStatus",
+      "severity": "error",
+      "safeMessage": "K-rule coverage manifest is stale.",
+      "nextBestFix": "Refresh the coverage manifest for the current harness version.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "live2d_spec_sync_failed",
+      "gate": "live2dSpecSyncStatus",
+      "severity": "error",
+      "safeMessage": "Live2D spec synchronization evidence failed.",
+      "nextBestFix": "Align the safe spec phase evidence without connecting runtime Live2D.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "live2d_spec_future_phase_mixed",
+      "gate": "live2dSpecSyncStatus",
+      "severity": "error",
+      "safeMessage": "A future Live2D phase was mixed into the current scope.",
+      "nextBestFix": "Keep future phase evidence separate from the current rollout.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_latency_budget_missing",
+      "gate": "runtimeLatencyBudgetStatus",
+      "severity": "error",
+      "safeMessage": "Runtime latency budget evidence is missing.",
+      "nextBestFix": "Record bounded latency, duplicate delivery, and queue drain evidence policy.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_latency_duplicate_delivery",
+      "gate": "runtimeLatencyBudgetStatus",
+      "severity": "error",
+      "safeMessage": "Runtime latency evidence allows duplicate delivery.",
+      "nextBestFix": "Add idempotency or ownership evidence before claiming readiness.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_latency_queue_drain_before_ready",
+      "gate": "runtimeLatencyBudgetStatus",
+      "severity": "error",
+      "safeMessage": "Queue drain readiness was claimed before safe evidence.",
+      "nextBestFix": "Require bounded queue drain evidence before readiness.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "obsolete_open_pr_reuse_forbidden",
+      "gate": "obsoleteOpenPrStatus",
+      "severity": "error",
+      "safeMessage": "An obsolete open PR was reused for new harness work.",
+      "nextBestFix": "Open a current-head harness PR or close stale scope before reuse.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "owner_summary_missing",
+      "gate": "ownerSummaryCompactStatus",
+      "severity": "error",
+      "safeMessage": "Owner summary digest is missing.",
+      "nextBestFix": "Add a compact safe owner summary with the required fields.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "browser_smoke_artifact_missing",
+      "gate": "browserSmokeArtifactStatus",
+      "severity": "error",
+      "safeMessage": "Browser smoke artifact is missing when required.",
+      "nextBestFix": "Generate a safe current-head browser smoke artifact or mark it not applicable.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "browser_smoke_raw_output_forbidden",
+      "gate": "browserSmokeArtifactStatus",
+      "severity": "error",
+      "safeMessage": "Browser smoke evidence contains raw console output.",
+      "nextBestFix": "Replace raw output with a safe summary artifact.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "failure_to_repair_plan_missing",
+      "gate": "failureToRepairPlanStatus",
+      "severity": "error",
+      "safeMessage": "Failure-to-repair plan is missing.",
+      "nextBestFix": "Add the safe next repair action and stop condition.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_state_adoption_missing",
+      "gate": "runtimeStateAdoptionStatus",
+      "severity": "error",
+      "safeMessage": "Runtime state adoption evidence is missing.",
+      "nextBestFix": "Add schema/helper adoption evidence before readiness claims.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "claim_transition_atomic_missing",
+      "gate": "claimTransitionStatus",
+      "severity": "error",
+      "safeMessage": "Atomic claim transition evidence is missing.",
+      "nextBestFix": "Document atomic claim/lease ownership evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "timeout_adoption_missing",
+      "gate": "timeoutAdoptionStatus",
+      "severity": "error",
+      "safeMessage": "Timeout adoption evidence is missing.",
+      "nextBestFix": "Add timeout, retry, and partial failure evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "tx_reconciliation_service_missing",
+      "gate": "txReconciliationServiceStatus",
+      "severity": "error",
+      "safeMessage": "Transaction reconciliation service evidence is missing.",
+      "nextBestFix": "Add safe reconciliation service evidence before tx readiness.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "txhash_before_wait_missing",
+      "gate": "txHashBeforeWaitStatus",
+      "severity": "error",
+      "safeMessage": "txHash-before-wait evidence is missing.",
+      "nextBestFix": "Persist txHash before waiting for receipt.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "receipt_resume_boundary_missing",
+      "gate": "receiptResumeBoundaryStatus",
+      "severity": "error",
+      "safeMessage": "Receipt resume boundary evidence is missing.",
+      "nextBestFix": "Define safe receipt resume and retry boundaries.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "migration_rollout_safety_failed",
+      "gate": "migrationRolloutSafetyStatus",
+      "severity": "error",
+      "safeMessage": "Migration rollout safety evidence failed.",
+      "nextBestFix": "Provide additive migration or rollback evidence before rollout.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "migration_runtime_compat_missing",
+      "gate": "migrationRuntimeCompatStatus",
+      "severity": "error",
+      "safeMessage": "Migration runtime compatibility evidence is missing.",
+      "nextBestFix": "Add runtime compatibility evidence for migration paths.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "human_review_digest_missing",
+      "gate": "humanReviewDigestStatus",
+      "severity": "error",
+      "safeMessage": "Human review digest is missing.",
+      "nextBestFix": "Add a compact human review digest for R3 work.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "dataset_audit_readiness_missing",
+      "gate": "datasetAuditReadinessStatus",
+      "severity": "error",
+      "safeMessage": "Dataset audit readiness evidence is missing.",
+      "nextBestFix": "Add safe audit readiness evidence without auto-fix behavior.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "dataset_audit_auto_fix_forbidden",
+      "gate": "datasetAuditReadinessStatus",
+      "severity": "error",
+      "safeMessage": "Dataset audit was used as auto-fix authority.",
+      "nextBestFix": "Keep dataset audit read-only and advisory.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "game_tool_adapter_direct_handoff",
+      "gate": "gameToolAdapterContractFixtureStatus",
+      "severity": "error",
+      "safeMessage": "Game/tool adapter candidate was handed off directly.",
+      "nextBestFix": "Require approved action contract evidence before handoff.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "beloved_avatar_memory_privacy_violation",
+      "gate": "belovedAvatarSafetyAuditStatus",
+      "severity": "error",
+      "safeMessage": "Beloved avatar safety evidence contains memory/privacy risk.",
+      "nextBestFix": "Remove sensitive data and add safe audit evidence.",
       "canManualConfirmationOverride": false
     }
   ]

@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.5",
-  "harnessVersion": "0.9.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.6",
+  "harnessVersion": "0.9.6",
   "schemaVersion": "1.0.0",
   "entrypoints": [
     "AGENTS.md",
@@ -46,7 +46,12 @@
     "docs/process/CODEX_AGENT_SESSION_GOVERNANCE_POLICY.md",
     "docs/process/CODEX_AGENT_CONTAINMENT_BOUNDARY_POLICY.md",
     "docs/process/CODEX_PRISMA_STATE_MACHINE_SCHEMA_POLICY.md",
-    "docs/process/CODEX_EVIDENCE_MINIMALITY_POLICY.md"
+    "docs/process/CODEX_EVIDENCE_MINIMALITY_POLICY.md",
+    "docs/process/CODEX_K_RULE_COVERAGE_POLICY.md",
+    "docs/process/CODEX_LIVE2D_SPEC_SYNC_POLICY.md",
+    "docs/process/CODEX_RUNTIME_STATE_ADOPTION_POLICY.md",
+    "docs/process/CODEX_MIGRATION_ROLLOUT_SAFETY_POLICY.md",
+    "docs/process/CODEX_HUMAN_REVIEW_DIGEST_SCHEMA.json"
   ],
   "policyIndex": [
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
@@ -104,7 +109,22 @@
     "docs/process/CODEX_RECEIPT_EVIDENCE_SCHEMA_POLICY.md",
     "docs/process/CODEX_WORKER_READINESS_SEQUENCE_POLICY.md",
     "docs/process/CODEX_EVIDENCE_MINIMALITY_POLICY.md",
-    "docs/process/CODEX_EVIDENCE_DEDUP_POLICY.md"
+    "docs/process/CODEX_EVIDENCE_DEDUP_POLICY.md",
+    "docs/process/CODEX_K_RULE_COVERAGE_POLICY.md",
+    "docs/process/CODEX_LIVE2D_SPEC_SYNC_POLICY.md",
+    "docs/process/CODEX_RUNTIME_LATENCY_BUDGET_POLICY.md",
+    "docs/process/CODEX_OBSOLETE_OPEN_PR_POLICY.md",
+    "docs/process/CODEX_RUNTIME_STATE_ADOPTION_POLICY.md",
+    "docs/process/CODEX_CLAIM_TRANSITION_POLICY.md",
+    "docs/process/CODEX_TIMEOUT_ADOPTION_POLICY.md",
+    "docs/process/CODEX_TX_RECONCILIATION_SERVICE_POLICY.md",
+    "docs/process/CODEX_TXHASH_BEFORE_WAIT_POLICY.md",
+    "docs/process/CODEX_RECEIPT_RESUME_BOUNDARY_POLICY.md",
+    "docs/process/CODEX_MIGRATION_ROLLOUT_SAFETY_POLICY.md",
+    "docs/process/CODEX_MIGRATION_RUNTIME_COMPAT_POLICY.md",
+    "docs/process/CODEX_DATASET_AUDIT_READINESS_POLICY.md",
+    "docs/process/CODEX_GAME_TOOL_ADAPTER_CONTRACT_FIXTURE_POLICY.md",
+    "docs/process/CODEX_BELOVED_AVATAR_SAFETY_AUDIT_POLICY.md"
   ],
   "skillIndex": [
     ".agents/skills/codex-bugfix/SKILL.md"
@@ -178,7 +198,26 @@
     "scripts/codex-evidence-minimality-gate.mjs",
     "scripts/codex-evidence-dedup-gate.mjs",
     "scripts/codex-safe-artifact-next-action-classifier.mjs",
-    "scripts/codex-skill-evidence-link-gate.mjs"
+    "scripts/codex-skill-evidence-link-gate.mjs",
+    "scripts/codex-k-rule-coverage-gate.mjs",
+    "scripts/codex-live2d-spec-sync-gate.mjs",
+    "scripts/codex-runtime-latency-budget-gate.mjs",
+    "scripts/codex-obsolete-open-pr-gate.mjs",
+    "scripts/codex-owner-summary-compact-gate.mjs",
+    "scripts/codex-browser-smoke-artifact-gate.mjs",
+    "scripts/codex-failure-to-repair-plan-gate.mjs",
+    "scripts/codex-runtime-state-adoption-gate.mjs",
+    "scripts/codex-claim-transition-gate.mjs",
+    "scripts/codex-timeout-adoption-gate.mjs",
+    "scripts/codex-tx-reconciliation-service-gate.mjs",
+    "scripts/codex-txhash-before-wait-gate.mjs",
+    "scripts/codex-receipt-resume-boundary-gate.mjs",
+    "scripts/codex-migration-rollout-safety-gate.mjs",
+    "scripts/codex-migration-runtime-compat-gate.mjs",
+    "scripts/codex-human-review-digest-gate.mjs",
+    "scripts/codex-dataset-audit-readiness-gate.mjs",
+    "scripts/codex-game-tool-adapter-contract-fixture-gate.mjs",
+    "scripts/codex-beloved-avatar-safety-audit-gate.mjs"
   ],
   "evalIndex": [
     "docs/process/CODEX_PROMPT_EVAL_SUITE.json",
@@ -198,7 +237,9 @@
     "docs/process/CODEX_V094_EVAL_CASES.json",
     "scripts/codex-v094-self-test.mjs",
     "docs/process/CODEX_V095_EVAL_CASES.json",
-    "scripts/codex-v095-self-test.mjs"
+    "scripts/codex-v095-self-test.mjs",
+    "docs/process/CODEX_V096_EVAL_CASES.json",
+    "scripts/codex-v096-self-test.mjs"
   ],
   "reviewIndex": [
     "docs/process/code_review.md",
@@ -231,7 +272,12 @@
     "docs/process/CODEX_TRACE_TO_EVAL_CANDIDATE_SCHEMA.json",
     "docs/process/CODEX_SUBAGENT_REVIEW_MATRIX.json",
     "docs/process/CODEX_SAFE_ARTIFACT_NEXT_ACTION_SCHEMA.json",
-    "docs/process/CODEX_SKILL_EVIDENCE_LINK_SCHEMA.json"
+    "docs/process/CODEX_SKILL_EVIDENCE_LINK_SCHEMA.json",
+    "docs/process/CODEX_K_RULE_COVERAGE_MANIFEST_SCHEMA.json",
+    "docs/process/CODEX_OWNER_SUMMARY_COMPACT_SCHEMA.json",
+    "docs/process/CODEX_BROWSER_SMOKE_ARTIFACT_SCHEMA.json",
+    "docs/process/CODEX_FAILURE_TO_REPAIR_PLAN_SCHEMA.json",
+    "docs/process/CODEX_HUMAN_REVIEW_DIGEST_SCHEMA.json"
   ],
   "sourceOfRecord": [
     "AGENTS.md",
