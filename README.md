@@ -1,29 +1,29 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
 # Codex Development Harness
 
-Version: v0.9.5
-Name: Agent Doctrine, Skill Routing, State Machine Evidence, and Minimal Evidence Gate
+Version: v0.9.6
+Name: Spec Coverage, Runtime Adoption, Migration Safety, and Human Digest Gate
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.5 preserves v0.9.4 remote product context restore, product evidence lock, runtime job safety, tx path evidence, env consistency, and skip-npm bypass protection while adding AGENTS doctrine control, skill routing, skill load budget, skill drift detection, agent session governance, agent containment boundary checks, eval trace harvesting, operator-visible delta evidence, subagent governance, state machine schema evidence, state transition helper checks, receipt evidence schema, worker readiness sequence, evidence minimality, evidence dedup, safe artifact next-action classification, and skill evidence links.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.6 preserves v0.9.5 AGENTS doctrine, skill routing, skill budget, evidence minimality, evidence dedup, and safe artifact next action while adding K-rule coverage, Live2D spec sync, runtime latency budget, obsolete open PR hygiene, compact owner summaries, browser smoke artifact checks, failure-to-repair planning, runtime state adoption, claim/timeout/tx reconciliation gates, migration rollout safety, dataset audit readiness, Game/Tool Adapter contract fixtures, beloved avatar safety audit readiness, and human review digests.
 
-The new checks use deterministic fixtures and safe summaries. They add no external dependency, no LLM judge requirement, no MCP requirement, no browser or Playwright requirement, no hidden chain-of-thought inspection, no product command execution, and no product code change requirement. AGENTS.md remains compact, and skills are selectively routed instead of loaded wholesale.
+The new checks use deterministic fixtures and safe summaries. They add no external dependency, no LLM judge requirement, no MCP requirement, no all-PR browser requirement, no Playwright requirement, no hidden chain-of-thought inspection, no product command execution, and no product code change requirement. Browser smoke evidence stays optional and scoped, and a passing browser smoke cannot be treated as runtime readiness.
 
-## What v0.9.5 Adds
+## What v0.9.6 Adds
 
-- Agents Doctrine, Skill Routing, Skill Load Budget, and Skill Drift gates for keeping AGENTS.md compact while selecting only the needed skills.
-- Agent Session Governance and Agent Containment Boundary gates for multi-agent state, branch ownership, tool permission, network, credential, and external-content boundaries.
-- Eval Trace Harvest, Operator Visible Delta, Trace-to-Eval Candidate, Subagent Governance, and Subagent Review Matrix gates for safe review evidence without raw subagent output.
-- State Machine Schema, State Transition Helper, Receipt Evidence Schema, and Worker Readiness Sequence gates for runtime and tx path evidence without claiming runtime readiness.
-- Evidence Minimality, Evidence Dedup, Safe Artifact Next Action, and Skill Evidence Link gates for compact PR evidence and safe next actions.
-- v0.9.5 deterministic self-test fixtures.
+- K Rule Coverage and Live2D Spec Sync gates for keeping spec coverage and phase boundaries explicit without connecting real Live2D runtime.
+- Runtime Latency Budget, Runtime State Adoption, Claim Transition, Timeout Adoption, Tx Reconciliation Service, TxHash Before Wait, and Receipt Resume Boundary gates for runtime adoption evidence without claiming runtime readiness.
+- Migration Rollout Safety and Migration Runtime Compatibility gates for additive migration safety and rollback/compatibility evidence.
+- Owner Summary Compact, Human Review Digest, Failure to Repair Plan, Browser Smoke Artifact, and Obsolete Open PR gates for shorter human-facing evidence and safer next actions.
+- Dataset Audit Readiness, Game/Tool Adapter Contract Fixture, and Beloved Avatar Safety Audit gates for safe audit and adapter readiness without raw data or auto-fix behavior.
+- v0.9.6 deterministic self-test fixtures.
 
-## Preserved v0.9.4 Capabilities
+## Preserved v0.9.5 Capabilities
 
-v0.9.5 keeps remote product context restore, product-relevant evidence lock, product baseline continuity, skip-npm product bypass protection, pull-request context fidelity, product-context safe artifact classification, runtime job safety, tx path state evidence, env consistency, staging no-tx preflight, runtime log secret scan, chain scope guard, false-positive budget tracking, target hotfix preservation, same-head artifact evidence, Docker smoke current-head artifact enforcement, and compact PR evidence.
+v0.9.6 keeps AGENTS doctrine control, skill routing, skill load budget, skill drift detection, agent session governance, agent containment boundary checks, eval trace harvesting, operator-visible delta evidence, subagent governance, state machine schema evidence, state transition helper checks, receipt evidence schema, worker readiness sequence, evidence minimality, evidence dedup, safe artifact next-action classification, and skill evidence links. It also preserves v0.9.4 remote product context restore, product evidence lock, runtime job safety, tx path evidence, env consistency, and skip-npm bypass protection.
 
-## What v0.9.5 Does Not Add
+## What v0.9.6 Does Not Add
 
-No external memory server, MCP dependency, required LLM judge, GEPA or DSPy dependency, AST parser dependency, browser or Playwright requirement, external API call, prompt auto-apply, hidden chain-of-thought inspection, product command execution, product code changes, runtime readiness claim, production readiness claim, raw runtime log artifact, raw production trace artifact, or target rollout is implemented by this source update.
+No external memory server, MCP dependency, required LLM judge, GEPA or DSPy dependency, AST parser dependency, all-PR browser or Playwright requirement, external API call, prompt auto-apply, hidden chain-of-thought inspection, product command execution, product code changes, runtime readiness claim, production readiness claim, raw runtime log artifact, raw cue artifact, raw motion command artifact, raw model path artifact, raw production trace artifact, dataset auto-fix behavior, or target rollout is implemented by this source update.
 
 ## Running The Core Gate
 

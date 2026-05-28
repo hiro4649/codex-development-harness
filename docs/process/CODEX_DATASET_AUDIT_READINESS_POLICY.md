@@ -1,0 +1,6 @@
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
+# Dataset Audit Readiness Policy
+
+Allows dataset audit readiness evidence only as safe schema evidence and forbids auto-fix usage.
+
+Outputs are safe-summary only. Do not include raw logs, raw diffs, raw cue, raw motion command, raw model path, private paths, endpoints, secrets, personal data, or production data.

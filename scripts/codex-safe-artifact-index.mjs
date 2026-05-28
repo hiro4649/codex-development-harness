@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.5
+// CODEX_QUALITY_HARNESS_FILE v0.9.6
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -46,7 +46,7 @@ export function buildSafeArtifactIndex(artifacts = [], mode = process.env.CODEX_
     artifactCount: entries.length,
     budgetExceeded: entries.length > maxArtifacts,
   };
-  const unsafePath = entries.some((item) => RAW_LOOKING.test(item.path) && !/safe-summary|failure-reasons|normalized|safe\.json|final-summary|artifact-index|preflight|target-quality|diagnostic-consolidated-summary|reason-summary|test-metrics|quality-gate|self-test-cases|same-head-artifact-evidence|docker-smoke-artifact|pr-evidence-compact|product-context-safe-artifact|product-baseline-continuity|false-positive-budget|agent-session-governance|evidence-minimality|safe-artifact-next-action|skill-evidence-link/i.test(item.path));
+  const unsafePath = entries.some((item) => RAW_LOOKING.test(item.path) && !/safe-summary|failure-reasons|normalized|safe\.json|final-summary|artifact-index|preflight|target-quality|diagnostic-consolidated-summary|reason-summary|test-metrics|quality-gate|self-test-cases|same-head-artifact-evidence|docker-smoke-artifact|pr-evidence-compact|product-context-safe-artifact|product-baseline-continuity|false-positive-budget|agent-session-governance|evidence-minimality|safe-artifact-next-action|skill-evidence-link|owner-summary-compact|browser-smoke-artifact|failure-to-repair-plan|human-review-digest/i.test(item.path));
   const unsafe = unsafePath || entries.some((item) => scanObjectForUnsafe(item).length || !item.safeSummaryOnly || item.rawLogIncluded || item.containsSecrets || item.containsEndpointValues);
   const requiredMissing = missingArtifacts.length > 0;
   return {
@@ -92,6 +92,10 @@ function defaultArtifacts(mode) {
     'codex-evidence-minimality.safe.json',
     'codex-safe-artifact-next-action.safe.json',
     'codex-skill-evidence-link.safe.json',
+    'codex-owner-summary-compact.safe.json',
+    'codex-browser-smoke-artifact.safe.json',
+    'codex-failure-to-repair-plan.safe.json',
+    'codex-human-review-digest.safe.json',
     mode === 'target' ? 'codex-target-quality-summary.json' : 'codex-source-final-summary.json',
     mode === 'target' ? 'codex-target-final-summary.json' : '',
     'codex-workflow-preflight.safe.json',

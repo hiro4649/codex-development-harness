@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.6",
+  "schemaVersion": "0.9.6",
+  "name": "human_review_digest",
+  "safeSummaryOnly": true,
+  "required": [
+    "status",
+    "safeSummaryOnly"
+  ],
+  "forbidden": [
+    "rawLogs",
+    "rawDiffs",
+    "secret",
+    "endpoint",
+    "privatePath",
+    "productionData",
+    "personalData"
+  ]
+}

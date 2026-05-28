@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.5
+// CODEX_QUALITY_HARNESS_FILE v0.9.6
 import fs from 'node:fs';
 import { HARNESS_VERSION, marker, readText, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 

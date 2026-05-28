@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.5
+// CODEX_QUALITY_HARNESS_FILE v0.9.6
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, simpleStatus, writeJsonReport } from './codex-v080-lib.mjs';
@@ -93,6 +93,45 @@ const v095OptionalNotApplicable = new Set([
   'receiptEvidenceSchemaStatus',
   'workerReadinessSequenceStatus',
 ]);
+const v096StatusKeys = [
+  'kRuleCoverageStatus',
+  'live2dSpecSyncStatus',
+  'runtimeLatencyBudgetStatus',
+  'obsoleteOpenPrStatus',
+  'ownerSummaryCompactStatus',
+  'browserSmokeArtifactStatus',
+  'failureToRepairPlanStatus',
+  'runtimeStateAdoptionStatus',
+  'claimTransitionStatus',
+  'timeoutAdoptionStatus',
+  'txReconciliationServiceStatus',
+  'txHashBeforeWaitStatus',
+  'receiptResumeBoundaryStatus',
+  'migrationRolloutSafetyStatus',
+  'migrationRuntimeCompatStatus',
+  'humanReviewDigestStatus',
+  'datasetAuditReadinessStatus',
+  'gameToolAdapterContractFixtureStatus',
+  'belovedAvatarSafetyAuditStatus',
+  'v096SelfTestStatus',
+];
+const v096OptionalNotApplicable = new Set([
+  'kRuleCoverageStatus',
+  'live2dSpecSyncStatus',
+  'runtimeLatencyBudgetStatus',
+  'browserSmokeArtifactStatus',
+  'runtimeStateAdoptionStatus',
+  'claimTransitionStatus',
+  'timeoutAdoptionStatus',
+  'txReconciliationServiceStatus',
+  'txHashBeforeWaitStatus',
+  'receiptResumeBoundaryStatus',
+  'migrationRolloutSafetyStatus',
+  'migrationRuntimeCompatStatus',
+  'datasetAuditReadinessStatus',
+  'gameToolAdapterContractFixtureStatus',
+  'belovedAvatarSafetyAuditStatus',
+]);
 
 const sourceRequiredPass = [
   'sourceHarnessValidationStatus',
@@ -114,6 +153,7 @@ const sourceRequiredPass = [
   ...v093StatusKeys,
   ...v094StatusKeys,
   ...v095StatusKeys,
+  ...v096StatusKeys,
   'remoteLocalParityStatus',
   'noArtifactFailureStatus',
   'prEvidenceRendererStatus',
@@ -211,6 +251,7 @@ const targetRequiredPass = [
   ...v093StatusKeys,
   ...v094StatusKeys,
   ...v095StatusKeys,
+  ...v096StatusKeys,
   'remoteLocalParityStatus',
   'noArtifactFailureStatus',
   'prEvidenceRendererStatus',
@@ -271,6 +312,7 @@ const optionalNotApplicable = new Set([
   ...v093OptionalNotApplicable,
   ...v094OptionalNotApplicable,
   ...v095OptionalNotApplicable,
+  ...v096OptionalNotApplicable,
   'agentMemoryPolicyStatus',
   'skillLifecyclePolicyStatus',
   'curatorSuggestionStatus',
@@ -402,9 +444,6 @@ export function evaluateWorkflowReport(report, options = {}) {
   ]);
   const v092Fields = new Set([
     'versionLineageStatus',
-  ...v093StatusKeys,
-  ...v094StatusKeys,
-  ...v095StatusKeys,
     'prEvidenceRendererStatus',
     'safeArtifactClassifierStatus',
     'securityLifecycleStatus',
@@ -419,6 +458,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   const v093Fields = new Set(v093StatusKeys);
   const v094Fields = new Set(v094StatusKeys);
   const v095Fields = new Set(v095StatusKeys);
+  const v096Fields = new Set(v096StatusKeys);
   const hasV084Shape = report.harnessVersion === HARNESS_VERSION || [...v084Fields].some((key) => report[key]);
   const hasV085Shape = report.harnessVersion === HARNESS_VERSION || [...v085Fields].some((key) => report[key]);
   const hasV086Shape = report.harnessVersion === HARNESS_VERSION || [...v086Fields].some((key) => report[key]);
@@ -430,6 +470,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   const hasV093Shape = report.harnessVersion === HARNESS_VERSION || [...v093Fields].some((key) => report[key]);
   const hasV094Shape = report.harnessVersion === HARNESS_VERSION || [...v094Fields].some((key) => report[key]);
   const hasV095Shape = report.harnessVersion === HARNESS_VERSION || [...v095Fields].some((key) => report[key]);
+  const hasV096Shape = report.harnessVersion === HARNESS_VERSION || [...v096Fields].some((key) => report[key]);
   const required = (mode === 'target' ? targetRequiredPass : sourceRequiredPass)
     .filter((key) => hasV084Shape || !v084Fields.has(key))
     .filter((key) => hasV085Shape || !v085Fields.has(key))
@@ -440,7 +481,9 @@ export function evaluateWorkflowReport(report, options = {}) {
     .filter((key) => hasV090Shape || !v090Fields.has(key))
     .filter((key) => hasV092Shape || !v092Fields.has(key))
     .filter((key) => hasV093Shape || !v093Fields.has(key))
-    .filter((key) => (hasV094Shape || !v094Fields.has(key)) && (hasV095Shape || !v095Fields.has(key)));
+    .filter((key) => hasV094Shape || !v094Fields.has(key))
+    .filter((key) => hasV095Shape || !v095Fields.has(key))
+    .filter((key) => hasV096Shape || !v096Fields.has(key));
   const failures = [];
   for (const key of required) {
     const status = report[key]?.status || 'missing';
@@ -535,6 +578,26 @@ export function evaluateWorkflowReport(report, options = {}) {
     evidenceMinimalityStatus: report.evidenceMinimalityStatus || { status: 'missing' },
     evidenceDedupStatus: report.evidenceDedupStatus || { status: 'missing' },
     safeArtifactNextActionStatus: report.safeArtifactNextActionStatus || { status: 'missing' },
+    kRuleCoverageStatus: report.kRuleCoverageStatus || { status: 'missing' },
+    live2dSpecSyncStatus: report.live2dSpecSyncStatus || { status: 'missing' },
+    runtimeLatencyBudgetStatus: report.runtimeLatencyBudgetStatus || { status: 'missing' },
+    obsoleteOpenPrStatus: report.obsoleteOpenPrStatus || { status: 'missing' },
+    ownerSummaryCompactStatus: report.ownerSummaryCompactStatus || { status: 'missing' },
+    browserSmokeArtifactStatus: report.browserSmokeArtifactStatus || { status: 'missing' },
+    failureToRepairPlanStatus: report.failureToRepairPlanStatus || { status: 'missing' },
+    runtimeStateAdoptionStatus: report.runtimeStateAdoptionStatus || { status: 'missing' },
+    claimTransitionStatus: report.claimTransitionStatus || { status: 'missing' },
+    timeoutAdoptionStatus: report.timeoutAdoptionStatus || { status: 'missing' },
+    txReconciliationServiceStatus: report.txReconciliationServiceStatus || { status: 'missing' },
+    txHashBeforeWaitStatus: report.txHashBeforeWaitStatus || { status: 'missing' },
+    receiptResumeBoundaryStatus: report.receiptResumeBoundaryStatus || { status: 'missing' },
+    migrationRolloutSafetyStatus: report.migrationRolloutSafetyStatus || { status: 'missing' },
+    migrationRuntimeCompatStatus: report.migrationRuntimeCompatStatus || { status: 'missing' },
+    humanReviewDigestStatus: report.humanReviewDigestStatus || { status: 'missing' },
+    datasetAuditReadinessStatus: report.datasetAuditReadinessStatus || { status: 'missing' },
+    gameToolAdapterContractFixtureStatus: report.gameToolAdapterContractFixtureStatus || { status: 'missing' },
+    belovedAvatarSafetyAuditStatus: report.belovedAvatarSafetyAuditStatus || { status: 'missing' },
+    v096SelfTestStatus: report.v096SelfTestStatus || { status: 'missing' },
     failureCount: Array.isArray(report.failures) ? report.failures.length : 0,
     warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
     safeSummaryOnly: true,
@@ -576,10 +639,10 @@ function writeArtifacts(result, report) {
     safeSummaryOnly: true,
   }, null, 2));
   fs.writeFileSync('codex-self-test-cases.safe.json', JSON.stringify({
-    suite: report.v095SelfTestStatus?.suite || report.v094SelfTestStatus?.suite || report.v093SelfTestStatus?.suite || report.v092SelfTestStatus?.suite || report.selfTestCaseExportStatus?.suite || 'local_quality_gate',
-    caseCount: report.v095SelfTestStatus?.caseCount ?? report.v094SelfTestStatus?.caseCount ?? report.v093SelfTestStatus?.caseCount ?? report.v092SelfTestStatus?.caseCount ?? report.selfTestCaseExportStatus?.caseCount ?? 0,
-    failedCaseCount: report.v095SelfTestStatus?.failedCaseCount ?? report.v094SelfTestStatus?.failedCaseCount ?? report.v093SelfTestStatus?.failedCaseCount ?? report.v092SelfTestStatus?.failedCaseCount ?? report.selfTestCaseExportStatus?.failedCaseCount ?? 0,
-    failedCases: Array.isArray(report.v095SelfTestStatus?.failedCases) ? report.v095SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v094SelfTestStatus?.failedCases) ? report.v094SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v093SelfTestStatus?.failedCases) ? report.v093SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v092SelfTestStatus?.failedCases) ? report.v092SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.selfTestCaseExportStatus?.failedCases) ? report.selfTestCaseExportStatus.failedCases.slice(0, 20) : [])))),
+    suite: report.v096SelfTestStatus?.suite || report.v095SelfTestStatus?.suite || report.v094SelfTestStatus?.suite || report.v093SelfTestStatus?.suite || report.v092SelfTestStatus?.suite || report.selfTestCaseExportStatus?.suite || 'local_quality_gate',
+    caseCount: report.v096SelfTestStatus?.caseCount ?? report.v095SelfTestStatus?.caseCount ?? report.v094SelfTestStatus?.caseCount ?? report.v093SelfTestStatus?.caseCount ?? report.v092SelfTestStatus?.caseCount ?? report.selfTestCaseExportStatus?.caseCount ?? 0,
+    failedCaseCount: report.v096SelfTestStatus?.failedCaseCount ?? report.v095SelfTestStatus?.failedCaseCount ?? report.v094SelfTestStatus?.failedCaseCount ?? report.v093SelfTestStatus?.failedCaseCount ?? report.v092SelfTestStatus?.failedCaseCount ?? report.selfTestCaseExportStatus?.failedCaseCount ?? 0,
+    failedCases: Array.isArray(report.v096SelfTestStatus?.failedCases) ? report.v096SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v095SelfTestStatus?.failedCases) ? report.v095SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v094SelfTestStatus?.failedCases) ? report.v094SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v093SelfTestStatus?.failedCases) ? report.v093SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v092SelfTestStatus?.failedCases) ? report.v092SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.selfTestCaseExportStatus?.failedCases) ? report.selfTestCaseExportStatus.failedCases.slice(0, 20) : []))))),
     safeSummaryOnly: true,
   }, null, 2));
   fs.writeFileSync('codex-safe-artifact-classification.safe.json', JSON.stringify(report.safeArtifactClassifierStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
@@ -595,6 +658,10 @@ function writeArtifacts(result, report) {
   fs.writeFileSync('codex-evidence-minimality.safe.json', JSON.stringify(report.evidenceMinimalityStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
   fs.writeFileSync('codex-safe-artifact-next-action.safe.json', JSON.stringify(report.safeArtifactNextActionStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
   fs.writeFileSync('codex-skill-evidence-link.safe.json', JSON.stringify(report.skillEvidenceLinkStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-owner-summary-compact.safe.json', JSON.stringify(report.ownerSummaryCompactStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-browser-smoke-artifact.safe.json', JSON.stringify(report.browserSmokeArtifactStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-failure-to-repair-plan.safe.json', JSON.stringify(report.failureToRepairPlanStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-human-review-digest.safe.json', JSON.stringify(report.humanReviewDigestStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
   if (result.mode === 'target') {
     fs.writeFileSync('codex-target-quality-summary.json', JSON.stringify({
       targetQualityScoreStatus: report.targetQualityScoreStatus || { status: 'missing' },
@@ -626,11 +693,15 @@ function writeArtifacts(result, report) {
     { artifactName: 'codex-evidence-minimality.safe.json', path: 'codex-evidence-minimality.safe.json', status: 'present' },
     { artifactName: 'codex-safe-artifact-next-action.safe.json', path: 'codex-safe-artifact-next-action.safe.json', status: 'present' },
     { artifactName: 'codex-skill-evidence-link.safe.json', path: 'codex-skill-evidence-link.safe.json', status: 'present' },
+    { artifactName: 'codex-owner-summary-compact.safe.json', path: 'codex-owner-summary-compact.safe.json', status: 'present' },
+    { artifactName: 'codex-browser-smoke-artifact.safe.json', path: 'codex-browser-smoke-artifact.safe.json', status: 'present' },
+    { artifactName: 'codex-failure-to-repair-plan.safe.json', path: 'codex-failure-to-repair-plan.safe.json', status: 'present' },
+    { artifactName: 'codex-human-review-digest.safe.json', path: 'codex-human-review-digest.safe.json', status: 'present' },
     ...(result.mode === 'target' ? [{ artifactName: 'codex-target-quality-summary.json', path: 'codex-target-quality-summary.json', status: 'present' }] : []),
     { artifactName: 'codex-workflow-preflight.safe.json', path: 'codex-workflow-preflight.safe.json', status: fs.existsSync('codex-workflow-preflight.safe.json') ? 'present' : 'missing', reasonCodes: fs.existsSync('codex-workflow-preflight.safe.json') ? [] : ['safe_artifact_missing'] },
     { artifactName: 'codex-test-metrics.safe.json', path: 'codex-test-metrics.safe.json', status: fs.existsSync('codex-test-metrics.safe.json') ? 'present' : 'not_applicable' },
     { artifactName: 'codex-invalid-report-recovery-summary.json', path: 'codex-invalid-report-recovery-summary.json', status: fs.existsSync('codex-invalid-report-recovery-summary.json') ? 'present' : 'not_applicable' },
-  ], result.mode, { enforceRequired: true, maxArtifacts: 32 });
+  ], result.mode, { enforceRequired: true, maxArtifacts: 40 });
   fs.writeFileSync('codex-safe-artifact-index.json', JSON.stringify(index, null, 2));
 }
 

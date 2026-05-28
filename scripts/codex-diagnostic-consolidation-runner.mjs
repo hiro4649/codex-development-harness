@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.5
+// CODEX_QUALITY_HARNESS_FILE v0.9.6
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -97,6 +97,29 @@ export function buildDiagnosticConsolidatedSummary(report, options = {}) {
       evidenceDedup: report?.evidenceDedupStatus?.status || 'missing',
       safeArtifactNextAction: report?.safeArtifactNextActionStatus?.status || 'missing',
       v095SelfTest: report?.v095SelfTestStatus?.status || 'missing',
+      safeSummaryOnly: true,
+    },
+    v096Summary: {
+      kRuleCoverage: report?.kRuleCoverageStatus?.status || 'missing',
+      live2dSpecSync: report?.live2dSpecSyncStatus?.status || 'missing',
+      runtimeLatencyBudget: report?.runtimeLatencyBudgetStatus?.status || 'missing',
+      obsoleteOpenPr: report?.obsoleteOpenPrStatus?.status || 'missing',
+      ownerSummaryCompact: report?.ownerSummaryCompactStatus?.status || 'missing',
+      browserSmokeArtifact: report?.browserSmokeArtifactStatus?.status || 'missing',
+      failureToRepairPlan: report?.failureToRepairPlanStatus?.status || 'missing',
+      runtimeStateAdoption: report?.runtimeStateAdoptionStatus?.status || 'missing',
+      claimTransition: report?.claimTransitionStatus?.status || 'missing',
+      timeoutAdoption: report?.timeoutAdoptionStatus?.status || 'missing',
+      txReconciliationService: report?.txReconciliationServiceStatus?.status || 'missing',
+      txHashBeforeWait: report?.txHashBeforeWaitStatus?.status || 'missing',
+      receiptResumeBoundary: report?.receiptResumeBoundaryStatus?.status || 'missing',
+      migrationRolloutSafety: report?.migrationRolloutSafetyStatus?.status || 'missing',
+      migrationRuntimeCompat: report?.migrationRuntimeCompatStatus?.status || 'missing',
+      humanReviewDigest: report?.humanReviewDigestStatus?.status || 'missing',
+      datasetAuditReadiness: report?.datasetAuditReadinessStatus?.status || 'missing',
+      gameToolAdapterContractFixture: report?.gameToolAdapterContractFixtureStatus?.status || 'missing',
+      belovedAvatarSafetyAudit: report?.belovedAvatarSafetyAuditStatus?.status || 'missing',
+      v096SelfTest: report?.v096SelfTestStatus?.status || 'missing',
       safeSummaryOnly: true,
     },
     v093Summary: {
