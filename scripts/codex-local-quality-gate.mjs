@@ -357,6 +357,25 @@ function runGateScript(script, field, envName, baseEnv = process.env) {
   }
 }
 
+function compactGateDecisionTraceInput(report) {
+  const out = { status: report?.status || 'unknown' };
+  for (const [key, value] of Object.entries(report || {})) {
+    if (!value || typeof value !== 'object' || typeof value.status !== 'string') continue;
+    out[key] = {
+      status: value.status,
+      safeSummaryOnly: true,
+    };
+    if (typeof value.score === 'number') out[key].score = value.score;
+    if (Array.isArray(value.reasonCodes) && value.reasonCodes.length) {
+      out[key].reasonCodes = value.reasonCodes.slice(0, 3);
+    }
+    if (Array.isArray(value.failures) && value.failures.length) {
+      out[key].reasonCodes = value.failures.slice(0, 3);
+    }
+  }
+  return out;
+}
+
 function runV093Gates(report, gateEnv) {
   report.targetPatchManifestStatus = runGateScript('scripts/codex-target-patch-manifest.mjs', 'targetPatchManifestStatus', 'CODEX_TARGET_PATCH_MANIFEST_REPORT', gateEnv);
   report.previousTargetHotfixPreservationStatus = runGateScript('scripts/codex-target-hotfix-preservation-gate.mjs', 'previousTargetHotfixPreservationStatus', 'CODEX_TARGET_HOTFIX_PRESERVATION_REPORT', gateEnv);
@@ -1956,7 +1975,7 @@ async function runSourceHarnessGate() {
   report.scoreDecompositionStatus = computeScoreDecompositionStatus(report, report.qualityScoreStatus);
   report.gateDecisionTraceStatus = runGateScript('scripts/codex-gate-decision-trace.mjs', 'gateDecisionTraceStatus', 'CODEX_GATE_DECISION_TRACE_REPORT', {
     ...gateEnv,
-    CODEX_GATE_REPORT_JSON: JSON.stringify(report),
+    CODEX_GATE_REPORT_JSON: JSON.stringify(compactGateDecisionTraceInput(report)),
     CODEX_SCORE_DECOMPOSITION_JSON: JSON.stringify(report.scoreDecompositionStatus),
   });
   report.evidenceContinuityStatus = runGateScript('scripts/codex-evidence-continuity-gate.mjs', 'evidenceContinuityStatus', 'CODEX_EVIDENCE_CONTINUITY_REPORT', {
@@ -2470,7 +2489,7 @@ async function runTargetHarnessGate() {
   report.scoreDecompositionStatus = computeScoreDecompositionStatus(report, report.targetQualityScoreStatus);
   report.gateDecisionTraceStatus = runGateScript('scripts/codex-gate-decision-trace.mjs', 'gateDecisionTraceStatus', 'CODEX_GATE_DECISION_TRACE_REPORT', {
     ...gateEnv,
-    CODEX_GATE_REPORT_JSON: JSON.stringify(report),
+    CODEX_GATE_REPORT_JSON: JSON.stringify(compactGateDecisionTraceInput(report)),
     CODEX_SCORE_DECOMPOSITION_JSON: JSON.stringify(report.scoreDecompositionStatus),
   });
   report.evidenceContinuityStatus = runGateScript('scripts/codex-evidence-continuity-gate.mjs', 'evidenceContinuityStatus', 'CODEX_EVIDENCE_CONTINUITY_REPORT', {
