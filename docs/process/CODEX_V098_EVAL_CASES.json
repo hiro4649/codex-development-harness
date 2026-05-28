@@ -35,6 +35,16 @@
       "safeSummaryOnly": true
     },
     {
+      "id": "remote_product_evidence_runner_false_raw_log_sentinel_consumed_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_npm_diagnostic_false_raw_log_sentinel_consumed_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
       "id": "product_evidence_consumption_generated_but_not_consumed_fails",
       "deterministic": true,
       "safeSummaryOnly": true

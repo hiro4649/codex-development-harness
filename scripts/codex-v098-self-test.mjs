@@ -2,7 +2,12 @@
 // CODEX_QUALITY_HARNESS_FILE v0.9.8
 
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { marker, HARNESS_VERSION, scanObjectForUnsafe, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
+import { buildProductVerificationEvidenceReport } from './codex-product-verification-evidence-normalize.mjs';
+import { buildRemoteNpmDiagnosticReport } from './codex-remote-npm-diagnostic-classify.mjs';
 import {
   buildRemoteProductEvidenceExecutionReport,
   buildRemoteProductEvidenceRunnerReport,
@@ -45,6 +50,15 @@ export function buildV098SelfTestReport() {
 
   report = buildRemoteProductEvidenceRunnerReport({ forceCheck: true, productRelevant: true, npmExecuted: true, npmExitCode: 0, headSha: 'abc123' });
   assertCase('remote_product_evidence_runner_no_raw_logs', statusOf(report, 'remoteProductEvidenceRunnerStatus') === 'pass', failures, cases, statusOf(report, 'remoteProductEvidenceRunnerStatus'), reasonsOf(report, 'remoteProductEvidenceRunnerStatus'));
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v098-self-test-'));
+  const productEvidencePath = path.join(tempDir, 'product-evidence.json');
+  const npmDiagnosticPath = path.join(tempDir, 'npm-diagnostic.json');
+  fs.writeFileSync(productEvidencePath, JSON.stringify({ status: 'not_applicable', evidenceType: 'not_applicable', commands: [], rawLogsIncluded: false, safeSummaryOnly: true }));
+  fs.writeFileSync(npmDiagnosticPath, JSON.stringify({ npmExitCode: 0, safeFailureCategory: 'test_assertion_failure', rawLogUploaded: false, rawValuesStored: false, safeSummaryOnly: true }));
+  report = buildProductVerificationEvidenceReport({ CODEX_PRODUCT_VERIFICATION_EVIDENCE_PATH: productEvidencePath, CODEX_CHANGED_FILES: 'docs/process/CODEX_V098_EVAL_CASES.json', CODEX_HARNESS_SOURCE_REPO: '1' });
+  assertCase('remote_product_evidence_runner_false_raw_log_sentinel_consumed_pass', statusOf(report, 'productVerificationEvidenceStatus') === 'pass', failures, cases, statusOf(report, 'productVerificationEvidenceStatus'), reasonsOf(report, 'productVerificationEvidenceStatus'));
+  report = buildRemoteNpmDiagnosticReport({ CODEX_NPM_TEST_SAFE_SUMMARY_PATH: npmDiagnosticPath });
+  assertCase('remote_npm_diagnostic_false_raw_log_sentinel_consumed_pass', statusOf(report, 'remoteNpmDiagnosticStatus') === 'pass', failures, cases, statusOf(report, 'remoteNpmDiagnosticStatus'), reasonsOf(report, 'remoteNpmDiagnosticStatus'));
   report = buildProductEvidenceConsumptionReport({ evidenceGenerated: true, productRelevant: true });
   assertCase('product_evidence_consumption_generated_but_not_consumed_fails', statusOf(report, 'productEvidenceConsumptionStatus') === 'fail', failures, cases, statusOf(report, 'productEvidenceConsumptionStatus'), reasonsOf(report, 'productEvidenceConsumptionStatus'));
   report = buildPlaceholderEvidenceForbiddenReport({ productRelevant: true, evidence: { evidenceType: 'placeholder', status: 'pending' } });

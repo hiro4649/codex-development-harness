@@ -30,9 +30,13 @@ function parseJsonSource(env) {
 function hasUnsafeEvidenceKeys(value) {
   if (!value || typeof value !== 'object') return false;
   const unsafe = /raw(?:Logs?|Payload|Diff|Output)|secret|token|endpointValue|privatePath|productionData|personalData/i;
+  const safeAbsence = /^(rawLogsIncluded|rawLogIncluded|rawDiffIncluded|rawDiffsIncluded|rawPayloadIncluded|rawOutputIncluded|rawValuesStored)$/i;
   const visit = (node) => {
     if (!node || typeof node !== 'object') return false;
-    return Object.entries(node).some(([key, nested]) => unsafe.test(key) || visit(nested));
+    return Object.entries(node).some(([key, nested]) => {
+      if (safeAbsence.test(key) && nested === false) return false;
+      return unsafe.test(key) || visit(nested);
+    });
   };
   return visit(value);
 }
