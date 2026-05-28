@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
 # Harness Rollout Diff Regression Policy
 
 Classifies rollout diffs that remove product verification steps, artifact uploads, active self-test mapping, or target patch manifest content as blocking.

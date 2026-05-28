@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.7
+// CODEX_QUALITY_HARNESS_FILE v0.9.8
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -30,9 +30,13 @@ function parseJsonSource(env) {
 function hasUnsafeEvidenceKeys(value) {
   if (!value || typeof value !== 'object') return false;
   const unsafe = /raw(?:Logs?|Payload|Diff|Output)|secret|token|endpointValue|privatePath|productionData|personalData/i;
+  const safeAbsence = /^(rawLogsIncluded|rawLogIncluded|rawDiffIncluded|rawDiffsIncluded|rawPayloadIncluded|rawOutputIncluded|rawValuesStored)$/i;
   const visit = (node) => {
     if (!node || typeof node !== 'object') return false;
-    return Object.entries(node).some(([key, nested]) => unsafe.test(key) || visit(nested));
+    return Object.entries(node).some(([key, nested]) => {
+      if (safeAbsence.test(key) && nested === false) return false;
+      return unsafe.test(key) || visit(nested);
+    });
   };
   return visit(value);
 }
@@ -114,6 +118,7 @@ export function normalizeProductVerificationEvidence(env = process.env) {
   if (classified.productRelevantChanged) {
     if (skipNpm) reasonCodes.push('npm_skip_not_allowed_for_product_change');
     if (!hasNamedProductEvidence(commands)) requiredEvidenceMissing.push('product_verification_commands');
+    if (commands.some((item) => item.required && item.result === 'fail')) reasonCodes.push('remote_product_evidence_runner_failed');
   }
   if (classified.runtimeReadinessClaimed) {
     if (skipNpm) reasonCodes.push('runtime_claim_requires_product_checks');

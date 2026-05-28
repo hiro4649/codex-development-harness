@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
-  "harnessVersion": "0.9.7",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
+  "harnessVersion": "0.9.8",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -2928,6 +2928,142 @@
       "severity": "error",
       "safeMessage": "beloved avatar safety failed.",
       "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_evidence_execution_missing",
+      "severity": "error",
+      "safeMessage": "remote product evidence execution missing",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "remoteProductEvidenceExecutionStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_evidence_runner_failed",
+      "severity": "error",
+      "safeMessage": "remote product evidence runner failed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "remoteProductEvidenceRunnerStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_evidence_not_consumed",
+      "severity": "error",
+      "safeMessage": "product evidence not consumed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "productEvidenceConsumptionStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "placeholder_evidence_forbidden",
+      "severity": "error",
+      "safeMessage": "placeholder evidence forbidden",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "placeholderEvidenceForbiddenStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_remote_phase_conflict",
+      "severity": "error",
+      "safeMessage": "local remote phase conflict",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "localRemotePhaseStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "structured_solvability_field_conflict",
+      "severity": "error",
+      "safeMessage": "structured solvability field conflict",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "structuredSolvabilityFieldsStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "live2d_dataset_row_audit_runner_failed",
+      "severity": "error",
+      "safeMessage": "live2d dataset row audit runner failed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "live2dDatasetRowAuditRunnerStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "motion_allowlist_diff_failed",
+      "severity": "error",
+      "safeMessage": "motion allowlist diff failed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "motionAllowlistDiffStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "trusted_loader_evidence_enforcer_failed",
+      "severity": "error",
+      "safeMessage": "trusted loader evidence enforcer failed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "trustedLoaderEvidenceEnforcerStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "avatar_ux_safety_runner_failed",
+      "severity": "error",
+      "safeMessage": "avatar ux safety runner failed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "avatarUxSafetyRunnerStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_latency_safe_metric_failed",
+      "severity": "error",
+      "safeMessage": "runtime latency safe metric failed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "runtimeLatencySafeMetricStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "browser_smoke_visual_safety_artifact_failed",
+      "severity": "error",
+      "safeMessage": "browser smoke visual safety artifact failed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "browserSmokeVisualSafetyArtifactStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "open_pr_rebase_readiness_failed",
+      "severity": "error",
+      "safeMessage": "open pr rebase readiness failed",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "openPrRebaseReadinessStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "five_line_owner_digest_missing",
+      "severity": "error",
+      "safeMessage": "five line owner digest missing",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "fiveLineOwnerDigestStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pending_placeholder_used_as_pass",
+      "severity": "error",
+      "safeMessage": "pending placeholder used as pass",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "placeholderEvidenceForbiddenStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_not_executed_for_product_pr",
+      "severity": "error",
+      "safeMessage": "remote npm not executed for product pr",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "remoteProductEvidenceExecutionStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "quality_gate_ignored_product_evidence",
+      "severity": "error",
+      "safeMessage": "quality gate ignored product evidence",
+      "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "productEvidenceConsumptionStatus",
       "canManualConfirmationOverride": false
     }
   ]

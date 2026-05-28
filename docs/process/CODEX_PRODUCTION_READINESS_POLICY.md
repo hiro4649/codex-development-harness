@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
 # Codex Production Readiness Policy
 
 Production Evidence and Hermes Gate does not make a project production ready. It makes production, release, merge-ready, go/no-go, and similar claims require verifiable evidence.

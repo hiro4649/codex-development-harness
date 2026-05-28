@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
 # Target Hotfix Regression Policy
 
 Requires target patch manifest entries and target-specific workflow safeguards to survive later harness rollouts unless explicit migration evidence is present.

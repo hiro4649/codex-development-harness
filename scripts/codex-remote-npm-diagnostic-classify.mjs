@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.7
+// CODEX_QUALITY_HARNESS_FILE v0.9.8
 import { fileURLToPath } from 'node:url';
 import {
   HARNESS_VERSION,
@@ -61,8 +61,12 @@ function inputFromEnv(env = process.env) {
 function hasUnsafeKeys(value) {
   if (!value || typeof value !== 'object') return false;
   const unsafe = /raw(?:Log|Logs|Stdout|Stderr|Output|Payload|Diff)|stackTrace|secret|token|endpoint|privatePath|productionData|personalData/i;
+  const safeAbsence = /^(rawLogUploaded|rawLogsIncluded|rawStdoutIncluded|rawStderrIncluded|rawOutputIncluded|rawPayloadIncluded|rawValuesStored)$/i;
   const visit = (node) => node && typeof node === 'object' &&
-    Object.entries(node).some(([key, nested]) => unsafe.test(key) || visit(nested));
+    Object.entries(node).some(([key, nested]) => {
+      if (safeAbsence.test(key) && nested === false) return false;
+      return unsafe.test(key) || visit(nested);
+    });
   return visit(value);
 }
 

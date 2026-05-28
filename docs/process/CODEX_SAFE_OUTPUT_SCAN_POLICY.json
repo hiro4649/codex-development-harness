@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
   "harnessVersion": "0.8.8",
   "scannerDomains": [
     "forbiddenValueScanner",

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
 # Live2D Spec Sync Policy
 
 Keeps Live2D phase order and future-phase boundaries explicit without requiring real renderer connection.

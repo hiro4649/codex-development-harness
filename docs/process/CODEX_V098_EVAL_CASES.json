@@ -1,0 +1,171 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
+  "harnessVersion": "0.9.8",
+  "schemaVersion": "1.0.0",
+  "suite": "v098",
+  "cases": [
+    {
+      "id": "remote_product_evidence_execution_product_pr_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_product_evidence_execution_missing_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_product_evidence_execution_pending_placeholder_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_product_evidence_execution_npm_fail_remains_fail",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_product_evidence_execution_harness_only_skip_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_product_evidence_runner_no_raw_logs",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_product_evidence_runner_false_raw_log_sentinel_consumed_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_npm_diagnostic_false_raw_log_sentinel_consumed_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "product_evidence_consumption_generated_but_not_consumed_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "placeholder_evidence_forbidden_product_pr",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "local_pre_push_remote_pending_allowed",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_after_push_evidence_required",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "structured_solvability_fields_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "structured_solvability_merge_ready_with_remote_pending_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "live2d_dataset_row_audit_valid_row_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "live2d_dataset_row_audit_missing_row_id_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "motion_allowlist_diff_future_label_runtime_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "trusted_loader_enforcer_browser_self_asserted_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "trusted_loader_enforcer_allowlisted_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "avatar_ux_safety_subtitle_obstruction_needs_review",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "runtime_latency_safe_metric_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "runtime_latency_raw_cue_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "browser_smoke_visual_artifact_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "browser_smoke_visual_raw_console_log_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "open_pr_rebase_readiness_old_base_warns",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "open_pr_rebase_readiness_obsolete_reuse_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "five_line_owner_digest_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "five_line_owner_digest_missing_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "source_harness_only_v098_fixture_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "target_harness_rollout_v098_fixture_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    }
+  ],
+  "constraints": [
+    "no_network",
+    "no_github_api",
+    "no_target_repo",
+    "no_npm_dependency",
+    "no_product_command_execution",
+    "no_browser_required",
+    "no_external_llm_judge",
+    "no_raw_logs",
+    "no_raw_diffs",
+    "no_raw_pr_body_output"
+  ],
+  "safeSummaryOnly": true
+}

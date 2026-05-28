@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
+  "harnessVersion": "0.9.8",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "live2d_dataset_row_audit_runner",
+  "requiredFields": [
+    "audit_run_id",
+    "auditor_version",
+    "checked_row_count",
+    "pass_count",
+    "reject_count",
+    "needs_review_count",
+    "critical_count",
+    "top_reason_codes",
+    "safe_summary_only"
+  ]
+}
