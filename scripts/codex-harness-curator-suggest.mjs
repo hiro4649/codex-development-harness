@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.7
+// CODEX_QUALITY_HARNESS_FILE v0.9.8
 import fs from 'node:fs';
 import path from 'node:path';
 
-const HARNESS_VERSION = '0.9.7';
+const HARNESS_VERSION = '0.9.8';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const profiles = ['funky', 'iris', 'iris-live2d-renderer'];
 const recommendations = [];

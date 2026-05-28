@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
 # Remote Product Context Restore Policy
 
 Version: v0.9.4

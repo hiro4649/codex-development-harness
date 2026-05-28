@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
 # OpenAI Codex Method Policy
 
 This policy makes the OpenAI Codex development method a merge requirement, not a suggestion.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.7
+// CODEX_QUALITY_HARNESS_FILE v0.9.8
 import { buildSkillRoutingReport, runV095GateCli } from './codex-v095-gate-lib.mjs';
 
 export { buildSkillRoutingReport };

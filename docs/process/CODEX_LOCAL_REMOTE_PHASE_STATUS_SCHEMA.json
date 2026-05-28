@@ -1,0 +1,14 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
+  "harnessVersion": "0.9.8",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "local_remote_phase_status",
+  "requiredFields": [
+    "localImplementationSolvability",
+    "remoteEvidencePhase",
+    "mergeReadiness",
+    "productionReadinessClaimed",
+    "runtimeReadinessClaimed"
+  ]
+}

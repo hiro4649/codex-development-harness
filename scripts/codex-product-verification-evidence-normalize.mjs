@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.7
+// CODEX_QUALITY_HARNESS_FILE v0.9.8
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -114,6 +114,7 @@ export function normalizeProductVerificationEvidence(env = process.env) {
   if (classified.productRelevantChanged) {
     if (skipNpm) reasonCodes.push('npm_skip_not_allowed_for_product_change');
     if (!hasNamedProductEvidence(commands)) requiredEvidenceMissing.push('product_verification_commands');
+    if (commands.some((item) => item.required && item.result === 'fail')) reasonCodes.push('remote_product_evidence_runner_failed');
   }
   if (classified.runtimeReadinessClaimed) {
     if (skipNpm) reasonCodes.push('runtime_claim_requires_product_checks');

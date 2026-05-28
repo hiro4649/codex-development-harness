@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.9.7
+# CODEX_QUALITY_HARNESS_FILE v0.9.8
 name: quality-gate
 
 on:
@@ -88,18 +88,61 @@ jobs:
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/codex-remote-product-checks.safe.json" <<'JSON'
-          {"schemaVersion":"0.9.7","phase":"remote product checks","status":"pending","safeSummaryOnly":true}
+          {"schemaVersion":"0.9.8","phase":"remote product checks","status":"pending","safeSummaryOnly":true}
           JSON
           cat > "$RUNNER_TEMP/codex-remote-product-baseline.json" <<'JSON'
-          {"schemaVersion":"0.9.7","phase":"remote product baseline","status":"pending","safeSummaryOnly":true}
+          {"schemaVersion":"0.9.8","phase":"remote product baseline","status":"pending","safeSummaryOnly":true}
           JSON
           cat > "$RUNNER_TEMP/codex-product-verification-evidence.remote.json" <<'JSON'
-          {"schemaVersion":"0.9.7","phase":"product verification evidence remote generation","status":"pending","safeSummaryOnly":true}
+          {"schemaVersion":"0.9.8","phase":"product verification evidence remote generation","status":"pending","safeSummaryOnly":true}
           JSON
           cat > "$RUNNER_TEMP/codex-remote-npm-diagnostic.safe.json" <<'JSON'
-          {"schemaVersion":"0.9.7","phase":"remote npm diagnostic","status":"pending","safeSummaryOnly":true}
+          {"schemaVersion":"0.9.8","phase":"remote npm diagnostic","status":"pending","safeSummaryOnly":true}
           JSON
           # safe artifact upload is locked by the upload-artifact path list.
+      - name: Generate remote product evidence
+        if: always()
+        shell: bash
+        env:
+          CODEX_EVENT_NAME: ${{ github.event_name }}
+          CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          CODEX_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          echo "CODEX_PRODUCT_VERIFICATION_EVIDENCE_PATH=$RUNNER_TEMP/codex-product-verification-evidence.remote.json" >> "$GITHUB_ENV"
+          echo "CODEX_REMOTE_PRODUCT_BASELINE_PATH=$RUNNER_TEMP/codex-remote-product-baseline.json" >> "$GITHUB_ENV"
+          echo "CODEX_NPM_TEST_SAFE_SUMMARY_PATH=$RUNNER_TEMP/codex-remote-npm-diagnostic.safe.json" >> "$GITHUB_ENV"
+          if [ -f CODEX_SOURCE_HARNESS_MANIFEST.json ]; then
+            is_pr=false
+            if [ "${CODEX_EVENT_NAME:-}" = "pull_request" ]; then is_pr=true; fi
+            runner_json="$(IS_PR="$is_pr" node -e "const input={productRelevant:false,isPullRequest:process.env.IS_PR==='true',eventName:process.env.CODEX_EVENT_NAME||'',headSha:process.env.CODEX_PR_HEAD_SHA||'',baseSha:process.env.CODEX_PR_BASE_SHA||'',repository:process.env.CODEX_REPOSITORY||'',npmExecuted:false,npmExitCode:0}; process.stdout.write(JSON.stringify(input));")"
+            CODEX_REMOTE_PRODUCT_EVIDENCE_OUT_DIR="$RUNNER_TEMP" \
+            CODEX_REMOTE_PRODUCT_EVIDENCE_RUNNER_JSON="$runner_json" \
+              node scripts/codex-remote-product-evidence-runner.mjs --write-artifacts || true
+            echo "CODEX_REMOTE_NPM_EXECUTED=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          export CODEX_HARNESS_MODE=target
+          export CODEX_PROFILE_COMPAT_MODE=off
+          changed_files="$(git diff --name-only origin/main...HEAD || true)"
+          export CODEX_CHANGED_FILES="$changed_files"
+          classification_json="$(CODEX_QUALITY_REPORT=json node scripts/codex-change-classification-gate.mjs || true)"
+          product_relevant="$(CLASSIFICATION_JSON="$classification_json" node -e "const r=JSON.parse(process.env.CLASSIFICATION_JSON||'{}'); const s=r.changeClassificationStatus||{}; process.stdout.write(s.productRelevantChanged||s.runtimeReadinessClaimed||s.packageOrLockfileChanged?'1':'0')")"
+          npm_exit=0
+          npm_executed=0
+          if [ "$product_relevant" = "1" ]; then
+            npm_executed=1
+            echo "CODEX_SKIP_NPM=0" >> "$GITHUB_ENV"
+            npm test > "$RUNNER_TEMP/codex-npm-test.raw.log" 2>&1 || npm_exit=$?
+          else
+            echo "CODEX_SKIP_NPM=1" >> "$GITHUB_ENV"
+          fi
+          echo "CODEX_REMOTE_NPM_EXECUTED=$npm_executed" >> "$GITHUB_ENV"
+          echo "CODEX_NPM_EXIT_CODE=$npm_exit" >> "$GITHUB_ENV"
+          runner_json="$(PRODUCT_RELEVANT="$product_relevant" NPM_EXECUTED="$npm_executed" NPM_EXIT_CODE="$npm_exit" node -e "const input={productRelevant:process.env.PRODUCT_RELEVANT==='1',isPullRequest:process.env.CODEX_EVENT_NAME==='pull_request',eventName:process.env.CODEX_EVENT_NAME||'',headSha:process.env.CODEX_PR_HEAD_SHA||'',baseSha:process.env.CODEX_PR_BASE_SHA||'',repository:process.env.CODEX_REPOSITORY||'',npmExecuted:process.env.NPM_EXECUTED==='1',npmExitCode:Number(process.env.NPM_EXIT_CODE||0)}; process.stdout.write(JSON.stringify(input));")"
+          CODEX_REMOTE_PRODUCT_EVIDENCE_OUT_DIR="$RUNNER_TEMP" CODEX_REMOTE_PRODUCT_EVIDENCE_RUNNER_JSON="$runner_json" node scripts/codex-remote-product-evidence-runner.mjs --write-artifacts
       - name: Run Codex quality gate
         shell: bash
         env:
@@ -210,6 +253,21 @@ jobs:
             console.log(`- datasetAuditV2SchemaStatus: ${summary.datasetAuditV2SchemaStatus?.status || 'missing'}`);
             console.log(`- datasetAuditRunnerReadinessStatus: ${summary.datasetAuditRunnerReadinessStatus?.status || 'missing'}`);
             console.log(`- v097SelfTestStatus: ${summary.v097SelfTestStatus?.status || 'missing'}`);
+            console.log(`- remoteProductEvidenceExecutionStatus: ${summary.remoteProductEvidenceExecutionStatus?.status || 'missing'}`);
+            console.log(`- remoteProductEvidenceRunnerStatus: ${summary.remoteProductEvidenceRunnerStatus?.status || 'missing'}`);
+            console.log(`- productEvidenceConsumptionStatus: ${summary.productEvidenceConsumptionStatus?.status || 'missing'}`);
+            console.log(`- placeholderEvidenceForbiddenStatus: ${summary.placeholderEvidenceForbiddenStatus?.status || 'missing'}`);
+            console.log(`- localRemotePhaseStatus: ${summary.localRemotePhaseStatus?.status || 'missing'}`);
+            console.log(`- structuredSolvabilityFieldsStatus: ${summary.structuredSolvabilityFieldsStatus?.status || 'missing'}`);
+            console.log(`- live2dDatasetRowAuditRunnerStatus: ${summary.live2dDatasetRowAuditRunnerStatus?.status || 'missing'}`);
+            console.log(`- motionAllowlistDiffStatus: ${summary.motionAllowlistDiffStatus?.status || 'missing'}`);
+            console.log(`- trustedLoaderEvidenceEnforcerStatus: ${summary.trustedLoaderEvidenceEnforcerStatus?.status || 'missing'}`);
+            console.log(`- avatarUxSafetyRunnerStatus: ${summary.avatarUxSafetyRunnerStatus?.status || 'missing'}`);
+            console.log(`- runtimeLatencySafeMetricStatus: ${summary.runtimeLatencySafeMetricStatus?.status || 'missing'}`);
+            console.log(`- browserSmokeVisualSafetyArtifactStatus: ${summary.browserSmokeVisualSafetyArtifactStatus?.status || 'missing'}`);
+            console.log(`- openPrRebaseReadinessStatus: ${summary.openPrRebaseReadinessStatus?.status || 'missing'}`);
+            console.log(`- fiveLineOwnerDigestStatus: ${summary.fiveLineOwnerDigestStatus?.status || 'missing'}`);
+            console.log(`- v098SelfTestStatus: ${summary.v098SelfTestStatus?.status || 'missing'}`);
             console.log(`- remoteProductContextRestoreStatus: ${summary.remoteProductContextRestoreStatus?.status || 'missing'}`);
             console.log(`- productRelevantEvidenceLockStatus: ${summary.productRelevantEvidenceLockStatus?.status || 'missing'}`);
             console.log(`- productBaselineContinuityStatus: ${summary.productBaselineContinuityStatus?.status || 'missing'}`);

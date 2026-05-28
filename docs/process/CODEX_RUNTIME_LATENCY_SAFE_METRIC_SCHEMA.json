@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
+  "harnessVersion": "0.9.8",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "runtime_latency_safe_metric",
+  "requiredFields": [
+    "cue_accepted_at_ms",
+    "queued_for_browser_at_ms",
+    "sse_event_sent_at_ms",
+    "browser_event_received_at_ms",
+    "cue_apply_attempted_at_ms",
+    "cue_apply_result",
+    "latency_bucket",
+    "duplicate_delivery_count",
+    "queue_drain_before_ready"
+  ]
+}
