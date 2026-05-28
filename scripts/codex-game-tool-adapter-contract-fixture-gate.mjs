@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.6
-import { buildGameToolAdapterContractFixtureReport, runV096GateCli } from './codex-v096-gate-lib.mjs';
+// CODEX_QUALITY_HARNESS_FILE v0.9.7
+import { buildGameToolAdapterContractFixtureV097Report, runV097GateCli } from './codex-v097-gate-lib.mjs';
 
-export { buildGameToolAdapterContractFixtureReport };
+export { buildGameToolAdapterContractFixtureV097Report };
 
-runV096GateCli(import.meta.url, process.argv[1], buildGameToolAdapterContractFixtureReport, 'CODEX_GAME_TOOL_ADAPTER_CONTRACT_FIXTURE_REPORT');
+runV097GateCli(import.meta.url, process.argv[1], buildGameToolAdapterContractFixtureV097Report, 'CODEX_GAME_TOOL_ADAPTER_CONTRACT_FIXTURE_REPORT');

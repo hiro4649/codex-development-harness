@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.6",
-  "harnessVersion": "0.9.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -2768,6 +2768,166 @@
       "severity": "error",
       "safeMessage": "Beloved avatar safety evidence contains memory/privacy risk.",
       "nextBestFix": "Remove sensitive data and add safe audit evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "active_self_test_registry_missing",
+      "gate": "activeSelfTestRegistryStatus",
+      "severity": "error",
+      "safeMessage": "active self test registry missing.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_product_verification_step_missing",
+      "gate": "workflowProductVerificationInvariantStatus",
+      "severity": "error",
+      "safeMessage": "workflow product verification step missing.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_product_artifact_upload_missing",
+      "gate": "workflowProductVerificationInvariantStatus",
+      "severity": "error",
+      "safeMessage": "remote product artifact upload missing.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_hotfix_regression_detected",
+      "gate": "targetHotfixRegressionStatus",
+      "severity": "error",
+      "safeMessage": "target hotfix regression detected.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "harness_rollout_diff_regression_detected",
+      "gate": "harnessRolloutDiffRegressionStatus",
+      "severity": "error",
+      "safeMessage": "harness rollout diff regression detected.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "blocker_root_cause_missing",
+      "gate": "blockerRootCauseClassifierStatus",
+      "severity": "error",
+      "safeMessage": "blocker root cause missing.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_remote_evidence_phase_conflict",
+      "gate": "localRemoteEvidencePhaseStatus",
+      "severity": "error",
+      "safeMessage": "local remote evidence phase conflict.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "structured_solvability_conflict",
+      "gate": "structuredSolvabilityStatus",
+      "severity": "error",
+      "safeMessage": "structured solvability conflict.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "live2d_dataset_row_audit_failed",
+      "gate": "live2dDatasetRowAuditStatus",
+      "severity": "error",
+      "safeMessage": "live2d dataset row audit failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "motion_allowlist_sync_failed",
+      "gate": "motionAllowlistSyncStatus",
+      "severity": "error",
+      "safeMessage": "motion allowlist sync failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "trusted_loader_evidence_missing",
+      "gate": "trustedLoaderEvidenceStatus",
+      "severity": "error",
+      "safeMessage": "trusted loader evidence missing.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "live2d_evidence_collector_contract_failed",
+      "gate": "live2dEvidenceCollectorContractStatus",
+      "severity": "error",
+      "safeMessage": "live2d evidence collector contract failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "avatar_ux_safety_failed",
+      "gate": "avatarUxSafetyStatus",
+      "severity": "error",
+      "safeMessage": "avatar ux safety failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_latency_measurement_failed",
+      "gate": "runtimeLatencyMeasurementStatus",
+      "severity": "error",
+      "safeMessage": "runtime latency measurement failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "browser_smoke_json_artifact_failed",
+      "gate": "browserSmokeJsonArtifactStatus",
+      "severity": "error",
+      "safeMessage": "browser smoke json artifact failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "owner_decision_digest_missing",
+      "gate": "ownerDecisionDigestStatus",
+      "severity": "error",
+      "safeMessage": "owner decision digest missing.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "obsolete_pr_reuse_forbidden",
+      "gate": "obsoletePrAutoRecommendStatus",
+      "severity": "error",
+      "safeMessage": "obsolete pr reuse forbidden.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "dataset_audit_v2_schema_failed",
+      "gate": "datasetAuditV2SchemaStatus",
+      "severity": "error",
+      "safeMessage": "dataset audit v2 schema failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "game_tool_adapter_contract_failed",
+      "gate": "gameToolAdapterContractFixtureStatus",
+      "severity": "error",
+      "safeMessage": "game tool adapter contract failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "beloved_avatar_safety_failed",
+      "gate": "belovedAvatarSafetyAuditStatus",
+      "severity": "error",
+      "safeMessage": "beloved avatar safety failed.",
+      "nextBestFix": "Repair the v0.9.7 safe evidence gate input.",
       "canManualConfirmationOverride": false
     }
   ]

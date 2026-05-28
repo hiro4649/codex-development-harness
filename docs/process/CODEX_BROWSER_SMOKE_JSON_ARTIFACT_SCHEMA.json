@@ -1,0 +1,21 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "browser_smoke_json_artifact",
+  "requiredFields": [
+    "surface_loaded",
+    "fatal_console_error",
+    "safe_cue_accepted",
+    "unsafe_cue_rejected",
+    "sse_available",
+    "polling_fallback_available",
+    "renderer_ready",
+    "raw_path_absent",
+    "endpoint_absent",
+    "token_absent",
+    "model_path_absent",
+    "runtime_readiness_claimed"
+  ]
+}

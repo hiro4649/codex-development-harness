@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
   "schemaVersion": "0.8.4",
   "required": [
     "reportPresent",

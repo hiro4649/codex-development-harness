@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.9.6
+# CODEX_QUALITY_HARNESS_FILE v0.9.7
 name: quality-gate
 
 on:
@@ -82,6 +82,24 @@ jobs:
           CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
         run: |
           node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat.json" || true
+      - name: Prepare target product verification
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/codex-remote-product-checks.safe.json" <<'JSON'
+          {"schemaVersion":"0.9.7","phase":"remote product checks","status":"pending","safeSummaryOnly":true}
+          JSON
+          cat > "$RUNNER_TEMP/codex-remote-product-baseline.json" <<'JSON'
+          {"schemaVersion":"0.9.7","phase":"remote product baseline","status":"pending","safeSummaryOnly":true}
+          JSON
+          cat > "$RUNNER_TEMP/codex-product-verification-evidence.remote.json" <<'JSON'
+          {"schemaVersion":"0.9.7","phase":"product verification evidence remote generation","status":"pending","safeSummaryOnly":true}
+          JSON
+          cat > "$RUNNER_TEMP/codex-remote-npm-diagnostic.safe.json" <<'JSON'
+          {"schemaVersion":"0.9.7","phase":"remote npm diagnostic","status":"pending","safeSummaryOnly":true}
+          JSON
+          # safe artifact upload is locked by the upload-artifact path list.
       - name: Run Codex quality gate
         shell: bash
         env:
@@ -172,6 +190,26 @@ jobs:
             console.log(`- v093SelfTestStatus: ${summary.v093SelfTestStatus?.status || 'missing'}`);
             console.log(`- v094SelfTestStatus: ${summary.v094SelfTestStatus?.status || 'missing'}`);
             console.log(`- v095SelfTestStatus: ${summary.v095SelfTestStatus?.status || 'missing'}`);
+            console.log(`- v096SelfTestStatus: ${summary.v096SelfTestStatus?.status || 'missing'}`);
+            console.log(`- activeSelfTestRegistryStatus: ${summary.activeSelfTestRegistryStatus?.status || 'missing'}`);
+            console.log(`- workflowProductVerificationInvariantStatus: ${summary.workflowProductVerificationInvariantStatus?.status || 'missing'}`);
+            console.log(`- targetHotfixRegressionStatus: ${summary.targetHotfixRegressionStatus?.status || 'missing'}`);
+            console.log(`- harnessRolloutDiffRegressionStatus: ${summary.harnessRolloutDiffRegressionStatus?.status || 'missing'}`);
+            console.log(`- blockerRootCauseClassifierStatus: ${summary.blockerRootCauseClassifierStatus?.status || 'missing'}`);
+            console.log(`- localRemoteEvidencePhaseStatus: ${summary.localRemoteEvidencePhaseStatus?.status || 'missing'}`);
+            console.log(`- structuredSolvabilityStatus: ${summary.structuredSolvabilityStatus?.status || 'missing'}`);
+            console.log(`- live2dDatasetRowAuditStatus: ${summary.live2dDatasetRowAuditStatus?.status || 'missing'}`);
+            console.log(`- motionAllowlistSyncStatus: ${summary.motionAllowlistSyncStatus?.status || 'missing'}`);
+            console.log(`- trustedLoaderEvidenceStatus: ${summary.trustedLoaderEvidenceStatus?.status || 'missing'}`);
+            console.log(`- live2dEvidenceCollectorContractStatus: ${summary.live2dEvidenceCollectorContractStatus?.status || 'missing'}`);
+            console.log(`- avatarUxSafetyStatus: ${summary.avatarUxSafetyStatus?.status || 'missing'}`);
+            console.log(`- runtimeLatencyMeasurementStatus: ${summary.runtimeLatencyMeasurementStatus?.status || 'missing'}`);
+            console.log(`- browserSmokeJsonArtifactStatus: ${summary.browserSmokeJsonArtifactStatus?.status || 'missing'}`);
+            console.log(`- ownerDecisionDigestStatus: ${summary.ownerDecisionDigestStatus?.status || 'missing'}`);
+            console.log(`- obsoletePrAutoRecommendStatus: ${summary.obsoletePrAutoRecommendStatus?.status || 'missing'}`);
+            console.log(`- datasetAuditV2SchemaStatus: ${summary.datasetAuditV2SchemaStatus?.status || 'missing'}`);
+            console.log(`- datasetAuditRunnerReadinessStatus: ${summary.datasetAuditRunnerReadinessStatus?.status || 'missing'}`);
+            console.log(`- v097SelfTestStatus: ${summary.v097SelfTestStatus?.status || 'missing'}`);
             console.log(`- remoteProductContextRestoreStatus: ${summary.remoteProductContextRestoreStatus?.status || 'missing'}`);
             console.log(`- productRelevantEvidenceLockStatus: ${summary.productRelevantEvidenceLockStatus?.status || 'missing'}`);
             console.log(`- productBaselineContinuityStatus: ${summary.productBaselineContinuityStatus?.status || 'missing'}`);
@@ -251,4 +289,12 @@ jobs:
             codex-skill-evidence-link.safe.json
             codex-workflow-preflight.safe.json
             codex-test-metrics.safe.json
+            ${{ runner.temp }}/codex-remote-npm-diagnostic.safe.json
+            ${{ runner.temp }}/codex-product-verification-evidence.remote.json
+            ${{ runner.temp }}/codex-remote-product-baseline.json
+            ${{ runner.temp }}/codex-remote-product-checks.safe.json
+            codex-dataset-audit-v2.safe.json
+            codex-browser-smoke-json-artifact.safe.json
+            codex-runtime-latency-measurement.safe.json
+            codex-owner-decision-digest.safe.json
           if-no-files-found: ignore

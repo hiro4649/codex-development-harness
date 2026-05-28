@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
 # Obsolete Open PR Policy
 
 Warns on obsolete harness PRs and blocks reusing stale rollout PRs for a new release.

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.6
-import { buildBelovedAvatarSafetyAuditReport, runV096GateCli } from './codex-v096-gate-lib.mjs';
+// CODEX_QUALITY_HARNESS_FILE v0.9.7
+import { buildBelovedAvatarSafetyAuditV097Report, runV097GateCli } from './codex-v097-gate-lib.mjs';
 
-export { buildBelovedAvatarSafetyAuditReport };
+export { buildBelovedAvatarSafetyAuditV097Report };
 
-runV096GateCli(import.meta.url, process.argv[1], buildBelovedAvatarSafetyAuditReport, 'CODEX_BELOVED_AVATAR_SAFETY_AUDIT_REPORT');
+runV097GateCli(import.meta.url, process.argv[1], buildBelovedAvatarSafetyAuditV097Report, 'CODEX_BELOVED_AVATAR_SAFETY_AUDIT_REPORT');

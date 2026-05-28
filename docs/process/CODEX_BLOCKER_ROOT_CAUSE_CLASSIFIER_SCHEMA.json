@@ -1,0 +1,21 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "blocker_root_cause_classifier",
+  "classifications": [
+    "product_test_failure",
+    "product_verification_artifact_missing",
+    "workflow_step_missing",
+    "active_self_test_registry_missing",
+    "legacy_self_test_misclassified",
+    "safe_output_failure",
+    "manual_confirmation_required",
+    "body_only_repair",
+    "local_remote_phase_conflict",
+    "harness_parser_false_positive",
+    "new_harness_pr_required",
+    "do_not_rerun_blindly"
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "owner_decision_digest",
+  "requiredLines": [
+    "Task",
+    "PR",
+    "Checks",
+    "Risk",
+    "Readiness claim",
+    "Residual risk",
+    "Next action"
+  ],
+  "maxLines": 7
+}

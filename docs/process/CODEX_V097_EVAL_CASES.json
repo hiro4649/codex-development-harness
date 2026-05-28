@@ -1,0 +1,196 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
+  "suite": "v097",
+  "caseCount": 35,
+  "cases": [
+    {
+      "id": "active_self_test_registry_v097_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "active_self_test_registry_missing_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "workflow_product_verification_step_present_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "workflow_product_verification_step_removed_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_product_artifact_upload_removed_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "target_hotfix_regression_preserved_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "target_hotfix_regression_prepare_product_verification_removed_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "harness_rollout_diff_step_deletion_requires_reason",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "blocker_root_cause_workflow_step_missing",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "blocker_root_cause_active_self_test_missing",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "local_pre_push_remote_pending_allowed",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "remote_evidence_required_after_push",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "structured_solvability_local_remote_split_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "structured_solvability_conflict_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "live2d_dataset_row_audit_valid_row_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "live2d_dataset_row_audit_future_label_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "motion_allowlist_sync_future_label_runtime_executable_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "trusted_loader_browser_self_asserted_ready_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "trusted_loader_allowlisted_evidence_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "live2d_evidence_collector_raw_cue_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "avatar_ux_safety_subtitle_obstruction_needs_review",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "avatar_ux_safety_monetization_closeup_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "runtime_latency_duplicate_delivery_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "runtime_latency_safe_metric_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "browser_smoke_json_required_fields_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "browser_smoke_json_raw_console_log_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "owner_decision_digest_required_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "obsolete_pr_reuse_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "dataset_audit_v2_schema_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "dataset_audit_auto_fix_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "game_tool_candidate_direct_handoff_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "game_tool_approved_action_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "beloved_avatar_memory_privacy_fails",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "source_harness_only_v097_fixture_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    },
+    {
+      "id": "target_harness_rollout_v097_fixture_pass",
+      "deterministic": true,
+      "safeSummaryOnly": true
+    }
+  ],
+  "constraints": [
+    "no_network",
+    "no_github_api",
+    "no_target_repo",
+    "no_npm_dependency",
+    "no_product_command_execution",
+    "no_browser_required",
+    "no_external_llm_judge",
+    "no_raw_logs",
+    "no_raw_diffs",
+    "no_raw_pr_body_output"
+  ],
+  "safeSummaryOnly": true
+}
