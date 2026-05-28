@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.6
+// CODEX_QUALITY_HARNESS_FILE v0.9.7
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -116,6 +116,25 @@ export function buildFinalSummary(report = {}, mode = report.targetQualityScoreS
     v094SelfTest: report.v094SelfTestStatus?.status || 'missing',
     v095SelfTest: report.v095SelfTestStatus?.status || 'missing',
     v096SelfTest: report.v096SelfTestStatus?.status || 'missing',
+    activeSelfTestRegistry: report.activeSelfTestRegistryStatus?.status || 'missing',
+    workflowProductVerificationInvariant: report.workflowProductVerificationInvariantStatus?.status || 'missing',
+    targetHotfixRegression: report.targetHotfixRegressionStatus?.status || 'missing',
+    harnessRolloutDiffRegression: report.harnessRolloutDiffRegressionStatus?.status || 'missing',
+    blockerRootCauseClassifier: report.blockerRootCauseClassifierStatus?.status || 'missing',
+    localRemoteEvidencePhase: report.localRemoteEvidencePhaseStatus?.status || 'missing',
+    structuredSolvability: report.structuredSolvabilityStatus?.status || 'missing',
+    live2dDatasetRowAudit: report.live2dDatasetRowAuditStatus?.status || 'missing',
+    motionAllowlistSync: report.motionAllowlistSyncStatus?.status || 'missing',
+    trustedLoaderEvidence: report.trustedLoaderEvidenceStatus?.status || 'missing',
+    live2dEvidenceCollectorContract: report.live2dEvidenceCollectorContractStatus?.status || 'missing',
+    avatarUxSafety: report.avatarUxSafetyStatus?.status || 'missing',
+    runtimeLatencyMeasurement: report.runtimeLatencyMeasurementStatus?.status || 'missing',
+    browserSmokeJsonArtifact: report.browserSmokeJsonArtifactStatus?.status || 'missing',
+    ownerDecisionDigest: report.ownerDecisionDigestStatus?.status || 'missing',
+    obsoletePrAutoRecommend: report.obsoletePrAutoRecommendStatus?.status || 'missing',
+    datasetAuditV2Schema: report.datasetAuditV2SchemaStatus?.status || 'missing',
+    datasetAuditRunnerReadiness: report.datasetAuditRunnerReadinessStatus?.status || 'missing',
+    v097SelfTest: report.v097SelfTestStatus?.status || 'missing',
     stalePrAudit: report.stalePrAuditStatus?.status || 'not_applicable',
     reasonSummary: report.reasonSummary?.status || report.reasonSummaryStatus?.status || 'missing',
     runtimeReadinessClaimed: Boolean(report.changeClassificationStatus?.runtimeReadinessClaimed),

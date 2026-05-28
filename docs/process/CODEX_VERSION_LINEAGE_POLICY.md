@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
 # Codex Version Lineage Policy
 
 v0.9.4 requires every active harness-managed marker and manifest version to agree with the active source version. Target manifests must not present an older active harness version after rollout.

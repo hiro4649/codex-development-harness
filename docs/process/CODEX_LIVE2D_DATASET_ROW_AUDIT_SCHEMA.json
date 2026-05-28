@@ -1,0 +1,31 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "live2d_dataset_row_audit",
+  "requiredFields": [
+    "row_id",
+    "dataset_version",
+    "split",
+    "source_hash",
+    "source_line",
+    "motion_label",
+    "expression_label",
+    "gaze_label",
+    "breath_label",
+    "body_label",
+    "camera_label",
+    "timing",
+    "intensity",
+    "recovery_plan",
+    "visibility_guard",
+    "comfort_guard",
+    "runtime_readiness_claimed"
+  ],
+  "verdicts": [
+    "pass",
+    "reject",
+    "needs_review"
+  ]
+}

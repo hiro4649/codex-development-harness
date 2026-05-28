@@ -1,6 +1,6 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
 # Game Tool Adapter Contract Fixture Policy
 
-Requires approved action contracts for Game/Tool adapter handoff and blocks direct candidate execution.
+Game/Tool Adapter fixtures must reject candidate direct handoff, raw world commands, endpoint or token leaks, stale observations, and fixture-as-real readiness.
 
-Outputs are safe-summary only. Do not include raw logs, raw diffs, raw cue, raw motion command, raw model path, private paths, endpoints, secrets, personal data, or production data.
+This policy is a source harness gate contract only. It adds no external dependency, no product command execution, no browser requirement for all PRs, no target rollout, and no runtime readiness claim. Evidence must stay compact and safe-summary-only.

@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.6",
-  "harnessVersion": "0.9.6",
-  "sourceHarnessVersion": "0.9.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
+  "sourceHarnessVersion": "0.9.7",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -255,7 +255,26 @@
     "docs/process/CODEX_DATASET_AUDIT_READINESS_POLICY.md",
     "docs/process/CODEX_GAME_TOOL_ADAPTER_CONTRACT_FIXTURE_POLICY.md",
     "docs/process/CODEX_BELOVED_AVATAR_SAFETY_AUDIT_POLICY.md",
-    "docs/process/CODEX_V096_EVAL_CASES.json"
+    "docs/process/CODEX_V096_EVAL_CASES.json",
+    "docs/process/CODEX_ACTIVE_SELF_TEST_REGISTRY_POLICY.md",
+    "docs/process/CODEX_WORKFLOW_PRODUCT_VERIFICATION_INVARIANT_POLICY.md",
+    "docs/process/CODEX_TARGET_HOTFIX_REGRESSION_POLICY.md",
+    "docs/process/CODEX_HARNESS_ROLLOUT_DIFF_REGRESSION_POLICY.md",
+    "docs/process/CODEX_BLOCKER_ROOT_CAUSE_CLASSIFIER_SCHEMA.json",
+    "docs/process/CODEX_LOCAL_REMOTE_EVIDENCE_PHASE_POLICY.md",
+    "docs/process/CODEX_STRUCTURED_SOLVABILITY_SCHEMA.json",
+    "docs/process/CODEX_LIVE2D_DATASET_ROW_AUDIT_SCHEMA.json",
+    "docs/process/CODEX_MOTION_ALLOWLIST_SYNC_POLICY.md",
+    "docs/process/CODEX_TRUSTED_LOADER_EVIDENCE_SCHEMA.json",
+    "docs/process/CODEX_LIVE2D_EVIDENCE_COLLECTOR_CONTRACT_POLICY.md",
+    "docs/process/CODEX_AVATAR_UX_SAFETY_POLICY.md",
+    "docs/process/CODEX_RUNTIME_LATENCY_MEASUREMENT_SCHEMA.json",
+    "docs/process/CODEX_BROWSER_SMOKE_JSON_ARTIFACT_SCHEMA.json",
+    "docs/process/CODEX_OWNER_DECISION_DIGEST_SCHEMA.json",
+    "docs/process/CODEX_OBSOLETE_PR_AUTO_RECOMMEND_POLICY.md",
+    "docs/process/CODEX_DATASET_AUDIT_V2_SCHEMA.json",
+    "docs/process/CODEX_DATASET_AUDIT_RUNNER_READINESS_POLICY.md",
+    "docs/process/CODEX_V097_EVAL_CASES.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -415,7 +434,27 @@
     "codex-dataset-audit-readiness-gate.mjs",
     "codex-game-tool-adapter-contract-fixture-gate.mjs",
     "codex-beloved-avatar-safety-audit-gate.mjs",
-    "codex-v096-self-test.mjs"
+    "codex-v096-self-test.mjs",
+    "codex-active-self-test-registry-gate.mjs",
+    "codex-avatar-ux-safety-gate.mjs",
+    "codex-blocker-root-cause-classifier.mjs",
+    "codex-browser-smoke-json-artifact-gate.mjs",
+    "codex-dataset-audit-runner-readiness-gate.mjs",
+    "codex-dataset-audit-v2-schema-gate.mjs",
+    "codex-harness-rollout-diff-regression-gate.mjs",
+    "codex-live2d-dataset-row-audit-gate.mjs",
+    "codex-live2d-evidence-collector-contract-gate.mjs",
+    "codex-local-remote-evidence-phase-gate.mjs",
+    "codex-motion-allowlist-sync-gate.mjs",
+    "codex-obsolete-pr-auto-recommend-gate.mjs",
+    "codex-owner-decision-digest-gate.mjs",
+    "codex-runtime-latency-measurement-gate.mjs",
+    "codex-structured-solvability-gate.mjs",
+    "codex-target-hotfix-regression-gate.mjs",
+    "codex-trusted-loader-evidence-gate.mjs",
+    "codex-v097-gate-lib.mjs",
+    "codex-v097-self-test.mjs",
+    "codex-workflow-product-verification-invariant-gate.mjs"
   ],
   "optionalFiles": []
 }

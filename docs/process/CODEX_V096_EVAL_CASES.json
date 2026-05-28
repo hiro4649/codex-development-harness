@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.6",
-  "harnessVersion": "0.9.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
   "suite": "v096",
   "cases": [
     "k_rule_coverage_live2d_allowlist_required_pass",

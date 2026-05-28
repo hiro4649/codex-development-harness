@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
 # Product Baseline Continuity Policy
 
 Version: v0.9.4

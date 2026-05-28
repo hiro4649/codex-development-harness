@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
 # Baseline Health Policy
 
 v0.9.0 baseline health keeps product-relevant verification from being hidden by

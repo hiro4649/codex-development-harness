@@ -1,0 +1,22 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "trusted_loader_evidence",
+  "requiredFields": [
+    "loader_kind",
+    "loader_version",
+    "model_load_session_id",
+    "safe_manifest_status_hash",
+    "safe_moc_asset_token_hash",
+    "model_id",
+    "scene_id",
+    "loaded_at_ms",
+    "fresh_heartbeat_timestamp_ms",
+    "scene_binding_result",
+    "cue_capability_result",
+    "last_cue_applied_result",
+    "server_trusted_policy_gate"
+  ]
+}

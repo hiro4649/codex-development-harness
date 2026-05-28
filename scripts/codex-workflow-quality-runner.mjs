@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.6
+// CODEX_QUALITY_HARNESS_FILE v0.9.7
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, simpleStatus, writeJsonReport } from './codex-v080-lib.mjs';
@@ -132,6 +132,45 @@ const v096OptionalNotApplicable = new Set([
   'gameToolAdapterContractFixtureStatus',
   'belovedAvatarSafetyAuditStatus',
 ]);
+const v097StatusKeys = [
+  'activeSelfTestRegistryStatus',
+  'workflowProductVerificationInvariantStatus',
+  'targetHotfixRegressionStatus',
+  'harnessRolloutDiffRegressionStatus',
+  'blockerRootCauseClassifierStatus',
+  'localRemoteEvidencePhaseStatus',
+  'structuredSolvabilityStatus',
+  'live2dDatasetRowAuditStatus',
+  'motionAllowlistSyncStatus',
+  'trustedLoaderEvidenceStatus',
+  'live2dEvidenceCollectorContractStatus',
+  'avatarUxSafetyStatus',
+  'runtimeLatencyMeasurementStatus',
+  'browserSmokeJsonArtifactStatus',
+  'ownerDecisionDigestStatus',
+  'obsoletePrAutoRecommendStatus',
+  'datasetAuditV2SchemaStatus',
+  'datasetAuditRunnerReadinessStatus',
+  'gameToolAdapterContractFixtureStatus',
+  'belovedAvatarSafetyAuditStatus',
+  'v097SelfTestStatus',
+];
+const v097OptionalNotApplicable = new Set([
+  'targetHotfixRegressionStatus',
+  'harnessRolloutDiffRegressionStatus',
+  'localRemoteEvidencePhaseStatus',
+  'live2dDatasetRowAuditStatus',
+  'motionAllowlistSyncStatus',
+  'trustedLoaderEvidenceStatus',
+  'live2dEvidenceCollectorContractStatus',
+  'avatarUxSafetyStatus',
+  'runtimeLatencyMeasurementStatus',
+  'browserSmokeJsonArtifactStatus',
+  'datasetAuditV2SchemaStatus',
+  'datasetAuditRunnerReadinessStatus',
+  'gameToolAdapterContractFixtureStatus',
+  'belovedAvatarSafetyAuditStatus',
+]);
 
 const sourceRequiredPass = [
   'sourceHarnessValidationStatus',
@@ -154,6 +193,7 @@ const sourceRequiredPass = [
   ...v094StatusKeys,
   ...v095StatusKeys,
   ...v096StatusKeys,
+  ...v097StatusKeys,
   'remoteLocalParityStatus',
   'noArtifactFailureStatus',
   'prEvidenceRendererStatus',
@@ -252,6 +292,7 @@ const targetRequiredPass = [
   ...v094StatusKeys,
   ...v095StatusKeys,
   ...v096StatusKeys,
+  ...v097StatusKeys,
   'remoteLocalParityStatus',
   'noArtifactFailureStatus',
   'prEvidenceRendererStatus',
@@ -313,6 +354,7 @@ const optionalNotApplicable = new Set([
   ...v094OptionalNotApplicable,
   ...v095OptionalNotApplicable,
   ...v096OptionalNotApplicable,
+  ...v097OptionalNotApplicable,
   'agentMemoryPolicyStatus',
   'skillLifecyclePolicyStatus',
   'curatorSuggestionStatus',
@@ -459,6 +501,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   const v094Fields = new Set(v094StatusKeys);
   const v095Fields = new Set(v095StatusKeys);
   const v096Fields = new Set(v096StatusKeys);
+  const v097Fields = new Set(v097StatusKeys);
   const hasV084Shape = report.harnessVersion === HARNESS_VERSION || [...v084Fields].some((key) => report[key]);
   const hasV085Shape = report.harnessVersion === HARNESS_VERSION || [...v085Fields].some((key) => report[key]);
   const hasV086Shape = report.harnessVersion === HARNESS_VERSION || [...v086Fields].some((key) => report[key]);
@@ -471,6 +514,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   const hasV094Shape = report.harnessVersion === HARNESS_VERSION || [...v094Fields].some((key) => report[key]);
   const hasV095Shape = report.harnessVersion === HARNESS_VERSION || [...v095Fields].some((key) => report[key]);
   const hasV096Shape = report.harnessVersion === HARNESS_VERSION || [...v096Fields].some((key) => report[key]);
+  const hasV097Shape = report.harnessVersion === HARNESS_VERSION || [...v097Fields].some((key) => report[key]);
   const required = (mode === 'target' ? targetRequiredPass : sourceRequiredPass)
     .filter((key) => hasV084Shape || !v084Fields.has(key))
     .filter((key) => hasV085Shape || !v085Fields.has(key))
@@ -483,7 +527,8 @@ export function evaluateWorkflowReport(report, options = {}) {
     .filter((key) => hasV093Shape || !v093Fields.has(key))
     .filter((key) => hasV094Shape || !v094Fields.has(key))
     .filter((key) => hasV095Shape || !v095Fields.has(key))
-    .filter((key) => hasV096Shape || !v096Fields.has(key));
+    .filter((key) => hasV096Shape || !v096Fields.has(key))
+    .filter((key) => hasV097Shape || !v097Fields.has(key));
   const failures = [];
   for (const key of required) {
     const status = report[key]?.status || 'missing';
@@ -598,6 +643,25 @@ export function evaluateWorkflowReport(report, options = {}) {
     gameToolAdapterContractFixtureStatus: report.gameToolAdapterContractFixtureStatus || { status: 'missing' },
     belovedAvatarSafetyAuditStatus: report.belovedAvatarSafetyAuditStatus || { status: 'missing' },
     v096SelfTestStatus: report.v096SelfTestStatus || { status: 'missing' },
+    activeSelfTestRegistryStatus: report.activeSelfTestRegistryStatus || { status: 'missing' },
+    workflowProductVerificationInvariantStatus: report.workflowProductVerificationInvariantStatus || { status: 'missing' },
+    targetHotfixRegressionStatus: report.targetHotfixRegressionStatus || { status: 'missing' },
+    harnessRolloutDiffRegressionStatus: report.harnessRolloutDiffRegressionStatus || { status: 'missing' },
+    blockerRootCauseClassifierStatus: report.blockerRootCauseClassifierStatus || { status: 'missing' },
+    localRemoteEvidencePhaseStatus: report.localRemoteEvidencePhaseStatus || { status: 'missing' },
+    structuredSolvabilityStatus: report.structuredSolvabilityStatus || { status: 'missing' },
+    live2dDatasetRowAuditStatus: report.live2dDatasetRowAuditStatus || { status: 'missing' },
+    motionAllowlistSyncStatus: report.motionAllowlistSyncStatus || { status: 'missing' },
+    trustedLoaderEvidenceStatus: report.trustedLoaderEvidenceStatus || { status: 'missing' },
+    live2dEvidenceCollectorContractStatus: report.live2dEvidenceCollectorContractStatus || { status: 'missing' },
+    avatarUxSafetyStatus: report.avatarUxSafetyStatus || { status: 'missing' },
+    runtimeLatencyMeasurementStatus: report.runtimeLatencyMeasurementStatus || { status: 'missing' },
+    browserSmokeJsonArtifactStatus: report.browserSmokeJsonArtifactStatus || { status: 'missing' },
+    ownerDecisionDigestStatus: report.ownerDecisionDigestStatus || { status: 'missing' },
+    obsoletePrAutoRecommendStatus: report.obsoletePrAutoRecommendStatus || { status: 'missing' },
+    datasetAuditV2SchemaStatus: report.datasetAuditV2SchemaStatus || { status: 'missing' },
+    datasetAuditRunnerReadinessStatus: report.datasetAuditRunnerReadinessStatus || { status: 'missing' },
+    v097SelfTestStatus: report.v097SelfTestStatus || { status: 'missing' },
     failureCount: Array.isArray(report.failures) ? report.failures.length : 0,
     warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
     safeSummaryOnly: true,
@@ -639,10 +703,10 @@ function writeArtifacts(result, report) {
     safeSummaryOnly: true,
   }, null, 2));
   fs.writeFileSync('codex-self-test-cases.safe.json', JSON.stringify({
-    suite: report.v096SelfTestStatus?.suite || report.v095SelfTestStatus?.suite || report.v094SelfTestStatus?.suite || report.v093SelfTestStatus?.suite || report.v092SelfTestStatus?.suite || report.selfTestCaseExportStatus?.suite || 'local_quality_gate',
-    caseCount: report.v096SelfTestStatus?.caseCount ?? report.v095SelfTestStatus?.caseCount ?? report.v094SelfTestStatus?.caseCount ?? report.v093SelfTestStatus?.caseCount ?? report.v092SelfTestStatus?.caseCount ?? report.selfTestCaseExportStatus?.caseCount ?? 0,
-    failedCaseCount: report.v096SelfTestStatus?.failedCaseCount ?? report.v095SelfTestStatus?.failedCaseCount ?? report.v094SelfTestStatus?.failedCaseCount ?? report.v093SelfTestStatus?.failedCaseCount ?? report.v092SelfTestStatus?.failedCaseCount ?? report.selfTestCaseExportStatus?.failedCaseCount ?? 0,
-    failedCases: Array.isArray(report.v096SelfTestStatus?.failedCases) ? report.v096SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v095SelfTestStatus?.failedCases) ? report.v095SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v094SelfTestStatus?.failedCases) ? report.v094SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v093SelfTestStatus?.failedCases) ? report.v093SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v092SelfTestStatus?.failedCases) ? report.v092SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.selfTestCaseExportStatus?.failedCases) ? report.selfTestCaseExportStatus.failedCases.slice(0, 20) : []))))),
+    suite: report.v097SelfTestStatus?.suite || report.v096SelfTestStatus?.suite || report.v095SelfTestStatus?.suite || report.v094SelfTestStatus?.suite || report.v093SelfTestStatus?.suite || report.v092SelfTestStatus?.suite || report.selfTestCaseExportStatus?.suite || 'local_quality_gate',
+    caseCount: report.v097SelfTestStatus?.caseCount ?? report.v096SelfTestStatus?.caseCount ?? report.v095SelfTestStatus?.caseCount ?? report.v094SelfTestStatus?.caseCount ?? report.v093SelfTestStatus?.caseCount ?? report.v092SelfTestStatus?.caseCount ?? report.selfTestCaseExportStatus?.caseCount ?? 0,
+    failedCaseCount: report.v097SelfTestStatus?.failedCaseCount ?? report.v096SelfTestStatus?.failedCaseCount ?? report.v095SelfTestStatus?.failedCaseCount ?? report.v094SelfTestStatus?.failedCaseCount ?? report.v093SelfTestStatus?.failedCaseCount ?? report.v092SelfTestStatus?.failedCaseCount ?? report.selfTestCaseExportStatus?.failedCaseCount ?? 0,
+    failedCases: Array.isArray(report.v097SelfTestStatus?.failedCases) ? report.v097SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v096SelfTestStatus?.failedCases) ? report.v096SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v095SelfTestStatus?.failedCases) ? report.v095SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v094SelfTestStatus?.failedCases) ? report.v094SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v093SelfTestStatus?.failedCases) ? report.v093SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.v092SelfTestStatus?.failedCases) ? report.v092SelfTestStatus.failedCases.slice(0, 20) : (Array.isArray(report.selfTestCaseExportStatus?.failedCases) ? report.selfTestCaseExportStatus.failedCases.slice(0, 20) : [])))))),
     safeSummaryOnly: true,
   }, null, 2));
   fs.writeFileSync('codex-safe-artifact-classification.safe.json', JSON.stringify(report.safeArtifactClassifierStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
@@ -662,6 +726,10 @@ function writeArtifacts(result, report) {
   fs.writeFileSync('codex-browser-smoke-artifact.safe.json', JSON.stringify(report.browserSmokeArtifactStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
   fs.writeFileSync('codex-failure-to-repair-plan.safe.json', JSON.stringify(report.failureToRepairPlanStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
   fs.writeFileSync('codex-human-review-digest.safe.json', JSON.stringify(report.humanReviewDigestStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-owner-decision-digest.safe.json', JSON.stringify(report.ownerDecisionDigestStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-runtime-latency-measurement.safe.json', JSON.stringify(report.runtimeLatencyMeasurementStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-browser-smoke-json-artifact.safe.json', JSON.stringify(report.browserSmokeJsonArtifactStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
+  fs.writeFileSync('codex-dataset-audit-v2.safe.json', JSON.stringify(report.datasetAuditV2SchemaStatus || { status: 'missing', safeSummaryOnly: true }, null, 2));
   if (result.mode === 'target') {
     fs.writeFileSync('codex-target-quality-summary.json', JSON.stringify({
       targetQualityScoreStatus: report.targetQualityScoreStatus || { status: 'missing' },

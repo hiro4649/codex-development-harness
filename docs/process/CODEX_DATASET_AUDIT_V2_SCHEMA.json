@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.7",
+  "harnessVersion": "0.9.7",
+  "schemaVersion": "1.0.0",
+  "safeSummaryOnly": true,
+  "schemaName": "dataset_audit_v2",
+  "classificationOnly": true,
+  "requiredFields": [
+    "classification_only",
+    "auditor",
+    "verdict",
+    "severity",
+    "issue_codes",
+    "evidence",
+    "quote",
+    "no_auto_fix"
+  ],
+  "maxQuoteLength": 400
+}

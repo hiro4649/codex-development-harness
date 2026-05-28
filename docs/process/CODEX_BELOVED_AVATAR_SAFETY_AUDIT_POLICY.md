@@ -1,6 +1,6 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
 # Beloved Avatar Safety Audit Policy
 
-Requires safe audit boundaries for avatar memory, privacy, cue, and motion evidence.
+Beloved avatar safety fixtures must protect memory privacy, monetization pressure, persona consistency, Japanese naturalness, and dependency boundaries without raw personal data.
 
-Outputs are safe-summary only. Do not include raw logs, raw diffs, raw cue, raw motion command, raw model path, private paths, endpoints, secrets, personal data, or production data.
+This policy is a source harness gate contract only. It adds no external dependency, no product command execution, no browser requirement for all PRs, no target rollout, and no runtime readiness claim. Evidence must stay compact and safe-summary-only.

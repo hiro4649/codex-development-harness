@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.7 -->
 # Migration Runtime Compatibility Policy
 
 Requires runtime compatibility evidence when migration changes are product-relevant.
