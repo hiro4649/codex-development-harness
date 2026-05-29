@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
 # Claim Transition Policy
 
 Requires atomic claim transition evidence for worker, queue, and job ownership paths.

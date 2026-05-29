@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.8
+// CODEX_QUALITY_HARNESS_FILE v0.9.9
 import { buildLive2DDatasetRowAuditRunnerReport, runV098GateCli } from './codex-v098-gate-lib.mjs';
 
 export { buildLive2DDatasetRowAuditRunnerReport };

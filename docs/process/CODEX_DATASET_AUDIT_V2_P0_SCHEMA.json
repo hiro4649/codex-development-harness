@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.9",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "required": ["classification_only", "auditor", "verdict", "severity", "issue_codes", "evidence", "auto_fix_allowed", "safeSummaryOnly"],
+  "properties": {
+    "classification_only": { "const": true },
+    "auditor": {
+      "enum": ["privacy_or_confidential", "candidate_execution_boundary", "adapter_boundary_violation", "production_readiness_sweetening", "eval_data_contamination"]
+    },
+    "verdict": { "enum": ["pass", "reject", "needs_review"] },
+    "severity": { "enum": ["info", "warning", "error", "critical"] },
+    "issue_codes": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9_]+$" }, "maxItems": 10 },
+    "evidence": { "type": "array", "items": { "type": "string", "maxLength": 400 }, "maxItems": 5 },
+    "auto_fix_allowed": { "const": false },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": false
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.8
+// CODEX_QUALITY_HARNESS_FILE v0.9.9
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, parseArgs, readJson, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -119,6 +119,43 @@ export function buildDiagnosticConsolidatedSummary(report, options = {}) {
       datasetAuditV2Schema: report?.datasetAuditV2SchemaStatus?.status || 'missing',
       datasetAuditRunnerReadiness: report?.datasetAuditRunnerReadinessStatus?.status || 'missing',
       v097SelfTest: report?.v097SelfTestStatus?.status || 'missing',
+      safeSummaryOnly: true,
+    },
+    v098Summary: {
+      remoteProductEvidenceExecution: report?.remoteProductEvidenceExecutionStatus?.status || 'missing',
+      remoteProductEvidenceRunner: report?.remoteProductEvidenceRunnerStatus?.status || 'missing',
+      productEvidenceConsumption: report?.productEvidenceConsumptionStatus?.status || 'missing',
+      placeholderEvidenceForbidden: report?.placeholderEvidenceForbiddenStatus?.status || 'missing',
+      localRemotePhase: report?.localRemotePhaseStatus?.status || 'missing',
+      structuredSolvabilityFields: report?.structuredSolvabilityFieldsStatus?.status || 'missing',
+      live2dDatasetRowAuditRunner: report?.live2dDatasetRowAuditRunnerStatus?.status || 'missing',
+      motionAllowlistDiff: report?.motionAllowlistDiffStatus?.status || 'missing',
+      trustedLoaderEvidenceEnforcer: report?.trustedLoaderEvidenceEnforcerStatus?.status || 'missing',
+      avatarUxSafetyRunner: report?.avatarUxSafetyRunnerStatus?.status || 'missing',
+      runtimeLatencySafeMetric: report?.runtimeLatencySafeMetricStatus?.status || 'missing',
+      browserSmokeVisualSafetyArtifact: report?.browserSmokeVisualSafetyArtifactStatus?.status || 'missing',
+      openPrRebaseReadiness: report?.openPrRebaseReadinessStatus?.status || 'missing',
+      fiveLineOwnerDigest: report?.fiveLineOwnerDigestStatus?.status || 'missing',
+      v098SelfTest: report?.v098SelfTestStatus?.status || 'missing',
+      safeSummaryOnly: true,
+    },
+    v099Summary: {
+      formalEvidencePrecedence: report?.formalEvidencePrecedenceStatus?.status || 'missing',
+      lifeboatSemantics: report?.lifeboatSemanticsStatus?.status || 'missing',
+      placeholderOnlyEvidence: report?.placeholderOnlyEvidenceStatus?.status || 'missing',
+      remoteNpmDiagnosticNormalization: report?.remoteNpmDiagnosticNormalizationStatus?.status || 'missing',
+      legacySelfTestAdvisory: report?.legacySelfTestAdvisoryStatus?.status || 'missing',
+      authSurfaceClassifierRefinement: report?.authSurfaceClassifierRefinementStatus?.status || 'missing',
+      targetQualityBlockerDigest: report?.targetQualityBlockerDigestStatus?.status || 'missing',
+      prEvidenceAutoRepairHint: report?.prEvidenceAutoRepairHintStatus?.status || 'missing',
+      actionsBlockerRecovery: report?.actionsBlockerRecoveryStatus?.status || 'missing',
+      prContextRerunAssistant: report?.prContextRerunAssistantStatus?.status || 'missing',
+      sameHeadEvidenceRefresh: report?.sameHeadEvidenceRefreshStatus?.status || 'missing',
+      safeArtifactBundleCompleteness: report?.safeArtifactBundleCompletenessStatus?.status || 'missing',
+      datasetAuditV2P0Schema: report?.datasetAuditV2P0SchemaStatus?.status || 'missing',
+      gameToolAdapterFixtureReadiness: report?.gameToolAdapterFixtureReadinessStatus?.status || 'missing',
+      belovedAvatarSafetyReadiness: report?.belovedAvatarSafetyReadinessStatus?.status || 'missing',
+      v099SelfTest: report?.v099SelfTestStatus?.status || 'missing',
       safeSummaryOnly: true,
     },
     v096Summary: {

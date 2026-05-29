@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.9",
   "harnessVersion": "0.8.8",
   "schemaVersion": "1.0.0",
   "requiredFields": ["id", "taskMode", "changedFiles", "prBody", "inputStatuses", "expected", "safeSummaryOnly"],

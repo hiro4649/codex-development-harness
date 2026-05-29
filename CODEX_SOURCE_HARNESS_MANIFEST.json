@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
-  "harnessVersion": "0.9.8",
-  "sourceHarnessVersion": "0.9.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.9",
+  "harnessVersion": "0.9.9",
+  "sourceHarnessVersion": "0.9.9",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -290,7 +290,23 @@
     "docs/process/CODEX_BROWSER_SMOKE_VISUAL_SAFETY_ARTIFACT_SCHEMA.json",
     "docs/process/CODEX_OPEN_PR_REBASE_READINESS_POLICY.md",
     "docs/process/CODEX_FIVE_LINE_OWNER_DIGEST_SCHEMA.json",
-    "docs/process/CODEX_V098_EVAL_CASES.json"
+    "docs/process/CODEX_V098_EVAL_CASES.json",
+    "docs/process/CODEX_FORMAL_EVIDENCE_PRECEDENCE_POLICY.md",
+    "docs/process/CODEX_LIFEBOAT_SEMANTICS_POLICY.md",
+    "docs/process/CODEX_PLACEHOLDER_ONLY_EVIDENCE_POLICY.md",
+    "docs/process/CODEX_REMOTE_NPM_DIAGNOSTIC_NORMALIZATION_POLICY.md",
+    "docs/process/CODEX_LEGACY_SELF_TEST_ADVISORY_POLICY.md",
+    "docs/process/CODEX_AUTH_SURFACE_CLASSIFIER_REFINEMENT_POLICY.md",
+    "docs/process/CODEX_TARGET_QUALITY_BLOCKER_DIGEST_SCHEMA.json",
+    "docs/process/CODEX_PR_EVIDENCE_AUTO_REPAIR_HINT_SCHEMA.json",
+    "docs/process/CODEX_ACTIONS_BLOCKER_RECOVERY_POLICY.md",
+    "docs/process/CODEX_PR_CONTEXT_RERUN_ASSISTANT_POLICY.md",
+    "docs/process/CODEX_SAME_HEAD_EVIDENCE_REFRESH_POLICY.md",
+    "docs/process/CODEX_SAFE_ARTIFACT_BUNDLE_COMPLETENESS_POLICY.md",
+    "docs/process/CODEX_DATASET_AUDIT_V2_P0_SCHEMA.json",
+    "docs/process/CODEX_GAME_TOOL_ADAPTER_FIXTURE_READINESS_POLICY.md",
+    "docs/process/CODEX_BELOVED_AVATAR_SAFETY_READINESS_POLICY.md",
+    "docs/process/CODEX_V099_EVAL_CASES.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -486,7 +502,24 @@
     "codex-open-pr-rebase-readiness-gate.mjs",
     "codex-five-line-owner-digest-gate.mjs",
     "codex-v098-gate-lib.mjs",
-    "codex-v098-self-test.mjs"
+    "codex-v098-self-test.mjs",
+    "codex-formal-evidence-precedence-gate.mjs",
+    "codex-lifeboat-semantics-gate.mjs",
+    "codex-placeholder-only-evidence-gate.mjs",
+    "codex-remote-npm-diagnostic-normalization-gate.mjs",
+    "codex-legacy-self-test-advisory-gate.mjs",
+    "codex-auth-surface-classifier-refinement-gate.mjs",
+    "codex-target-quality-blocker-digest-gate.mjs",
+    "codex-pr-evidence-auto-repair-hint-gate.mjs",
+    "codex-actions-blocker-recovery-gate.mjs",
+    "codex-pr-context-rerun-assistant-gate.mjs",
+    "codex-same-head-evidence-refresh-gate.mjs",
+    "codex-safe-artifact-bundle-completeness-gate.mjs",
+    "codex-dataset-audit-v2-p0-schema-gate.mjs",
+    "codex-game-tool-adapter-fixture-readiness-gate.mjs",
+    "codex-beloved-avatar-safety-readiness-gate.mjs",
+    "codex-v099-gate-lib.mjs",
+    "codex-v099-self-test.mjs"
   ],
   "optionalFiles": []
 }

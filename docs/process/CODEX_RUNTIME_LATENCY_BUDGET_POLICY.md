@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
 # Runtime Latency Budget Policy
 
 Requires duplicate-delivery, queue-drain, interval, and latency risks to be bounded before runtime readiness can be claimed.

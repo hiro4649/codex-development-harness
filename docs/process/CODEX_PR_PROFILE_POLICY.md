@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
 # PR Profile Policy
 
 PR bodies may use a compact profile so docs-only and harness-only changes do not carry product-runtime sections.
