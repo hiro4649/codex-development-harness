@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Best Of N Evidence Policy
 
 Best of N is required only for R3, ambiguous design, migration,

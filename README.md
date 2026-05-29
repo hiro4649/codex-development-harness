@@ -1,28 +1,23 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Codex Development Harness
 
-Version: v0.9.9
-Name: Evidence Precedence, Lifeboat Semantics, Actions Recovery, and Dataset Safety Gate
+Version: v1.0.0
+Name: Dynamic Workflow Orchestrator, Application Intelligence, and Handover Blueprint Gate
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.9 preserves v0.9.8 remote product evidence and structured solvability gates while adding formal evidence precedence, lifeboat semantics, placeholder-only rejection, remote npm diagnostic normalization, legacy self-test advisory handling, auth surface classifier refinement, target quality blocker digest, PR evidence auto-repair hints, Actions blocker recovery, PR-context rerun assistance, same-head evidence refresh, safe artifact bundle completeness, dataset audit v2 P0 schema, Game Tool Adapter fixture readiness, and beloved avatar safety readiness.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.0 preserves v0.9.9 evidence precedence, lifeboat semantics, placeholder-only rejection, remote npm diagnostic normalization, legacy self-test advisory handling, target quality blocker digest, PR evidence auto-repair hints, Actions recovery, same-head evidence refresh, and safe artifact bundle completeness.
 
-v0.9.9 is an operational recovery release. It keeps product evidence failures blocking while avoiding false failures from standby lifeboats or superseded pending placeholders when formal same-head remote evidence exists. Actions failures before job startup are classified separately from product failures, and merge readiness stays blocked until same-head remote pass evidence exists.
+v1.0.0 adds parent-harness development discipline, Dynamic Workflow Orchestrator Lite, task graph sequencing, branch isolation, worker file ownership, evidence aggregation, merge sequence controls, workflow stop/resume handling, application intelligence mapping, cost/performance/security/DB/dead-code candidate mapping, confidence classification, improvement backlog slicing, and handover blueprint generation.
 
-## What v0.9.9 Adds
+## What v1.0.0 Adds
 
-- Formal Evidence Precedence, Lifeboat Semantics, Placeholder-Only Evidence, and Remote NPM Diagnostic Normalization gates.
-- Legacy Self-Test Advisory, Auth Surface Classifier Refinement, Target Quality Blocker Digest, and PR Evidence Auto-Repair Hint gates.
-- Actions Blocker Recovery, PR Context Rerun Assistant, Same-Head Evidence Refresh, and Safe Artifact Bundle Completeness gates.
-- Dataset Audit v2 P0 schema, Game Tool Adapter fixture readiness, and beloved avatar safety readiness gates.
-- v0.9.9 deterministic self-test fixtures.
+- Parent harness gates: v0.9.9 remains the stable parent while v1.0.0 adds v100 self-test coverage.
+- Dynamic workflow gates for plan, DAG, scope, worker budget, branch isolation, file ownership, role matrix, evidence aggregation, merge order, stop/resume, and cost budget.
+- Application intelligence gates for codebase maps, entrypoints, module boundaries, dependency/data/API/DB/worker/integration/security/performance/cost maps, dead-code candidates, test gaps, docs drift, confidence, handover, and backlog planning.
+- Safe execution gates for cleanup, behavior preservation, refactor slices, public contracts, migration safety, runtime readiness boundaries, and production go boundaries.
 
-## Preserved Capabilities
+## What v1.0.0 Does Not Add
 
-v0.9.9 keeps v0.9.8 remote product evidence execution, product evidence consumption, placeholder evidence forbidden, structured solvability fields, open PR rebase readiness, five-line owner digest, and all earlier active self-test registry, workflow product verification invariant, target hotfix regression, blocker root-cause classification, AGENTS doctrine, skill routing, evidence minimality, skip-npm bypass protection, remote product context, runtime job safety, same-head evidence, and previous target hotfix preservation gates.
-
-## What v0.9.9 Does Not Add
-
-No external dependency, LLM judge requirement, MCP requirement, all-PR browser requirement, hidden chain-of-thought inspection, source self-test product command execution, product code change requirement, target rollout, runtime readiness claim, production readiness claim, Live2D real connection, dataset audit runner implementation in product repos, Game/Tool Adapter runtime implementation, beloved avatar audit runner implementation, raw npm log artifact, raw diff artifact, raw cue artifact, raw motion command artifact, raw model path artifact, raw console log artifact, raw production data artifact, or workflow-dispatch-as-PR-check substitute is introduced by this source update.
+No external dependency, LLM judge requirement, MCP requirement, all-PR browser requirement, hidden chain-of-thought inspection, source self-test product command execution, product code change requirement, target rollout, runtime readiness claim, production readiness claim, unlimited subagent execution, product implementation, dataset audit runner implementation, Game/Tool Adapter runtime implementation, beloved avatar audit runner implementation, migration auto-apply, dead-code deletion without confirmation, or cost/performance claims without evidence is introduced by this source update.
 
 ## Running The Core Gate
 

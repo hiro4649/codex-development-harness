@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Remote NPM Diagnostic Normalization Policy
 
 Remote npm diagnostics must follow the formal remote product evidence result. A passing remote npm execution must not be reported as not executed.

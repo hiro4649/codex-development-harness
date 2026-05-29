@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # PR Context Rerun Assistant Policy
 
 Rerun guidance must preserve current-head evidence. The assistant may recommend rerunning a same-head failed PR context run, an empty commit for rerun 404, or rebase when main advanced.

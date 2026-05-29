@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// CODEX_QUALITY_HARNESS_FILE v0.9.9
+// CODEX_QUALITY_HARNESS_FILE v1.0.0
 
 import fs from 'node:fs';
 

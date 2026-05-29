@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Workflow Product Verification Invariant Policy
 
 Locks target workflow product verification context, remote product baseline, npm diagnostic evidence, and safe artifact upload paths so rollout sync cannot silently remove them.

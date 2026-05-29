@@ -1,0 +1,26 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
+  "harnessVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "integrations": [
+    "aws",
+    "s3",
+    "rds",
+    "github_actions",
+    "stripe",
+    "youtube",
+    "obs",
+    "tts",
+    "game",
+    "live2d",
+    "rpc",
+    "webhook",
+    "email",
+    "analytics"
+  ],
+  "forbidden": [
+    "endpoint_value",
+    "token_value",
+    "secret_value"
+  ]
+}

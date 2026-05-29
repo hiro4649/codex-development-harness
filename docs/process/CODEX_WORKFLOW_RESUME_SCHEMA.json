@@ -1,0 +1,14 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
+  "harnessVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "required": [
+    "resumePoint",
+    "blockerClass",
+    "safeNextAction"
+  ],
+  "forbidden": [
+    "blind_rerun",
+    "workflow_dispatch_as_pr_evidence"
+  ]
+}

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Tx Reconciliation Service Policy
 
 Requires safe reconciliation and resume policy for tx and receipt-dependent paths.

@@ -1,0 +1,20 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
+  "harnessVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "scopes": [
+    "read_only_map",
+    "plan_only",
+    "safe_cleanup",
+    "behavior_preserving_refactor",
+    "product_change",
+    "security_audit",
+    "performance_audit",
+    "cost_audit",
+    "db_audit",
+    "handover",
+    "runtime_readiness",
+    "harness_change",
+    "target_rollout"
+  ]
+}

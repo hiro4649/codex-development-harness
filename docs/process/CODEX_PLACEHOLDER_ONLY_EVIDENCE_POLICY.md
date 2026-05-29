@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Placeholder-Only Evidence Policy
 
 Product-relevant pull requests must not pass with placeholder-only product evidence. Pending placeholder artifacts are allowed only before formal remote evidence exists and cannot satisfy merge readiness.
