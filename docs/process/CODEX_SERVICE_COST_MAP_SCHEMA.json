@@ -1,0 +1,21 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
+  "harnessVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "candidates": [
+    "worker",
+    "cron",
+    "polling",
+    "external_api_call",
+    "db_query",
+    "ci_rerun",
+    "docker_build",
+    "artifact_retention",
+    "cache",
+    "storage",
+    "logging_volume",
+    "cold_start",
+    "retry_storm"
+  ],
+  "noClaimWithoutBilling": true
+}

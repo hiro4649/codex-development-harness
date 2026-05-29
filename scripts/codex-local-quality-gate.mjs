@@ -2,7 +2,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v0.9.9
+// CODEX_QUALITY_HARNESS_FILE v1.0.0
 
 
 
@@ -46,7 +46,7 @@ import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
 
 
 
-const HARNESS_VERSION = '0.9.9';
+const HARNESS_VERSION = '1.0.0';
 
 
 
@@ -674,6 +674,12 @@ const V099_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS = [
   'datasetAuditV2P0SchemaStatus',
   'gameToolAdapterFixtureReadinessStatus',
   'belovedAvatarSafetyReadinessStatus',
+];
+const V100_STATUS_KEYS = [
+  'parentHarnessDevelopmentStatus','parentHarnessSelfTestStatus','newHarnessSelfTestStatus','parentGatePreservationStatus','versionSuccessionStatus','workflowPlanStatus','taskGraphStatus','workflowScopeStatus','parallelWorkerBudgetStatus','branchIsolationStatus','workerFileOwnershipStatus','subagentRoleMatrixStatus','evidenceAggregationStatus','mergeSequenceStatus','workflowStopConditionStatus','workflowResumeStatus','workflowCostBudgetStatus','codebaseMapStatus','entrypointMapStatus','moduleBoundaryStatus','dependencyGraphStatus','dataFlowMapStatus','apiSurfaceMapStatus','dbUsageMapStatus','workerBatchMapStatus','externalIntegrationMapStatus','securitySurfaceMapStatus','performanceHotspotMapStatus','serviceCostMapStatus','deadCodeCandidateStatus','testGapMapStatus','docsImplementationDriftStatus','architectureBlueprintStatus','handoverDocumentStatus','confidenceClassificationStatus','improvementBacklogStatus','safeCleanupPlanStatus','behaviorPreservationStatus','refactorSliceStatus','publicContractChangeStatus','migrationSafetyPlanStatus','runtimeReadinessBoundaryStatus','productionGoBoundaryStatus','v100SelfTestStatus',
+];
+const V100_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS = [
+  'workflowPlanStatus','taskGraphStatus','branchIsolationStatus','subagentRoleMatrixStatus','evidenceAggregationStatus','mergeSequenceStatus','workflowResumeStatus','codebaseMapStatus','entrypointMapStatus','moduleBoundaryStatus','dependencyGraphStatus','dataFlowMapStatus','apiSurfaceMapStatus','dbUsageMapStatus','workerBatchMapStatus','externalIntegrationMapStatus','securitySurfaceMapStatus','performanceHotspotMapStatus','serviceCostMapStatus','deadCodeCandidateStatus','testGapMapStatus','docsImplementationDriftStatus','architectureBlueprintStatus','handoverDocumentStatus','confidenceClassificationStatus','improvementBacklogStatus','safeCleanupPlanStatus','behaviorPreservationStatus','refactorSliceStatus','publicContractChangeStatus','migrationSafetyPlanStatus',
 ];
 
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
@@ -2175,6 +2181,54 @@ function runV099Gates(report, gateEnv) {
 function initializeV099Statuses(report) {
   for (const key of V099_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' };
 }
+function runV100Gates(report, gateEnv) {
+  const v100Env = { ...gateEnv, CODEX_CHANGE_CLASSIFICATION_JSON: JSON.stringify(report.changeClassificationStatus) };
+  report.parentHarnessDevelopmentStatus = runGateScript('scripts/codex-parent-harness-development-gate.mjs', 'parentHarnessDevelopmentStatus', 'CODEX_PARENT_HARNESS_DEVELOPMENT_REPORT', v100Env);
+  report.parentHarnessSelfTestStatus = runGateScript('scripts/codex-parent-harness-self-test-gate.mjs', 'parentHarnessSelfTestStatus', 'CODEX_PARENT_HARNESS_SELF_TEST_REPORT', v100Env);
+  report.newHarnessSelfTestStatus = runGateScript('scripts/codex-new-harness-self-test-gate.mjs', 'newHarnessSelfTestStatus', 'CODEX_NEW_HARNESS_SELF_TEST_REPORT', v100Env);
+  report.parentGatePreservationStatus = runGateScript('scripts/codex-parent-gate-preservation-gate.mjs', 'parentGatePreservationStatus', 'CODEX_PARENT_GATE_PRESERVATION_REPORT', v100Env);
+  report.versionSuccessionStatus = runGateScript('scripts/codex-version-succession-gate.mjs', 'versionSuccessionStatus', 'CODEX_VERSION_SUCCESSION_REPORT', v100Env);
+  report.workflowPlanStatus = runGateScript('scripts/codex-workflow-plan-gate.mjs', 'workflowPlanStatus', 'CODEX_WORKFLOW_PLAN_REPORT', v100Env);
+  report.taskGraphStatus = runGateScript('scripts/codex-task-graph-gate.mjs', 'taskGraphStatus', 'CODEX_TASK_GRAPH_REPORT', v100Env);
+  report.workflowScopeStatus = runGateScript('scripts/codex-workflow-scope-gate.mjs', 'workflowScopeStatus', 'CODEX_WORKFLOW_SCOPE_REPORT', v100Env);
+  report.parallelWorkerBudgetStatus = runGateScript('scripts/codex-parallel-worker-budget-gate.mjs', 'parallelWorkerBudgetStatus', 'CODEX_PARALLEL_WORKER_BUDGET_REPORT', v100Env);
+  report.branchIsolationStatus = runGateScript('scripts/codex-branch-isolation-gate.mjs', 'branchIsolationStatus', 'CODEX_BRANCH_ISOLATION_REPORT', v100Env);
+  report.workerFileOwnershipStatus = runGateScript('scripts/codex-worker-file-ownership-gate.mjs', 'workerFileOwnershipStatus', 'CODEX_WORKER_FILE_OWNERSHIP_REPORT', v100Env);
+  report.subagentRoleMatrixStatus = runGateScript('scripts/codex-subagent-role-matrix-gate.mjs', 'subagentRoleMatrixStatus', 'CODEX_SUBAGENT_ROLE_MATRIX_REPORT', v100Env);
+  report.evidenceAggregationStatus = runGateScript('scripts/codex-evidence-aggregation-gate.mjs', 'evidenceAggregationStatus', 'CODEX_EVIDENCE_AGGREGATION_REPORT', v100Env);
+  report.mergeSequenceStatus = runGateScript('scripts/codex-merge-sequence-gate.mjs', 'mergeSequenceStatus', 'CODEX_MERGE_SEQUENCE_REPORT', v100Env);
+  report.workflowStopConditionStatus = runGateScript('scripts/codex-workflow-stop-condition-gate.mjs', 'workflowStopConditionStatus', 'CODEX_WORKFLOW_STOP_CONDITION_REPORT', v100Env);
+  report.workflowResumeStatus = runGateScript('scripts/codex-workflow-resume-gate.mjs', 'workflowResumeStatus', 'CODEX_WORKFLOW_RESUME_REPORT', v100Env);
+  report.workflowCostBudgetStatus = runGateScript('scripts/codex-workflow-cost-budget-gate.mjs', 'workflowCostBudgetStatus', 'CODEX_WORKFLOW_COST_BUDGET_REPORT', v100Env);
+  report.codebaseMapStatus = runGateScript('scripts/codex-codebase-map-gate.mjs', 'codebaseMapStatus', 'CODEX_CODEBASE_MAP_REPORT', v100Env);
+  report.entrypointMapStatus = runGateScript('scripts/codex-entrypoint-map-gate.mjs', 'entrypointMapStatus', 'CODEX_ENTRYPOINT_MAP_REPORT', v100Env);
+  report.moduleBoundaryStatus = runGateScript('scripts/codex-module-boundary-gate.mjs', 'moduleBoundaryStatus', 'CODEX_MODULE_BOUNDARY_REPORT', v100Env);
+  report.dependencyGraphStatus = runGateScript('scripts/codex-dependency-graph-gate.mjs', 'dependencyGraphStatus', 'CODEX_DEPENDENCY_GRAPH_REPORT', v100Env);
+  report.dataFlowMapStatus = runGateScript('scripts/codex-data-flow-map-gate.mjs', 'dataFlowMapStatus', 'CODEX_DATA_FLOW_MAP_REPORT', v100Env);
+  report.apiSurfaceMapStatus = runGateScript('scripts/codex-api-surface-map-gate.mjs', 'apiSurfaceMapStatus', 'CODEX_API_SURFACE_MAP_REPORT', v100Env);
+  report.dbUsageMapStatus = runGateScript('scripts/codex-db-usage-map-gate.mjs', 'dbUsageMapStatus', 'CODEX_DB_USAGE_MAP_REPORT', v100Env);
+  report.workerBatchMapStatus = runGateScript('scripts/codex-worker-batch-map-gate.mjs', 'workerBatchMapStatus', 'CODEX_WORKER_BATCH_MAP_REPORT', v100Env);
+  report.externalIntegrationMapStatus = runGateScript('scripts/codex-external-integration-map-gate.mjs', 'externalIntegrationMapStatus', 'CODEX_EXTERNAL_INTEGRATION_MAP_REPORT', v100Env);
+  report.securitySurfaceMapStatus = runGateScript('scripts/codex-security-surface-map-gate.mjs', 'securitySurfaceMapStatus', 'CODEX_SECURITY_SURFACE_REPORT', v100Env);
+  report.performanceHotspotMapStatus = runGateScript('scripts/codex-performance-hotspot-map-gate.mjs', 'performanceHotspotMapStatus', 'CODEX_PERFORMANCE_HOTSPOT_REPORT', v100Env);
+  report.serviceCostMapStatus = runGateScript('scripts/codex-service-cost-map-gate.mjs', 'serviceCostMapStatus', 'CODEX_SERVICE_COST_REPORT', v100Env);
+  report.deadCodeCandidateStatus = runGateScript('scripts/codex-dead-code-candidate-gate.mjs', 'deadCodeCandidateStatus', 'CODEX_DEAD_CODE_CANDIDATE_REPORT', v100Env);
+  report.testGapMapStatus = runGateScript('scripts/codex-test-gap-map-gate.mjs', 'testGapMapStatus', 'CODEX_TEST_GAP_MAP_REPORT', v100Env);
+  report.docsImplementationDriftStatus = runGateScript('scripts/codex-docs-implementation-drift-gate.mjs', 'docsImplementationDriftStatus', 'CODEX_DOCS_IMPLEMENTATION_DRIFT_REPORT', v100Env);
+  report.architectureBlueprintStatus = runGateScript('scripts/codex-architecture-blueprint-gate.mjs', 'architectureBlueprintStatus', 'CODEX_ARCHITECTURE_BLUEPRINT_REPORT', v100Env);
+  report.handoverDocumentStatus = runGateScript('scripts/codex-handover-document-gate.mjs', 'handoverDocumentStatus', 'CODEX_HANDOVER_DOCUMENT_REPORT', v100Env);
+  report.confidenceClassificationStatus = runGateScript('scripts/codex-confidence-classification-gate.mjs', 'confidenceClassificationStatus', 'CODEX_CONFIDENCE_CLASSIFICATION_REPORT', v100Env);
+  report.improvementBacklogStatus = runGateScript('scripts/codex-improvement-backlog-gate.mjs', 'improvementBacklogStatus', 'CODEX_IMPROVEMENT_BACKLOG_REPORT', v100Env);
+  report.safeCleanupPlanStatus = runGateScript('scripts/codex-safe-cleanup-plan-gate.mjs', 'safeCleanupPlanStatus', 'CODEX_SAFE_CLEANUP_PLAN_REPORT', v100Env);
+  report.behaviorPreservationStatus = runGateScript('scripts/codex-behavior-preservation-gate.mjs', 'behaviorPreservationStatus', 'CODEX_BEHAVIOR_PRESERVATION_REPORT', v100Env);
+  report.refactorSliceStatus = runGateScript('scripts/codex-refactor-slice-gate.mjs', 'refactorSliceStatus', 'CODEX_REFACTOR_SLICE_REPORT', v100Env);
+  report.publicContractChangeStatus = runGateScript('scripts/codex-public-contract-change-gate.mjs', 'publicContractChangeStatus', 'CODEX_PUBLIC_CONTRACT_CHANGE_REPORT', v100Env);
+  report.migrationSafetyPlanStatus = runGateScript('scripts/codex-migration-safety-plan-gate.mjs', 'migrationSafetyPlanStatus', 'CODEX_MIGRATION_SAFETY_PLAN_REPORT', v100Env);
+  report.runtimeReadinessBoundaryStatus = runGateScript('scripts/codex-runtime-readiness-boundary-gate.mjs', 'runtimeReadinessBoundaryStatus', 'CODEX_RUNTIME_READINESS_BOUNDARY_REPORT', v100Env);
+  report.productionGoBoundaryStatus = runGateScript('scripts/codex-production-go-boundary-gate.mjs', 'productionGoBoundaryStatus', 'CODEX_PRODUCTION_GO_BOUNDARY_REPORT', v100Env);
+}
+function initializeV100Statuses(report) { for (const key of V100_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
+
 
 
 function runJsonScript(script, cwd, failures, warnings) {
@@ -3155,6 +3209,7 @@ function computeOutputShapeStatus(report) {
     ...V097_STATUS_KEYS,
     ...V098_STATUS_KEYS,
     ...V099_STATUS_KEYS,
+    ...V100_STATUS_KEYS,
 
 
     'remoteLocalParityStatus',
@@ -3536,6 +3591,7 @@ function computeQualityScoreStatus(report) {
     ...V097_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     ...V098_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     ...V099_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
+    ...V100_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
 
 
     'agentMemoryPolicyStatus',
@@ -3629,6 +3685,7 @@ function computeQualityScoreStatus(report) {
     ...V097_STATUS_KEYS,
     ...V098_STATUS_KEYS,
     ...V099_STATUS_KEYS,
+    ...V100_STATUS_KEYS,
 
 
     'remoteLocalParityStatus',
@@ -3914,6 +3971,7 @@ function computeQualityScoreStatus(report) {
     ...V097_STATUS_KEYS,
     ...V098_STATUS_KEYS,
     ...V099_STATUS_KEYS,
+    ...V100_STATUS_KEYS,
 
 
     'remoteLocalParityStatus',
@@ -4439,6 +4497,7 @@ function computeTargetOutputShapeStatus(report) {
     ...V097_STATUS_KEYS,
     ...V098_STATUS_KEYS,
     ...V099_STATUS_KEYS,
+    ...V100_STATUS_KEYS,
 
 
     'remoteLocalParityStatus',
@@ -4804,6 +4863,7 @@ function computeTargetQualityScoreStatus(report) {
     ...V097_STATUS_KEYS,
     ...V098_STATUS_KEYS,
     ...V099_STATUS_KEYS,
+    ...V100_STATUS_KEYS,
 
 
     'remoteLocalParityStatus',
@@ -7409,6 +7469,7 @@ async function runSourceHarnessGate() {
   initializeV097Statuses(report);
   initializeV098Statuses(report);
   initializeV099Statuses(report);
+  initializeV100Statuses(report);
 
 
   report.profileTemplateCompatibilityStatus = report.sourceHarnessValidationStatus.profileTemplateCompatibilityStatus || { status: 'missing' };
@@ -7598,6 +7659,7 @@ async function runSourceHarnessGate() {
   runV097Gates(report, gateEnv);
   runV098Gates(report, gateEnv);
   runV099Gates(report, gateEnv);
+  runV100Gates(report, gateEnv);
 
 
   report.workflowPreflightStatus = runGateScript('scripts/codex-workflow-preflight.mjs', 'workflowPreflightStatus', 'CODEX_WORKFLOW_PREFLIGHT_REPORT', gateEnv);
@@ -8148,6 +8210,9 @@ async function runSourceHarnessGate() {
   report.v099SelfTestStatus = process.env.CODEX_SKIP_V099_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v099-self-test.mjs', 'v099SelfTestStatus', 'CODEX_V099_SELF_TEST_REPORT', { ...gateEnv, CODEX_V099_SKIP_LEGACY_RECHECKS: '1' });
+  report.v100SelfTestStatus = process.env.CODEX_SKIP_V100_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v100-self-test.mjs', 'v100SelfTestStatus', 'CODEX_V100_SELF_TEST_REPORT', { ...gateEnv, CODEX_V100_SKIP_LEGACY_RECHECKS: '1' });
 
 
 
@@ -8839,6 +8904,7 @@ async function runSourceHarnessGate() {
     for (const key of V097_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V098_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V099_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
+    for (const key of V100_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
 
 
     console.log(`prEvidenceRendererStatus: ${report.prEvidenceRendererStatus.status}`);
@@ -9572,6 +9638,7 @@ async function runTargetHarnessGate() {
   initializeV097Statuses(report);
   initializeV098Statuses(report);
   initializeV099Statuses(report);
+  initializeV100Statuses(report);
 
 
   report.agentsContextStatus = runGateScript('scripts/codex-agents-context-gate.mjs', 'agentsContextStatus', 'CODEX_AGENTS_CONTEXT_REPORT', gateEnv);
@@ -9721,6 +9788,7 @@ async function runTargetHarnessGate() {
   runV097Gates(report, gateEnv);
   runV098Gates(report, gateEnv);
   runV099Gates(report, gateEnv);
+  runV100Gates(report, gateEnv);
 
 
   report.workflowPreflightStatus = runGateScript('scripts/codex-workflow-preflight.mjs', 'workflowPreflightStatus', 'CODEX_WORKFLOW_PREFLIGHT_REPORT', gateEnv);
@@ -10239,6 +10307,9 @@ async function runTargetHarnessGate() {
   report.v099SelfTestStatus = process.env.CODEX_SKIP_V099_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v099-self-test.mjs', 'v099SelfTestStatus', 'CODEX_V099_SELF_TEST_REPORT', { ...gateEnv, CODEX_V099_SKIP_LEGACY_RECHECKS: '1' });
+  report.v100SelfTestStatus = process.env.CODEX_SKIP_V100_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v100-self-test.mjs', 'v100SelfTestStatus', 'CODEX_V100_SELF_TEST_REPORT', { ...gateEnv, CODEX_V100_SKIP_LEGACY_RECHECKS: '1' });
 
 
 
@@ -10782,6 +10853,7 @@ async function runTargetHarnessGate() {
     for (const key of V097_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V098_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V099_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
+    for (const key of V100_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
 
 
     console.log(`prEvidenceRendererStatus: ${report.prEvidenceRendererStatus.status}`);

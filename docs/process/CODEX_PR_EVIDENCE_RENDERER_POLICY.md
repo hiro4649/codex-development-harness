@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Codex PR Evidence Renderer Policy
 
 PR evidence must be generated as safe summary blocks for the current head. The renderer may emit Remote/Local Evidence, Evidence Integrity, Human Confirmation, Evidence Pack, Manual Confirmation, Residual Risks, Rollback, and Stale Evidence Check sections.

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Diagnostic Consolidation Policy
 
 The workflow runner must write one compact decision summary for humans and Codex: `codex-diagnostic-consolidated-summary.json`.

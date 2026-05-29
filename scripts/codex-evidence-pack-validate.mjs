@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v0.9.9
+// CODEX_QUALITY_HARNESS_FILE v1.0.0
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
-export const HARNESS_VERSION = '0.9.9';
+export const HARNESS_VERSION = '1.0.0';
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
 const defaultPackPath = path.join('.codex', 'evidence-pack.json');

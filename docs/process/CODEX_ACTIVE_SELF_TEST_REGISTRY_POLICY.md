@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Active Self-Test Registry Policy
 
 Keeps the active harness version mapped to exactly one blocking self-test status, with legacy self-tests advisory unless their own execution fails.

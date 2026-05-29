@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.9",
-  "harnessVersion": "0.9.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
+  "harnessVersion": "1.0.0",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -3216,6 +3216,342 @@
       "safeMessage": "product failure misclassified as infra",
       "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
       "gate": "actionsBlockerRecoveryStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "parent_harness_required",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "parent harness required",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "parent_harness_self_test_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "parent harness self test failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "new_harness_self_test_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "new harness self test failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "parent_gate_preservation_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "parent gate preservation failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "version_succession_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "version succession failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_plan_missing",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "workflow plan missing",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "task_graph_invalid",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "task graph invalid",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_scope_missing",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "workflow scope missing",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "parallel_worker_budget_exceeded",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "parallel worker budget exceeded",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "branch_isolation_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "branch isolation failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "worker_file_ownership_conflict",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "worker file ownership conflict",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "subagent_role_matrix_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "subagent role matrix failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "evidence_aggregation_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "evidence aggregation failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "merge_sequence_violation",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "merge sequence violation",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_stop_condition_triggered",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "workflow stop condition triggered",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_resume_invalid",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "workflow resume invalid",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_cost_budget_exceeded",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "workflow cost budget exceeded",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "codebase_map_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "codebase map failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "entrypoint_map_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "entrypoint map failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "module_boundary_violation",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "module boundary violation",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "dependency_graph_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "dependency graph failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "data_flow_map_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "data flow map failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "api_surface_map_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "api surface map failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "db_usage_raw_rows_forbidden",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "db usage raw rows forbidden",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "worker_batch_timeout_missing",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "worker batch timeout missing",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "external_integration_secret_exposure",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "external integration secret exposure",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "security_surface_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "security surface failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "performance_hotspot_claim_unproven",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "performance hotspot claim unproven",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "service_cost_claim_unproven",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "service cost claim unproven",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "dead_code_unconfirmed_delete_forbidden",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "dead code unconfirmed delete forbidden",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "test_gap_unresolved",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "test gap unresolved",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "docs_implementation_conflict",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "docs implementation conflict",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "handover_document_missing",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "handover document missing",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "confidence_classification_missing",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "confidence classification missing",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "improvement_backlog_invalid",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "improvement backlog invalid",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "safe_cleanup_plan_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "safe cleanup plan failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "behavior_preservation_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "behavior preservation failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "refactor_slice_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "refactor slice failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "public_contract_change_unstated",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "public contract change unstated",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "migration_safety_plan_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "migration safety plan failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_readiness_boundary_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "runtime readiness boundary failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "production_go_boundary_failed",
+      "gate": "v100",
+      "severity": "error",
+      "safeMessage": "production go boundary failed",
+      "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
       "canManualConfirmationOverride": false
     }
   ]

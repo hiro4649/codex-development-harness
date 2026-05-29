@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
+  "harnessVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "required": [
+    "route",
+    "controller",
+    "service",
+    "repository",
+    "authRequired",
+    "surfaceClass"
+  ],
+  "surfaceClass": [
+    "public",
+    "internal",
+    "admin"
+  ]
+}

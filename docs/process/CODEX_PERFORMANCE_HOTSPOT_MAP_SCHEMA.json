@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
+  "harnessVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "candidates": [
+    "n_plus_one",
+    "unbounded_loop",
+    "sync_blocking",
+    "startup_heavy_path",
+    "bundle_bloat",
+    "duplicate_delivery",
+    "excessive_polling",
+    "large_payload",
+    "cache_missing",
+    "long_transaction",
+    "rerender_hot_path"
+  ],
+  "noClaimWithoutProfile": true
+}

@@ -1,0 +1,17 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
+  "harnessVersion": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "entrypoints": [
+    "http_server",
+    "frontend_entry",
+    "cli",
+    "worker",
+    "cron",
+    "queue_consumer",
+    "serverless_function",
+    "webhook",
+    "admin_command",
+    "migration_script"
+  ]
+}

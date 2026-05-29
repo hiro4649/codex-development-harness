@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
 # Lifeboat Semantics Policy
 
 Lifeboat artifacts are recovery evidence. They do not replace normal safe summaries, target summaries, reason summaries, or product verification evidence.
