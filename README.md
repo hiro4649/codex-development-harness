@@ -1,29 +1,28 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
 # Codex Development Harness
 
-Version: v0.9.8
-Name: Remote Product Evidence Execution, Phase-Safe Solvability, and Real Artifact Enforcement Gate
+Version: v0.9.9
+Name: Evidence Precedence, Lifeboat Semantics, Actions Recovery, and Dataset Safety Gate
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.8 preserves v0.9.7 operational regression locks while adding actual remote product evidence execution, evidence consumption enforcement, placeholder evidence rejection, local/remote phase-safe status, structured solvability fields, Live2D dataset row audit runner checks, motion allowlist diff checks, trusted loader evidence enforcement, avatar UX safety runner checks, runtime latency safe metrics, browser smoke visual safety artifacts, open PR rebase readiness, and five-line owner digest.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v0.9.9 preserves v0.9.8 remote product evidence and structured solvability gates while adding formal evidence precedence, lifeboat semantics, placeholder-only rejection, remote npm diagnostic normalization, legacy self-test advisory handling, auth surface classifier refinement, target quality blocker digest, PR evidence auto-repair hints, Actions blocker recovery, PR-context rerun assistance, same-head evidence refresh, safe artifact bundle completeness, dataset audit v2 P0 schema, Game Tool Adapter fixture readiness, and beloved avatar safety readiness.
 
-v0.9.8 is a real-artifact enforcement release. It closes the gap where product-relevant target PRs could appear locally healthy while remote npm execution, remote product evidence, remote baseline, remote npm diagnostic, or quality-gate consumption remained placeholder-only. Local pre-push validation and remote after-push evidence are treated as separate phases, and merge readiness stays blocked until real current-head remote evidence exists.
+v0.9.9 is an operational recovery release. It keeps product evidence failures blocking while avoiding false failures from standby lifeboats or superseded pending placeholders when formal same-head remote evidence exists. Actions failures before job startup are classified separately from product failures, and merge readiness stays blocked until same-head remote pass evidence exists.
 
-## What v0.9.8 Adds
+## What v0.9.9 Adds
 
-- Remote Product Evidence Execution and Runner gates for final safe remote npm evidence, baseline, and diagnostic artifacts on product-relevant target PRs.
-- Product Evidence Consumption and Placeholder Evidence Forbidden gates to prevent generated evidence from being ignored or pending placeholders from satisfying product verification.
-- Local/Remote Phase Status and Structured Solvability Fields gates so readiness decisions use fixed fields instead of PR-body prose.
-- Live2D Dataset Row Audit Runner, Motion Allowlist Diff, Trusted Loader Evidence Enforcer, Avatar UX Safety Runner, Runtime Latency Safe Metric, and Browser Smoke Visual Safety Artifact gates.
-- Open PR Rebase Readiness and Five-Line Owner Digest gates.
-- v0.9.8 deterministic self-test fixtures.
+- Formal Evidence Precedence, Lifeboat Semantics, Placeholder-Only Evidence, and Remote NPM Diagnostic Normalization gates.
+- Legacy Self-Test Advisory, Auth Surface Classifier Refinement, Target Quality Blocker Digest, and PR Evidence Auto-Repair Hint gates.
+- Actions Blocker Recovery, PR Context Rerun Assistant, Same-Head Evidence Refresh, and Safe Artifact Bundle Completeness gates.
+- Dataset Audit v2 P0 schema, Game Tool Adapter fixture readiness, and beloved avatar safety readiness gates.
+- v0.9.9 deterministic self-test fixtures.
 
 ## Preserved Capabilities
 
-v0.9.8 keeps v0.9.7 active self-test registry, workflow product verification invariant, target hotfix regression, blocker root-cause classification, structured solvability, Live2D dataset row audit, trusted loader evidence, owner decision digest, and all earlier AGENTS doctrine, skill routing, evidence minimality, skip-npm bypass protection, remote product context, runtime job safety, tx path evidence, env consistency, same-head evidence, and previous target hotfix preservation gates.
+v0.9.9 keeps v0.9.8 remote product evidence execution, product evidence consumption, placeholder evidence forbidden, structured solvability fields, open PR rebase readiness, five-line owner digest, and all earlier active self-test registry, workflow product verification invariant, target hotfix regression, blocker root-cause classification, AGENTS doctrine, skill routing, evidence minimality, skip-npm bypass protection, remote product context, runtime job safety, same-head evidence, and previous target hotfix preservation gates.
 
-## What v0.9.8 Does Not Add
+## What v0.9.9 Does Not Add
 
-No external dependency, LLM judge requirement, MCP requirement, all-PR browser requirement, hidden chain-of-thought inspection, source self-test product command execution, product code change requirement, target rollout, runtime readiness claim, production readiness claim, Live2D real connection, dataset audit runner implementation in product repos, Game/Tool Adapter implementation, beloved avatar audit runner implementation, raw npm log artifact, raw cue artifact, raw motion command artifact, raw model path artifact, raw console log artifact, raw production data artifact, or workflow-dispatch-as-PR-check substitute is introduced by this source update.
+No external dependency, LLM judge requirement, MCP requirement, all-PR browser requirement, hidden chain-of-thought inspection, source self-test product command execution, product code change requirement, target rollout, runtime readiness claim, production readiness claim, Live2D real connection, dataset audit runner implementation in product repos, Game/Tool Adapter runtime implementation, beloved avatar audit runner implementation, raw npm log artifact, raw diff artifact, raw cue artifact, raw motion command artifact, raw model path artifact, raw console log artifact, raw production data artifact, or workflow-dispatch-as-PR-check substitute is introduced by this source update.
 
 ## Running The Core Gate
 

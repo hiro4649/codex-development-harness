@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
 # Migration Rollout Safety Policy
 
 Allows additive nullable migration rollout evidence while blocking destructive migration without rollback evidence.

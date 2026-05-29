@@ -1,0 +1,13 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.9",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "required": ["repairClass", "safeSuggestedPatchOnly", "safeReasonCodes", "safeSummaryOnly"],
+  "properties": {
+    "repairClass": { "enum": ["none", "body_only", "current_head_refresh", "manual_confirmation", "risk_profile", "profile_mismatch"] },
+    "safeSuggestedPatchOnly": { "type": "boolean" },
+    "safeReasonCodes": { "type": "array", "items": { "type": "string" }, "maxItems": 10 },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": false
+}

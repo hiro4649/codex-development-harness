@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
 # Dataset Audit Runner Readiness Policy
 
 Requires classification-only schema, red lines, safe output, and no auto-fix behavior before any dataset audit runner implementation is attempted.

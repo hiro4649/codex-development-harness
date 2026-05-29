@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// CODEX_QUALITY_HARNESS_FILE v0.9.8
+// CODEX_QUALITY_HARNESS_FILE v0.9.9
 
 import fs from 'node:fs';
 
@@ -94,7 +94,7 @@ export function buildSafeArtifactIndex(artifacts = [], mode = process.env.CODEX_
 
   };
 
-  const unsafePath = entries.some((item) => RAW_LOOKING.test(item.path) && !/safe-summary|failure-reasons|normalized|safe\.json|final-summary|artifact-index|preflight|target-quality|diagnostic-consolidated-summary|reason-summary|test-metrics|quality-gate|self-test-cases|same-head-artifact-evidence|docker-smoke-artifact|pr-evidence-compact|product-context-safe-artifact|product-baseline-continuity|false-positive-budget|agent-session-governance|evidence-minimality|safe-artifact-next-action|skill-evidence-link|owner-summary-compact|browser-smoke-artifact|failure-to-repair-plan|human-review-digest|remote-product-evidence|five-line-owner-digest|browser-smoke-visual|runtime-latency-safe-metric|live2d-dataset-row-audit-runner|trusted-loader-evidence-enforcer|avatar-ux-safety-runner/i.test(item.path));
+  const unsafePath = entries.some((item) => RAW_LOOKING.test(item.path) && !/safe-summary|failure-reasons|normalized|safe\.json|final-summary|artifact-index|preflight|target-quality|target-quality-blocker-digest|diagnostic-consolidated-summary|reason-summary|test-metrics|quality-gate|self-test-cases|same-head-artifact-evidence|same-head-evidence-refresh|docker-smoke-artifact|pr-evidence-compact|pr-evidence-auto-repair-hint|product-context-safe-artifact|product-baseline-continuity|false-positive-budget|agent-session-governance|evidence-minimality|safe-artifact-next-action|safe-artifact-bundle-completeness|skill-evidence-link|owner-summary-compact|browser-smoke-artifact|failure-to-repair-plan|human-review-digest|remote-product-evidence|remote-npm-diagnostic-normalization|five-line-owner-digest|browser-smoke-visual|runtime-latency-safe-metric|live2d-dataset-row-audit-runner|trusted-loader-evidence-enforcer|avatar-ux-safety-runner|formal-evidence-precedence|lifeboat-semantics|placeholder-only-evidence|actions-blocker-recovery|pr-context-rerun-assistant|dataset-audit-v2-p0|game-tool-adapter-fixture-readiness|beloved-avatar-safety-readiness/i.test(item.path));
 
   const unsafe = unsafePath || entries.some((item) => scanObjectForUnsafe(item).length || !item.safeSummaryOnly || item.rawLogIncluded || item.containsSecrets || item.containsEndpointValues);
 

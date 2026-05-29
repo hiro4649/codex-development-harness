@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.9",
   "harnessVersion": "0.9.8",
   "reasonCodes": [
     {
@@ -3064,6 +3064,158 @@
       "safeMessage": "quality gate ignored product evidence",
       "nextBestFix": "Repair the v0.9.8 harness evidence contract without adding product code or raw artifacts.",
       "gate": "productEvidenceConsumptionStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "formal_evidence_precedence_failed",
+      "severity": "error",
+      "safeMessage": "formal evidence precedence failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "formalEvidencePrecedenceStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "lifeboat_semantics_failed",
+      "severity": "error",
+      "safeMessage": "lifeboat semantics failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "lifeboatSemanticsStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "placeholder_only_evidence_forbidden",
+      "severity": "error",
+      "safeMessage": "placeholder-only evidence forbidden",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "placeholderOnlyEvidenceStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_diagnostic_normalization_failed",
+      "severity": "error",
+      "safeMessage": "remote npm diagnostic normalization failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "remoteNpmDiagnosticNormalizationStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "legacy_self_test_advisory_failed",
+      "severity": "error",
+      "safeMessage": "legacy self-test advisory failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "legacySelfTestAdvisoryStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "auth_surface_classifier_false_positive",
+      "severity": "error",
+      "safeMessage": "auth surface classifier false positive",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "authSurfaceClassifierRefinementStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_quality_blocker_digest_missing",
+      "severity": "error",
+      "safeMessage": "target quality blocker digest missing",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "targetQualityBlockerDigestStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_evidence_auto_repair_hint_failed",
+      "severity": "error",
+      "safeMessage": "PR evidence auto-repair hint failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "prEvidenceAutoRepairHintStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "actions_blocker_recovery_failed",
+      "severity": "error",
+      "safeMessage": "Actions blocker recovery failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "actionsBlockerRecoveryStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_context_rerun_assistant_failed",
+      "severity": "error",
+      "safeMessage": "PR context rerun assistant failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "prContextRerunAssistantStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "same_head_evidence_refresh_failed",
+      "severity": "error",
+      "safeMessage": "same-head evidence refresh failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "sameHeadEvidenceRefreshStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "safe_artifact_bundle_completeness_failed",
+      "severity": "error",
+      "safeMessage": "safe artifact bundle completeness failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "safeArtifactBundleCompletenessStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "dataset_audit_v2_p0_schema_failed",
+      "severity": "error",
+      "safeMessage": "dataset audit v2 P0 schema failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "datasetAuditV2P0SchemaStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "game_tool_adapter_fixture_readiness_failed",
+      "severity": "error",
+      "safeMessage": "Game Tool Adapter fixture readiness failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "gameToolAdapterFixtureReadinessStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "beloved_avatar_safety_readiness_failed",
+      "severity": "error",
+      "safeMessage": "beloved avatar safety readiness failed",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "belovedAvatarSafetyReadinessStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "lifeboat_only_pass_forbidden",
+      "severity": "error",
+      "safeMessage": "lifeboat-only pass forbidden",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "lifeboatSemanticsStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "normal_bundle_lifeboat_standby_misclassified",
+      "severity": "error",
+      "safeMessage": "normal bundle and standby lifeboat misclassified",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "lifeboatSemanticsStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_infra_failure_misclassified_as_product",
+      "severity": "error",
+      "safeMessage": "remote infra failure misclassified as product",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "actionsBlockerRecoveryStatus",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_failure_misclassified_as_infra",
+      "severity": "error",
+      "safeMessage": "product failure misclassified as infra",
+      "nextBestFix": "Repair the v0.9.9 harness evidence contract without adding product code or raw artifacts.",
+      "gate": "actionsBlockerRecoveryStatus",
       "canManualConfirmationOverride": false
     }
   ]

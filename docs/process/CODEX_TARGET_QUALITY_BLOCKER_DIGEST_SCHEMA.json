@@ -1,0 +1,16 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.9",
+  "schemaVersion": "1.0.0",
+  "type": "object",
+  "required": ["topBlocker", "blockerClass", "safeReasonCodes", "nextAction", "allowedFiles", "forbiddenFiles", "safeSummaryOnly"],
+  "properties": {
+    "topBlocker": { "type": "string", "maxLength": 160 },
+    "blockerClass": { "enum": ["product", "body", "harness", "manual", "remote_infra", "safe_artifact", "legacy_advisory", "classifier_false_positive", "unknown"] },
+    "safeReasonCodes": { "type": "array", "items": { "type": "string" }, "maxItems": 10 },
+    "nextAction": { "type": "string", "maxLength": 160 },
+    "allowedFiles": { "type": "array", "items": { "type": "string" }, "maxItems": 20 },
+    "forbiddenFiles": { "type": "array", "items": { "type": "string" }, "maxItems": 20 },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": false
+}

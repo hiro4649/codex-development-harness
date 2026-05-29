@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v0.9.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v0.9.9 -->
 # Codex AGENTS Context Budget Policy
 
 AGENTS.md remains a short routing and authority file. New policy bodies belong in docs/process, not in AGENTS.md.

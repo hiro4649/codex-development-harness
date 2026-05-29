@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v0.9.8
+# CODEX_QUALITY_HARNESS_FILE v0.9.9
 name: quality-gate
 
 on:
@@ -88,16 +88,16 @@ jobs:
         run: |
           set -euo pipefail
           cat > "$RUNNER_TEMP/codex-remote-product-checks.safe.json" <<'JSON'
-          {"schemaVersion":"0.9.8","phase":"remote product checks","status":"pending","safeSummaryOnly":true}
+          {"schemaVersion":"0.9.9","phase":"remote product checks","status":"pending","safeSummaryOnly":true}
           JSON
           cat > "$RUNNER_TEMP/codex-remote-product-baseline.json" <<'JSON'
-          {"schemaVersion":"0.9.8","phase":"remote product baseline","status":"pending","safeSummaryOnly":true}
+          {"schemaVersion":"0.9.9","phase":"remote product baseline","status":"pending","safeSummaryOnly":true}
           JSON
           cat > "$RUNNER_TEMP/codex-product-verification-evidence.remote.json" <<'JSON'
-          {"schemaVersion":"0.9.8","phase":"product verification evidence remote generation","status":"pending","safeSummaryOnly":true}
+          {"schemaVersion":"0.9.9","phase":"product verification evidence remote generation","status":"pending","safeSummaryOnly":true}
           JSON
           cat > "$RUNNER_TEMP/codex-remote-npm-diagnostic.safe.json" <<'JSON'
-          {"schemaVersion":"0.9.8","phase":"remote npm diagnostic","status":"pending","safeSummaryOnly":true}
+          {"schemaVersion":"0.9.9","phase":"remote npm diagnostic","status":"pending","safeSummaryOnly":true}
           JSON
           # safe artifact upload is locked by the upload-artifact path list.
       - name: Generate remote product evidence
@@ -268,6 +268,22 @@ jobs:
             console.log(`- openPrRebaseReadinessStatus: ${summary.openPrRebaseReadinessStatus?.status || 'missing'}`);
             console.log(`- fiveLineOwnerDigestStatus: ${summary.fiveLineOwnerDigestStatus?.status || 'missing'}`);
             console.log(`- v098SelfTestStatus: ${summary.v098SelfTestStatus?.status || 'missing'}`);
+            console.log(`- formalEvidencePrecedenceStatus: ${summary.formalEvidencePrecedenceStatus?.status || 'missing'}`);
+            console.log(`- lifeboatSemanticsStatus: ${summary.lifeboatSemanticsStatus?.status || 'missing'}`);
+            console.log(`- placeholderOnlyEvidenceStatus: ${summary.placeholderOnlyEvidenceStatus?.status || 'missing'}`);
+            console.log(`- remoteNpmDiagnosticNormalizationStatus: ${summary.remoteNpmDiagnosticNormalizationStatus?.status || 'missing'}`);
+            console.log(`- legacySelfTestAdvisoryStatus: ${summary.legacySelfTestAdvisoryStatus?.status || 'missing'}`);
+            console.log(`- authSurfaceClassifierRefinementStatus: ${summary.authSurfaceClassifierRefinementStatus?.status || 'missing'}`);
+            console.log(`- targetQualityBlockerDigestStatus: ${summary.targetQualityBlockerDigestStatus?.status || 'missing'}`);
+            console.log(`- prEvidenceAutoRepairHintStatus: ${summary.prEvidenceAutoRepairHintStatus?.status || 'missing'}`);
+            console.log(`- actionsBlockerRecoveryStatus: ${summary.actionsBlockerRecoveryStatus?.status || 'missing'}`);
+            console.log(`- prContextRerunAssistantStatus: ${summary.prContextRerunAssistantStatus?.status || 'missing'}`);
+            console.log(`- sameHeadEvidenceRefreshStatus: ${summary.sameHeadEvidenceRefreshStatus?.status || 'missing'}`);
+            console.log(`- safeArtifactBundleCompletenessStatus: ${summary.safeArtifactBundleCompletenessStatus?.status || 'missing'}`);
+            console.log(`- datasetAuditV2P0SchemaStatus: ${summary.datasetAuditV2P0SchemaStatus?.status || 'missing'}`);
+            console.log(`- gameToolAdapterFixtureReadinessStatus: ${summary.gameToolAdapterFixtureReadinessStatus?.status || 'missing'}`);
+            console.log(`- belovedAvatarSafetyReadinessStatus: ${summary.belovedAvatarSafetyReadinessStatus?.status || 'missing'}`);
+            console.log(`- v099SelfTestStatus: ${summary.v099SelfTestStatus?.status || 'missing'}`);
             console.log(`- remoteProductContextRestoreStatus: ${summary.remoteProductContextRestoreStatus?.status || 'missing'}`);
             console.log(`- productRelevantEvidenceLockStatus: ${summary.productRelevantEvidenceLockStatus?.status || 'missing'}`);
             console.log(`- productBaselineContinuityStatus: ${summary.productBaselineContinuityStatus?.status || 'missing'}`);

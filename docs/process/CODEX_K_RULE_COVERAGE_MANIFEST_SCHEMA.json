@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v0.9.9",
   "schemaVersion": "0.9.6",
   "name": "k_rule_coverage_manifest",
   "safeSummaryOnly": true,
