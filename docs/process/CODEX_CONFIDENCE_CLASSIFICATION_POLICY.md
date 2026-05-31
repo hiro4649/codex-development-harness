@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # Confidence Classification Policy
 
 Separates confirmed, inferred, unknown, conflict, and deprecated_candidate.

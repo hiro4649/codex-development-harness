@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # CODEX_V085_STABILITY_POLICY
 
 v0.8.5 adds lightweight execution stability checks without running product

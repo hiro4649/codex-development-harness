@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
-  "harnessVersion": "1.0.0",
-  "schemaVersion": "1.0.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.1",
+  "harnessVersion": "1.0.1",
+  "schemaVersion": "1.0.1",
   "entrypoints": [
     "AGENTS.md",
     "README.md",
@@ -66,7 +66,10 @@
     "docs/process/CODEX_HARNESS_CONSTITUTION.md",
     "docs/process/CODEX_DYNAMIC_WORKFLOW_ORCHESTRATOR_POLICY.md",
     "docs/process/CODEX_APPLICATION_INTELLIGENCE_POLICY.md",
-    "docs/process/CODEX_HANDOVER_BLUEPRINT_POLICY.md"
+    "docs/process/CODEX_HANDOVER_BLUEPRINT_POLICY.md",
+    "docs/process/CODEX_OUTCOME_CONTRACT_POLICY.md",
+    "docs/process/CODEX_LOCAL_GATE_REPORT_CONTRACT_POLICY.md",
+    "docs/process/CODEX_V101_EVAL_CASES.json"
   ],
   "policyIndex": [
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
@@ -214,6 +217,25 @@
     "docs/process/CODEX_PUBLIC_CONTRACT_CHANGE_POLICY.md",
     "docs/process/CODEX_MIGRATION_SAFETY_PLAN_POLICY.md",
     "docs/process/CODEX_RUNTIME_READINESS_BOUNDARY_POLICY.md",
+    "docs/process/CODEX_OUTCOME_CONTRACT_POLICY.md",
+    "docs/process/CODEX_SOURCE_OF_TRUTH_OWNERSHIP_POLICY.md",
+    "docs/process/CODEX_OLD_PATH_DISPOSITION_POLICY.md",
+    "docs/process/CODEX_PLAN_REVIEWER_WORKER_POLICY.md",
+    "docs/process/CODEX_ANTI_ACCRETION_POLICY.md",
+    "docs/process/CODEX_VISIBLE_ACCEPTANCE_EVIDENCE_POLICY.md",
+    "docs/process/CODEX_TOOLCHAIN_AVAILABILITY_POLICY.md",
+    "docs/process/CODEX_PARENT_HARNESS_PREFLIGHT_POLICY.md",
+    "docs/process/CODEX_LOCAL_BRANCH_INVARIANT_POLICY.md",
+    "docs/process/CODEX_TARGET_HEAD_INVARIANT_POLICY.md",
+    "docs/process/CODEX_SAME_HEAD_MAIN_QUALITY_GATE_POLICY.md",
+    "docs/process/CODEX_LOCAL_GATE_REPORT_CONTRACT_POLICY.md",
+    "docs/process/CODEX_JSON_REPORT_SHAPE_POLICY.md",
+    "docs/process/CODEX_LOCAL_GATE_SIDE_EFFECT_POLICY.md",
+    "docs/process/CODEX_SMALL_PRODUCT_PR_FAST_PATH_POLICY.md",
+    "docs/process/CODEX_SELF_TEST_FIXTURE_ISOLATION_POLICY.md",
+    "docs/process/CODEX_AUTHORITATIVE_PRODUCT_EVIDENCE_POLICY.md",
+    "docs/process/CODEX_TARGET_QUALITY_OWNER_ACTION_POLICY.md",
+    "docs/process/CODEX_RUNTIME_ADOPTION_SEQUENCE_POLICY.md",
     "docs/process/CODEX_PRODUCTION_GO_BOUNDARY_POLICY.md",
     "docs/process/CODEX_WORKFLOW_PLAN_SCHEMA.json",
     "docs/process/CODEX_TASK_GRAPH_SCHEMA.json",
@@ -421,7 +443,9 @@
     "scripts/codex-public-contract-change-gate.mjs",
     "scripts/codex-migration-safety-plan-gate.mjs",
     "scripts/codex-runtime-readiness-boundary-gate.mjs",
-    "scripts/codex-production-go-boundary-gate.mjs"
+    "scripts/codex-production-go-boundary-gate.mjs",
+    "scripts/codex-v101-gate-lib.mjs",
+    "scripts/codex-v101-self-test.mjs"
   ],
   "evalIndex": [
     "docs/process/CODEX_PROMPT_EVAL_SUITE.json",
@@ -449,7 +473,9 @@
     "docs/process/CODEX_V098_EVAL_CASES.json",
     "scripts/codex-v098-self-test.mjs",
     "docs/process/CODEX_V099_EVAL_CASES.json",
-    "scripts/codex-v099-self-test.mjs"
+    "scripts/codex-v099-self-test.mjs",
+    "docs/process/CODEX_V101_EVAL_CASES.json",
+    "scripts/codex-v101-self-test.mjs"
   ],
   "reviewIndex": [
     "docs/process/code_review.md",

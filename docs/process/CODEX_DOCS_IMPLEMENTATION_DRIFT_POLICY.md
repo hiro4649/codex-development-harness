@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # Docs Implementation Drift Policy
 
 Detects docs and implementation conflicts without treating docs as unconditional source of truth.

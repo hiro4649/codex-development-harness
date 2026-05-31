@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.0
+// CODEX_QUALITY_HARNESS_FILE v1.0.1
 import fs from 'node:fs';
 import path from 'node:path';
 
-const HARNESS_VERSION = '1.0.0';
+const HARNESS_VERSION = '1.0.1';
 const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 const policyFiles = [
   'CODEX_SOURCE_HARNESS_MANIFEST.json',

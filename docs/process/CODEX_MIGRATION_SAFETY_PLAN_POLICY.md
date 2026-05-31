@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # Migration Safety Plan Policy
 
 Requires compat, backfill, rollback, defaults, nullable behavior, and downtime notes without auto-apply.

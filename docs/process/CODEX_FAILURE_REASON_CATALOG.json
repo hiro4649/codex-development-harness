@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
-  "harnessVersion": "1.0.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.1",
+  "harnessVersion": "1.0.1",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -3552,6 +3552,334 @@
       "severity": "error",
       "safeMessage": "production go boundary failed",
       "nextBestFix": "Repair the structured v1.0.0 harness evidence without changing product code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "prime_directive_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Prime directive is missing or reduced to rule dumping.",
+      "nextBestFix": "Add the compact v1.0.1 prime directive and route details to policy docs.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "outcome_contract_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Outcome contract is missing required behavior, owner, cutover, or evidence fields.",
+      "nextBestFix": "Add a structured outcome contract before product behavior implementation.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "source_of_truth_owner_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Source-of-truth ownership is missing or duplicated.",
+      "nextBestFix": "Declare the owner module, owner file, public contract, consumers, and forbidden duplicate owners.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "old_path_disposition_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Old path disposition is missing.",
+      "nextBestFix": "Choose remove, redirect, deprecate, compat_keep_with_owner, or not_applicable.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "plan_reviewer_wrong_owner",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Plan reviewer detected wrong owner.",
+      "nextBestFix": "Move the plan to the correct owner before implementation.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "plan_reviewer_missing_cutover",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Plan reviewer detected missing cutover.",
+      "nextBestFix": "Add the old-to-new path cutover or disposition evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "plan_reviewer_weak_evidence",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Plan reviewer detected weak evidence.",
+      "nextBestFix": "Replace weak claims with structured current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "anti_accretion_dual_active_path",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "New and old paths are both active without safe disposition.",
+      "nextBestFix": "Remove, redirect, deprecate, or explicitly owner-retain the old path.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "visible_acceptance_evidence_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Visible acceptance evidence is missing.",
+      "nextBestFix": "Record before/after user-visible behavior, evidence type, location, and limitations.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "visible_acceptance_evidence_test_only",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Test-only evidence was used as behavior acceptance evidence.",
+      "nextBestFix": "Add visible acceptance evidence and keep tests as supporting evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "toolchain_node_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Node toolchain is missing.",
+      "nextBestFix": "Run the gate where Node is available.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "toolchain_npm_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "npm toolchain is missing.",
+      "nextBestFix": "Run the gate where npm is available.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "toolchain_gh_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "GitHub CLI is missing.",
+      "nextBestFix": "Run the gate where GitHub CLI is available.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "github_auth_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "GitHub authentication is missing.",
+      "nextBestFix": "Authenticate GitHub CLI or provide a scoped GitHub token in CI.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "parent_harness_preflight_failed",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Parent harness preflight failed.",
+      "nextBestFix": "Repair parent preflight or use the documented degraded lane only for the local gate report contract defect.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_branch_not_main",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Target pilot branch is not main.",
+      "nextBestFix": "Return the target worktree to clean main before pilot or bounded target gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "head_not_origin_main",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "HEAD does not match origin/main.",
+      "nextBestFix": "Fast-forward to origin/main before pilot or bounded target gate.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "same_head_main_quality_gate_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Same-head main quality-gate success is missing.",
+      "nextBestFix": "Run or locate a successful quality-gate for the exact main head SHA.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_json_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate JSON report is missing.",
+      "nextBestFix": "Return parseable JSON on stdout or provide an explicit safe report path.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_json_empty",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate JSON report is empty.",
+      "nextBestFix": "Return a populated JSON report with status-bearing fields.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_json_parse_failed",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate JSON report could not be parsed.",
+      "nextBestFix": "Remove non-JSON output or write a valid JSON report path.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_timeout",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate timed out.",
+      "nextBestFix": "Bound the child gate and return safe JSON failure evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_stdout_stderr_empty_timeout",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate timed out with empty stdout and stderr.",
+      "nextBestFix": "Return a safe JSON timeout reason instead of no output.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_tracked_file_side_effect",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate changed tracked files.",
+      "nextBestFix": "Remove or explicitly own generated artifacts before rerunning.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_branch_mutation",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate changed branch.",
+      "nextBestFix": "Remove git branch mutations from local gate execution.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_head_mutation",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate changed HEAD.",
+      "nextBestFix": "Remove git HEAD mutations from local gate execution.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "tracked_generated_artifact_created",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Tracked generated artifact was created.",
+      "nextBestFix": "Keep generated artifacts untracked unless they are source-owned files.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "small_product_pr_fast_path_ineligible",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Small product PR fast path is ineligible.",
+      "nextBestFix": "Use the normal evidence path without weakening safety gates.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "self_test_fixture_isolation_failed",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Self-test fixture isolation failed.",
+      "nextBestFix": "Make the fixture deterministic and detached from real repos, network, and product commands.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "authoritative_product_evidence_conflict",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Product evidence precedence conflict detected.",
+      "nextBestFix": "Use same-head formal evidence and reject placeholder or lifeboat-only proof.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_quality_owner_action_ambiguous",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Target quality owner action is ambiguous.",
+      "nextBestFix": "Choose exactly one next owner action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "runtime_adoption_sequence_violation",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Runtime adoption sequence is out of order.",
+      "nextBestFix": "Follow foundation, claim, persistence, reconciliation, worker, runtime readiness, production go.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "origin_main_drift_without_same_head_quality_gate",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Origin main drift lacks same-head quality-gate evidence.",
+      "nextBestFix": "Refresh main evidence for the exact current head SHA.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_target_gate_unbounded",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local target gate is unbounded.",
+      "nextBestFix": "Add branch, HEAD, timeout, report contract, and side-effect bounds.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_human_text_mixed_with_json",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate mixed human text with JSON output.",
+      "nextBestFix": "Emit only JSON in JSON report mode.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_report_path_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate report path is missing.",
+      "nextBestFix": "Return stdout JSON or an explicit safe report path.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_gate_unknown_report_contract",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Local gate report contract failed in an unknown way.",
+      "nextBestFix": "Return safe JSON with a known reason code.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pilot_input_dirty",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Pilot input worktree is dirty.",
+      "nextBestFix": "Protect and clear dirty changes before pilot input.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_local_path_ambiguous",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Target local path is ambiguous.",
+      "nextBestFix": "Select one canonical path by remote URL and main HEAD.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_remote_identity_mismatch",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "Target remote identity mismatch.",
+      "nextBestFix": "Verify owner, repository, remote URL, default branch, and main HEAD.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "v101_self_test_missing",
+      "gate": "v101",
+      "severity": "error",
+      "safeMessage": "v101 self-test is missing or unregistered.",
+      "nextBestFix": "Register v101 self-test in the local gate and source manifest.",
       "canManualConfirmationOverride": false
     }
   ]

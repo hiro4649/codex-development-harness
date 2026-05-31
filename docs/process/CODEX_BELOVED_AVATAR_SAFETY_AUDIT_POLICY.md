@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # Beloved Avatar Safety Audit Policy
 
 Beloved avatar safety fixtures must protect memory privacy, monetization pressure, persona consistency, Japanese naturalness, and dependency boundaries without raw personal data.

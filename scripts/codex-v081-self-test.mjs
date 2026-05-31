@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.0
+// CODEX_QUALITY_HARNESS_FILE v1.0.1
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -159,6 +159,24 @@ function buildReport() {
       CODEX_SKIP_NPM: '1',
       CODEX_SKIP_V081_SELF_TEST: '1',
       CODEX_SKIP_V082_SELF_TEST: '1',
+      CODEX_SKIP_V083_SELF_TEST: '1',
+      CODEX_SKIP_V084_SELF_TEST: '1',
+      CODEX_SKIP_V085_SELF_TEST: '1',
+      CODEX_SKIP_V086_SELF_TEST: '1',
+      CODEX_SKIP_V087_SELF_TEST: '1',
+      CODEX_SKIP_V088_SELF_TEST: '1',
+      CODEX_SKIP_V089_SELF_TEST: '1',
+      CODEX_SKIP_V090_SELF_TEST: '1',
+      CODEX_SKIP_V092_SELF_TEST: '1',
+      CODEX_SKIP_V093_SELF_TEST: '1',
+      CODEX_SKIP_V094_SELF_TEST: '1',
+      CODEX_SKIP_V095_SELF_TEST: '1',
+      CODEX_SKIP_V096_SELF_TEST: '1',
+      CODEX_SKIP_V097_SELF_TEST: '1',
+      CODEX_SKIP_V098_SELF_TEST: '1',
+      CODEX_SKIP_V099_SELF_TEST: '1',
+      CODEX_SKIP_V100_SELF_TEST: '1',
+      CODEX_SKIP_V101_SELF_TEST: '1',
       CODEX_NPM_SKIP_REASON: 'harness-only fixture',
     },
   });
