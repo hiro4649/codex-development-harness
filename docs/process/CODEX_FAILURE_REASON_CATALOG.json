@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.1",
-  "harnessVersion": "1.0.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
+  "harnessVersion": "1.0.2",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -3880,6 +3880,198 @@
       "severity": "error",
       "safeMessage": "v101 self-test is missing or unregistered.",
       "nextBestFix": "Register v101 self-test in the local gate and source manifest.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "clean_main_legacy_self_test_drift",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "clean_main_legacy_self_test_drift requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "clean_main_support_file_boundary_mismatch",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "clean_main_support_file_boundary_mismatch requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "clean_main_actual_product_bug",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "clean_main_actual_product_bug requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "fixture_orchestration_timing",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "fixture_orchestration_timing requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "support_file_materialization_mismatch",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "support_file_materialization_mismatch requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "source_target_manifest_boundary_error",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "source_target_manifest_boundary_error requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "v085_active_checkout_diff_leak",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "v085_active_checkout_diff_leak requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_pr_diff_containment_failed",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "product_pr_diff_containment_failed requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "harness_fixture_diff_isolation_failed",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "harness_fixture_diff_isolation_failed requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_pr_evidence_missing",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "product_pr_evidence_missing requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_pr_pending_after_push_not_remote_pass",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "product_pr_pending_after_push_not_remote_pass requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_merge_ready_without_same_head_remote_pass",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "target_merge_ready_without_same_head_remote_pass requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "backup_artifact_tracked",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "backup_artifact_tracked requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "backup_artifact_staged",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "backup_artifact_staged requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "backup_artifact_repo_internal",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "backup_artifact_repo_internal requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "external_blocked_independent_reviewer_unavailable",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "external_blocked_independent_reviewer_unavailable requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "split_score_model_missing",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "split_score_model_missing requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_dependency_graph_missing",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "pr_dependency_graph_missing requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "safe_next_action_ambiguous",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "safe_next_action_ambiguous requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "handover_snapshot_missing",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "handover_snapshot_missing requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "protected_state_inventory_missing",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "protected_state_inventory_missing requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "protected_patch_apply_forbidden",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "protected_patch_apply_forbidden requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "protected_stash_pop_forbidden",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "protected_stash_pop_forbidden requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "workflow_resume_state_missing",
+      "gate": "v102",
+      "severity": "error",
+      "safeMessage": "workflow_resume_state_missing requires v1.0.2 recovery classification.",
+      "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
       "canManualConfirmationOverride": false
     }
   ]

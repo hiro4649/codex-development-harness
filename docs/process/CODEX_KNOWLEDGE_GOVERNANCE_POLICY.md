@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
 # Knowledge Governance Policy
 
 AGENTS.md is a map, not a manual. Detailed workflows belong in

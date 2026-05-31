@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.0.1
+CODEX_QUALITY_HARNESS_FILE v1.0.2
 
 ## Prime Directive
 
@@ -15,8 +15,8 @@ the harness itself unless a task explicitly names a downstream project. Do not
 change downstream project repositories from source harness work.
 Use `docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md` and
 `docs/process/code_review.md` as the stable method references.
-For v1.0.1 outcome, ownership, anti-accretion, visible acceptance evidence,
-toolchain preflight, branch/head, and local gate report contract routing, use
+For v1.0.1 and v1.0.2 outcome, recovery, fixture isolation, clean-main,
+external blocked, handover, branch/head, and local gate contract routing, use
 the matching `docs/process/CODEX_*_POLICY.md` files.
 
 ## Plan-First Rule

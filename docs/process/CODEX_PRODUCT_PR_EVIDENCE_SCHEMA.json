@@ -1,0 +1,25 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
+  "schemaVersion": "1.0.2",
+  "required": [
+    "taskMode",
+    "riskLevel",
+    "changedFiles",
+    "expectedProductFiles",
+    "localPrePushEvidence",
+    "formalProductEvidence",
+    "safeNpmDiagnostic",
+    "remoteBaseline",
+    "sameHeadRemoteQualityGate",
+    "reviewIndependence",
+    "runtimeReadinessBoundary",
+    "productionGoBoundary",
+    "limitations",
+    "nextAction"
+  ],
+  "forbiddenClaims": [
+    "pending_after_push_as_remote_pass",
+    "fixture_pass_as_runtime_ready",
+    "browser_smoke_as_production_ready"
+  ]
+}

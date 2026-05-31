@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
 # Target Remote Identity Policy
 
 Target remote identity is confirmed by repository owner/name, remote URL, default branch, and current main HEAD.

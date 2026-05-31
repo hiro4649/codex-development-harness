@@ -1,12 +1,20 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
 # Codex Development Harness
 
-Version: v1.0.1
-Name: Outcome Contract, Plan Reviewer Workers, Anti-Accretion, Visible Acceptance Evidence, and Local Gate Contract Hardening
+Version: v1.0.2
+Name: Clean-main Baseline, Fixture Isolation, Product PR Recovery, External Blocked Separation, and Handover Snapshot
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.1 preserves v1.0.0 parent harness discipline, runtime readiness boundary, production go boundary, and v0.9.9 evidence precedence, lifeboat semantics, placeholder-only rejection, remote npm diagnostic normalization, legacy self-test advisory handling, target quality blocker digest, PR evidence auto-repair hints, Actions recovery, same-head evidence refresh, and safe artifact bundle completeness.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.2 preserves v1.0.1 local gate contract, branch/head invariant, side-effect guard, outcome contract, anti-accretion, visible acceptance evidence, and runtime/production readiness boundaries.
 
-v1.0.1 adds outcome contract, plan reviewer workers, anti-accretion, visible acceptance evidence, toolchain preflight, branch/head invariants, same-head main quality-gate evidence, local gate JSON report contract, local gate side-effect guard, small product PR fast path, self-test fixture isolation, authoritative product evidence, target owner action classification, and runtime adoption sequence.
+v1.0.2 adds clean-main baseline classification, legacy self-test matrix, support-file boundary, v085 checkout diff isolation, product PR evidence generator, backup artifact manager, PR recovery autopilot, external blocked split score, PR dependency graph, safe next action, handover snapshot, protected state inventory, and workflow resume state.
+
+## What v1.0.2 Adds
+
+- Clean-main baseline and legacy self-test matrix gates to distinguish product PR failures from parent or fixture drift.
+- Support-file and source/target manifest boundary gates so target repos do not require source-only harness metadata.
+- v085 checkout diff isolation and product PR diff containment gates to keep fixture diff and active product diff separate.
+- Product PR evidence generator, validator, and safe-summary gates that keep same-head remote evidence distinct from local or placeholder evidence.
+- Backup artifact, repo-external backup, protected state inventory, PR recovery, external blocked, split score, dependency graph, safe next action, and handover snapshot gates.
 
 ## What v1.0.1 Adds
 

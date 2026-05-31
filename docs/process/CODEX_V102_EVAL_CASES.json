@@ -1,0 +1,14 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
+  "schemaVersion": "1.0.2",
+  "cases": [
+    "clean_main_baseline_pass",
+    "legacy_self_test_matrix_all_pass",
+    "v085_fixture_isolated_diff_pass",
+    "product_pr_evidence_generate_pass",
+    "backup_artifact_repo_external_pass",
+    "pr_recovery_rebase_required_pass",
+    "external_blocked_reviewer_unavailable_pass",
+    "handover_snapshot_required_fields_pass"
+  ]
+}
