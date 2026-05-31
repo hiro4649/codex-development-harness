@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # Skip NPM Product Bypass Policy
 
 Version: v0.9.4

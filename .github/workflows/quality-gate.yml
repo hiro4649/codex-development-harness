@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v1.0.0
+# CODEX_QUALITY_HARNESS_FILE v1.0.1
 name: quality-gate
 
 on:
@@ -284,6 +284,10 @@ jobs:
             console.log(`- gameToolAdapterFixtureReadinessStatus: ${summary.gameToolAdapterFixtureReadinessStatus?.status || 'missing'}`);
             console.log(`- belovedAvatarSafetyReadinessStatus: ${summary.belovedAvatarSafetyReadinessStatus?.status || 'missing'}`);
             console.log(`- v099SelfTestStatus: ${summary.v099SelfTestStatus?.status || 'missing'}`);
+            console.log(`- localGateReportContractStatus: ${summary.localGateReportContractStatus?.status || 'missing'}`);
+            console.log(`- jsonReportShapeStatus: ${summary.jsonReportShapeStatus?.status || 'missing'}`);
+            console.log(`- localGateSideEffectStatus: ${summary.localGateSideEffectStatus?.status || 'missing'}`);
+            console.log(`- v101SelfTestStatus: ${summary.v101SelfTestStatus?.status || 'missing'}`);
             console.log(`- remoteProductContextRestoreStatus: ${summary.remoteProductContextRestoreStatus?.status || 'missing'}`);
             console.log(`- productRelevantEvidenceLockStatus: ${summary.productRelevantEvidenceLockStatus?.status || 'missing'}`);
             console.log(`- productBaselineContinuityStatus: ${summary.productBaselineContinuityStatus?.status || 'missing'}`);

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # Agent Session Governance Policy
 
 - Multi-agent sessions require explicit repo, branch, worktree, owner, state, allowed scope, and forbidden scope.

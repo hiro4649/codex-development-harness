@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # Receipt Resume Boundary Policy
 
 Requires safe resume boundaries for receipt-dependent paths and forbids raw receipt logs in artifacts.

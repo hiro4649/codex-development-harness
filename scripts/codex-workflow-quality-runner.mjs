@@ -5,7 +5,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v1.0.0
+// CODEX_QUALITY_HARNESS_FILE v1.0.1
 
 
 
@@ -69,6 +69,7 @@ import { buildDiagnosticConsolidatedSummary } from './codex-diagnostic-consolida
 
 
 import { buildInvalidReportRecoverySummary } from './codex-invalid-report-recovery.mjs';
+import { V101_STATUS_KEYS } from './codex-v101-gate-lib.mjs';
 
 
 
@@ -2076,6 +2077,28 @@ const sourceRequiredPass = [
 
 
 
+const sourceCoreRequiredPass = [
+  'sourceHarnessValidationStatus',
+  'secretScan',
+  'changeClassificationStatus',
+  'failureToRepairPlanStatus',
+  'noArtifactFailureStatus',
+  'failureReasonCatalogStatus',
+  'safeArtifactValidation',
+  'outputShapeStatus',
+  'qualityScoreStatus',
+  'v099SelfTestStatus',
+  'parentHarnessDevelopmentStatus',
+  'parentHarnessSelfTestStatus',
+  'newHarnessSelfTestStatus',
+  'parentGatePreservationStatus',
+  'versionSuccessionStatus',
+  'runtimeReadinessBoundaryStatus',
+  'productionGoBoundaryStatus',
+  'v100SelfTestStatus',
+  ...V101_STATUS_KEYS,
+];
+
 const targetRequiredPass = [
 
 
@@ -3770,7 +3793,9 @@ export function evaluateWorkflowReport(report, options = {}) {
   const hasV098Shape = report.harnessVersion === HARNESS_VERSION || [...v098Fields].some((key) => report[key]);
   const hasV099Shape = report.harnessVersion === HARNESS_VERSION || [...v099Fields].some((key) => report[key]);
 
-  const required = (mode === 'target' ? targetRequiredPass : sourceRequiredPass)
+  const harnessMode = options.harnessMode || process.env.CODEX_HARNESS_MODE || report.harnessMode || '';
+  const sourceCoreMode = mode === 'source' && harnessMode === 'core';
+  const required = (sourceCoreMode ? sourceCoreRequiredPass : (mode === 'target' ? targetRequiredPass : sourceRequiredPass))
 
 
 

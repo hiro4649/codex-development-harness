@@ -1,12 +1,12 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.0",
-  "harnessVersion": "1.0.0",
-  "sourceHarnessVersion": "1.0.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.1",
+  "harnessVersion": "1.0.1",
+  "sourceHarnessVersion": "1.0.1",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
   ],
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.0.1",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -348,7 +348,36 @@
     "docs/process/CODEX_SERVICE_COST_MAP_SCHEMA.json",
     "docs/process/CODEX_TEST_GAP_MAP_SCHEMA.json",
     "docs/process/CODEX_IMPROVEMENT_BACKLOG_SCHEMA.json",
-    "docs/process/CODEX_V100_EVAL_CASES.json"
+    "docs/process/CODEX_V100_EVAL_CASES.json",
+    "docs/process/CODEX_OUTCOME_CONTRACT_POLICY.md",
+    "docs/process/CODEX_OUTCOME_CONTRACT_SCHEMA.json",
+    "docs/process/CODEX_SOURCE_OF_TRUTH_OWNERSHIP_POLICY.md",
+    "docs/process/CODEX_OLD_PATH_DISPOSITION_POLICY.md",
+    "docs/process/CODEX_PLAN_REVIEWER_WORKER_POLICY.md",
+    "docs/process/CODEX_ANTI_ACCRETION_POLICY.md",
+    "docs/process/CODEX_VISIBLE_ACCEPTANCE_EVIDENCE_POLICY.md",
+    "docs/process/CODEX_ACCEPTANCE_EVIDENCE_SCHEMA.json",
+    "docs/process/CODEX_TOOLCHAIN_AVAILABILITY_POLICY.md",
+    "docs/process/CODEX_PARENT_HARNESS_PREFLIGHT_POLICY.md",
+    "docs/process/CODEX_TARGET_LOCAL_PATH_DISCOVERY_POLICY.md",
+    "docs/process/CODEX_TARGET_REMOTE_IDENTITY_POLICY.md",
+    "docs/process/CODEX_LOCAL_BRANCH_INVARIANT_POLICY.md",
+    "docs/process/CODEX_TARGET_HEAD_INVARIANT_POLICY.md",
+    "docs/process/CODEX_ORIGIN_MAIN_DRIFT_POLICY.md",
+    "docs/process/CODEX_SAME_HEAD_MAIN_QUALITY_GATE_POLICY.md",
+    "docs/process/CODEX_LOCAL_TARGET_GATE_BOUNDED_POLICY.md",
+    "docs/process/CODEX_LOCAL_GATE_REPORT_CONTRACT_POLICY.md",
+    "docs/process/CODEX_JSON_REPORT_SHAPE_POLICY.md",
+    "docs/process/CODEX_LOCAL_GATE_SIDE_EFFECT_POLICY.md",
+    "docs/process/CODEX_PILOT_INPUT_CLEANLINESS_POLICY.md",
+    "docs/process/CODEX_TRACKED_GENERATED_ARTIFACT_POLICY.md",
+    "docs/process/CODEX_CURRENT_HEAD_EVIDENCE_SCHEMA.json",
+    "docs/process/CODEX_SMALL_PRODUCT_PR_FAST_PATH_POLICY.md",
+    "docs/process/CODEX_SELF_TEST_FIXTURE_ISOLATION_POLICY.md",
+    "docs/process/CODEX_AUTHORITATIVE_PRODUCT_EVIDENCE_POLICY.md",
+    "docs/process/CODEX_TARGET_QUALITY_OWNER_ACTION_POLICY.md",
+    "docs/process/CODEX_RUNTIME_ADOPTION_SEQUENCE_POLICY.md",
+    "docs/process/CODEX_V101_EVAL_CASES.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -606,7 +635,9 @@
     "codex-public-contract-change-gate.mjs",
     "codex-migration-safety-plan-gate.mjs",
     "codex-runtime-readiness-boundary-gate.mjs",
-    "codex-production-go-boundary-gate.mjs"
+    "codex-production-go-boundary-gate.mjs",
+    "codex-v101-gate-lib.mjs",
+    "codex-v101-self-test.mjs"
   ],
   "optionalFiles": []
 }

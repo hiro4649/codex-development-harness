@@ -1,0 +1,17 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.1",
+  "schemaVersion": "1.0.1",
+  "required": [
+    "repo",
+    "branch",
+    "headSha",
+    "originMainSha",
+    "sameHeadMainQualityGateStatus",
+    "worktreeClean",
+    "aheadBehind",
+    "toolchainOk",
+    "ghAuthOk",
+    "targetHarnessVersion",
+    "sourceHarnessVersion"
+  ]
+}

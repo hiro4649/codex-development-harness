@@ -1,12 +1,21 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
 # Codex Development Harness
 
-Version: v1.0.0
-Name: Dynamic Workflow Orchestrator, Application Intelligence, and Handover Blueprint Gate
+Version: v1.0.1
+Name: Outcome Contract, Plan Reviewer Workers, Anti-Accretion, Visible Acceptance Evidence, and Local Gate Contract Hardening
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.0 preserves v0.9.9 evidence precedence, lifeboat semantics, placeholder-only rejection, remote npm diagnostic normalization, legacy self-test advisory handling, target quality blocker digest, PR evidence auto-repair hints, Actions recovery, same-head evidence refresh, and safe artifact bundle completeness.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.1 preserves v1.0.0 parent harness discipline, runtime readiness boundary, production go boundary, and v0.9.9 evidence precedence, lifeboat semantics, placeholder-only rejection, remote npm diagnostic normalization, legacy self-test advisory handling, target quality blocker digest, PR evidence auto-repair hints, Actions recovery, same-head evidence refresh, and safe artifact bundle completeness.
 
-v1.0.0 adds parent-harness development discipline, Dynamic Workflow Orchestrator Lite, task graph sequencing, branch isolation, worker file ownership, evidence aggregation, merge sequence controls, workflow stop/resume handling, application intelligence mapping, cost/performance/security/DB/dead-code candidate mapping, confidence classification, improvement backlog slicing, and handover blueprint generation.
+v1.0.1 adds outcome contract, plan reviewer workers, anti-accretion, visible acceptance evidence, toolchain preflight, branch/head invariants, same-head main quality-gate evidence, local gate JSON report contract, local gate side-effect guard, small product PR fast path, self-test fixture isolation, authoritative product evidence, target owner action classification, and runtime adoption sequence.
+
+## What v1.0.1 Adds
+
+- Outcome contract and source-of-truth ownership gates before product behavior changes.
+- Plan reviewer worker and anti-accretion gates to catch wrong owner, missing cutover, and dual active path risk.
+- Visible acceptance evidence gates that distinguish acceptance evidence from runtime readiness and production readiness.
+- Toolchain, parent harness, local branch, target HEAD, same-head main quality-gate, and pilot cleanliness gates.
+- Local gate JSON report contract and side-effect guard so `CODEX_QUALITY_REPORT=json` is machine-readable even for failures.
+- Small product PR fast path, self-test fixture isolation, authoritative product evidence, target owner action classification, and runtime adoption sequence gates.
 
 ## What v1.0.0 Adds
 
