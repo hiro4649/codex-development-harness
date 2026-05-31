@@ -125,7 +125,7 @@ function commandOk(command, args = ['--version']) {
       const result = spawnSync(candidate, args, {
         encoding: 'utf8',
         stdio: 'pipe',
-        timeout: 10000,
+        timeout: 30000,
         shell: process.platform === 'win32' && /\.cmd$/i.test(candidate),
       });
       if (result.status === 0) return true;
