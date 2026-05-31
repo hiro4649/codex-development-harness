@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
 # Skill: Release Gate Reviewer
 
 Review whether this change is safe to merge and operate.

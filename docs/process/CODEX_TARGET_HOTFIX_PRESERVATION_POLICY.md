@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
 # Codex Target Hotfix Preservation Policy
 
 Version: v0.9.3

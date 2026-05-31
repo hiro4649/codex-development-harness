@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
 # Contract Governance Policy
 
 Task completion is a contract. Risky harness, product, release, runtime,

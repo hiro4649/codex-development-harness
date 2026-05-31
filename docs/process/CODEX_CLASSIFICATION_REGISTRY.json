@@ -1,7 +1,7 @@
 {
-  "schemaVersion": "0.9.5",
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.1",
-  "harnessVersion": "1.0.1",
+  "schemaVersion": "1.0.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
+  "harnessVersion": "1.0.2",
   "entries": [
     {
       "pathPattern": "scripts/codex-*",
@@ -182,6 +182,33 @@
       "requiresProductVerification": true,
       "allowsFastPath": false,
       "notes": "Lockfile."
+    },
+    {
+      "pathPattern": "docs/process/CODEX_*_POLICY.md",
+      "classification": "harness_managed",
+      "surface": "harness_policy",
+      "risk": "R2",
+      "requiresProductVerification": false,
+      "allowsFastPath": false,
+      "notes": "Codex v1.0.2 policy docs."
+    },
+    {
+      "pathPattern": "docs/process/CODEX_*_SCHEMA.json",
+      "classification": "harness_managed",
+      "surface": "harness_schema",
+      "risk": "R2",
+      "requiresProductVerification": false,
+      "allowsFastPath": false,
+      "notes": "Codex v1.0.2 schema docs."
+    },
+    {
+      "pathPattern": "scripts/codex-v102-*",
+      "classification": "harness_managed",
+      "surface": "harness",
+      "risk": "R3",
+      "requiresProductVerification": false,
+      "allowsFastPath": false,
+      "notes": "Codex v1.0.2 source harness scripts."
     }
   ],
   "safeSummaryOnly": true

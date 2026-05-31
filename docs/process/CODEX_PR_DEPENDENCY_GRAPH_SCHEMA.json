@@ -1,0 +1,13 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
+  "schemaVersion": "1.0.2",
+  "required": [
+    "blocked_by",
+    "must_merge_before",
+    "must_not_rebase_until",
+    "rebase_readiness",
+    "rerun_readiness",
+    "superseded_by",
+    "safeNextAction"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
+  "schemaVersion": "1.0.2",
+  "required": [
+    "classification",
+    "cleanMainHead",
+    "currentBranchHead",
+    "failureClass",
+    "repairAction",
+    "safeSummaryOnly"
+  ],
+  "classifications": [
+    "clean_main_pass",
+    "legacy_self_test_drift",
+    "fixture_orchestration_timing",
+    "support_file_materialization_mismatch",
+    "source_target_manifest_boundary_error",
+    "actual_product_bug",
+    "current_branch_regression",
+    "transient_flake",
+    "unknown"
+  ]
+}

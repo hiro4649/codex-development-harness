@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
 # Safe Artifact Bundle Completeness Policy
 
 Normal safe bundles must contain enough evidence for a human to classify the blocker without raw logs or raw diffs.

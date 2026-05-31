@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.1",
-  "harnessVersion": "1.0.1",
-  "schemaVersion": "1.0.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
+  "harnessVersion": "1.0.2",
+  "schemaVersion": "1.0.2",
   "entrypoints": [
     "AGENTS.md",
     "README.md",
@@ -69,7 +69,10 @@
     "docs/process/CODEX_HANDOVER_BLUEPRINT_POLICY.md",
     "docs/process/CODEX_OUTCOME_CONTRACT_POLICY.md",
     "docs/process/CODEX_LOCAL_GATE_REPORT_CONTRACT_POLICY.md",
-    "docs/process/CODEX_V101_EVAL_CASES.json"
+    "docs/process/CODEX_V101_EVAL_CASES.json",
+    "docs/process/CODEX_CLEAN_MAIN_BASELINE_POLICY.md",
+    "docs/process/CODEX_PR_RECOVERY_AUTOPILOT_POLICY.md",
+    "docs/process/CODEX_HANDOVER_SNAPSHOT_POLICY.md"
   ],
   "policyIndex": [
     "docs/process/CODEX_OPENAI_CODEX_METHOD_POLICY.md",
@@ -254,7 +257,31 @@
     "docs/process/CODEX_SERVICE_COST_MAP_SCHEMA.json",
     "docs/process/CODEX_TEST_GAP_MAP_SCHEMA.json",
     "docs/process/CODEX_IMPROVEMENT_BACKLOG_SCHEMA.json",
-    "docs/process/CODEX_V100_EVAL_CASES.json"
+    "docs/process/CODEX_V100_EVAL_CASES.json",
+    "docs/process/CODEX_CLEAN_MAIN_BASELINE_POLICY.md",
+    "docs/process/CODEX_LEGACY_SELF_TEST_MATRIX_POLICY.md",
+    "docs/process/CODEX_FIXTURE_ORCHESTRATION_FLAKE_POLICY.md",
+    "docs/process/CODEX_SUPPORT_FILE_BOUNDARY_POLICY.md",
+    "docs/process/CODEX_SOURCE_TARGET_MANIFEST_BOUNDARY_POLICY.md",
+    "docs/process/CODEX_CLEAN_MAIN_REPAIR_PLAN_POLICY.md",
+    "docs/process/CODEX_V085_CHECKOUT_DIFF_ISOLATION_POLICY.md",
+    "docs/process/CODEX_PRODUCT_PR_DIFF_CONTAINMENT_POLICY.md",
+    "docs/process/CODEX_HARNESS_FIXTURE_DIFF_ISOLATION_POLICY.md",
+    "docs/process/CODEX_PRODUCT_PR_EVIDENCE_GENERATOR_POLICY.md",
+    "docs/process/CODEX_BACKUP_ARTIFACT_MANAGER_POLICY.md",
+    "docs/process/CODEX_REPO_EXTERNAL_BACKUP_POLICY.md",
+    "docs/process/CODEX_DIRTY_WORKTREE_BACKUP_BOUNDARY_POLICY.md",
+    "docs/process/CODEX_PR_RECOVERY_AUTOPILOT_POLICY.md",
+    "docs/process/CODEX_STALE_PR_RECOVERY_POLICY.md",
+    "docs/process/CODEX_CURRENT_HEAD_RECOVERY_PLAN_POLICY.md",
+    "docs/process/CODEX_SAME_HEAD_REMOTE_EVIDENCE_PLAN_POLICY.md",
+    "docs/process/CODEX_OWNER_ACTION_NEXT_STEP_POLICY.md",
+    "docs/process/CODEX_EXTERNAL_BLOCKED_POLICY.md",
+    "docs/process/CODEX_REVIEWER_AVAILABILITY_POLICY.md",
+    "docs/process/CODEX_SMALL_REPO_MODE_POLICY.md",
+    "docs/process/CODEX_SAFE_NEXT_ACTION_POLICY.md",
+    "docs/process/CODEX_HANDOVER_SNAPSHOT_POLICY.md",
+    "docs/process/CODEX_OPERATOR_SEVEN_LINE_SUMMARY_POLICY.md"
   ],
   "skillIndex": [
     ".agents/skills/codex-bugfix/SKILL.md"
@@ -445,7 +472,19 @@
     "scripts/codex-runtime-readiness-boundary-gate.mjs",
     "scripts/codex-production-go-boundary-gate.mjs",
     "scripts/codex-v101-gate-lib.mjs",
-    "scripts/codex-v101-self-test.mjs"
+    "scripts/codex-v101-self-test.mjs",
+    "scripts/codex-v102-gate-lib.mjs",
+    "scripts/codex-clean-main-baseline-gate.mjs",
+    "scripts/codex-legacy-self-test-matrix-gate.mjs",
+    "scripts/codex-fixture-orchestration-flake-gate.mjs",
+    "scripts/codex-support-file-boundary-gate.mjs",
+    "scripts/codex-source-target-manifest-boundary-gate.mjs",
+    "scripts/codex-clean-main-repair-plan-gate.mjs",
+    "scripts/codex-product-pr-evidence-generate.mjs",
+    "scripts/codex-product-pr-evidence-validate.mjs",
+    "scripts/codex-product-pr-evidence-safe-summary.mjs",
+    "scripts/codex-handover-snapshot-generate.mjs",
+    "scripts/codex-v102-self-test.mjs"
   ],
   "evalIndex": [
     "docs/process/CODEX_PROMPT_EVAL_SUITE.json",
@@ -475,7 +514,8 @@
     "docs/process/CODEX_V099_EVAL_CASES.json",
     "scripts/codex-v099-self-test.mjs",
     "docs/process/CODEX_V101_EVAL_CASES.json",
-    "scripts/codex-v101-self-test.mjs"
+    "scripts/codex-v101-self-test.mjs",
+    "docs/process/CODEX_V102_EVAL_CASES.json"
   ],
   "reviewIndex": [
     "docs/process/code_review.md",
@@ -526,7 +566,16 @@
     "docs/process/CODEX_FIVE_LINE_OWNER_DIGEST_SCHEMA.json",
     "docs/process/CODEX_TARGET_QUALITY_BLOCKER_DIGEST_SCHEMA.json",
     "docs/process/CODEX_PR_EVIDENCE_AUTO_REPAIR_HINT_SCHEMA.json",
-    "docs/process/CODEX_DATASET_AUDIT_V2_P0_SCHEMA.json"
+    "docs/process/CODEX_DATASET_AUDIT_V2_P0_SCHEMA.json",
+    "docs/process/CODEX_CLEAN_MAIN_BASELINE_SCHEMA.json",
+    "docs/process/CODEX_PRODUCT_PR_EVIDENCE_SCHEMA.json",
+    "docs/process/CODEX_PRODUCT_PR_EVIDENCE_SAFE_SUMMARY_SCHEMA.json",
+    "docs/process/CODEX_SPLIT_SCORE_MODEL_SCHEMA.json",
+    "docs/process/CODEX_PR_DEPENDENCY_GRAPH_SCHEMA.json",
+    "docs/process/CODEX_HANDOVER_SNAPSHOT_SCHEMA.json",
+    "docs/process/CODEX_MACHINE_REPLAY_DIGEST_SCHEMA.json",
+    "docs/process/CODEX_PROTECTED_STATE_INVENTORY_SCHEMA.json",
+    "docs/process/CODEX_WORKFLOW_RESUME_STATE_SCHEMA.json"
   ],
   "sourceOfRecord": [
     "AGENTS.md",
@@ -559,6 +608,29 @@
       "runtimeReadinessBoundaryStatus",
       "productionGoBoundaryStatus",
       "v100SelfTestStatus"
+    ],
+    "safeSummaryOnly": true
+  },
+  "v102": {
+    "name": "Clean-main Baseline, Fixture Isolation, Product PR Recovery, External Blocked Separation, and Handover Snapshot",
+    "parentHarnessVersion": "1.0.1",
+    "statusKeys": [
+      "cleanMainBaselineStabilityStatus",
+      "legacySelfTestMatrixStatus",
+      "fixtureOrchestrationFlakeStatus",
+      "supportFileBoundaryStatus",
+      "sourceTargetManifestBoundaryStatus",
+      "v085CheckoutDiffIsolationStatus",
+      "productPrEvidenceGeneratorStatus",
+      "backupArtifactManagerStatus",
+      "prRecoveryAutopilotStatus",
+      "externalBlockedStatus",
+      "splitScoreModelStatus",
+      "prDependencyGraphStatus",
+      "handoverSnapshotStatus",
+      "protectedStateInventoryStatus",
+      "workflowResumeStateStatus",
+      "v102SelfTestStatus"
     ],
     "safeSummaryOnly": true
   }

@@ -1,0 +1,13 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
+  "schemaVersion": "1.0.2",
+  "required": [
+    "productEvidenceScore",
+    "harnessEvidenceScore",
+    "governanceScore",
+    "externalBlockedStatus",
+    "mergeReadiness",
+    "safeNextAction"
+  ],
+  "rule": "blocked_external keeps mergeReadiness no"
+}

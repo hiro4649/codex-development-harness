@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
 # Local Gate Side Effect Policy
 
 Local gate execution must not mutate tracked files, branch, HEAD, or tracked generated artifacts.
