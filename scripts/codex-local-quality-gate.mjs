@@ -766,6 +766,15 @@ const V102_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS = [];
 
 const V103_STATUS_KEYS = v103Gates.V103_STATUS_KEYS;
 const V103_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS = [];
+// v1.0.3 local gate routing strings kept here for source-main grep verification:
+// reasonSummaryFinalAggregationStatus remoteNpmDiagnosticTruthStatus localRemoteFailureDeltaClassifierStatus
+// productSurfaceRouterStatus activeSelfTestArtifactSourceStatus prBodyGovernanceAutoRepairStatus
+// reviewEvidenceTaxonomyStatus contractReadinessProfileStatus staleAuditInputStatus githubEventPayloadFreshnessStatus
+// prBodyLiveFetchStatus safeArtifactHeadMatchStatus eventPayloadVsLivePrBodyDiffStatus rerunUsesStaleEventPayloadStatus
+// mergeReadinessReasonLadderStatus codexActionBoundaryStatus userManualWorkProhibitedStatus safeNextActionPrecisionStatus
+// designOnlyPrStatus implementationDeferredStatus fiveFiveLowModeStatus dynamicWorkflowDecisionStatus
+// workflowGoalContractStatus workPacketSchemaStatus workerFileOwnershipV2Status approvalGateStatus
+// simulatedSubagentFallbackStatus adversarialReviewStatus verificationFanInStatus v103SelfTestStatus
 
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
 
