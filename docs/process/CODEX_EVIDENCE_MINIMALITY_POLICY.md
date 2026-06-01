@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
 # Evidence Minimality Policy
 
 - PR bodies keep only the smallest required evidence.

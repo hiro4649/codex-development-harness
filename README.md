@@ -1,14 +1,27 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
 # Codex Development Harness
 
-Version: v1.0.2
-Name: Clean-main Baseline, Fixture Isolation, Product PR Recovery, External Blocked Separation, and Handover Snapshot
+Version: v1.0.3
+Name: Judgment Consistency, Product Surface Routing, Review Evidence Taxonomy, Stale Input Freshness, and Dynamic Workflow Lite
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.2 preserves v1.0.1 local gate contract, branch/head invariant, side-effect guard, outcome contract, anti-accretion, visible acceptance evidence, and runtime/production readiness boundaries.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.3 preserves v1.0.2 clean-main, fixture isolation, product PR recovery, external blocked separation, handover snapshot, protected state, and workflow resume.
+
+v1.0.3 adds final aggregation consistency, remote npm truth, product surface routing, active self-test artifact source, PR body governance auto-repair, review evidence taxonomy, contract readiness profile, stale input freshness, 5.5 low mode, and Dynamic Workflow Lite.
+
+## What v1.0.3 Adds
+
+- Final aggregation, local/remote failure delta, merge-readiness reason ladder, and safe-next-action precision gates.
+- Remote npm diagnostic truth, product surface routing, active self-test artifact source, and PR body governance auto-repair gates.
+- Review evidence taxonomy, contract readiness profile, stale audit input freshness, GitHub event payload freshness, live PR body freshness, and safe artifact head-match gates.
+- 5.5 low mode constraints and Dynamic Workflow Lite fixtures for work packets, approval gates, simulated subagent fallback, adversarial review, and verification fan-in.
+- P1 domain roadmap fixtures for FUNKY runtime adoption, receipt fetcher no-secret preflight, staging no-tx evidence, safe row export, dataset audit v2, Game/Tool Adapter fixture packs, beloved avatar safety audit specs, and VGC-FUNKY release ladder.
+
+## What v1.0.2 Adds
+
+v1.0.2 preserves v1.0.1 local gate contract, branch/head invariant, side-effect guard, outcome contract, anti-accretion, visible acceptance evidence, and runtime/production readiness boundaries.
 
 v1.0.2 adds clean-main baseline classification, legacy self-test matrix, support-file boundary, v085 checkout diff isolation, product PR evidence generator, backup artifact manager, PR recovery autopilot, external blocked split score, PR dependency graph, safe next action, handover snapshot, protected state inventory, and workflow resume state.
 
-## What v1.0.2 Adds
 
 - Clean-main baseline and legacy self-test matrix gates to distinguish product PR failures from parent or fixture drift.
 - Support-file and source/target manifest boundary gates so target repos do not require source-only harness metadata.

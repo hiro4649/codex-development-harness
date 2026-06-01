@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
 # Safe Artifact Index Policy
 
 Every workflow safe artifact should be listed in one compact index.

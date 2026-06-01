@@ -2,7 +2,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v1.0.2
+// CODEX_QUALITY_HARNESS_FILE v1.0.3
 
 
 
@@ -42,6 +42,7 @@ import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
 
 import * as v101Gates from './codex-v101-gate-lib.mjs';
 import * as v102Gates from './codex-v102-gate-lib.mjs';
+import * as v103Gates from './codex-v103-gate-lib.mjs';
 
 
 
@@ -49,7 +50,7 @@ import * as v102Gates from './codex-v102-gate-lib.mjs';
 
 
 
-const HARNESS_VERSION = '1.0.2';
+const HARNESS_VERSION = '1.0.3';
 
 
 
@@ -762,6 +763,9 @@ const V102_STATUS_KEYS = [
   'v102SelfTestStatus',
 ];
 const V102_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS = [];
+
+const V103_STATUS_KEYS = v103Gates.V103_STATUS_KEYS;
+const V103_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS = [];
 
 const SOURCE_MANIFEST = 'CODEX_SOURCE_HARNESS_MANIFEST.json';
 
@@ -2364,6 +2368,19 @@ function runV102Gates(report, gateEnv) {
 
 function initializeV102Statuses(report) { for (const key of V102_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
 
+function runV103Gates(report, gateEnv) {
+  const selfTestStatus = process.env.CODEX_SKIP_V103_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v103-self-test.mjs', 'v103SelfTestStatus', 'CODEX_V103_SELF_TEST_REPORT', gateEnv);
+  const reports = v103Gates.buildDefaultV103Reports({
+    safeNextAction: gateEnv.CODEX_SAFE_NEXT_ACTION || 'verify_source_pr_remote_gate',
+  });
+  Object.assign(report, reports);
+  report.v103SelfTestStatus = reports.v103SelfTestStatus?.status === 'fail' ? reports.v103SelfTestStatus : selfTestStatus;
+}
+
+function initializeV103Statuses(report) { for (const key of V103_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
+
 function legacySelfTestPreservedStatus(legacyVersion) {
   return {
     status: 'pass',
@@ -3738,6 +3755,7 @@ function computeQualityScoreStatus(report) {
     ...V100_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     ...V101_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
     ...V102_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
+    ...V103_OPTIONAL_NOT_APPLICABLE_STATUS_KEYS,
 
 
     'agentMemoryPolicyStatus',
@@ -7120,7 +7138,7 @@ async function runSourceHarnessGate() {
 
 
 
-  const secretSelfTest = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { env: { CODEX_SECRET_SCAN_SELF_TEST: '1' }, stdio: 'pipe' });
+  const secretSelfTest = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { env: { CODEX_SECRET_SCAN_SELF_TEST: '1' }, stdio: 'pipe', timeout: 120000 });
 
 
 
@@ -7128,7 +7146,7 @@ async function runSourceHarnessGate() {
 
 
 
-  const secretScan = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { stdio: 'pipe' });
+  const secretScan = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { stdio: 'pipe', timeout: 120000 });
 
 
 
@@ -7622,6 +7640,11 @@ async function runSourceHarnessGate() {
   initializeV100Statuses(report);
   initializeV101Statuses(report);
   initializeV102Statuses(report);
+  initializeV103Statuses(report);
+  initializeV103Statuses(report);
+  initializeV101Statuses(report);
+  initializeV102Statuses(report);
+  initializeV103Statuses(report);
 
 
   report.profileTemplateCompatibilityStatus = report.sourceHarnessValidationStatus.profileTemplateCompatibilityStatus || { status: 'missing' };
@@ -7815,6 +7838,7 @@ async function runSourceHarnessGate() {
   runV100Gates(report, gateEnv);
   runV101Gates(report, gateEnv, v101BeforeSnapshot);
   runV102Gates(report, gateEnv);
+  runV103Gates(report, gateEnv);
 
 
   report.workflowPreflightStatus = runGateScript('scripts/codex-workflow-preflight.mjs', 'workflowPreflightStatus', 'CODEX_WORKFLOW_PREFLIGHT_REPORT', gateEnv);
@@ -8617,6 +8641,7 @@ async function runSourceHarnessGate() {
     ...Object.fromEntries(V100_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V101_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V102_STATUS_KEYS.map((key) => [key, report[key]])),
+    ...Object.fromEntries(V103_STATUS_KEYS.map((key) => [key, report[key]])),
 
 
     remoteLocalParityStatus: report.remoteLocalParityStatus,
@@ -9079,7 +9104,7 @@ async function runSourceHarnessGate() {
     for (const key of V098_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V099_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V100_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
-    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
+    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
 
 
     console.log(`prEvidenceRendererStatus: ${report.prEvidenceRendererStatus.status}`);
@@ -9474,7 +9499,7 @@ async function runTargetHarnessGate() {
 
 
 
-  const secretScan = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { stdio: 'pipe' });
+  const secretScan = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { stdio: 'pipe', timeout: 120000 });
 
 
 
@@ -9964,6 +9989,9 @@ async function runTargetHarnessGate() {
   runV098Gates(report, gateEnv);
   runV099Gates(report, gateEnv);
   runV100Gates(report, gateEnv);
+  runV101Gates(report, gateEnv);
+  runV102Gates(report, gateEnv);
+  runV103Gates(report, gateEnv);
 
 
   report.workflowPreflightStatus = runGateScript('scripts/codex-workflow-preflight.mjs', 'workflowPreflightStatus', 'CODEX_WORKFLOW_PREFLIGHT_REPORT', gateEnv);
@@ -10875,6 +10903,10 @@ async function runTargetHarnessGate() {
 
     performanceEvidenceStatus: report.performanceEvidenceStatus,
 
+    ...Object.fromEntries(V101_STATUS_KEYS.map((key) => [key, report[key]])),
+    ...Object.fromEntries(V102_STATUS_KEYS.map((key) => [key, report[key]])),
+    ...Object.fromEntries(V103_STATUS_KEYS.map((key) => [key, report[key]])),
+
 
 
     v080SelfTestStatus: report.v080SelfTestStatus,
@@ -11029,6 +11061,7 @@ async function runTargetHarnessGate() {
     for (const key of V098_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V099_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
     for (const key of V100_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
+    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
 
 
     console.log(`prEvidenceRendererStatus: ${report.prEvidenceRendererStatus.status}`);
@@ -11387,7 +11420,7 @@ async function runSourceHarnessCoreContractGate() {
   const warnings = [];
   const beforeSnapshot = v101Gates.captureLocalGateSideEffectSnapshot();
   const gateEnv = { ...process.env };
-  const secretScan = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { stdio: 'pipe' });
+  const secretScan = spawn('node', ['scripts/codex-secret-safety-scan.mjs'], { stdio: 'pipe', timeout: 120000 });
   const report = {
     marker: MARKER,
     harnessVersion: HARNESS_VERSION,
@@ -11414,6 +11447,7 @@ async function runSourceHarnessCoreContractGate() {
   initializeV100Statuses(report);
   initializeV101Statuses(report);
   initializeV102Statuses(report);
+  initializeV103Statuses(report);
 
   if (report.sourceHarnessValidationStatus.status === 'fail') failures.push(...report.sourceHarnessValidationStatus.failures);
   if (report.secretScan.status === 'fail') failures.push({ id: 'secretScan.failed', message: 'secret safety scan failed' });
@@ -11436,6 +11470,7 @@ async function runSourceHarnessCoreContractGate() {
   report.v100SelfTestStatus = runGateScript('scripts/codex-v100-self-test.mjs', 'v100SelfTestStatus', 'CODEX_V100_SELF_TEST_REPORT', { ...gateEnv, CODEX_V100_SKIP_LEGACY_RECHECKS: '1' });
   runV101Gates(report, gateEnv, beforeSnapshot);
   runV102Gates(report, gateEnv);
+  runV103Gates(report, gateEnv);
 
   for (const [key, value] of Object.entries({
     changeClassificationStatus: report.changeClassificationStatus,
@@ -11446,6 +11481,7 @@ async function runSourceHarnessCoreContractGate() {
     ...Object.fromEntries(V100_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V101_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V102_STATUS_KEYS.map((name) => [name, report[name]])),
+    ...Object.fromEntries(V103_STATUS_KEYS.map((name) => [name, report[name]])),
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }
@@ -11467,7 +11503,7 @@ async function runSourceHarnessCoreContractGate() {
   else {
     console.log(`status: ${report.status}`);
     console.log(`qualityScore: ${report.qualityScoreStatus.score}`);
-    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
+    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
   }
   process.exit(failures.length ? 1 : 0);
 }

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
 # TxHash Before Wait Policy
 
 Requires txHash persistence before waiting for receipts or downstream state transitions.

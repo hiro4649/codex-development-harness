@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.2",
-  "harnessVersion": "1.0.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.3",
+  "harnessVersion": "1.0.3",
   "reasonCodes": [
     {
       "reasonCode": "missing_head_sha",
@@ -4072,6 +4072,294 @@
       "severity": "error",
       "safeMessage": "workflow_resume_state_missing requires v1.0.2 recovery classification.",
       "nextBestFix": "Choose the single safe owner action and refresh current-head evidence.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "reason_summary_final_aggregation_inconsistent",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "reason_summary_final_aggregation_inconsistent requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "target_quality_pass_but_report_fail",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "target_quality_pass_but_report_fail requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "legacy_advisory_promoted_to_failure",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "legacy_advisory_promoted_to_failure requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "stale_blocking_reason_not_removed",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "stale_blocking_reason_not_removed requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_truth_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "remote_npm_truth_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_executed_but_normalizer_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "remote_npm_executed_but_normalizer_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_executed_but_stale_head",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "remote_npm_executed_but_stale_head requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "remote_npm_profile_mismatch",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "remote_npm_profile_mismatch requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "local_remote_failure_delta_unknown",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "local_remote_failure_delta_unknown requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "product_surface_router_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "product_surface_router_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "command_scope_mismatch",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "command_scope_mismatch requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "command_cwd_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "command_cwd_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "active_self_test_artifact_mismatch",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "active_self_test_artifact_mismatch requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "legacy_artifact_used_as_active",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "legacy_artifact_used_as_active requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_body_governance_safe_patch_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "pr_body_governance_safe_patch_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "review_evidence_taxonomy_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "review_evidence_taxonomy_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "writer_self_review_detected",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "writer_self_review_detected requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "chatgpt_pro_review_not_human_independent",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "chatgpt_pro_review_not_human_independent requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "codex_operational_comment_informational_only",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "codex_operational_comment_informational_only requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "contract_readiness_profile_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "contract_readiness_profile_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "stale_audit_input_detected",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "stale_audit_input_detected requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "github_event_payload_stale",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "github_event_payload_stale requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "pr_body_live_fetch_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "pr_body_live_fetch_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "safe_artifact_head_mismatch",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "safe_artifact_head_mismatch requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "event_payload_live_body_diff",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "event_payload_live_body_diff requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "rerun_uses_stale_event_payload",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "rerun_uses_stale_event_payload requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "merge_readiness_reason_ladder_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "merge_readiness_reason_ladder_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "codex_action_boundary_missing",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "codex_action_boundary_missing requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "user_manual_work_pushed_back",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "user_manual_work_pushed_back requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "safe_next_action_not_precise",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "safe_next_action_not_precise requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "design_only_pr_misclassified_as_implementation",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "design_only_pr_misclassified_as_implementation requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "implementation_deferred_not_respected",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "implementation_deferred_not_respected requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "five_five_low_mode_violation",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "five_five_low_mode_violation requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "dynamic_workflow_overused",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "dynamic_workflow_overused requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "simulated_subagent_misrepresented",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "simulated_subagent_misrepresented requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
+      "canManualConfirmationOverride": false
+    },
+    {
+      "reasonCode": "worker_file_ownership_conflict_v2",
+      "gate": "v103",
+      "severity": "error",
+      "safeMessage": "worker_file_ownership_conflict_v2 requires v1.0.3 judgment consistency classification.",
+      "nextBestFix": "Use the v1.0.3 safe reason ladder and provide exactly one safe next action.",
       "canManualConfirmationOverride": false
     }
   ]
