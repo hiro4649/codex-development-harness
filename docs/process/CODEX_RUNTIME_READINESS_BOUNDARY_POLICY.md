@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
 # Runtime Readiness Boundary Policy
 
 Prevents fixture, unit, or local smoke pass from becoming runtime readiness.

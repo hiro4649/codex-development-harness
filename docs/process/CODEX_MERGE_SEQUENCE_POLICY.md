@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
 # Merge Sequence Policy
 
 Keeps source verification before target rollout and target rollout before product/runtime work.
