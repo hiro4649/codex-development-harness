@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.3
+// CODEX_QUALITY_HARNESS_FILE v1.0.4
 import { buildGameToolAdapterContractFixtureV097Report, runV097GateCli } from './codex-v097-gate-lib.mjs';
 
 export { buildGameToolAdapterContractFixtureV097Report };

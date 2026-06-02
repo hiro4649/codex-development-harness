@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Application Intelligence Policy
 
 Maps existing and new apps with confirmed, inferred, unknown, and conflict evidence classes.

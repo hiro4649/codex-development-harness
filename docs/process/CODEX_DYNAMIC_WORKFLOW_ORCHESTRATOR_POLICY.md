@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Dynamic Workflow Orchestrator Policy
 
 Defines safe decomposition, branch isolation, evidence aggregation, merge sequencing, stop conditions, and resume points.

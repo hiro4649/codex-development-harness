@@ -1,6 +1,6 @@
 # Codex Clean-main Repair Plan Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.3
+CODEX_QUALITY_HARNESS_FILE v1.0.4
 
 When clean main fails, choose exactly one next repair action:
 harness_fix_required, support_file_boundary_fix_required,

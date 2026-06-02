@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.3
+// CODEX_QUALITY_HARNESS_FILE v1.0.4
 import { buildDeadCodeCandidateReport, runV100GateCli } from './codex-v100-gate-lib.mjs';
 
 export { buildDeadCodeCandidateReport };

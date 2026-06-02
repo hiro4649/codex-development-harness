@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
   "harnessVersion": "0.8.8",
   "requiredFor": ["bug_fix", "refactor", "migration", "implementation_change", "behavior_change"],
   "notApplicableFor": ["docs_only", "policy_only"],

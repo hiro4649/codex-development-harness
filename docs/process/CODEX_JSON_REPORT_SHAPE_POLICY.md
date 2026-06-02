@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # JSON Report Shape Policy
 
 JSON reports must be parseable objects with safe summary fields and status-bearing gate fields.

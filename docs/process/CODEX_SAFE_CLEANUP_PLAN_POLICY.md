@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Safe Cleanup Plan Policy
 
 Requires read-only analysis, owner confirmation, safe cleanup PR, refactor PR, then behavior change PR.

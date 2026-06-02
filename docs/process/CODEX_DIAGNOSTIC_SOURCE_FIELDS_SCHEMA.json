@@ -1,0 +1,13 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "schemaVersion": "1.0.4",
+  "statuses": [
+    "diagnosticSourceFieldStatus",
+    "remoteNpmDiagnosticSourceStatus",
+    "remoteProductEvidenceSourceStatus",
+    "baselineEvidenceSourceStatus",
+    "normalizationFieldShapeStatus"
+  ],
+  "requiredSourceFields": ["npmExecuted", "npmExitCode", "cwd", "commandClass", "packageScope"],
+  "conflictRule": "classify_conflict_instead_of_guessing"
+}

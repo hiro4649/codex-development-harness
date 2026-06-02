@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 ## Codex Method Compliance
 
 Code review status:
@@ -69,6 +69,24 @@ Surface normalization:
 ## Production Go/No-Go
 
 ## Evidence Integrity
+
+## v1.0.4 Claim and Boundary Verification
+
+Claim-to-code verifier:
+Architecture boundary linter:
+Acceptance criteria matrix:
+Risk gate:
+Evidence report v2:
+GitHub state hysteresis:
+Tool gap resolver:
+Product surface router v2:
+Active self-test single source:
+Diagnostic source fields:
+Target hotfix preservation:
+PR chain saturation:
+External blocked terminal:
+Role/tool/evidence site/annotation governance:
+Dynamic Workflow Lite:
 
 ## Generic Core Status
 

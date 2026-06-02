@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # PR Body Surface Normalizer Policy
 
 The PR body surface normalizer reduces false positives from words such as auth,

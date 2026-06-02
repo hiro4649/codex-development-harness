@@ -1,0 +1,18 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "schemaVersion": "1.0.4",
+  "statuses": [
+    "acceptanceCriteriaMatrixStatus",
+    "acceptanceCriteriaCoverageStatus",
+    "acceptanceCriteriaUnknownStatus",
+    "acceptanceCriteriaEvidenceStatus",
+    "doneDefinitionStatus"
+  ],
+  "allowedItemStatus": ["pass", "fail", "partial", "unknown", "not_applicable"],
+  "rules": {
+    "highRiskUnknownBlocksMerge": true,
+    "notApplicableRequiresSafeReason": true,
+    "partialCannotBeProductionReady": true,
+    "ciGreenDoesNotOverrideAcceptanceFailure": true
+  }
+}

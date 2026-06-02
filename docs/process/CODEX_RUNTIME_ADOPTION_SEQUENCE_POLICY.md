@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Runtime Adoption Sequence Policy
 
 Runtime or worker adoption proceeds in order: foundation, claim, persistence, reconciliation, worker, runtime readiness, production go.

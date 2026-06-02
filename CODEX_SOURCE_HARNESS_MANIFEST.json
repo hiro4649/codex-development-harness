@@ -1,12 +1,12 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.3",
-  "harnessVersion": "1.0.3",
-  "sourceHarnessVersion": "1.0.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "harnessVersion": "1.0.4",
+  "sourceHarnessVersion": "1.0.4",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
   ],
-  "schemaVersion": "1.0.3",
+  "schemaVersion": "1.0.4",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -445,7 +445,28 @@
     "docs/process/CODEX_DATASET_AUDIT_V2_SPEC_POLICY.md",
     "docs/process/CODEX_GAME_TOOL_ADAPTER_FIXTURE_PACK_POLICY.md",
     "docs/process/CODEX_BELOVED_AVATAR_SAFETY_AUDIT_SPEC_POLICY.md",
-    "docs/process/CODEX_VGC_FUNKY_RELEASE_LADDER_POLICY.md"
+    "docs/process/CODEX_VGC_FUNKY_RELEASE_LADDER_POLICY.md",
+    "docs/process/CODEX_V104_SPEC.md",
+    "docs/process/CODEX_CLAIM_TO_CODE_POLICY.md",
+    "docs/process/CODEX_ARCHITECTURE_BOUNDARY_RULES.md",
+    "docs/process/CODEX_HARNESS_RULES_SCHEMA.json",
+    "docs/process/CODEX_ACCEPTANCE_CRITERIA_MATRIX_SCHEMA.json",
+    "docs/process/CODEX_RISK_GATE_POLICY.md",
+    "docs/process/CODEX_EVIDENCE_REPORT_V2_SCHEMA.json",
+    "docs/process/CODEX_GITHUB_STATE_HYSTERESIS_POLICY.md",
+    "docs/process/CODEX_TOOL_GAP_RESOLVER_POLICY.md",
+    "docs/process/CODEX_PRODUCT_SURFACE_ROUTER_V2.md",
+    "docs/process/CODEX_ACTIVE_SELF_TEST_SINGLE_SOURCE.md",
+    "docs/process/CODEX_DIAGNOSTIC_SOURCE_FIELDS_SCHEMA.json",
+    "docs/process/CODEX_TARGET_HOTFIX_PRESERVATION_REPLAY.md",
+    "docs/process/CODEX_PR_CHAIN_SATURATION_POLICY.md",
+    "docs/process/CODEX_EXTERNAL_BLOCKED_TERMINAL_POLICY.md",
+    "docs/process/CODEX_ROLE_PROFILE_SCHEMA.json",
+    "docs/process/CODEX_REPO_ROLE_PROFILES.md",
+    "docs/process/CODEX_TOOL_PERMISSION_BOUNDARY.md",
+    "docs/process/CODEX_EVIDENCE_SITE_POLICY.md",
+    "docs/process/CODEX_SAFE_ARTIFACT_SITE_SCHEMA.json",
+    "docs/process/CODEX_ANNOTATION_WORKPACKET_POLICY.md"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -775,7 +796,25 @@
     "codex-staging-no-tx-evidence-gate.mjs",
     "codex-runtime-readiness-blocker-digest-gate.mjs",
     "codex-vgc-funky-release-ladder-gate.mjs",
-    "codex-v103-self-test.mjs"
+    "codex-v103-self-test.mjs",
+    "codex-v104-self-test.mjs",
+    "codex-v104-gate-lib.mjs",
+    "codex-claim-to-code-verifier.mjs",
+    "codex-boundary-lint.mjs",
+    "codex-acceptance-criteria-matrix.mjs",
+    "codex-risk-gate.mjs",
+    "codex-evidence-report-v2.mjs",
+    "codex-github-state-hysteresis.mjs",
+    "codex-tool-gap-resolver.mjs",
+    "codex-product-surface-router-v2.mjs",
+    "codex-active-self-test-single-source.mjs",
+    "codex-diagnostic-source-fields.mjs",
+    "codex-target-hotfix-preservation-replay.mjs",
+    "codex-pr-chain-saturation.mjs",
+    "codex-external-blocked-terminal.mjs",
+    "codex-role-profile-gate.mjs",
+    "codex-evidence-site-policy-gate.mjs",
+    "codex-annotation-workpacket-validate.mjs"
   ],
   "optionalFiles": []
 }

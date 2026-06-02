@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Behavior Preservation Policy
 
 Requires before/after behavior evidence and unchanged public/API/DB contracts for refactor claims.

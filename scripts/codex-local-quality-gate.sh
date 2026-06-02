@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
-# CODEX_QUALITY_HARNESS_FILE v1.0.3
+# CODEX_QUALITY_HARNESS_FILE v1.0.4
 set -euo pipefail
 node scripts/codex-local-quality-gate.mjs
