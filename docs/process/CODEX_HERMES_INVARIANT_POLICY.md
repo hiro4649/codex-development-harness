@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Codex Hermes Invariant Policy
 
 Hermes invariant means the harness prefers external evidence over self-assertion, preserves boundaries, emits safe summaries only, exposes where human judgment is required, and refuses to hide failed evidence behind manual confirmation.

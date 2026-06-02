@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Refactor Slice Policy
 
 Keeps large refactors sliced and forbids feature addition mixed with refactor.

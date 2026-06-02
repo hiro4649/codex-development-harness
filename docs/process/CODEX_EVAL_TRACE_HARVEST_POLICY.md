@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Eval Trace Harvest Policy
 
 - Operator and review corrections can become eval candidates only with observed and expected behavior.

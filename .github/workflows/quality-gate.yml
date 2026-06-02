@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v1.0.3
+# CODEX_QUALITY_HARNESS_FILE v1.0.4
 name: quality-gate
 
 on:
@@ -214,6 +214,15 @@ jobs:
             console.log(`- safeArtifactClassifierStatus: ${summary.safeArtifactClassifierStatus?.status || 'missing'}`);
             console.log(`- securityLifecycleStatus: ${summary.securityLifecycleStatus?.status || 'missing'}`);
             console.log(`- reviewIndependenceStatus: ${summary.reviewIndependenceStatus?.status || 'missing'}`);
+            console.log(`- v104SelfTestStatus: ${summary.v104SelfTestStatus?.status || 'missing'}`);
+            console.log(`- claimToCodeVerifierStatus: ${summary.claimToCodeVerifierStatus?.status || 'missing'}`);
+            console.log(`- architectureBoundaryLinterStatus: ${summary.architectureBoundaryLinterStatus?.status || 'missing'}`);
+            console.log(`- acceptanceCriteriaMatrixStatus: ${summary.acceptanceCriteriaMatrixStatus?.status || 'missing'}`);
+            console.log(`- riskGateStatus: ${summary.riskGateStatus?.status || 'missing'}`);
+            console.log(`- evidenceReportV2Status: ${summary.evidenceReportV2Status?.status || 'missing'}`);
+            console.log(`- githubStateHysteresisStatus: ${summary.githubStateHysteresisStatus?.status || 'missing'}`);
+            console.log(`- targetHotfixPreservationAcrossRolloutStatus: ${summary.targetHotfixPreservationAcrossRolloutStatus?.status || 'missing'}`);
+            console.log(`- externalBlockedTerminalStatus: ${summary.externalBlockedTerminalStatus?.status || 'missing'}`);
             console.log(`- taskBriefCompilerStatus: ${summary.taskBriefCompilerStatus?.status || 'missing'}`);
             console.log(`- bestOfNDecisionStatus: ${summary.bestOfNDecisionStatus?.status || 'missing'}`);
             console.log(`- environmentProfileStatus: ${summary.environmentProfileStatus?.status || 'missing'}`);

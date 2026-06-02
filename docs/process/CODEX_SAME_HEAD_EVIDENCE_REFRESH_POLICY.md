@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Same-Head Evidence Refresh Policy
 
 After an empty commit, rebase, PR body edit, or new remote run, head SHA, base SHA, run id, artifact id, and manual confirmation references must be refreshed.

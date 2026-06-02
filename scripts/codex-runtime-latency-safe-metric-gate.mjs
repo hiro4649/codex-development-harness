@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.3
+// CODEX_QUALITY_HARNESS_FILE v1.0.4
 import { buildRuntimeLatencySafeMetricReport, runV098GateCli } from './codex-v098-gate-lib.mjs';
 
 export { buildRuntimeLatencySafeMetricReport };

@@ -1,0 +1,28 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "schemaVersion": "1.0.4",
+  "statuses": [
+    "evidenceReportV2Status",
+    "safeLineReferenceStatus",
+    "evidenceFreshnessStatus",
+    "evidenceOriginStatus",
+    "sameHeadEvidenceStatus"
+  ],
+  "required": [
+    "sourceHeadSha",
+    "baseSha",
+    "prNumber",
+    "commandClass",
+    "cwd",
+    "evidenceOrigin",
+    "evidenceFreshness",
+    "safeFileRefs",
+    "safeLineRefs",
+    "safeTestRefs",
+    "ciRunId",
+    "artifactHeadSha",
+    "sameHeadEvidence",
+    "localRemoteDelta"
+  ],
+  "forbidden": ["rawDiff", "rawLog", "secretValues"]
+}

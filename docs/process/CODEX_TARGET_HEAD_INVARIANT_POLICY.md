@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Target Head Invariant Policy
 
 Target pilot input requires `HEAD == origin/main`, clean worktree, and ahead/behind `0/0`.

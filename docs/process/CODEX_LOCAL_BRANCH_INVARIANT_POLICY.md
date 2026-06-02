@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Local Branch Invariant Policy
 
 For read-only maps, target analysis, and local bounded target gates, current branch must be `main`.

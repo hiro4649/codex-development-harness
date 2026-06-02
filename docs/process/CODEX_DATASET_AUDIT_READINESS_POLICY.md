@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Dataset Audit Readiness Policy
 
 Allows dataset audit readiness evidence only as safe schema evidence and forbids auto-fix usage.

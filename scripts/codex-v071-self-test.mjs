@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.3
+// CODEX_QUALITY_HARNESS_FILE v1.0.4
 import fs from 'node:fs';
 import {
   HARNESS_VERSION,

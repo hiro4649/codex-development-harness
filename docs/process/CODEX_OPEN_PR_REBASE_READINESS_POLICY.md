@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Open PR Rebase Readiness Policy
 
 Stale open pull requests are classified as rebase, rerun, close-obsolete, blocked by product verification, blocked by harness regression, or safe to continue. Obsolete PR reuse and old-base merge without current-head evidence are forbidden.

@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
   "harnessVersion": "0.8.8",
   "safeSummaryOnly": true,
   "skipAllowedForHarnessOnly": true,

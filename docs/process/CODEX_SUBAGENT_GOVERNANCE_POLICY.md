@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Subagent Governance Policy
 
 - Subagent output is role checklist evidence, not raw transcript evidence.

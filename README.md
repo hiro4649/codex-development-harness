@@ -1,12 +1,22 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Codex Development Harness
 
-Version: v1.0.3
-Name: Judgment Consistency, Product Surface Routing, Review Evidence Taxonomy, Stale Input Freshness, and Dynamic Workflow Lite
+Version: v1.0.4
+Name: Claim-to-Code Verification, Boundary Linting, Evidence v2, and Risk Hysteresis
 
 This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.3 preserves v1.0.2 clean-main, fixture isolation, product PR recovery, external blocked separation, handover snapshot, protected state, and workflow resume.
 
 v1.0.3 adds final aggregation consistency, remote npm truth, product surface routing, active self-test artifact source, PR body governance auto-repair, review evidence taxonomy, contract readiness profile, stale input freshness, 5.5 low mode, and Dynamic Workflow Lite.
+
+v1.0.4 adds deterministic distrust-by-default gates that cross-check PR claims, code references, acceptance criteria, risk register state, safe evidence, GitHub state freshness, tool gaps, target hotfix preservation, PR-chain saturation, role-bound tool policy, evidence site governance, annotation governance, and Dynamic Workflow Lite contracts before completion or merge readiness can be claimed.
+
+## What v1.0.4 Adds
+
+- Claim-to-code verification, claim extraction, claim coverage, contradiction detection, evidence source checks, and safe suggested checks.
+- Architecture boundary linting for repository internals, UI secret boundaries, wallet privacy, YouTube crypto claims, candidate execution shortcuts, and runtime/production readiness escalation.
+- Acceptance criteria matrix, risk gate, evidence report v2, GitHub state hysteresis, tool gap resolver, product surface router v2, diagnostic source fields, and active self-test single-source gates.
+- Target hotfix preservation replay, PR-chain saturation, external blocked terminal state, role/tool/evidence site/annotation governance, and Dynamic Workflow Lite work-packet governance.
+- v104 self-test as the active suite while v103 and v102 remain preserved legacy/advisory suites.
 
 ## What v1.0.3 Adds
 

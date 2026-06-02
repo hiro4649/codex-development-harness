@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// CODEX_QUALITY_HARNESS_FILE v1.0.3
+// CODEX_QUALITY_HARNESS_FILE v1.0.4
 
 import fs from 'node:fs';
 
@@ -8,7 +8,7 @@ import path from 'node:path';
 
 
 
-export const HARNESS_VERSION = '1.0.3';
+export const HARNESS_VERSION = '1.0.4';
 
 export const marker = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 

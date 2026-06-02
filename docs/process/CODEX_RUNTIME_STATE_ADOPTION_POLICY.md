@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Runtime State Adoption Policy
 
 Distinguishes schema/helper adoption from runtime readiness and requires helper evidence before readiness claims.

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Avatar UX Safety Policy
 
 Requires avatar motion evidence to account for comfort, accessibility, subtitle obstruction, gaze pressure, cooldown fatigue, monetization pressure, and parasocial safety.

@@ -1,0 +1,25 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "schemaVersion": "1.0.4",
+  "type": "object",
+  "required": ["rules"],
+  "properties": {
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "fileGlob", "forbiddenPattern", "severity", "riskCategory", "safeRemediationHint", "rawOutputProhibited"],
+        "properties": {
+          "id": { "type": "string" },
+          "fileGlob": { "type": "string" },
+          "forbiddenPattern": { "type": "string" },
+          "allowedException": { "type": "string" },
+          "severity": { "enum": ["critical", "high", "medium", "low"] },
+          "riskCategory": { "type": "string" },
+          "safeRemediationHint": { "type": "string" },
+          "rawOutputProhibited": { "const": true }
+        }
+      }
+    }
+  }
+}

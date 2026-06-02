@@ -1,0 +1,6 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "schemaVersion": "1.0.4",
+  "required": ["artifactHeadSha", "safeFileRefs", "redactionStatus", "readOnly"],
+  "forbidden": ["rawLog", "rawDiff", "secret", "endpoint", "walletAddress", "txHash", "payload"]
+}

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.3 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
 # Dead Code Candidate Policy
 
 Requires confirmed_unused before deletion and keeps inferred or unknown runtime usage out of cleanup PRs.

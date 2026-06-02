@@ -1,6 +1,6 @@
 # Codex v085 Checkout Diff Isolation Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.3
+CODEX_QUALITY_HARNESS_FILE v1.0.4
 
 v085 self-test fixtures must consume fixture diff metadata only. Active checkout
 product diff must remain visible to top-level product gates but must not leak

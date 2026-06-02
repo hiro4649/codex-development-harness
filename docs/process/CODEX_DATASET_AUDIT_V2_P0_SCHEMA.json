@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
   "schemaVersion": "1.0.0",
   "type": "object",
   "required": ["classification_only", "auditor", "verdict", "severity", "issue_codes", "evidence", "auto_fix_allowed", "safeSummaryOnly"],

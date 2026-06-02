@@ -1,0 +1,11 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "schemaVersion": "1.0.4",
+  "statuses": [
+    "roleProfilePluginStatus",
+    "repoRoleProfileStatus",
+    "roleBoundToolPolicyStatus",
+    "roleBoundEvidenceContractStatus"
+  ],
+  "rule": "role_profiles_narrow_permissions_never_expand"
+}

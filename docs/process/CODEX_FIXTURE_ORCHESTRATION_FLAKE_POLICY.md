@@ -1,6 +1,6 @@
 # Codex Fixture Orchestration Flake Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.3
+CODEX_QUALITY_HARNESS_FILE v1.0.4
 
 Classify fixture behavior as stable_pass, stable_fail, transient_flake,
 fixture_orchestration_timing, actual_product_concurrency_bug,
