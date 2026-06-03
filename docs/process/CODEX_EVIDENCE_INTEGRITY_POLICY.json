@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
   "policyName": "evidence-integrity-gate",
   "requiredEvidenceFields": [
     "command",

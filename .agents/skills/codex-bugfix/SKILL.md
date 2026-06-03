@@ -3,7 +3,7 @@ name: codex-bugfix
 description: Use for existing broken, regressed, flaky, failing, inconsistent, or unexpected behavior. Do not use for pure feature work, broad refactoring, or release decisions.
 ---
 
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 
 # Codex Bugfix
 

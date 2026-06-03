@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.4
+// CODEX_QUALITY_HARNESS_FILE v1.0.5
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor, readJson, readText } from './codex-v080-lib.mjs';
@@ -25,7 +25,7 @@ function mapGate(statusKey, reasonCode, input, relevantField, failFields = [], w
 }
 const REQUIRED_PARENT_GATE_KEYS = ['formalEvidencePrecedenceStatus','lifeboatSemanticsStatus','placeholderOnlyEvidenceStatus','remoteNpmDiagnosticNormalizationStatus','legacySelfTestAdvisoryStatus','targetQualityBlockerDigestStatus','prEvidenceAutoRepairHintStatus','actionsBlockerRecoveryStatus','sameHeadEvidenceRefreshStatus','safeArtifactBundleCompletenessStatus','productEvidenceConsumptionStatus','placeholderEvidenceForbiddenStatus','sameHeadArtifactEvidenceStatus','skipNpmProductBypassStatus'];
 const V100_HARNESS_VERSION = '1.0.0';
-const V100_SUCCESSOR_VERSIONS = ['1.0.0', '1.0.1', '1.0.2', '1.0.3', '1.0.4'];
+const V100_SUCCESSOR_VERSIONS = ['1.0.0', '1.0.1', '1.0.2', '1.0.3', '1.0.4', '1.0.5'];
 
 export function buildParentHarnessDevelopmentReport(input = parseJson(process.env.CODEX_PARENT_HARNESS_DEVELOPMENT_JSON) || {}) { const reasonCodes = []; const parentVersion = String(input.parentVersion || '0.9.9'); const childVersion = String(input.childVersion || V100_HARNESS_VERSION); if (parentVersion !== '0.9.9' || childVersion !== V100_HARNESS_VERSION || input.parentVersion === '') reasonCodes.push('parent_harness_required'); if (!fs.existsSync('scripts/codex-v099-self-test.mjs') || parseBool(input.parentSelfTestNotRun)) reasonCodes.push('parent_harness_self_test_failed'); if (any(input, ['newHarnessOnlyJudgement','v099GateWeakened','targetRolloutBeforeSourceMainVerification'])) reasonCodes.push('parent_gate_preservation_failed'); return safe('parentHarnessDevelopmentStatus', reasonCodes.length ? 'fail' : 'pass', { reasonCodes, parentVersion, childVersion }); }
 export function buildParentHarnessSelfTestReport(input = parseJson(process.env.CODEX_PARENT_HARNESS_SELF_TEST_JSON) || {}) { const reasonCodes = []; if (!fs.existsSync('scripts/codex-v099-self-test.mjs') || !hasText('scripts/codex-local-quality-gate.mjs', 'v099SelfTestStatus')) reasonCodes.push('parent_harness_self_test_failed'); if (any(input, ['activeParentFailure','parentActiveSelfTestRegistryMissing','legacyFailureBlockingActive','activeFailureAdvisory'])) reasonCodes.push('parent_harness_self_test_failed'); return safe('parentHarnessSelfTestStatus', reasonCodes.length ? 'fail' : 'pass', { reasonCodes, requiredSelfTestCount: 9 }); }

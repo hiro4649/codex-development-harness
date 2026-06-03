@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
   "harnessVersion": "0.9.2",
   "cases": [
     "no_auth_changes_should_not_trigger_auth_oracle",

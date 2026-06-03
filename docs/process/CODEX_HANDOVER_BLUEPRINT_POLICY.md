@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Handover Blueprint Policy
 
 Defines maintainer handover maps, runbooks, risks, confidence, and operation checklist outputs.

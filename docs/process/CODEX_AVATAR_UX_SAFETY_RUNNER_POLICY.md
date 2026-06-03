@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Avatar UX Safety Runner Policy
 
 Avatar UX evidence remains safe-summary-only and checks viewer comfort, photosensitivity, subtitle and game UI obstruction, gaze pressure, cooldown fatigue, parasocial distance, monetization pressure, closeup recovery, and visibility guards.

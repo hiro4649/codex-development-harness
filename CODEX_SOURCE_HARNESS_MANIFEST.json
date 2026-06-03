@@ -1,12 +1,12 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.4",
-  "harnessVersion": "1.0.4",
-  "sourceHarnessVersion": "1.0.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
+  "harnessVersion": "1.0.5",
+  "sourceHarnessVersion": "1.0.5",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
   ],
-  "schemaVersion": "1.0.4",
+  "schemaVersion": "1.0.5",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -31,7 +31,10 @@
     "docs/process/*.json",
     "docs/process/golden/*.json",
     "docs/process/skills/*.md",
-    "scripts/codex-*"
+    "scripts/codex-*",
+    "scripts/codex-v105-gate-lib.mjs",
+    "scripts/codex-v105-self-test.mjs",
+    "docs/process/CODEX_V105_INTEGRATION_EVIDENCE_RELIABILITY_POLICY.md"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -466,7 +469,8 @@
     "docs/process/CODEX_TOOL_PERMISSION_BOUNDARY.md",
     "docs/process/CODEX_EVIDENCE_SITE_POLICY.md",
     "docs/process/CODEX_SAFE_ARTIFACT_SITE_SCHEMA.json",
-    "docs/process/CODEX_ANNOTATION_WORKPACKET_POLICY.md"
+    "docs/process/CODEX_ANNOTATION_WORKPACKET_POLICY.md",
+    "docs/process/CODEX_V105_INTEGRATION_EVIDENCE_RELIABILITY_POLICY.md"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -816,5 +820,43 @@
     "codex-evidence-site-policy-gate.mjs",
     "codex-annotation-workpacket-validate.mjs"
   ],
-  "optionalFiles": []
+  "optionalFiles": [],
+  "activeHarnessVersion": "1.0.5",
+  "activeSelfTestSuite": "v105",
+  "activeSelfTestStatusKey": "v105SelfTestStatus",
+  "legacySelfTestSuites": {
+    "v104": "advisory",
+    "v103": "advisory"
+  },
+  "targetRollout": "not_started",
+  "representativeRealPrValidation": "not_started",
+  "syntheticRepresentativeValidation": "pass",
+  "v105RequiredStatuses": [
+    "v105SelfTestStatus",
+    "representativeProductPrValidationStatus",
+    "evidenceSingleSourceStatus",
+    "evidenceDriftCheckerStatus",
+    "targetSafeReportContractStatus",
+    "sourceOnlyCompatibilityStatus",
+    "activeLegacySelfTestSummaryStatus",
+    "diagnosticSourceTraceStatus",
+    "qualityGateSelfProtectionStatus",
+    "integrationGovernanceStatus",
+    "draftPrInventoryModelStatus",
+    "nextIntegrationCandidateStatus",
+    "stopCreatingPolicyPrStatus",
+    "productionReadinessG4GateStatus",
+    "observabilityEvidenceGateStatus",
+    "chaosLiteRuntimeSimulationStatus",
+    "atomicityDeliveryIntegrityStatus",
+    "reviewEvidenceTypedSchemaStatus",
+    "ownerValuesValidatorStandardStatus",
+    "tokenDeploymentLadderStateStatus",
+    "safeSuggestedPatchStatus",
+    "taskSizeAdvisorStatus",
+    "runtimeReadinessBlockerDigestV2Status",
+    "dynamicWorkflowWorkerBoundaryV2Status",
+    "toolPermissionBoundaryV2Status",
+    "roleProfilePluginV2Status"
+  ]
 }

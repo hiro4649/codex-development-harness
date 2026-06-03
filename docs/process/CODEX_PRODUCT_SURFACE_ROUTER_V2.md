@@ -1,6 +1,6 @@
 # Product Surface Router v2
 
-CODEX_QUALITY_HARNESS_FILE v1.0.4
+CODEX_QUALITY_HARNESS_FILE v1.0.5
 
 Status: productSurfaceRouterV2Status
 
