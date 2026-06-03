@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Target Local Path Discovery Policy
 
 Target work must discover the current local path and verify remote identity before analysis. Past paths are never source of truth.

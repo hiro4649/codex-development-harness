@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Parallel Worker Budget Policy
 
 Limits read-only workers to five, write workers to one, and forbids same branch or same file multi-writes.

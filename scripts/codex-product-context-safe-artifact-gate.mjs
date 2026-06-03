@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.4
+// CODEX_QUALITY_HARNESS_FILE v1.0.5
 import { fileURLToPath } from 'node:url';
 import { isPrContext, scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 

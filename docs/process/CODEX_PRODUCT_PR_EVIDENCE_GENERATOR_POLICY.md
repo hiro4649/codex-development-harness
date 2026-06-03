@@ -1,6 +1,6 @@
 # Codex Product PR Evidence Generator Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.4
+CODEX_QUALITY_HARNESS_FILE v1.0.5
 
 Product PR evidence packs must include task mode, risk, changed files,
 expected product files, local pre-push evidence, formal product evidence, safe

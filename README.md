@@ -1,7 +1,7 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Codex Development Harness
 
-Version: v1.0.4
+Version: v1.0.5
 Name: Claim-to-Code Verification, Boundary Linting, Evidence v2, and Risk Hysteresis
 
 This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.3 preserves v1.0.2 clean-main, fixture isolation, product PR recovery, external blocked separation, handover snapshot, protected state, and workflow resume.

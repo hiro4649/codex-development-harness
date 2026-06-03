@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Product Verification Evidence Policy
 
 Product verification evidence is normalized before scoring. Harness-only changes may skip npm checks when no runtime readiness is claimed. Product, package, runtime, or performance claims require safe command evidence.

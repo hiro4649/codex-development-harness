@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Codex Evidence Integrity Policy
 
 Evidence must be checkable, current, and scoped to the head being reviewed. Text that merely says "passed", "looks good", "verified", "done", "TBD", or "not run" is weak evidence unless paired with command, result, source, date, and a reason where applicable.

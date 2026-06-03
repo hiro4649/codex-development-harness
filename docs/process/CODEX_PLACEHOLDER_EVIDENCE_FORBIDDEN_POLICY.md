@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Placeholder Evidence Forbidden Policy
 
 Pending or placeholder artifacts can describe local pre-push remote-evidence debt, but they cannot satisfy product verification, baseline, diagnostic, merge readiness, or runtime readiness fields for product-relevant pull requests.

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Questions
 
 Use this file only for unresolved HARNESS authority or workflow questions that cannot be answered from `docs/codex/AUTHORITY_POLICY.md` and `docs/process/CODEX_PROJECT_AUTHORITY_REGISTRY.json`.

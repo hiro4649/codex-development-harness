@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Motion Allowlist Diff Policy
 
 Future, experimental, unsupported, or phase-mismatched motion labels must not become runtime executable through dataset drift, docs drift, or renderer allowlist drift. Unsupported labels must be safe rejects.

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Codex Workflow Runner Policy
 
 The workflow runner evaluates the JSON report from `scripts/codex-local-quality-gate.mjs` and writes safe artifacts only. It must preserve source and target gate requirements, manual confirmation behavior, and non-overridable failures.

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Subagent Role Matrix Policy
 
 Defines planner, guards, reviewers, and merge operator roles with safe-output-only evidence.

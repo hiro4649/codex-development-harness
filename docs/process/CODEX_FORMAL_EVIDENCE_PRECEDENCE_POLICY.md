@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Formal Evidence Precedence Policy
 
 Formal same-head remote product evidence has precedence over pending placeholder diagnostics and standby lifeboat artifacts. A normal safe bundle plus standby lifeboat is diagnostic, not a failure.

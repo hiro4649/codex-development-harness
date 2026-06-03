@@ -1,6 +1,6 @@
 # Claim To Code Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.4
+CODEX_QUALITY_HARNESS_FILE v1.0.5
 
 The harness must not trust claims by default. It extracts deterministic claims
 from safe PR body or fixture text, maps each claim to deterministic checks, and

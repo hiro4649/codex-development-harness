@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Codex Security Lifecycle Policy
 
 v0.9.2 applies deterministic, lightweight security lifecycle checks at edit, turn, and commit boundaries. The default gate uses local patterns only and does not require an external LLM judge, MCP, browser, Playwright, AST parser, or product command execution.

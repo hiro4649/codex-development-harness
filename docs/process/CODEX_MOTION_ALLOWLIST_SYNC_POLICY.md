@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Motion Allowlist Sync Policy
 
 Prevents future or unsupported motion labels from being treated as runtime executable, and requires runtime allowlist mismatch to safe-reject.

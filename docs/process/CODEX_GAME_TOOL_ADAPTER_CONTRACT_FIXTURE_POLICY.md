@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Game Tool Adapter Contract Fixture Policy
 
 Game/Tool Adapter fixtures must reject candidate direct handoff, raw world commands, endpoint or token leaks, stale observations, and fixture-as-real readiness.

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.4 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
 # Codex Fast Path Policy
 
 Fast path is allowed only for classified harness-only or docs-only changes with no product relevance, package or lockfile change, runtime readiness claim, performance claim, unsafe output, stale evidence, unknown files, or source/target coupling violation.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.4
+// CODEX_QUALITY_HARNESS_FILE v1.0.5
 import { scanObjectForUnsafe, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import * as gates from './codex-v104-gate-lib.mjs';
 
@@ -169,7 +169,7 @@ const categoryFailures = requiredCategories
 const allResults = [...results, ...coverageFailures, ...categoryFailures];
 const failures = allResults.filter((item) => item.status !== 'pass');
 const report = {
-  marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.4',
+  marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.5',
   status: failures.length ? 'fail' : 'pass',
   activeHarnessVersion: '1.0.4',
   activeSelfTestSuite: 'v104',

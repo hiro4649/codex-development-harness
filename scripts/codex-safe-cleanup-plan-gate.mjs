@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.4
+// CODEX_QUALITY_HARNESS_FILE v1.0.5
 import { buildSafeCleanupPlanReport, runV100GateCli } from './codex-v100-gate-lib.mjs';
 
 export { buildSafeCleanupPlanReport };
