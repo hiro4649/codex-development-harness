@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Agent Containment Boundary Policy
 
 - Task contracts must describe file, network, credential, and tool boundaries.

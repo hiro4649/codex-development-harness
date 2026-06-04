@@ -1,6 +1,6 @@
 # Annotation Workpacket Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.5
+CODEX_QUALITY_HARNESS_FILE v1.0.6
 
 Statuses:
 

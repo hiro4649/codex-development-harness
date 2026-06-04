@@ -1,6 +1,6 @@
 # Codex Handover Snapshot Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.5
+CODEX_QUALITY_HARNESS_FILE v1.0.6
 
 Handover snapshots let a future Codex resume safely after context loss. They
 must include source version, main heads, remote gates, target repos, open and

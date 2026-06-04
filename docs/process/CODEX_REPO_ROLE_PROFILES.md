@@ -1,6 +1,6 @@
 # Repo Role Profiles
 
-CODEX_QUALITY_HARNESS_FILE v1.0.5
+CODEX_QUALITY_HARNESS_FILE v1.0.6
 
 Repo role profiles bind tools, evidence contracts, and file ownership to the
 current repository role. They do not grant permissions beyond user, system, or

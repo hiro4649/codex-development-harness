@@ -1,6 +1,6 @@
 # Codex Harness v1.0.4 Spec
 
-CODEX_QUALITY_HARNESS_FILE v1.0.5
+CODEX_QUALITY_HARNESS_FILE v1.0.6
 
 v1.0.4 is a source-harness-only release. It does not roll out to target
 repositories and does not implement product runtime behavior.

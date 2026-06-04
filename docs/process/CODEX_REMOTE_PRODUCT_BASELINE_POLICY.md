@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Remote Product Baseline Policy
 
 Product-relevant PRs need safe evidence for the base branch before candidate results are interpreted.

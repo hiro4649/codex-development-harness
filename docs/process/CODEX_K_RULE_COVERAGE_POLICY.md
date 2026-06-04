@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # K Rule Coverage Policy
 
 Requires K-rule and Live2D allowlist coverage to be represented by deterministic fixtures before claims are accepted.

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Evidence Continuity Policy
 
 Evidence continuity checks that key safe evidence paths survive preflight,

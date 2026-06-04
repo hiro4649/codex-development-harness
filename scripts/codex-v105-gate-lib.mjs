@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.5
+// CODEX_QUALITY_HARNESS_FILE v1.0.6
 import { scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 
 export const V105_STATUS_KEYS = [
@@ -326,7 +326,7 @@ export function buildDefaultV105Reports(input = {}) {
 
 export function buildV105Report(input = {}) {
   const report = {
-    marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.5',
+    marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.6',
     harnessVersion: '1.0.5',
     status: 'pass',
     ...buildDefaultV105Reports(input),

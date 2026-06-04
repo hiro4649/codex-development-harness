@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Legacy Self-Test Advisory Policy
 
 Only the active harness version self-test is blocking for the current release. For v0.9.9, the active self-test status key is `v099SelfTestStatus`.

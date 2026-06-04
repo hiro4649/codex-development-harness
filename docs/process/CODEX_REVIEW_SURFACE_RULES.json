@@ -1,6 +1,6 @@
 {
   "schemaVersion": "0.8.6",
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
   "harnessVersion": "0.8.8",
   "authPatterns": ["auth", "security", "admin", "permission", "role", "session", "token", "login", "oauth"],
   "storagePatterns": ["db", "database", "postgres", "sqlite", "json-store", "repository", "migration", "schema"],

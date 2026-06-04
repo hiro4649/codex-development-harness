@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Branch Isolation Policy
 
 Requires repo, baseSha, branch, allowed files, forbidden files, expected output, merge dependency, and stop condition per worker.

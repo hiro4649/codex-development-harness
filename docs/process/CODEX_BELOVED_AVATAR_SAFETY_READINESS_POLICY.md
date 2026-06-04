@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Beloved Avatar Safety Readiness Policy
 
 Beloved avatar safety readiness separates affection from dependency induction, monetization pressure, memory privacy violations, and unsupported persistence claims.

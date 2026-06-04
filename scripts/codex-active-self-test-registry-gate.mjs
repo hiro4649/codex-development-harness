@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.5
+// CODEX_QUALITY_HARNESS_FILE v1.0.6
 import { buildActiveSelfTestRegistryReport, runV097GateCli } from './codex-v097-gate-lib.mjs';
 
 export { buildActiveSelfTestRegistryReport };

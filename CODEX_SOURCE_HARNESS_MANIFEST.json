@@ -1,12 +1,12 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
-  "harnessVersion": "1.0.5",
-  "sourceHarnessVersion": "1.0.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
+  "harnessVersion": "1.0.6",
+  "sourceHarnessVersion": "1.0.6",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
   ],
-  "schemaVersion": "1.0.5",
+  "schemaVersion": "1.0.6",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -34,7 +34,12 @@
     "scripts/codex-*",
     "scripts/codex-v105-gate-lib.mjs",
     "scripts/codex-v105-self-test.mjs",
-    "docs/process/CODEX_V105_INTEGRATION_EVIDENCE_RELIABILITY_POLICY.md"
+    "docs/process/CODEX_V105_INTEGRATION_EVIDENCE_RELIABILITY_POLICY.md",
+    "scripts/codex-v106-gate-lib.mjs",
+    "scripts/codex-v106-self-test.mjs",
+    "docs/process/CODEX_V106_LANE_PROVENANCE_RECOVERY_POLICY.md",
+    "docs/process/CODEX_V106_STATUS_SCHEMA.json",
+    "docs/process/CODEX_HARNESS_MANIFEST.json"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -470,7 +475,10 @@
     "docs/process/CODEX_EVIDENCE_SITE_POLICY.md",
     "docs/process/CODEX_SAFE_ARTIFACT_SITE_SCHEMA.json",
     "docs/process/CODEX_ANNOTATION_WORKPACKET_POLICY.md",
-    "docs/process/CODEX_V105_INTEGRATION_EVIDENCE_RELIABILITY_POLICY.md"
+    "docs/process/CODEX_V105_INTEGRATION_EVIDENCE_RELIABILITY_POLICY.md",
+    "docs/process/CODEX_V106_LANE_PROVENANCE_RECOVERY_POLICY.md",
+    "docs/process/CODEX_V106_STATUS_SCHEMA.json",
+    "docs/process/CODEX_HARNESS_MANIFEST.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -818,19 +826,22 @@
     "codex-external-blocked-terminal.mjs",
     "codex-role-profile-gate.mjs",
     "codex-evidence-site-policy-gate.mjs",
-    "codex-annotation-workpacket-validate.mjs"
+    "codex-annotation-workpacket-validate.mjs",
+    "codex-v106-gate-lib.mjs",
+    "codex-v106-self-test.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.0.5",
-  "activeSelfTestSuite": "v105",
-  "activeSelfTestStatusKey": "v105SelfTestStatus",
+  "activeHarnessVersion": "1.0.6",
+  "activeSelfTestSuite": "v106",
+  "activeSelfTestStatusKey": "v106SelfTestStatus",
   "legacySelfTestSuites": {
+    "v105": "advisory",
     "v104": "advisory",
     "v103": "advisory"
   },
   "targetRollout": "not_started",
   "representativeRealPrValidation": "not_started",
-  "syntheticRepresentativeValidation": "pass",
+  "syntheticRepresentativeValidation": "required",
   "v105RequiredStatuses": [
     "v105SelfTestStatus",
     "representativeProductPrValidationStatus",
@@ -858,5 +869,56 @@
     "dynamicWorkflowWorkerBoundaryV2Status",
     "toolPermissionBoundaryV2Status",
     "roleProfilePluginV2Status"
+  ],
+  "sourceOnlyRelease": true,
+  "v106Theme": "Lane, Provenance, and Recovery",
+  "v106RequiredStatuses": [
+    "v106SelfTestStatus",
+    "developmentLaneSeparationStatus",
+    "diagnosticProvenanceStatus",
+    "activeSelfTestExportStatus",
+    "activeRegistryManifestSourceStatus",
+    "legacySelfTestCompatibilityAdapterStatus",
+    "safeAttributionEverywhereStatus",
+    "targetQualityScoreBreakdownStatus",
+    "reasonSummaryAuthoritativeStatus",
+    "remoteProductEvidencePlanStatus",
+    "workflowPathMatchesSelfTestFixtureStatus",
+    "targetHotfixContractStatus",
+    "harnessRegressionLoopLimitStatus",
+    "productPrSafeFailToNextActionMapperStatus",
+    "bodyOnlyRepairClassifierStatus",
+    "prBodySchemaLinterStatus",
+    "evidenceSingleSourceV2Status",
+    "evidenceDriftCheckerV2Status",
+    "boundedValidationRunnerStatus",
+    "releaseReadinessSnapshotStatus",
+    "stackedPrDependencyManagerStatus",
+    "supersessionAutopilotStatus",
+    "secretFindingContextClassifierStatus",
+    "knowledgeGovernanceSchemaStatus",
+    "manualGateRegistryStatus",
+    "runtimePerformanceBudgetStatus",
+    "chaosLiteRuntimeSimulationV2Status",
+    "qualityGateSelfProtectionV2Status",
+    "productR3SchemaV2Status",
+    "realpathSimulationParityStatus",
+    "classificationWarningDisambiguatorStatus",
+    "controlledOrchestrationStatus",
+    "dynamicWorkflowGovernanceStatus",
+    "parallelWorkPacketStatus",
+    "controlledSubagentReviewStatus",
+    "controlledSubthreadReviewStatus",
+    "threadToThreadConversationBoundaryStatus",
+    "verificationFanInStatus",
+    "parentThreadFinalAuthorityStatus",
+    "noRepeatMonitoringGuardStatus",
+    "safeDocsOnlyExceptionRegistryStatus",
+    "stateChangeTriggerDetectorStatus",
+    "policySaturationGateStatus",
+    "userManualWorkAvoidedStatus",
+    "toolPermissionBoundaryV3Status",
+    "roleProfilePluginV3Status",
+    "dynamicWorkflowWorkerBoundaryV3Status"
   ]
 }

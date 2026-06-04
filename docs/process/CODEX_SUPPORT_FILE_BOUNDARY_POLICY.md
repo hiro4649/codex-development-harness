@@ -1,6 +1,6 @@
 # Codex Support File Boundary Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.5
+CODEX_QUALITY_HARNESS_FILE v1.0.6
 
 Source-only support files, including CODEX_SOURCE_HARNESS_MANIFEST.json and
 source release metadata, are not target repo requirements. Target repos may use

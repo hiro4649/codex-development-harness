@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Local Remote Evidence Phase Policy
 
 Separates local pre-push implementation validation from post-push remote evidence. Workflow dispatch evidence is diagnostic and is not a PR check substitute.

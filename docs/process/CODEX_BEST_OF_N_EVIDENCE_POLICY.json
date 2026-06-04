@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
   "harnessVersion": "0.8.8",
   "requiredFor": ["R3", "ambiguous_design", "migration", "security_sensitive", "large_refactor", "architecture_tradeoff"],
   "notRequiredFor": ["docs_update", "typo_fix", "version_marker", "mechanical_manifest_update"],

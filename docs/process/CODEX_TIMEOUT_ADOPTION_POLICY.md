@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Timeout Adoption Policy
 
 Requires timeout policy for tx wait, polling, and long-running runtime paths.

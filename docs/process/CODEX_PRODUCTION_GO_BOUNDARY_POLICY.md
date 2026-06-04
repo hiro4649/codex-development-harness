@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Production Go Boundary Policy
 
 Requires owner approval and production evidence; harness cannot declare production go alone.
