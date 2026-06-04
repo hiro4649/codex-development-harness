@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1.0.6-development-lane-separation-policy",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
+  "purpose": "Separate development lanes from merge/runtime permission so blocked merge readiness does not imply blocked planning or spec persistence.",
+  "safeSummaryOnly": true,
+  "lanes": {
+    "merge": {
+      "status": "blocked",
+      "allowedActions": [],
+      "blockedActions": ["merge", "merge_ready_claim"],
+      "safeNextAction": "keep_merge_lane_blocked"
+    },
+    "runtime": {
+      "status": "blocked",
+      "allowedActions": [],
+      "blockedActions": ["runtime_connection", "runtime_readiness_claim"],
+      "safeNextAction": "keep_runtime_lane_blocked"
+    },
+    "existing_pr": {
+      "status": "preserve_only",
+      "allowedActions": ["inventory", "safe_summary"],
+      "blockedActions": ["comment", "review_request", "rerun", "rebase", "merge", "body_edit"],
+      "safeNextAction": "preserve_existing_pr_state_only"
+    },
+    "docs_only_planning": {
+      "status": "allowed_when_draft_and_docs_process_only",
+      "allowedActions": ["docs_process_planning"],
+      "blockedActions": ["runtime", "src", "test", "workflow", "package", "readme"],
+      "safeNextAction": "continue_docs_process_planning_only"
+    },
+    "spec_persistence": {
+      "status": "allowed_when_draft_and_docs_process_only",
+      "allowedActions": ["docs_process_spec_persistence"],
+      "blockedActions": ["runtime", "src", "test", "workflow", "package", "readme"],
+      "safeNextAction": "persist_spec_in_docs_process_only"
+    },
+    "roadmap_recovery": {
+      "status": "allowed_when_draft_and_docs_process_only",
+      "allowedActions": ["docs_process_roadmap_recovery"],
+      "blockedActions": ["runtime", "src", "test", "workflow", "package", "readme"],
+      "safeNextAction": "record_roadmap_recovery_in_docs_process_only"
+    },
+    "common_utility_planning": {
+      "status": "allowed_when_draft_and_docs_process_only",
+      "allowedActions": ["docs_process_common_utility_planning"],
+      "blockedActions": ["runtime", "src", "test", "workflow", "package", "readme"],
+      "safeNextAction": "plan_common_utility_in_docs_process_only"
+    },
+    "new_schema_validator": {
+      "status": "blocked_by_default",
+      "allowedActions": [],
+      "blockedActions": ["new_validator_without_explicit_scope"],
+      "safeNextAction": "split_schema_validator_for_explicit_approval"
+    },
+    "new_runtime_integration": {
+      "status": "blocked",
+      "allowedActions": [],
+      "blockedActions": ["runtime_adapter_connection", "tts_call", "live2d_call", "api_call"],
+      "safeNextAction": "do_not_connect_runtime_integration"
+    },
+    "new_product_implementation": {
+      "status": "blocked_by_default",
+      "allowedActions": [],
+      "blockedActions": ["product_runtime_implementation"],
+      "safeNextAction": "split_product_implementation_for_explicit_approval"
+    },
+    "review_governance": {
+      "status": "read_only_monitoring",
+      "allowedActions": ["read_only_monitoring", "safe_summary"],
+      "blockedActions": ["writer_self_review_pass", "review_independence_weakening"],
+      "safeNextAction": "continue_read_only_review_governance"
+    },
+    "state_change_monitoring": {
+      "status": "allowed_monitoring_only_with_state_delta",
+      "allowedActions": ["state_delta_monitoring"],
+      "blockedActions": ["repeated_monitoring_without_delta"],
+      "safeNextAction": "monitor_only_when_state_delta_exists"
+    }
+  },
+  "globalBlockedConditions": [
+    "runtime_readiness_claimed",
+    "production_readiness_claimed",
+    "real_tts_readiness_claimed",
+    "merge_readiness_claimed",
+    "touches_existing_preserve_pr",
+    "touches_runtime",
+    "touches_src",
+    "touches_test",
+    "touches_github_workflow",
+    "touches_package",
+    "calls_tts_engine",
+    "calls_moss_tts",
+    "calls_miso_tts",
+    "calls_irodori_tts",
+    "calls_live2d_renderer",
+    "downloads_model",
+    "performs_api_call",
+    "adds_endpoint_config",
+    "runs_benchmark",
+    "weakens_quality_gate",
+    "weakens_review_independence",
+    "treats_writer_self_review_as_pass"
+  ],
+  "allowedImplementationFilesForThisPr": [
+    "scripts/codex-development-lane-router.mjs",
+    "scripts/codex-development-lane-router-self-check.mjs",
+    "docs/process/CODEX_DEVELOPMENT_LANE_SEPARATION_POLICY_V1_0_6.json",
+    "docs/process/CODEX_DEVELOPMENT_LANE_SEPARATION_STATUS_SCHEMA_V1_0_6.json"
+  ]
+}

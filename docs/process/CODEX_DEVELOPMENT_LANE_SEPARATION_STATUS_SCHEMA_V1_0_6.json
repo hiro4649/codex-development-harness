@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codex.local/schemas/CODEX_DEVELOPMENT_LANE_SEPARATION_STATUS_SCHEMA_V1_0_6.json",
+  "title": "Codex Development Lane Separation Status Schema v1.0.6",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "lane",
+    "allowed",
+    "blocked",
+    "reason_codes",
+    "safe_next_action",
+    "safe_summary_only"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "allowed",
+        "blocked",
+        "blocked_by_default",
+        "preserve_only",
+        "read_only_monitoring",
+        "allowed_monitoring",
+        "blocked_repeated_monitoring"
+      ]
+    },
+    "lane": {
+      "type": "string",
+      "enum": [
+        "merge",
+        "runtime",
+        "existing_pr",
+        "docs_only_planning",
+        "spec_persistence",
+        "roadmap_recovery",
+        "common_utility_planning",
+        "new_schema_validator",
+        "new_runtime_integration",
+        "new_product_implementation",
+        "review_governance",
+        "state_change_monitoring",
+        "unknown"
+      ]
+    },
+    "allowed": {
+      "type": "boolean"
+    },
+    "blocked": {
+      "type": "boolean"
+    },
+    "reason_codes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "lane_not_allowed",
+          "merge_lane_blocked",
+          "runtime_lane_blocked",
+          "existing_pr_preserve_only",
+          "docs_only_scope_required",
+          "draft_required",
+          "runtime_readiness_claim_blocked",
+          "production_readiness_claim_blocked",
+          "real_tts_readiness_claim_blocked",
+          "merge_readiness_claim_blocked",
+          "existing_preserve_pr_touch_blocked",
+          "runtime_touch_blocked",
+          "src_touch_blocked",
+          "test_touch_blocked",
+          "workflow_touch_blocked",
+          "package_touch_blocked",
+          "tts_engine_call_blocked",
+          "moss_tts_call_blocked",
+          "miso_tts_call_blocked",
+          "irodori_tts_call_blocked",
+          "live2d_renderer_call_blocked",
+          "model_download_blocked",
+          "api_call_blocked",
+          "endpoint_config_blocked",
+          "benchmark_execution_blocked",
+          "quality_gate_weakening_blocked",
+          "review_independence_weakening_blocked",
+          "writer_self_review_pass_blocked",
+          "state_delta_required_for_monitoring",
+          "explicit_scope_required"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "safe_next_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "safe_summary_only": {
+      "const": true
+    }
+  }
+}
