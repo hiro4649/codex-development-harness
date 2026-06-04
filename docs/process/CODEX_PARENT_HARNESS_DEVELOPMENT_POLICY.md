@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Parent Harness Development Policy
 
 v1.0.0 uses v0.9.9 as parent harness and preserves parent gates before target rollout.

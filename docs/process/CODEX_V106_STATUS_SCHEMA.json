@@ -1,0 +1,30 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
+  "schemaVersion": "1.0.6",
+  "statusObject": {
+    "status": "pass | fail | warning | manual_confirmation_required | not_applicable",
+    "reasonCodes": "string[]",
+    "safeSummaryOnly": true
+  },
+  "activeSelfTest": {
+    "suite": "v106",
+    "statusKey": "v106SelfTestStatus",
+    "status": "pass | fail",
+    "blocking": true,
+    "caseCount": "number",
+    "failedCaseCount": "number",
+    "source": "scripts/codex-v106-self-test.mjs"
+  },
+  "safeFailureAttribution": {
+    "safe_case_label": "string",
+    "safe_reason_code": "string",
+    "safe_phase": "string",
+    "safe_expected": "string",
+    "safe_actual_class": "string",
+    "raw_value_emitted": false
+  },
+  "readinessClaims": {
+    "runtimeReadinessClaimed": false,
+    "productionReadinessClaimed": false
+  }
+}

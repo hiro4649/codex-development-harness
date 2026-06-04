@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Module Boundary Policy
 
 Separates core, adapter, service, repository, worker, UI, test, and tooling boundaries.

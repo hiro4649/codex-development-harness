@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Parent Harness Preflight Policy
 
 New harness development uses the stable parent harness as the preflight authority. v1.0.1 uses v1.0.0 as parent.

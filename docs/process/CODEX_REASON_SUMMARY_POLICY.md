@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Reason Summary Policy
 
 Reason summaries are compact safe summaries for humans and Codex. They include status, mode, score, up to ten blocking reasons, manual reasons, optional not-applicable gates, and up to five next actions.

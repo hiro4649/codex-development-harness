@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
   "schemaVersion": "0.9.0",
   "required": ["status", "score", "decisionPath", "topBlockingReasons", "topManualReasons", "topWarnings", "topNextActions", "safeSummaryOnly"],
   "maxItems": 5,

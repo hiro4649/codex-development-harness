@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Obsolete PR Auto Recommend Policy
 
 Marks stale harness PRs as close-recommended and forbids reuse or merge into current rollout work.

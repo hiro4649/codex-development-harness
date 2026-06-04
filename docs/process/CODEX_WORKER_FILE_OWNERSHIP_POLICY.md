@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.5 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
 # Worker File Ownership Policy
 
 Prevents multiple workers from editing the same file or harness critical files concurrently.

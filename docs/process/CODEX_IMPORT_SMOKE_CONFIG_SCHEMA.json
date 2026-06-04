@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
   "harnessVersion": "0.8.8",
   "schemaName": "codex_import_smoke_config",
   "fields": {
