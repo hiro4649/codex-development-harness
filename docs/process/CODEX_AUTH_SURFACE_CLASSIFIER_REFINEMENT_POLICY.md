@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Auth Surface Classifier Refinement Policy
 
 Query-only and scheduler state filtering changes should not be classified as auth surface changes without evidence. Real auth and security changes must remain protected.

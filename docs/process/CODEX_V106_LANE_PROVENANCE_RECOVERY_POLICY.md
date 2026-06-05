@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Codex Harness v1.0.6 Lane, Provenance, and Recovery Policy
 
 v1.0.6 is a source-harness-only reliability layer for operating v1.0.5 safely.

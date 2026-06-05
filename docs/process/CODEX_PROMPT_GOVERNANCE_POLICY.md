@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Prompt Governance Policy
 
 Prompt-like files are versioned harness code. Changes to `AGENTS.md`, skills,

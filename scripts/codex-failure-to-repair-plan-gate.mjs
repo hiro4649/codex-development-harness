@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.6
+// CODEX_QUALITY_HARNESS_FILE v1.0.7
 import { buildFailureToRepairPlanReport, runV096GateCli } from './codex-v096-gate-lib.mjs';
 
 export { buildFailureToRepairPlanReport };

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Anti-Accretion Policy
 
 Codex must not add a new active path while leaving the old path active without an explicit disposition, compatibility reason, and removal or deprecation plan.

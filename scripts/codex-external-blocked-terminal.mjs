@@ -1,4 +1,4 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.6
+// CODEX_QUALITY_HARNESS_FILE v1.0.7
 import { runV104Cli } from './codex-v104-gate-lib.mjs';
 runV104Cli('externalBlocked', 'CODEX_EXTERNAL_BLOCKED_TERMINAL_REPORT');

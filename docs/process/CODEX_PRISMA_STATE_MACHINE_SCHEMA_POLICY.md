@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Prisma State Machine Schema Policy
 
 - Tx and job models need explicit state fields before runtime readiness can be claimed.

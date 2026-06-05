@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Remote NPM Diagnostic Policy
 
 Remote npm diagnostics classify failures without exposing logs.

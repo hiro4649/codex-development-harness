@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.7",
   "policyName": "hermes-invariant-gate",
   "invariants": [
     "externalEvidencePreferred",

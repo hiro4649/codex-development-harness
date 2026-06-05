@@ -1,6 +1,6 @@
 # Codex Harness Fixture Diff Isolation Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.6
+CODEX_QUALITY_HARNESS_FILE v1.0.7
 
 Harness self-test fixtures use explicit fixture metadata or temporary fixture
 file lists. They must not depend on unrelated active worktree changes.

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.6
+// CODEX_QUALITY_HARNESS_FILE v1.0.7
 import { fileURLToPath } from 'node:url';
 import { HARNESS_VERSION, marker, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import { buildComplexityGovernanceReport, buildComplexityEvalSuiteReport } from './codex-complexity-governance-gate.mjs';

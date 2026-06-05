@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Plan Reviewer Worker Policy
 
 Product behavior plans are reviewed before implementation by `owner_reviewer`, `cutover_reviewer`, and `evidence_reviewer`.

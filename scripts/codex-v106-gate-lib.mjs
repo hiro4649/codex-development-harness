@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.6
+// CODEX_QUALITY_HARNESS_FILE v1.0.7
 import { scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 
 export const V106_STATUS_KEYS = [
@@ -399,7 +399,7 @@ export function buildSecretFindingContextClassifierReport(input = {}) {
 }
 
 export function buildKnowledgeGovernanceSchemaReport(input = {}) {
-  const schema = input.schema || { marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.6', source: 'safe_artifact', boundary: 'source_harness', status: 'pass', safeSummaryOnly: true };
+  const schema = input.schema || { marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.7', source: 'safe_artifact', boundary: 'source_harness', status: 'pass', safeSummaryOnly: true };
   const reasons = ['marker', 'source', 'boundary', 'status', 'safeSummaryOnly'].filter((field) => schema[field] === undefined).map((field) => `knowledge_schema_${field}_missing`);
   return { knowledgeGovernanceSchemaStatus: fromReasons('knowledgeGovernanceSchemaStatus', reasons, { schema }) };
 }
@@ -590,7 +590,7 @@ export function buildDefaultV106Reports(input = {}) {
 
 export function buildV106Report(input = {}) {
   const report = {
-    marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.6',
+    marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.7',
     harnessVersion: '1.0.6',
     status: 'pass',
     ...buildDefaultV106Reports(input),

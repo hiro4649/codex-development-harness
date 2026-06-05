@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Workflow Stop Condition Policy
 
 Stops on forbidden files, readiness claims, same-head mismatch, remote failure, missing artifacts, and unresolved Actions blockers.
