@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.7
+// CODEX_QUALITY_HARNESS_FILE v1.0.8
 
 import { scanObjectForUnsafe, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import { buildHarnessVersionRegistry } from './codex-harness-version.mjs';
@@ -270,9 +270,12 @@ export function buildTypedStatusSchemaReport(input = {}) {
 export function buildCentralHarnessVersionRegistryReport(input = {}) {
   const registry = input.registry || buildHarnessVersionRegistry();
   const reasons = [];
-  if (registry.currentVersion !== '1.0.7') reasons.push('current_version_not_v107');
-  if (registry.previousVersion !== '1.0.6') reasons.push('previous_version_not_v106');
-  if (registry.activeSelfTestStatusKey !== 'v107SelfTestStatus') reasons.push('active_self_test_not_v107');
+  const compatibleCurrent = registry.currentVersion === '1.0.7' || registry.currentVersion === '1.0.8';
+  const compatiblePrevious = registry.previousVersion === '1.0.6' || registry.previousVersion === '1.0.7';
+  const compatibleSelfTest = registry.activeSelfTestStatusKey === 'v107SelfTestStatus' || registry.activeSelfTestStatusKey === 'v108SelfTestStatus';
+  if (!compatibleCurrent) reasons.push('current_version_not_v107_or_later');
+  if (!compatiblePrevious) reasons.push('previous_version_not_v106_or_v107');
+  if (!compatibleSelfTest) reasons.push('active_self_test_not_v107_compatible');
   return { ...fromReasons('centralHarnessVersionRegistryStatus', reasons, { safeSummary: registry }) };
 }
 
@@ -596,7 +599,7 @@ export function buildDefaultV107Reports(input = {}) {
 
 export function buildV107Report(input = {}) {
   const report = {
-    marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.7',
+    marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.8',
     harnessVersion: '1.0.7',
     sourceHarnessVersion: '1.0.7',
     status: 'pass',

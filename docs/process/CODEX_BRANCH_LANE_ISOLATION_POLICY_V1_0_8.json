@@ -1,0 +1,29 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.8",
+  "policy": "branch_lane_isolation",
+  "dirtyClasses": [
+    "harness_managed_dirty",
+    "product_dirty",
+    "unknown_dirty",
+    "protected_patch",
+    "untracked_artifact",
+    "unrelated_lane_dirty"
+  ],
+  "mutationContract": {
+    "parentBranchBefore": "string",
+    "parentBranchAfter": "string",
+    "parentHeadBefore": "string",
+    "parentHeadAfter": "string",
+    "parentTrackedMutation": false,
+    "isolatedWorktreeUsed": true,
+    "isolatedCleanupStatus": "pass",
+    "continuationAllowed": true
+  },
+  "hardFails": [
+    "caller_branch_mutation_forbidden",
+    "parent_worktree_mutation_detected",
+    "cross_lane_dirty_file",
+    "protected_patch_quarantined"
+  ],
+  "safeSummaryOnly": true
+}

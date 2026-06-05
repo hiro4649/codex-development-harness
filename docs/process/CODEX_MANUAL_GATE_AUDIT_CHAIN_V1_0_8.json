@@ -1,0 +1,36 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.8",
+  "policy": "manual_gate_audit_chain",
+  "recordFields": [
+    "approvalId",
+    "approvedHeadSha",
+    "approvedOperation",
+    "approvedTargetEnv",
+    "approvedBy",
+    "approvedAt",
+    "expiresAt",
+    "evidenceSha256",
+    "usedByOperationId",
+    "usedAt",
+    "canBeReused",
+    "rollbackPlanRef"
+  ],
+  "providerErrorTaxonomy": [
+    "auth_failure",
+    "quota_or_rate_limited",
+    "invalid_payload",
+    "provider_unavailable",
+    "permission_denied",
+    "dry_run_unsupported",
+    "rollback_required",
+    "operator_action_required"
+  ],
+  "rules": {
+    "manualGateTextAloneIsApproval": false,
+    "approvalBindsHeadAndOperation": true,
+    "approvalReusableByDefault": false,
+    "providerRawErrorsPublic": false,
+    "manualGateCanAuthorizeProductionReadinessAlone": false
+  },
+  "safeSummaryOnly": true
+}

@@ -1,17 +1,19 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.7
+// CODEX_QUALITY_HARNESS_FILE v1.0.8
 
-export const currentVersion = '1.0.7';
-export const previousVersion = '1.0.6';
-export const activeSelfTestStatusKey = 'v107SelfTestStatus';
-export const activeSelfTestSuite = 'v107';
-export const legacyAdvisorySuites = ['v106', 'v105', 'v104', 'v103'];
-export const knownVersions = ['1.0.3', '1.0.4', '1.0.5', '1.0.6', '1.0.7'];
+export const currentVersion = '1.0.8';
+export const previousVersion = '1.0.7';
+export const activeSelfTestStatusKey = 'v108SelfTestStatus';
+export const activeSelfTestSuite = 'v108';
+export const legacyAdvisorySuites = ['v107', 'v106', 'v105', 'v104', 'v103'];
+export const knownVersions = ['1.0.3', '1.0.4', '1.0.5', '1.0.6', '1.0.7', '1.0.8'];
 export const versionLineagePolicy = {
   sourceOnlyRelease: true,
   targetRollout: 'not_started',
   representativeLivePrValidation: 'not_started',
   representativeRealPrReplay: 'required',
+  evidenceClosure: 'required',
+  orchestratedRepair: 'required',
   runtimeReadinessClaimed: false,
   productionReadinessClaimed: false,
   safeSummaryOnly: true,

@@ -1,0 +1,26 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.8",
+  "schema": "review_evidence_intake",
+  "classifications": [
+    "none",
+    "writer_only",
+    "bot_only",
+    "requested_only",
+    "team_requested_only",
+    "independent_comment_present",
+    "independent_review_submitted",
+    "independent_approval_same_head",
+    "independent_approval_stale",
+    "changes_requested",
+    "dismissed",
+    "ambiguous"
+  ],
+  "rules": {
+    "reviewRequestIsEvidence": false,
+    "writerSelfReviewIsIndependent": false,
+    "botOnlyIsIndependent": false,
+    "staleReviewSupportsMerge": false,
+    "missingIndependentReviewMergeReadiness": "no"
+  },
+  "safeSummaryOnly": true
+}
