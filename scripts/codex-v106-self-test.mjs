@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.6
+// CODEX_QUALITY_HARNESS_FILE v1.0.7
 import { scanObjectForUnsafe, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import * as gates from './codex-v106-gate-lib.mjs';
 
@@ -28,7 +28,7 @@ const CASES = [
   ['quality_gate_run_id_not_required_in_pr_body', gates.buildEvidenceSingleSourceV2Report, {}, 'evidenceSingleSourceV2Status', 'pass'],
   ['secret_env_reference_not_committed_secret', gates.buildSecretFindingContextClassifierReport, { context: 'env_reference', value: 'process.env.SECRET_NAME' }, 'secretFindingContextClassifierStatus', 'pass'],
   ['secret_negative_fixture_not_committed_secret', gates.buildSecretFindingContextClassifierReport, { context: 'generated_negative_fixture', value: 'fixture_redacted' }, 'secretFindingContextClassifierStatus', 'pass'],
-  ['knowledge_governance_schema_required', gates.buildKnowledgeGovernanceSchemaReport, { schema: { marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.6' } }, 'knowledgeGovernanceSchemaStatus', 'fail'],
+  ['knowledge_governance_schema_required', gates.buildKnowledgeGovernanceSchemaReport, { schema: { marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.7' } }, 'knowledgeGovernanceSchemaStatus', 'fail'],
   ['bounded_validation_timeout_is_evidence_limitation', gates.buildBoundedValidationRunnerReport, { fullTargetTimeout: true }, 'boundedValidationRunnerStatus', 'pass'],
   ['full_target_timeout_not_product_failure', gates.buildBoundedValidationRunnerReport, { fullTargetTimeout: true }, 'boundedValidationRunnerStatus', 'pass'],
   ['stacked_pr_not_main_independent', gates.buildStackedPrDependencyManagerReport, { stacked: true }, 'stackedPrDependencyManagerStatus', 'fail'],
@@ -70,7 +70,7 @@ const results = CASES.map(([name, builder, input, key, expected]) => {
 
 const failures = results.filter((item) => item.status !== 'pass');
 const report = {
-  marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.6',
+  marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.7',
   status: failures.length ? 'fail' : 'pass',
   activeHarnessVersion: '1.0.6',
   activeSelfTestSuite: 'v106',

@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Receipt Evidence Schema Policy
 
 - Receipt evidence must be safe public data only.

@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.7",
   "harnessVersion": "0.9.2",
   "policy": "remote_local_parity",
   "compare": ["changedFiles", "registryHash", "rulesVersion", "unknownClasses", "evidencePaths"],

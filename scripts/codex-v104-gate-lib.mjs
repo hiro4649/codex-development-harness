@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.6
+// CODEX_QUALITY_HARNESS_FILE v1.0.7
 import { scanObjectForUnsafe, simpleStatus, writeJsonReport, exitFor, normalizePath } from './codex-v080-lib.mjs';
 
 export const V104_STATUS_KEYS = [
@@ -604,7 +604,7 @@ const CLI_BUILDERS = {
 
 export function runV104Cli(kind = 'default', envName = 'CODEX_V104_REPORT') {
   const builder = CLI_BUILDERS[kind] || CLI_BUILDERS.default;
-  const report = { marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.6', status: 'pass', ...builder() };
+  const report = { marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.7', status: 'pass', ...builder() };
   const failing = Object.values(report).some((value) => value && typeof value === 'object' && value.status === 'fail');
   report.status = failing ? 'fail' : 'pass';
   writeJsonReport(report, envName);

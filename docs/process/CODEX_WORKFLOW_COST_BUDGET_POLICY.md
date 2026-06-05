@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Workflow Cost Budget Policy
 
 Caps worker count, reruns, artifacts, PR size, and requires fast path for small changes.

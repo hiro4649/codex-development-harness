@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Old Path Disposition Policy
 
 When a new path is added, the old path disposition must be one of `remove`, `redirect`, `deprecate`, `compat_keep_with_owner`, or `not_applicable`.

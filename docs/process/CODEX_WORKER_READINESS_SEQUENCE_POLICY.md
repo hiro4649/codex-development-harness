@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Worker Readiness Sequence Policy
 
 - Worker readiness sequence is schema and pure helper, receipt reconciliation, claim timeout retry, worker entrypoint, then staging no-tx evidence.

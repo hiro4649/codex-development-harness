@@ -1,6 +1,6 @@
 # Codex Clean-main Baseline Policy
 
-CODEX_QUALITY_HARNESS_FILE v1.0.6
+CODEX_QUALITY_HARNESS_FILE v1.0.7
 
 Classify whether a failure belongs to clean main, the current PR, legacy
 self-test drift, fixture orchestration, support-file materialization, product

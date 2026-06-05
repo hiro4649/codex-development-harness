@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.6
+// CODEX_QUALITY_HARNESS_FILE v1.0.7
 import { HARNESS_VERSION } from './codex-v080-lib.mjs';
 
 export const GOLDEN_HEAD = '1111111111111111111111111111111111111111';
@@ -89,7 +89,7 @@ export function buildStructuredEvidencePrBody(options = {}) {
 export function cleanAgentsContext() {
   return [
     '<!-- CODEX_QUALITY_HARNESS_BEGIN -->',
-    'CODEX_QUALITY_HARNESS_FILE v1.0.6',
+    'CODEX_QUALITY_HARNESS_FILE v1.0.7',
     '',
     '## Source Harness Boundary',
     'This repository uses harness-managed checks only.',

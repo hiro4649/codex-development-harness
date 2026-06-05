@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Visible Acceptance Evidence Policy
 
 Acceptance evidence records before and after user-visible behavior, what the user saw, received, and could do, plus evidence type, evidence location, and limitations.

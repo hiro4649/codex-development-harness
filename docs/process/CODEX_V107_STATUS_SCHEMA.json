@@ -1,0 +1,42 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.7",
+  "schemaVersion": "1.0.7",
+  "harnessVersion": "1.0.7",
+  "statusContract": {
+    "required": [
+      "status",
+      "blocking",
+      "reasonCodes",
+      "evidenceConsumed",
+      "safeSummary",
+      "nextSafeAction",
+      "safeSummaryOnly"
+    ],
+    "statusEnum": [
+      "pass",
+      "fail",
+      "warning",
+      "advisory",
+      "not_applicable",
+      "skipped_by_profile",
+      "blocked_by_context",
+      "blocked_by_remote_pending",
+      "harness_internal_gap",
+      "policy_registered"
+    ],
+    "forbiddenStatusValues": ["not_run"],
+    "commitStatusStates": ["green", "red", "pending", "absent", "stale", "unknown"],
+    "mergeEvidenceRules": [
+      "absent_is_not_green",
+      "absent_is_not_red",
+      "absent_cannot_support_merge",
+      "stale_cannot_support_merge",
+      "pending_cannot_support_merge"
+    ]
+  },
+  "sourceOnlyRelease": true,
+  "activeStatusKey": "v107SelfTestStatus",
+  "representativeLivePrValidation": "not_started",
+  "targetRollout": "not_started",
+  "safeSummaryOnly": true
+}

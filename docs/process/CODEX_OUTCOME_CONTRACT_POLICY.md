@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Outcome Contract Policy
 
 Before a product behavior change, Codex records the outcome contract: `replacedBehavior`, `expectedOutcome`, `sourceOfTruthOwner`, `oldPathDisposition`, and `doneEvidence`.

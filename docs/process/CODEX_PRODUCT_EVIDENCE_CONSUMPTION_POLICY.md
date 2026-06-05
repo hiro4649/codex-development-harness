@@ -1,4 +1,4 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
 # Product Evidence Consumption Policy
 
 The local quality gate, workflow runner, and final summaries must consume generated remote product evidence, baseline, and diagnostic artifacts instead of substituting placeholder success. Missing generated evidence remains blocking for product-relevant pull requests.

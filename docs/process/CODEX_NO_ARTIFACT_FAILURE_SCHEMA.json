@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.7",
   "schemaVersion": "0.9.0",
   "required": ["status", "artifactExpected", "artifactFound", "failurePhase", "reasonCodes", "safeNextAction", "safeSummaryOnly"],
   "failurePhaseAllowed": ["before_lifeboat", "preflight_failed", "quality_gate_failed_before_summary", "workflow_runner_failed", "upload_step_skipped", "upload_step_failed", "artifact_api_unavailable", "unknown"],

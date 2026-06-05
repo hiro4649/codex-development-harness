@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.6
+// CODEX_QUALITY_HARNESS_FILE v1.0.7
 import { scanObjectForUnsafe, writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import * as gates from './codex-v103-gate-lib.mjs';
 
@@ -92,7 +92,7 @@ const results = CASES.map(([name, builder, input, key, expected]) => {
 
 const failures = results.filter((item) => item.status !== 'pass');
 const report = {
-  marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.6',
+  marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.7',
   status: failures.length ? 'fail' : 'pass',
   v103SelfTestStatus: {
     status: failures.length ? 'fail' : 'pass',

@@ -1,0 +1,34 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.7",
+  "schemaVersion": "1.0.7",
+  "harnessVersion": "1.0.7",
+  "required": [
+    "source_head_sha",
+    "base_sha",
+    "pr_number",
+    "run_id",
+    "artifact_id",
+    "test_summary_json",
+    "quality_score",
+    "status_summary",
+    "risk_register",
+    "manual_gate_summary",
+    "readiness_claims",
+    "product_code_changed",
+    "target_repos_touched",
+    "safe_summary_only"
+  ],
+  "forbiddenStoredFields": [
+    "raw_logs",
+    "raw_diff",
+    "raw_pr_body",
+    "raw_tool_output",
+    "raw_provider_payload",
+    "raw_dataset_rows",
+    "raw_asr_audio",
+    "raw_transcript"
+  ],
+  "prBodySourceOfTruth": "evidence_pack",
+  "manualPrBodyEvidence": "advisory_only",
+  "safeSummaryOnly": true
+}
