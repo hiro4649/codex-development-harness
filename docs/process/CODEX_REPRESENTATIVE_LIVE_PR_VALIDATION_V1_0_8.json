@@ -1,0 +1,24 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.8",
+  "policy": "representative_live_pr_validation",
+  "rolloutReadinessRequiresLiveValidation": true,
+  "cases": [
+    "backend-only PR",
+    "contracts-only PR",
+    "docs-only PR",
+    "harness-only PR",
+    "token-preflight PR",
+    "owner issue intake PR",
+    "review packet PR",
+    "safe artifact exporter PR",
+    "preflight gate PR",
+    "body-only governance update PR",
+    "local-pass-remote-fail PR",
+    "stale artifact PR",
+    "missing independent review PR",
+    "wrong cwd npm PR",
+    "target harness branch mutation PR"
+  ],
+  "externalBlockerState": "source_complete_but_live_validation_pending",
+  "safeSummaryOnly": true
+}

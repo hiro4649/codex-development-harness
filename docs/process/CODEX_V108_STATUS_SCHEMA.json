@@ -1,0 +1,52 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.8",
+  "schemaVersion": "1.0.8",
+  "activeStatusKey": "v108SelfTestStatus",
+  "allowedStatusValues": [
+    "pass",
+    "fail",
+    "warning",
+    "advisory",
+    "not_applicable",
+    "skipped_by_profile",
+    "blocked_by_context",
+    "blocked_by_remote_pending",
+    "harness_internal_gap",
+    "policy_registered"
+  ],
+  "requiredStatusShape": {
+    "status": "string",
+    "blocking": "boolean",
+    "reasonCodes": "array",
+    "evidenceConsumed": "array",
+    "safeSummary": "object",
+    "nextSafeAction": "string",
+    "safeSummaryOnly": true
+  },
+  "coreStatusGroups": {
+    "evidenceClosure": [
+      "evidenceClosureStatus",
+      "prBodyArtifactLoopBreakerStatus",
+      "evidencePackV4Status",
+      "artifactAuthoritativeRunStatus",
+      "auditedPrBodyHashStatus",
+      "renderedOutputDriftStatus"
+    ],
+    "publishMode": [
+      "evidenceVerifyModeStatus",
+      "evidenceRenderModeStatus",
+      "evidencePublishModeStatus",
+      "defaultBodyFileProhibitedStatus",
+      "publishRequiresExplicitPrStatus",
+      "publishRequiresExplicitBodyFileStatus"
+    ],
+    "orchestration": [
+      "orchestrationSessionTopologyStatus",
+      "agentTeamBudgetStatus",
+      "worktreeIsolationRequiredStatus",
+      "subagentDefinitionRegistryStatus",
+      "memoryAsContextNotAuthorityStatus"
+    ]
+  },
+  "safeSummaryOnly": true
+}

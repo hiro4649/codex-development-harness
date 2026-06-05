@@ -10,6 +10,7 @@
     "docs/process/",
     "docs/codex/",
     "scripts/codex-*",
+    "scripts/lib/codex-*",
     ".agents/skills/",
     ".codex/"
   ],

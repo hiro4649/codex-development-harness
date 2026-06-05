@@ -1,0 +1,19 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.8",
+  "policy": "orchestration_governance",
+  "rules": {
+    "subagentsAdvisoryOnly": true,
+    "threadToThreadAdvisoryOnly": true,
+    "parentHarnessFinalAuthority": true,
+    "agentTeamDefault": "disabled",
+    "agentTeamBudget": "3-5",
+    "dangerousLeadPermissionForbidden": true,
+    "worktreeIsolationCoversDbEnvSecretService": false,
+    "agentsMdMemoryContextOnly": true,
+    "hardStopsEnforcedBy": [
+      "hooks",
+      "quality-gate"
+    ]
+  },
+  "safeSummaryOnly": true
+}

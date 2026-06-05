@@ -1,0 +1,21 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.8",
+  "policy": "threat_model_to_verify",
+  "flow": [
+    "threat_model",
+    "scan",
+    "triage",
+    "verify",
+    "report",
+    "patch_proposal"
+  ],
+  "rules": {
+    "finderCanApproveOwnFinding": false,
+    "patcherCanVerifyOwnPatch": false,
+    "candidatePatchQuarantinedUntilParentValidation": true,
+    "targetExecutionRequiresSandboxOrManualGate": true,
+    "networkEgressDefault": "deny",
+    "rawExploitPublicArtifact": false
+  },
+  "safeSummaryOnly": true
+}

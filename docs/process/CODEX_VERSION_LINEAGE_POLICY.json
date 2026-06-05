@@ -1,11 +1,13 @@
 {
-    "marker":  "CODEX_QUALITY_HARNESS_FILE v1.0.7",
-    "harnessVersion":  "0.9.4",
-    "policy":  "version_lineage",
-    "requiredActiveVersion":  "0.9.4",
-    "failReasonCodes":  [
-                            "version_lineage_failed",
-                            "active_marker_version_mismatch"
-                        ],
-    "safeSummaryOnly":  true
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.8",
+  "harnessVersion": "1.0.8",
+  "policy": "version_lineage",
+  "requiredActiveVersion": "1.0.8",
+  "activeSelfTestStatusKey": "v108SelfTestStatus",
+  "previousVersion": "1.0.7",
+  "failReasonCodes": [
+    "version_lineage_failed",
+    "active_marker_version_mismatch"
+  ],
+  "safeSummaryOnly": true
 }
