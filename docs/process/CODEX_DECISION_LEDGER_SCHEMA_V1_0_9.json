@@ -1,0 +1,99 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.9",
+  "schemaVersion": "1.0.9",
+  "title": "Codex Decision Ledger v1.0.9",
+  "type": "object",
+  "required": [
+    "decisionLedgerVersion",
+    "repo",
+    "prNumber",
+    "currentHeadSha",
+    "baseSha",
+    "activeHarnessVersion",
+    "targetHarnessVersion",
+    "evidenceSchemaVersion",
+    "profileTemplateVersion",
+    "futureHarnessArtifact",
+    "upgradePath",
+    "evidenceClass",
+    "lane",
+    "qualityGateStatus",
+    "sameHeadRequiredChecksStatus",
+    "independentReviewStatus",
+    "reviewEvidenceProtocolStatus",
+    "runtimeAllowed",
+    "productionAllowed",
+    "mergeAllowed",
+    "hardBlocker",
+    "nonOverridableBlockers",
+    "codexCanSatisfy",
+    "ownerCanSatisfy",
+    "oneSafeNextAction",
+    "allowedFiles",
+    "forbiddenFiles",
+    "safeSummaryOnly"
+  ],
+  "properties": {
+    "decisionLedgerVersion": { "const": "1.0.9" },
+    "repo": { "type": "string" },
+    "prNumber": { "type": ["integer", "null"] },
+    "currentHeadSha": { "type": "string" },
+    "baseSha": { "type": "string" },
+    "activeHarnessVersion": { "type": "string" },
+    "targetHarnessVersion": { "type": "string" },
+    "evidenceSchemaVersion": { "type": ["integer", "string"] },
+    "profileTemplateVersion": { "type": "string" },
+    "futureHarnessArtifact": { "type": "boolean" },
+    "upgradePath": {
+      "enum": [
+        "direct_v107_to_v109",
+        "direct_v108_to_v109",
+        "blocked_previous_rollout_closed_without_merge"
+      ]
+    },
+    "evidenceClass": {
+      "enum": [
+        "harness_rollout",
+        "harness_repair",
+        "product_pr",
+        "docs_only",
+        "body_only_governance",
+        "runtime_candidate",
+        "manual_gate_candidate",
+        "terminal_blocked",
+        "main_reflection_candidate",
+        "inventory_reduction"
+      ]
+    },
+    "lane": {
+      "enum": [
+        "harness_only",
+        "product_scope",
+        "docs_only",
+        "body_only",
+        "review_governance",
+        "runtime_blocked",
+        "production_blocked",
+        "manual_gate_blocked",
+        "terminal_no_action"
+      ]
+    },
+    "qualityGateStatus": { "type": "string" },
+    "sameHeadRequiredChecksStatus": { "type": "string" },
+    "independentReviewStatus": { "type": "string" },
+    "reviewEvidenceProtocolStatus": { "type": "string" },
+    "runtimeAllowed": { "type": "boolean" },
+    "productionAllowed": { "type": "boolean" },
+    "mergeAllowed": { "type": "boolean" },
+    "hardBlocker": { "type": ["string", "null"] },
+    "nonOverridableBlockers": { "type": "array", "items": { "type": "string" } },
+    "codexCanSatisfy": { "type": "boolean" },
+    "ownerCanSatisfy": { "type": "boolean" },
+    "oneSafeNextAction": { "type": "string" },
+    "allowedFiles": { "type": "array", "items": { "type": "string" } },
+    "forbiddenFiles": { "type": "array", "items": { "type": "string" } },
+    "safeSummaryOnly": { "const": true }
+  },
+  "additionalProperties": true,
+  "safeSummaryOnly": true
+}
