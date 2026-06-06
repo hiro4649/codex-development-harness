@@ -74,6 +74,89 @@ by the concrete Decision Ledger implementation surfaces:
 - `qualityRepairPlanV3Status`: absorbed by `repairPlanSafeJsonStatus`,
   `operatorDigestV4Status`, and `failureTriageEngineStatus`.
 
+## External-Source Absorption Map
+
+These external-source-derived concepts are durable v1.0.9 source-harness
+mappings:
+
+- `threatModelFirst`: implemented directly by `threatModelFirstStatus`.
+- `findingTriage`: implemented directly by `findingTriageStatus`.
+- `candidatePatchQuarantine`: implemented directly by
+  `candidatePatchQuarantineStatus`.
+- `patchVerification`: implemented directly by `patchVerificationStatus`.
+- `sandboxedVerificationLane`: implemented directly by
+  `sandboxedVerificationLaneStatus`.
+- `recursiveSelfImprovementBoundary`: implemented directly by
+  `recursiveSelfImprovementBoundaryStatus`.
+- `selfImprovementEvalGate`: implemented directly by
+  `selfImprovementEvalGateStatus`.
+- `moderationSignalGate`: implemented directly by `moderationSignalGateStatus`.
+- `memoryGovernance`: implemented directly by `memoryGovernanceV2Status`.
+- `projectMemoryLedger`: implemented directly by `projectMemoryLedgerStatus`.
+- `memoryFreshness`: implemented directly by `memoryFreshnessStatus`.
+- `memoryReviewability`: implemented directly by `memoryReviewabilityStatus`.
+- `traceToEvalLoop`: implemented directly by `traceToEvalLoopStatus`.
+- `reviewedFinding`: implemented directly by `reviewedFindingStatus`.
+- `evalTargetGeneration`: implemented directly by `evalTargetGenerationStatus`.
+- `dynamicWorkflowSupervisor`: implemented directly by
+  `dynamicWorkflowSupervisorStatus`.
+- `agentSessionInventory`: implemented directly by
+  `agentSessionInventoryStatus`.
+- `parallelAgentBudget`: implemented directly by `parallelAgentBudgetStatus`.
+- `refutationAgent`: implemented directly by `refutationAgentStatus`.
+- `verificationFanIn`: implemented directly by `verificationFanInStatus` and
+  `verificationFanInV3Status`, and absorbed by `decisionLedgerStatus` and
+  `workflowLedgerStatus`.
+- `parentThreadFinalAuthority`: implemented directly by
+  `parentThreadFinalAuthorityStatus` and `parentThreadFinalAuthorityV3Status`,
+  and absorbed by `decisionLedgerStatus` and `workflowLedgerStatus`.
+- `asrTranscriptProvenance`: implemented directly by
+  `asrTranscriptProvenanceStatus`.
+- ASR execution, external moderation API calls, sandbox execution, and runtime
+  integration are intentional non-goals in v1.0.9. v1.0.9 records provenance
+  and boundaries only; it does not execute ASR, call external APIs, run sandboxed
+  target code, or wire runtime paths.
+
+## 8-Session And Orchestration Absorption Map
+
+These orchestration concepts are durable v1.0.9 source-harness mappings:
+
+- `orchestrationSessionTopology`: implemented directly by
+  `orchestrationSessionTopologyStatus`.
+- `agentTeamBudget`: implemented directly by `agentTeamBudgetStatus`.
+- `worktreeIsolationRequired`: implemented directly by
+  `worktreeIsolationRequiredStatus`.
+- `subagentDefinitionRegistry`: implemented directly by
+  `subagentDefinitionRegistryStatus`.
+- `agentHookQualityGate`: implemented directly by `agentHookQualityGateStatus`.
+- `agentMemoryBoundary`: implemented directly by `agentMemoryBoundaryStatus`.
+- `pmSessionRole`, `architectSessionRole`, `frontendSessionRole`,
+  `backendSessionRole`, and `infraDevopsSessionRole`: absorbed by
+  `workflowLedgerStatus` and `decisionLedgerStatus`.
+- `securitySessionRole`: absorbed by `reviewEvidenceProtocolV2Status` and
+  `failureTriageEngineStatus`.
+- `qaReviewerSessionRole`: absorbed by `reviewEvidenceProtocolV2Status`.
+- `technicalWriterSessionRole`: absorbed by `mainReflectionPackageStatus` and
+  `decisionLedgerStatus`.
+- `threeLayerSessionTopology`: absorbed by `orchestrationSessionTopologyStatus`
+  and `workflowLedgerStatus`.
+- `subagentResultOnlyBoundary`: absorbed by `parentThreadFinalAuthorityStatus`
+  and `decisionLedgerStatus`.
+- `agentTeamMailboxBoundary`: absorbed by `orchestrationSessionTopologyStatus`
+  and `workflowLedgerStatus`.
+- `worktreeFileIsolationBoundary`: absorbed by `worktreeIsolationRequiredStatus`
+  and `gateLedgerStatus`.
+- `claudeMdContextNotAuthority`: absorbed by `agentMemoryBoundaryStatus` and
+  `evidenceSelfReferenceBreakerStatus`. Context files are context, not
+  enforcement.
+- `hooksAsEnforcementBoundary`: absorbed by `agentHookQualityGateStatus` and
+  `requiredCheckClosureV2Status`.
+- `memoryMarkdownContextBoundary`: absorbed by `agentMemoryBoundaryStatus` and
+  `memoryGovernanceV2Status`.
+- `teamSizeBudget3to5`: absorbed by `agentTeamBudgetStatus`.
+- `parentFinalAuthorityForTeams`: absorbed by `parentThreadFinalAuthorityStatus`
+  and `decisionLedgerStatus`.
+
 ## CI Failure Diagnosis
 
 Required check failures use safe metadata and safe artifacts only. Raw logs are

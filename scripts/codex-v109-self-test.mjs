@@ -9,7 +9,20 @@ import { classifySafeCiFailureArtifact, classifyRequiredCheckClosure, watchCiSaf
 import { classifyRemoteArtifactFailure, triageFailure } from './codex-remote-artifact-semantic-classifier.mjs';
 import { buildWorkflowLedger, validateWorkflowLedger } from './codex-workflow-ledger.mjs';
 import { buildOperatorDigestV4, validateOperatorDigestV4 } from './codex-operator-digest-v4.mjs';
-import { HARNESS_VERSION, MARKER, V109_STATUS_KEYS, V109_ABSORBED_STATUS_MAP, buildDefaultV109Statuses, classifyMissingStatus, assertNoPlainMissing } from './codex-status-taxonomy.mjs';
+import {
+  HARNESS_VERSION,
+  MARKER,
+  V109_STATUS_KEYS,
+  V109_ABSORBED_STATUS_MAP,
+  EXTERNAL_SOURCE_ABSORPTION_MAP,
+  ORCHESTRATION_ABSORPTION_MAP,
+  REQUIRED_EXTERNAL_SOURCE_CONCEPTS,
+  REQUIRED_ORCHESTRATION_CONCEPTS,
+  buildDefaultV109Statuses,
+  classifyMissingStatus,
+  assertNoPlainMissing,
+  validateAbsorptionMap,
+} from './codex-status-taxonomy.mjs';
 
 function test(name, fn) {
   try {
@@ -63,6 +76,22 @@ const cases = [
   test('safe_suggested_patch_v4_absorbed_by_repair_plan_safe_json', () => V109_ABSORBED_STATUS_MAP.safeSuggestedPatchV4Status.includes('repairPlanSafeJsonStatus')),
   test('quality_explain_v3_absorbed_by_operator_digest_and_triage', () => V109_ABSORBED_STATUS_MAP.qualityExplainV3Status.includes('operatorDigestV4Status') && V109_ABSORBED_STATUS_MAP.qualityExplainV3Status.includes('failureTriageEngineStatus')),
   test('quality_repair_plan_v3_absorbed_by_repair_digest_triage', () => V109_ABSORBED_STATUS_MAP.qualityRepairPlanV3Status.includes('repairPlanSafeJsonStatus') && V109_ABSORBED_STATUS_MAP.qualityRepairPlanV3Status.includes('operatorDigestV4Status') && V109_ABSORBED_STATUS_MAP.qualityRepairPlanV3Status.includes('failureTriageEngineStatus')),
+  test('external_source_absorption_map_exists', () => Object.keys(EXTERNAL_SOURCE_ABSORPTION_MAP).length >= REQUIRED_EXTERNAL_SOURCE_CONCEPTS.length),
+  test('external_source_required_concepts_mapped', () => validateAbsorptionMap(EXTERNAL_SOURCE_ABSORPTION_MAP, REQUIRED_EXTERNAL_SOURCE_CONCEPTS).status === 'pass'),
+  test('orchestration_absorption_map_exists', () => Object.keys(ORCHESTRATION_ABSORPTION_MAP).length >= REQUIRED_ORCHESTRATION_CONCEPTS.length),
+  test('orchestration_required_concepts_mapped', () => validateAbsorptionMap(ORCHESTRATION_ABSORPTION_MAP, REQUIRED_ORCHESTRATION_CONCEPTS).status === 'pass'),
+  test('no_required_external_concept_silently_omitted', () => REQUIRED_EXTERNAL_SOURCE_CONCEPTS.every((concept) => EXTERNAL_SOURCE_ABSORPTION_MAP[concept])),
+  test('no_required_orchestration_concept_silently_omitted', () => REQUIRED_ORCHESTRATION_CONCEPTS.every((concept) => ORCHESTRATION_ABSORPTION_MAP[concept])),
+  test('intentional_non_goal_entries_include_reason', () => Object.values({ ...EXTERNAL_SOURCE_ABSORPTION_MAP, ...ORCHESTRATION_ABSORPTION_MAP }).filter((entry) => entry.mode === 'intentional_non_goal').every((entry) => Boolean(entry.reason))),
+  test('asr_execution_non_goal_but_transcript_provenance_implemented', () => EXTERNAL_SOURCE_ABSORPTION_MAP.asrExecution.mode === 'intentional_non_goal' && EXTERNAL_SOURCE_ABSORPTION_MAP.asrTranscriptProvenance.status === 'asrTranscriptProvenanceStatus'),
+  test('external_api_calls_non_goal', () => EXTERNAL_SOURCE_ABSORPTION_MAP.externalModerationApiCalls.mode === 'intentional_non_goal'),
+  test('sandbox_execution_non_goal', () => EXTERNAL_SOURCE_ABSORPTION_MAP.sandboxExecution.mode === 'intentional_non_goal'),
+  test('runtime_integration_non_goal', () => EXTERNAL_SOURCE_ABSORPTION_MAP.runtimeIntegration.mode === 'intentional_non_goal'),
+  test('subagent_team_authority_never_grants_merge_authority', () => buildDecisionLedger({ qualityGateStatus: 'pass', sameHeadRequiredChecksStatus: 'pass', independentReviewStatus: 'request_only', reviewEvidenceProtocolStatus: 'pass' }).mergeAllowed === false),
+  test('memory_is_context_not_authority', () => ORCHESTRATION_ABSORPTION_MAP.claudeMdContextNotAuthority.absorbedBy.includes('agentMemoryBoundaryStatus')),
+  test('claude_context_is_not_enforcement', () => ORCHESTRATION_ABSORPTION_MAP.claudeMdContextNotAuthority.absorbedBy.includes('evidenceSelfReferenceBreakerStatus')),
+  test('hooks_and_gates_are_enforcement', () => ORCHESTRATION_ABSORPTION_MAP.hooksAsEnforcementBoundary.absorbedBy.includes('agentHookQualityGateStatus') && ORCHESTRATION_ABSORPTION_MAP.hooksAsEnforcementBoundary.absorbedBy.includes('requiredCheckClosureV2Status')),
+  test('parent_final_authority_preserved', () => ORCHESTRATION_ABSORPTION_MAP.parentFinalAuthorityForTeams.absorbedBy.includes('parentThreadFinalAuthorityStatus') && ORCHESTRATION_ABSORPTION_MAP.parentFinalAuthorityForTeams.absorbedBy.includes('decisionLedgerStatus')),
 ];
 
 const failures = cases.filter((item) => item.status !== 'pass');
