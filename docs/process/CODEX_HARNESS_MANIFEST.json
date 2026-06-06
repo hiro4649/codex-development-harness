@@ -1,23 +1,24 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.9",
-  "schemaVersion": "1.0.9",
-  "sourceHarnessVersion": "1.0.9",
-  "harnessVersion": "1.0.9",
-  "activeHarnessVersion": "1.0.9",
-  "targetHarnessVersion": "1.0.9",
-  "evidenceSchemaVersion": 5,
-  "profileTemplateVersion": "1.0.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.0",
+  "schemaVersion": "1.1.0",
+  "sourceHarnessVersion": "1.1.0",
+  "harnessVersion": "1.1.0",
+  "activeHarnessVersion": "1.1.0",
+  "targetHarnessVersion": "1.1.0",
+  "evidenceSchemaVersion": 6,
+  "profileTemplateVersion": "1.1.0",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v108_to_v109",
-  "activeSelfTestSuite": "v109",
-  "activeSelfTestStatusKey": "v109SelfTestStatus",
+  "upgradePath": "direct_v109_to_v110",
+  "activeSelfTestSuite": "v110",
+  "activeSelfTestStatusKey": "v110SelfTestStatus",
   "legacySelfTests": {
     "v108": "blocking_compatibility",
     "v107": "blocking_compatibility",
     "v106": "advisory",
     "v105": "advisory",
     "v104": "advisory",
-    "v103": "advisory"
+    "v103": "advisory",
+    "v109": "blocking_compatibility"
   },
   "sourceOnlyRelease": true,
   "targetRollout": "not_started",
@@ -25,7 +26,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Decision Ledger and Evidence Convergence",
+  "theme": "Token Economy and Operational Closure",
   "requiredStatuses": [
     "v109SelfTestStatus",
     "decisionLedgerStatus",
@@ -170,7 +171,50 @@
     "safeSuggestedPatchV3Status",
     "longTaskAdvisorV2Status",
     "qualityExplainV2Status",
-    "qualityRepairPlanV2Status"
+    "qualityRepairPlanV2Status",
+    "v110SelfTestStatus",
+    "proSummaryFirstStatus",
+    "detailOnDemandStatus",
+    "deltaOnlyReportingStatus",
+    "tokenBudgetStatus",
+    "sessionBudgetStatus",
+    "mainThreadAuthorityStatus",
+    "oneVerifierDefaultStatus",
+    "eightSessionExceptionGateStatus",
+    "decisionLedgerFileStatus",
+    "gateLedgerFileStatus",
+    "stopResumeContractStatus",
+    "longRunningValidationPlannerStatus",
+    "ciWatcherV2Status",
+    "activeHarnessReconciliationStatus",
+    "codexInstructionCompressionStatus",
+    "standingPolicyReferenceStatus",
+    "repoBoundaryReferenceStatus",
+    "noRepeatContextGuardStatus",
+    "precisionPreservationStatus",
+    "structuredEvidenceFirstStatus",
+    "prBodyAsRenderedOutputStatus",
+    "bodySchemaNormalizerV2Status",
+    "bodyRepairHintStatus",
+    "prInventoryReductionEngineStatus",
+    "mainReflectionPackageBuilderStatus",
+    "reviewEvidenceProtocolV3Status",
+    "runtimeReturnGateV2Status",
+    "forbiddenContentScannerV2Status",
+    "readinessLanguageLinterV2Status",
+    "noDeployProofArtifactStatus",
+    "vgcTokenStageArtifactStatus",
+    "ownerValuesWorkflowStatus",
+    "deployApprovalStateMachineStatus",
+    "runtimeReadinessBlockerDigestStatus",
+    "live2dCriticalInvariantStatus",
+    "live2dResidentEvidencePlanStatus",
+    "motionDatasetNonExecutableStatus",
+    "trustedLoaderDisabledStatus",
+    "performanceBudgetV2Status",
+    "operatorEffortScoreStatus",
+    "outputVolumeScoreStatus",
+    "sessionEfficiencyScoreStatus"
   ],
   "repoSpecificRegistrations": [
     "voxweaveReviewEvidenceClassifierStatus",
@@ -229,52 +273,135 @@
   ],
   "sourceProfileStubsV109": {
     "VOXWEAVE": {
-      "criticalInvariants": ["decision_ledger_required", "pr_inventory_reduction_required", "review_qg_separated"],
-      "forbiddenReadinessClaims": ["runtime", "production", "real_tts", "asr"],
+      "criticalInvariants": [
+        "decision_ledger_required",
+        "pr_inventory_reduction_required",
+        "review_qg_separated"
+      ],
+      "forbiddenReadinessClaims": [
+        "runtime",
+        "production",
+        "real_tts",
+        "asr"
+      ],
       "runtimeAllowed": false,
       "productionAllowed": false,
-      "profileEvidenceClasses": ["main_reflection_candidate", "inventory_reduction"],
-      "safeNextActionHints": ["emit_decision_ledger_safe_summary"]
+      "profileEvidenceClasses": [
+        "main_reflection_candidate",
+        "inventory_reduction"
+      ],
+      "safeNextActionHints": [
+        "emit_decision_ledger_safe_summary"
+      ]
     },
     "IRIS-live2d-renderer": {
-      "criticalInvariants": ["priority1_blocked_carryover", "trusted_loader_disabled", "future_motion_labels_non_executable"],
-      "forbiddenReadinessClaims": ["renderer", "runtime", "production"],
+      "criticalInvariants": [
+        "priority1_blocked_carryover",
+        "trusted_loader_disabled",
+        "future_motion_labels_non_executable"
+      ],
+      "forbiddenReadinessClaims": [
+        "renderer",
+        "runtime",
+        "production"
+      ],
       "runtimeAllowed": false,
       "productionAllowed": false,
-      "profileEvidenceClasses": ["harness_rollout", "terminal_blocked"],
-      "safeNextActionHints": ["require_fresh_resident_evidence_before_readiness"]
+      "profileEvidenceClasses": [
+        "harness_rollout",
+        "terminal_blocked"
+      ],
+      "safeNextActionHints": [
+        "require_fresh_resident_evidence_before_readiness"
+      ]
     },
     "FUNKY": {
-      "criticalInvariants": ["formal_backend_evidence_precedence", "d8_safe_db_read_export_lane_separation", "no_funded_tx"],
-      "forbiddenReadinessClaims": ["runtime", "production", "staging_no_tx_pass", "mainnet"],
+      "criticalInvariants": [
+        "formal_backend_evidence_precedence",
+        "d8_safe_db_read_export_lane_separation",
+        "no_funded_tx"
+      ],
+      "forbiddenReadinessClaims": [
+        "runtime",
+        "production",
+        "staging_no_tx_pass",
+        "mainnet"
+      ],
       "runtimeAllowed": false,
       "productionAllowed": false,
-      "profileEvidenceClasses": ["product_pr", "manual_gate_candidate"],
-      "safeNextActionHints": ["preserve_backend_cwd_evidence"]
+      "profileEvidenceClasses": [
+        "product_pr",
+        "manual_gate_candidate"
+      ],
+      "safeNextActionHints": [
+        "preserve_backend_cwd_evidence"
+      ]
     },
     "IRIS": {
-      "criticalInvariants": ["priority1_blocked_carryover", "dataset_audit_boundary", "candidate_execution_boundary", "memory_privacy"],
-      "forbiddenReadinessClaims": ["runtime", "production", "production_go"],
+      "criticalInvariants": [
+        "priority1_blocked_carryover",
+        "dataset_audit_boundary",
+        "candidate_execution_boundary",
+        "memory_privacy"
+      ],
+      "forbiddenReadinessClaims": [
+        "runtime",
+        "production",
+        "production_go"
+      ],
       "runtimeAllowed": false,
       "productionAllowed": false,
-      "profileEvidenceClasses": ["terminal_blocked", "main_reflection_candidate"],
-      "safeNextActionHints": ["keep_priority1_blocked_until_fresh_evidence"]
+      "profileEvidenceClasses": [
+        "terminal_blocked",
+        "main_reflection_candidate"
+      ],
+      "safeNextActionHints": [
+        "keep_priority1_blocked_until_fresh_evidence"
+      ]
     },
     "CRIPTO-TIP": {
-      "criticalInvariants": ["safe_ci_failure_artifact_required", "crypto_no_custody", "no_wallet_rpc_deploy_access"],
-      "forbiddenReadinessClaims": ["runtime", "production", "legal_compliance", "youtube_policy_compliance"],
+      "criticalInvariants": [
+        "safe_ci_failure_artifact_required",
+        "crypto_no_custody",
+        "no_wallet_rpc_deploy_access"
+      ],
+      "forbiddenReadinessClaims": [
+        "runtime",
+        "production",
+        "legal_compliance",
+        "youtube_policy_compliance"
+      ],
       "runtimeAllowed": false,
       "productionAllowed": false,
-      "profileEvidenceClasses": ["terminal_blocked", "harness_rollout"],
-      "safeNextActionHints": ["require_safe_artifact_or_state_delta"]
+      "profileEvidenceClasses": [
+        "terminal_blocked",
+        "harness_rollout"
+      ],
+      "safeNextActionHints": [
+        "require_safe_artifact_or_state_delta"
+      ]
     },
     "VGC-TOKEN": {
-      "criticalInvariants": ["token_stage_artifact", "owner_values_workflow", "deploy_approval_state_machine"],
-      "forbiddenReadinessClaims": ["deploy", "funded_tx", "governance_tx", "bscscan_verification", "readiness"],
+      "criticalInvariants": [
+        "token_stage_artifact",
+        "owner_values_workflow",
+        "deploy_approval_state_machine"
+      ],
+      "forbiddenReadinessClaims": [
+        "deploy",
+        "funded_tx",
+        "governance_tx",
+        "bscscan_verification",
+        "readiness"
+      ],
       "runtimeAllowed": false,
       "productionAllowed": false,
-      "profileEvidenceClasses": ["manual_gate_candidate"],
-      "safeNextActionHints": ["do_not_deploy_or_send_tx"]
+      "profileEvidenceClasses": [
+        "manual_gate_candidate"
+      ],
+      "safeNextActionHints": [
+        "do_not_deploy_or_send_tx"
+      ]
     }
   },
   "productCodeChanged": false,
@@ -286,5 +413,57 @@
   "localAgentSecretAccess": false,
   "walletRpcDeployAccess": false,
   "targetReposTouched": false,
-  "safeSummaryOnly": true
+  "safeSummaryOnly": true,
+  "tokenEconomy": "required",
+  "operationalClosure": "required",
+  "v110AbsorptionMap": {
+    "decisionLedgerStatus": [
+      "decisionLedgerFileStatus",
+      "proSummaryFirstStatus"
+    ],
+    "gateLedgerStatus": [
+      "gateLedgerFileStatus"
+    ],
+    "operatorDigestV4Status": [
+      "proSummaryFirstStatus",
+      "detailOnDemandStatus"
+    ],
+    "workflowLedgerStatus": [
+      "stopResumeContractStatus",
+      "decisionLedgerFileStatus"
+    ],
+    "ciWatcherStatus": [
+      "ciWatcherV2Status"
+    ],
+    "prInventoryReductionStatus": [
+      "prInventoryReductionEngineStatus"
+    ],
+    "mainReflectionPackageStatus": [
+      "mainReflectionPackageBuilderStatus"
+    ],
+    "reviewEvidenceProtocolV2Status": [
+      "reviewEvidenceProtocolV3Status"
+    ],
+    "runtimeReturnGateStatus": [
+      "runtimeReturnGateV2Status"
+    ],
+    "safeCiFailureArtifactV2Status": [
+      "ciWatcherV2Status",
+      "failureTriageEngineStatus"
+    ],
+    "repairPlanSafeJsonStatus": [
+      "bodyRepairHintStatus",
+      "repairPlanSafeJsonStatus"
+    ],
+    "missingStatusTaxonomyStatus": [
+      "statusCompressionCompatibilityStatus"
+    ],
+    "externalSourceAbsorptionMapStatus": [
+      "standingPolicyReferenceStatus"
+    ],
+    "orchestrationAbsorptionMapStatus": [
+      "sessionBudgetStatus",
+      "mainThreadAuthorityStatus"
+    ]
+  }
 }

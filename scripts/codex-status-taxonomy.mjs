@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.9
+// CODEX_QUALITY_HARNESS_FILE v1.1.0
 
-export const HARNESS_VERSION = '1.0.9';
-export const MARKER = 'CODEX_QUALITY_HARNESS_FILE v1.0.9';
+export { V110_STATUS_KEYS, V110_ABSORPTION_MAP, buildDefaultV110Statuses } from './codex-v110-token-economy.mjs';
+
+export const HARNESS_VERSION = '1.1.0';
+export const MARKER = 'CODEX_QUALITY_HARNESS_FILE v1.1.0';
 
 export const V109_STATUS_KEYS = [
   'v109SelfTestStatus',
