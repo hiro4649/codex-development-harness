@@ -43,6 +43,13 @@ export const MISSING_STATUS_CLASSES = [
   'missing_due_to_future_scope',
 ];
 
+export const V109_ABSORBED_STATUS_MAP = {
+  terminalBlockRecoveryV2Status: ['repairPlanSafeJsonStatus', 'failureTriageEngineStatus', 'ciWatcherStatus'],
+  safeSuggestedPatchV4Status: ['repairPlanSafeJsonStatus'],
+  qualityExplainV3Status: ['operatorDigestV4Status', 'failureTriageEngineStatus'],
+  qualityRepairPlanV3Status: ['repairPlanSafeJsonStatus', 'operatorDigestV4Status', 'failureTriageEngineStatus'],
+};
+
 export function buildStatus(key, status = 'pass', extra = {}) {
   return {
     [key]: {
@@ -85,10 +92,16 @@ function walk(value, path, failures) {
 }
 
 export function buildDefaultV109Statuses() {
-  return Object.fromEntries(V109_STATUS_KEYS.map((key) => [
-    key,
-    buildStatus(key, 'pass', { reasonCodes: key === 'v109SelfTestStatus' ? [] : ['v109_contract_fixture_pass'] })[key],
-  ]));
+  return Object.fromEntries(V109_STATUS_KEYS.map((key) => {
+    const absorbedBy = V109_ABSORBED_STATUS_MAP[key];
+    return [
+      key,
+      buildStatus(key, 'pass', {
+        reasonCodes: key === 'v109SelfTestStatus' ? [] : [absorbedBy ? 'absorbed_by_repair_plan_digest_triage' : 'v109_contract_fixture_pass'],
+        safeSummary: absorbedBy ? { absorbedBy } : {},
+      })[key],
+    ];
+  }));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

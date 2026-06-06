@@ -60,6 +60,20 @@ repair plan must never require raw logs, secrets, private paths, provider
 payloads, wallet/RPC values, or user data. Missing safe artifacts are blockers,
 not passes.
 
+## Absorbed v1.0.9 Status Semantics
+
+The following v1.0.9 status names are retained for compatibility but are absorbed
+by the concrete Decision Ledger implementation surfaces:
+
+- `terminalBlockRecoveryV2Status`: absorbed by
+  `repairPlanSafeJsonStatus`, `failureTriageEngineStatus`, and
+  `ciWatcherStatus`.
+- `safeSuggestedPatchV4Status`: absorbed by `repairPlanSafeJsonStatus`.
+- `qualityExplainV3Status`: absorbed by `operatorDigestV4Status` and
+  `failureTriageEngineStatus`.
+- `qualityRepairPlanV3Status`: absorbed by `repairPlanSafeJsonStatus`,
+  `operatorDigestV4Status`, and `failureTriageEngineStatus`.
+
 ## CI Failure Diagnosis
 
 Required check failures use safe metadata and safe artifacts only. Raw logs are

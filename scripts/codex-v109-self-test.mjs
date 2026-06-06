@@ -9,7 +9,7 @@ import { classifySafeCiFailureArtifact, classifyRequiredCheckClosure, watchCiSaf
 import { classifyRemoteArtifactFailure, triageFailure } from './codex-remote-artifact-semantic-classifier.mjs';
 import { buildWorkflowLedger, validateWorkflowLedger } from './codex-workflow-ledger.mjs';
 import { buildOperatorDigestV4, validateOperatorDigestV4 } from './codex-operator-digest-v4.mjs';
-import { HARNESS_VERSION, MARKER, V109_STATUS_KEYS, buildDefaultV109Statuses, classifyMissingStatus, assertNoPlainMissing } from './codex-status-taxonomy.mjs';
+import { HARNESS_VERSION, MARKER, V109_STATUS_KEYS, V109_ABSORBED_STATUS_MAP, buildDefaultV109Statuses, classifyMissingStatus, assertNoPlainMissing } from './codex-status-taxonomy.mjs';
 
 function test(name, fn) {
   try {
@@ -59,6 +59,10 @@ const cases = [
   test('ci_watcher_no_delta_stops', () => watchCiSafe({ headSha: 'h', previousConclusion: 'failure', stateDeltaDetected: false }).oneSafeNextAction === 'none_until_state_delta'),
   test('status_taxonomy_default_keys_present', () => V109_STATUS_KEYS.includes('decisionLedgerStatus') && V109_STATUS_KEYS.includes('qualityRepairPlanV3Status')),
   test('default_v109_statuses_pass', () => buildDefaultV109Statuses().decisionLedgerStatus.status === 'pass'),
+  test('terminal_block_recovery_v2_absorbed_by_repair_triage_ci_watcher', () => V109_ABSORBED_STATUS_MAP.terminalBlockRecoveryV2Status.includes('repairPlanSafeJsonStatus') && V109_ABSORBED_STATUS_MAP.terminalBlockRecoveryV2Status.includes('failureTriageEngineStatus') && V109_ABSORBED_STATUS_MAP.terminalBlockRecoveryV2Status.includes('ciWatcherStatus')),
+  test('safe_suggested_patch_v4_absorbed_by_repair_plan_safe_json', () => V109_ABSORBED_STATUS_MAP.safeSuggestedPatchV4Status.includes('repairPlanSafeJsonStatus')),
+  test('quality_explain_v3_absorbed_by_operator_digest_and_triage', () => V109_ABSORBED_STATUS_MAP.qualityExplainV3Status.includes('operatorDigestV4Status') && V109_ABSORBED_STATUS_MAP.qualityExplainV3Status.includes('failureTriageEngineStatus')),
+  test('quality_repair_plan_v3_absorbed_by_repair_digest_triage', () => V109_ABSORBED_STATUS_MAP.qualityRepairPlanV3Status.includes('repairPlanSafeJsonStatus') && V109_ABSORBED_STATUS_MAP.qualityRepairPlanV3Status.includes('operatorDigestV4Status') && V109_ABSORBED_STATUS_MAP.qualityRepairPlanV3Status.includes('failureTriageEngineStatus')),
 ];
 
 const failures = cases.filter((item) => item.status !== 'pass');
