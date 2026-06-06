@@ -2,7 +2,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v1.0.9
+// CODEX_QUALITY_HARNESS_FILE v1.1.0
 
 
 
@@ -49,6 +49,7 @@ import * as v106Gates from './codex-v106-gate-lib.mjs';
 import * as v107Gates from './codex-v107-gate-lib.mjs';
 import * as v108Gates from './codex-v108-gate-lib.mjs';
 import { V109_STATUS_KEYS, buildDefaultV109Statuses } from './codex-status-taxonomy.mjs';
+import { V110_STATUS_KEYS, buildDefaultV110Statuses } from './codex-v110-token-economy.mjs';
 
 
 
@@ -56,7 +57,7 @@ import { V109_STATUS_KEYS, buildDefaultV109Statuses } from './codex-status-taxon
 
 
 
-const HARNESS_VERSION = '1.0.9';
+const HARNESS_VERSION = '1.1.0';
 
 
 
@@ -1568,6 +1569,9 @@ function expectedMarkerVersionForPath(file, profileVersions) {
 
 
   if (normalized.startsWith('profiles/')) return profileVersions;
+  if (HARNESS_VERSION === '1.1.0') {
+    return [HARNESS_VERSION, '1.0.9', '1.0.8', '1.0.7'];
+  }
   if (HARNESS_VERSION === '1.0.9') {
     return [HARNESS_VERSION, '1.0.8', '1.0.7'];
   }
@@ -2510,6 +2514,21 @@ function runV109Gates(report, gateEnv) {
 }
 
 function initializeV109Statuses(report) { for (const key of V109_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
+
+function runV110Gates(report, gateEnv) {
+  const selfTestStatus = process.env.CODEX_SKIP_V110_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v110-self-test.mjs', 'v110SelfTestStatus', 'CODEX_V110_SELF_TEST_REPORT', gateEnv);
+  const reports = buildDefaultV110Statuses();
+  Object.assign(report, reports);
+  report.v110SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
+    ...reports.v110SelfTestStatus,
+    ...selfTestStatus,
+    status: selfTestStatus.status || reports.v110SelfTestStatus.status,
+  };
+}
+
+function initializeV110Statuses(report) { for (const key of V110_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
 
 function legacySelfTestPreservedStatus(legacyVersion) {
   return {
@@ -11603,6 +11622,9 @@ async function runSourceHarnessCoreContractGate() {
   initializeV105Statuses(report);
   initializeV106Statuses(report);
   initializeV107Statuses(report);
+  initializeV108Statuses(report);
+  initializeV109Statuses(report);
+  initializeV110Statuses(report);
 
   if (report.sourceHarnessValidationStatus.status === 'fail') failures.push(...report.sourceHarnessValidationStatus.failures);
   if (report.secretScan.status === 'fail') failures.push({ id: 'secretScan.failed', message: 'secret safety scan failed' });
@@ -11632,6 +11654,7 @@ async function runSourceHarnessCoreContractGate() {
   runV107Gates(report, gateEnv);
   runV108Gates(report, gateEnv);
   runV109Gates(report, gateEnv);
+  runV110Gates(report, gateEnv);
 
   for (const [key, value] of Object.entries({
     changeClassificationStatus: report.changeClassificationStatus,
@@ -11649,6 +11672,7 @@ async function runSourceHarnessCoreContractGate() {
     ...Object.fromEntries(V107_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V108_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V109_STATUS_KEYS.map((name) => [name, report[name]])),
+    ...Object.fromEntries(V110_STATUS_KEYS.map((name) => [name, report[name]])),
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }
@@ -11712,7 +11736,7 @@ async function runSourceHarnessCoreContractGate() {
   else {
     console.log(`status: ${report.status}`);
     console.log(`qualityScore: ${report.qualityScoreStatus.score}`);
-    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS, ...V104_STATUS_KEYS, ...V105_STATUS_KEYS, ...V106_STATUS_KEYS, ...V107_STATUS_KEYS, ...V108_STATUS_KEYS, ...V109_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
+    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS, ...V104_STATUS_KEYS, ...V105_STATUS_KEYS, ...V106_STATUS_KEYS, ...V107_STATUS_KEYS, ...V108_STATUS_KEYS, ...V109_STATUS_KEYS, ...V110_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
   }
   process.exit(failures.length ? 1 : 0);
 }

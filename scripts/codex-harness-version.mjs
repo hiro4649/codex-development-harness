@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.9
+// CODEX_QUALITY_HARNESS_FILE v1.1.0
 
-export const currentVersion = '1.0.9';
-export const previousVersion = '1.0.8';
-export const activeSelfTestStatusKey = 'v109SelfTestStatus';
-export const activeSelfTestSuite = 'v109';
-export const legacyAdvisorySuites = ['v108', 'v107', 'v106', 'v105', 'v104', 'v103'];
-export const knownVersions = ['1.0.3', '1.0.4', '1.0.5', '1.0.6', '1.0.7', '1.0.8', '1.0.9'];
+export const currentVersion = '1.1.0';
+export const previousVersion = '1.0.9';
+export const activeSelfTestStatusKey = 'v110SelfTestStatus';
+export const activeSelfTestSuite = 'v110';
+export const legacyAdvisorySuites = ['v109', 'v108', 'v107', 'v106', 'v105', 'v104', 'v103'];
+export const knownVersions = ['1.0.3', '1.0.4', '1.0.5', '1.0.6', '1.0.7', '1.0.8', '1.0.9', '1.1.0'];
 export const versionLineagePolicy = {
   sourceOnlyRelease: true,
   targetRollout: 'not_started',
@@ -14,6 +14,8 @@ export const versionLineagePolicy = {
   representativeRealPrReplay: 'required',
   decisionLedger: 'required',
   evidenceConvergence: 'required',
+  tokenEconomy: 'required',
+  operationalClosure: 'required',
   runtimeReadinessClaimed: false,
   productionReadinessClaimed: false,
   safeSummaryOnly: true,

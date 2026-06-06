@@ -1,12 +1,12 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.9",
-  "harnessVersion": "1.0.9",
-  "sourceHarnessVersion": "1.0.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.0",
+  "harnessVersion": "1.1.0",
+  "sourceHarnessVersion": "1.1.0",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
   ],
-  "schemaVersion": "1.0.9",
+  "schemaVersion": "1.1.0",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -71,7 +71,12 @@
     "docs/process/CODEX_REVIEW_EVIDENCE_INTAKE_SCHEMA_V1_0_8.json",
     "docs/process/CODEX_MANUAL_GATE_AUDIT_CHAIN_V1_0_8.json",
     "docs/process/CODEX_THREAT_MODEL_TO_VERIFY_POLICY_V1_0_8.json",
-    "docs/process/CODEX_ORCHESTRATION_GOVERNANCE_V1_0_8.json"
+    "docs/process/CODEX_ORCHESTRATION_GOVERNANCE_V1_0_8.json",
+    "docs/process/CODEX_HARNESS_V1_1_0_TOKEN_ECONOMY_POLICY.md",
+    "docs/process/CODEX_V110_SPEC.md",
+    "docs/process/CODEX_STATUS_TAXONOMY_V1_1_0.json",
+    "scripts/codex-v110-token-economy.mjs",
+    "scripts/codex-v110-self-test.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -882,9 +887,9 @@
     "codex-harness-doctor.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.0.8",
-  "activeSelfTestSuite": "v108",
-  "activeSelfTestStatusKey": "v108SelfTestStatus",
+  "activeHarnessVersion": "1.1.0",
+  "activeSelfTestSuite": "v110",
+  "activeSelfTestStatusKey": "v110SelfTestStatus",
   "legacySelfTestSuites": {
     "v107": "blocking_compatibility",
     "v106": "advisory",
@@ -1289,5 +1294,100 @@
     "vgcNoDeployNoTxBoundaryStatus",
     "vgcBscScanVerificationBoundaryStatus",
     "vgcMainnetReadinessBoundaryStatus"
-  ]
+  ],
+  "targetHarnessVersion": "1.1.0",
+  "evidenceSchemaVersion": 6,
+  "theme": "Token Economy and Operational Closure",
+  "requiredStatuses": [
+    "v110SelfTestStatus",
+    "proSummaryFirstStatus",
+    "detailOnDemandStatus",
+    "deltaOnlyReportingStatus",
+    "tokenBudgetStatus",
+    "sessionBudgetStatus",
+    "mainThreadAuthorityStatus",
+    "oneVerifierDefaultStatus",
+    "eightSessionExceptionGateStatus",
+    "decisionLedgerFileStatus",
+    "gateLedgerFileStatus",
+    "stopResumeContractStatus",
+    "longRunningValidationPlannerStatus",
+    "ciWatcherV2Status",
+    "activeHarnessReconciliationStatus",
+    "codexInstructionCompressionStatus",
+    "standingPolicyReferenceStatus",
+    "repoBoundaryReferenceStatus",
+    "noRepeatContextGuardStatus",
+    "precisionPreservationStatus",
+    "structuredEvidenceFirstStatus",
+    "prBodyAsRenderedOutputStatus",
+    "bodySchemaNormalizerV2Status",
+    "bodyRepairHintStatus",
+    "prInventoryReductionEngineStatus",
+    "mainReflectionPackageBuilderStatus",
+    "reviewEvidenceProtocolV3Status",
+    "runtimeReturnGateV2Status",
+    "forbiddenContentScannerV2Status",
+    "readinessLanguageLinterV2Status",
+    "noDeployProofArtifactStatus",
+    "vgcTokenStageArtifactStatus",
+    "ownerValuesWorkflowStatus",
+    "deployApprovalStateMachineStatus",
+    "runtimeReadinessBlockerDigestStatus",
+    "live2dCriticalInvariantStatus",
+    "performanceBudgetV2Status",
+    "operatorEffortScoreStatus",
+    "outputVolumeScoreStatus",
+    "sessionEfficiencyScoreStatus"
+  ],
+  "v110AbsorptionMap": {
+    "decisionLedgerStatus": [
+      "decisionLedgerFileStatus",
+      "proSummaryFirstStatus"
+    ],
+    "gateLedgerStatus": [
+      "gateLedgerFileStatus"
+    ],
+    "operatorDigestV4Status": [
+      "proSummaryFirstStatus",
+      "detailOnDemandStatus"
+    ],
+    "workflowLedgerStatus": [
+      "stopResumeContractStatus",
+      "decisionLedgerFileStatus"
+    ],
+    "ciWatcherStatus": [
+      "ciWatcherV2Status"
+    ],
+    "prInventoryReductionStatus": [
+      "prInventoryReductionEngineStatus"
+    ],
+    "mainReflectionPackageStatus": [
+      "mainReflectionPackageBuilderStatus"
+    ],
+    "reviewEvidenceProtocolV2Status": [
+      "reviewEvidenceProtocolV3Status"
+    ],
+    "runtimeReturnGateStatus": [
+      "runtimeReturnGateV2Status"
+    ],
+    "safeCiFailureArtifactV2Status": [
+      "ciWatcherV2Status",
+      "failureTriageEngineStatus"
+    ],
+    "repairPlanSafeJsonStatus": [
+      "bodyRepairHintStatus",
+      "repairPlanSafeJsonStatus"
+    ],
+    "missingStatusTaxonomyStatus": [
+      "statusCompressionCompatibilityStatus"
+    ],
+    "externalSourceAbsorptionMapStatus": [
+      "standingPolicyReferenceStatus"
+    ],
+    "orchestrationAbsorptionMapStatus": [
+      "sessionBudgetStatus",
+      "mainThreadAuthorityStatus"
+    ]
+  }
 }

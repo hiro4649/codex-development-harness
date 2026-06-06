@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.0.9
+CODEX_QUALITY_HARNESS_FILE v1.1.0
 
 ## Prime Directive
 
@@ -37,6 +37,10 @@ For v1.0.9 Decision Ledger and Evidence Convergence, use
 `docs/process/CODEX_DECISION_LEDGER_SCHEMA_V1_0_9.json`,
 `docs/process/CODEX_REPAIR_PLAN_SAFE_SCHEMA_V1_0_9.json`, and
 `docs/process/CODEX_STATUS_TAXONOMY_V1_0_9.json`.
+For v1.1.0 Token Economy and Operational Closure, use
+`docs/process/CODEX_HARNESS_V1_1_0_TOKEN_ECONOMY_POLICY.md`,
+`docs/process/CODEX_V110_SPEC.md`, and
+`docs/process/CODEX_STATUS_TAXONOMY_V1_1_0.json`.
 
 ## Plan-First Rule
 

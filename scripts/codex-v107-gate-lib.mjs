@@ -270,9 +270,9 @@ export function buildTypedStatusSchemaReport(input = {}) {
 export function buildCentralHarnessVersionRegistryReport(input = {}) {
   const registry = input.registry || buildHarnessVersionRegistry();
   const reasons = [];
-  const compatibleCurrent = registry.currentVersion === '1.0.7' || registry.currentVersion === '1.0.8' || registry.currentVersion === '1.0.9';
-  const compatiblePrevious = registry.previousVersion === '1.0.6' || registry.previousVersion === '1.0.7' || registry.previousVersion === '1.0.8';
-  const compatibleSelfTest = registry.activeSelfTestStatusKey === 'v107SelfTestStatus' || registry.activeSelfTestStatusKey === 'v108SelfTestStatus' || registry.activeSelfTestStatusKey === 'v109SelfTestStatus';
+  const compatibleCurrent = registry.currentVersion === '1.0.7' || registry.currentVersion === '1.0.8' || registry.currentVersion === '1.0.9' || registry.currentVersion === '1.1.0';
+  const compatiblePrevious = registry.previousVersion === '1.0.6' || registry.previousVersion === '1.0.7' || registry.previousVersion === '1.0.8' || registry.previousVersion === '1.0.9';
+  const compatibleSelfTest = registry.activeSelfTestStatusKey === 'v107SelfTestStatus' || registry.activeSelfTestStatusKey === 'v108SelfTestStatus' || registry.activeSelfTestStatusKey === 'v109SelfTestStatus' || registry.activeSelfTestStatusKey === 'v110SelfTestStatus';
   if (!compatibleCurrent) reasons.push('current_version_not_v107_or_later');
   if (!compatiblePrevious) reasons.push('previous_version_not_v106_or_v107');
   if (!compatibleSelfTest) reasons.push('active_self_test_not_v107_compatible');
