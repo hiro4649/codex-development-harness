@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.0.8
+CODEX_QUALITY_HARNESS_FILE v1.0.9
 
 ## Prime Directive
 
@@ -32,6 +32,11 @@ orchestration, use
 `docs/process/CODEX_V106_LANE_PROVENANCE_RECOVERY_POLICY.md`,
 `docs/process/CODEX_V107_GEAR_POLICY.md`,
 `docs/process/CODEX_V108_SPEC.md`, and their schema files.
+For v1.0.9 Decision Ledger and Evidence Convergence, use
+`docs/process/CODEX_HARNESS_V1_0_9_DECISION_LEDGER_POLICY.md`,
+`docs/process/CODEX_DECISION_LEDGER_SCHEMA_V1_0_9.json`,
+`docs/process/CODEX_REPAIR_PLAN_SAFE_SCHEMA_V1_0_9.json`, and
+`docs/process/CODEX_STATUS_TAXONOMY_V1_0_9.json`.
 
 ## Plan-First Rule
 

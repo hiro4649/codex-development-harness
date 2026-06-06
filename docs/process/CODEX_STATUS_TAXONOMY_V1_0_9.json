@@ -1,0 +1,48 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.0.9",
+  "schemaVersion": "1.0.9",
+  "plainMissingForbidden": true,
+  "missingStatusClasses": [
+    "not_applicable_for_lane",
+    "not_required_for_product_scope",
+    "missing_but_nonblocking",
+    "missing_blocking",
+    "missing_due_to_artifact_gap",
+    "missing_due_to_external_runner",
+    "missing_due_to_manual_gate_absent",
+    "missing_due_to_future_scope"
+  ],
+  "remoteArtifactFailureClasses": [
+    "body_metadata_parser_failure",
+    "stale_pr_audit_failure",
+    "remote_npm_cwd_failure",
+    "remote_npm_artifact_shape_failure",
+    "remote_npm_execution_missing",
+    "manual_gate_missing",
+    "same_head_mismatch",
+    "required_check_failure",
+    "safe_artifact_missing",
+    "external_runner_metadata_limited",
+    "formal_evidence_precedence_conflict",
+    "unknown_safe_metadata_limited"
+  ],
+  "safeCiFailureClasses": [
+    "runner_setup_failure",
+    "checkout_failure",
+    "setup_node_failure",
+    "pnpm_install_failure",
+    "cache_failure",
+    "service_container_failure",
+    "artifact_upload_missing",
+    "tsconfig_scope_failure",
+    "workspace_scope_failure",
+    "type_surface_failure",
+    "unit_test_failure",
+    "integration_test_failure",
+    "evidence_contract_failure",
+    "runtime_adjacent_test_failure",
+    "github_runner_failure",
+    "unknown_safe_metadata_limited"
+  ],
+  "safeSummaryOnly": true
+}

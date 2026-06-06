@@ -2,7 +2,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v1.0.8
+// CODEX_QUALITY_HARNESS_FILE v1.0.9
 
 
 
@@ -48,6 +48,7 @@ import * as v105Gates from './codex-v105-gate-lib.mjs';
 import * as v106Gates from './codex-v106-gate-lib.mjs';
 import * as v107Gates from './codex-v107-gate-lib.mjs';
 import * as v108Gates from './codex-v108-gate-lib.mjs';
+import { V109_STATUS_KEYS, buildDefaultV109Statuses } from './codex-status-taxonomy.mjs';
 
 
 
@@ -55,7 +56,7 @@ import * as v108Gates from './codex-v108-gate-lib.mjs';
 
 
 
-const HARNESS_VERSION = '1.0.8';
+const HARNESS_VERSION = '1.0.9';
 
 
 
@@ -1567,6 +1568,9 @@ function expectedMarkerVersionForPath(file, profileVersions) {
 
 
   if (normalized.startsWith('profiles/')) return profileVersions;
+  if (HARNESS_VERSION === '1.0.9') {
+    return [HARNESS_VERSION, '1.0.8', '1.0.7'];
+  }
   if (HARNESS_VERSION === '1.0.8') {
     return [HARNESS_VERSION, '1.0.7'];
   }
@@ -2491,6 +2495,21 @@ function runV108Gates(report, gateEnv) {
 }
 
 function initializeV108Statuses(report) { for (const key of V108_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
+
+function runV109Gates(report, gateEnv) {
+  const selfTestStatus = process.env.CODEX_SKIP_V109_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v109-self-test.mjs', 'v109SelfTestStatus', 'CODEX_V109_SELF_TEST_REPORT', gateEnv);
+  const reports = buildDefaultV109Statuses();
+  Object.assign(report, reports);
+  report.v109SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
+    ...reports.v109SelfTestStatus,
+    ...selfTestStatus,
+    status: selfTestStatus.status || reports.v109SelfTestStatus.status,
+  };
+}
+
+function initializeV109Statuses(report) { for (const key of V109_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
 
 function legacySelfTestPreservedStatus(legacyVersion) {
   return {
@@ -7757,6 +7776,10 @@ async function runSourceHarnessGate() {
   initializeV106Statuses(report);
   initializeV107Statuses(report);
   initializeV108Statuses(report);
+  initializeV109Statuses(report);
+  initializeV108Statuses(report);
+  initializeV109Statuses(report);
+  initializeV108Statuses(report);
   initializeV103Statuses(report);
   initializeV101Statuses(report);
   initializeV102Statuses(report);
@@ -11608,6 +11631,7 @@ async function runSourceHarnessCoreContractGate() {
   runV106Gates(report, gateEnv);
   runV107Gates(report, gateEnv);
   runV108Gates(report, gateEnv);
+  runV109Gates(report, gateEnv);
 
   for (const [key, value] of Object.entries({
     changeClassificationStatus: report.changeClassificationStatus,
@@ -11624,6 +11648,7 @@ async function runSourceHarnessCoreContractGate() {
     ...Object.fromEntries(V106_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V107_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V108_STATUS_KEYS.map((name) => [name, report[name]])),
+    ...Object.fromEntries(V109_STATUS_KEYS.map((name) => [name, report[name]])),
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }
@@ -11687,7 +11712,7 @@ async function runSourceHarnessCoreContractGate() {
   else {
     console.log(`status: ${report.status}`);
     console.log(`qualityScore: ${report.qualityScoreStatus.score}`);
-    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS, ...V104_STATUS_KEYS, ...V105_STATUS_KEYS, ...V106_STATUS_KEYS, ...V107_STATUS_KEYS, ...V108_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
+    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS, ...V104_STATUS_KEYS, ...V105_STATUS_KEYS, ...V106_STATUS_KEYS, ...V107_STATUS_KEYS, ...V108_STATUS_KEYS, ...V109_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
   }
   process.exit(failures.length ? 1 : 0);
 }
