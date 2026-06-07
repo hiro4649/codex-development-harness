@@ -112,6 +112,25 @@ private values.
 Absorbed safety failures remain blocking; absorbed advisory statuses remain
 advisory.
 
+## Target-Mode Compatibility Bridge
+
+`targetModeLegacyCompatibilityStatus` classifies older target surfaces as
+`blocking_current`, `absorbed_by_v111`, `advisory_legacy`,
+`not_applicable_for_lane`, `not_required_for_target_mode`,
+`missing_blocking`, `missing_nonblocking`, or `harness_internal_gap`.
+It must not emit generic `missing`.
+
+v1.1.1 target mode accepts absorbed v1.1.0 and v1.0.9 statuses when their
+current replacement status is present and passing. v108, v109, and v110
+self-test statuses are compatibility lineage only; they do not replace a
+passing `v111SelfTestStatus`.
+
+The bridge must preserve true blockers: unsafe output, secret or raw log leak,
+same-head mismatch, required check failed or missing, no-status-reported,
+runtime or production readiness claims, forbidden product code changes,
+wallet/RPC/deploy access, self approval, self merge, subagent merge authority,
+8-session default violation, and product repair inside harness rollout.
+
 ## Compatibility
 
 v1.1.0 behavior remains intact. v1.1.1 must not weaken same-head enforcement,

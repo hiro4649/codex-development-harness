@@ -278,6 +278,7 @@
     "remoteNpmResultStatus",
     "activeMarkerInternalVersionAlignmentStatus",
     "fixtureContractRegistryStatus",
+    "targetModeLegacyCompatibilityStatus",
     "narrowFixtureNoBroadGateStatus",
     "fullSuiteInterferenceDetectorStatus",
     "legacyAdvisoryClassifierV2Status",
