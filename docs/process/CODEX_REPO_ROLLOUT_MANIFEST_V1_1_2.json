@@ -1,0 +1,14 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.2",
+  "schemaVersion": "1.1.2",
+  "order": ["VOXWEAVE", "IRIS-live2d-renderer", "FUNKY", "IRIS", "CRIPTO-TIP"],
+  "profiles": {
+    "VOXWEAVE": "v112_voxweave_no_tts_asr_runtime",
+    "IRIS-live2d-renderer": "v112_live2d_no_renderer_runtime_no_loader",
+    "FUNKY": "v112_funky_no_tx_no_runtime",
+    "IRIS": "v112_iris_priority1_blocked_no_runtime",
+    "CRIPTO-TIP": "v112_cripto_no_crypto_youtube_runtime"
+  },
+  "compactLedgerOnly": true,
+  "safeSummaryOnly": true
+}

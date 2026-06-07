@@ -1,0 +1,16 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.2",
+  "schemaVersion": "1.1.2",
+  "defaults": {
+    "git status": "full_allowed",
+    "git diff --name-only": "capped",
+    "git diff --stat": { "maxLines": 40 },
+    "rg": { "maxMatches": 50 },
+    "Get-Content": "line_range_only",
+    "quality gate": "file_only",
+    "gh pr view": ["number", "state", "headRefOid", "baseRefName", "url", "statusCheckRollup"],
+    "gh run view": ["databaseId", "headSha", "status", "conclusion", "workflowName", "url"],
+    "gh run view --json jobs": "denied_without_failure_detail_escalation"
+  },
+  "safeSummaryOnly": true
+}

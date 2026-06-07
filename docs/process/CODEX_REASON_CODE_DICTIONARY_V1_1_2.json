@@ -1,0 +1,14 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.2",
+  "schemaVersion": "1.1.2",
+  "dictionary": {
+    "conversation_surface_budget_exceeded": "Conversation output must be compressed to Pro Summary Compact.",
+    "full_json_stdout_blocked": "Full quality-gate JSON must be written to a file and summarized.",
+    "artifact_pointer_required": "Detailed evidence must be referenced by safe artifact path and hash.",
+    "precision_parity_mismatch": "Compact summary changed a merge or safety decision.",
+    "raw_artifact_expansion_blocked": "Expanded artifact content is not allowed in conversation.",
+    "github_field_budget_exceeded": "GitHub metadata query requested more fields than default budget.",
+    "tee_full_json_blocked": "Large JSON must not be piped through tee or Tee-Object."
+  },
+  "safeSummaryOnly": true
+}

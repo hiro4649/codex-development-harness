@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.1.1
+CODEX_QUALITY_HARNESS_FILE v1.1.2
 
 ## Prime Directive
 
@@ -45,6 +45,11 @@ For v1.1.1 Token Hard Cap, Context Capsule, and Failure Closure, use
 `docs/process/CODEX_HARNESS_V1_1_1_TOKEN_HARD_CAP_CONTEXT_CAPSULE_FAILURE_CLOSURE_POLICY.md`,
 `docs/process/CODEX_V111_SPEC.md`, and
 `docs/process/CODEX_STATUS_TAXONOMY_V1_1_1.json`.
+For v1.1.2 Conversation Surface Minimization and Evidence Fidelity, use
+`docs/process/CODEX_V112_SPEC.md`,
+`docs/process/CODEX_HARNESS_V1_1_2_CONVERSATION_SURFACE_EVIDENCE_FIDELITY_POLICY.md`,
+and the matching v1.1.2 taxonomy, reason dictionary, rollout manifest, and
+command output policy files.
 
 ## Plan-First Rule
 

@@ -51,6 +51,7 @@ import * as v108Gates from './codex-v108-gate-lib.mjs';
 import { V109_STATUS_KEYS, buildDefaultV109Statuses } from './codex-status-taxonomy.mjs';
 import { V110_STATUS_KEYS, buildDefaultV110Statuses } from './codex-v110-token-economy.mjs';
 import { V111_STATUS_KEYS, buildDefaultV111Statuses, buildTargetModeLegacyCompatibilityReport, classifyTargetModeCompatibilityStatus } from './codex-v111-token-hard-cap.mjs';
+import { V112_STATUS_KEYS, buildV112Report } from './codex-v112-conversation-surface.mjs';
 
 
 
@@ -58,7 +59,7 @@ import { V111_STATUS_KEYS, buildDefaultV111Statuses, buildTargetModeLegacyCompat
 
 
 
-const HARNESS_VERSION = '1.1.1';
+const HARNESS_VERSION = '1.1.2';
 
 
 
@@ -1570,6 +1571,9 @@ function expectedMarkerVersionForPath(file, profileVersions) {
 
 
   if (normalized.startsWith('profiles/')) return profileVersions;
+  if (HARNESS_VERSION === '1.1.2') {
+    return [HARNESS_VERSION, '1.1.1', '1.1.0', '1.0.9', '1.0.8', '1.0.7'];
+  }
   if (HARNESS_VERSION === '1.1.1') {
     return [HARNESS_VERSION, '1.1.0', '1.0.9', '1.0.8', '1.0.7'];
   }
@@ -2548,6 +2552,21 @@ function runV111Gates(report, gateEnv) {
 }
 
 function initializeV111Statuses(report) { for (const key of V111_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
+
+function runV112Gates(report, gateEnv) {
+  const selfTestStatus = process.env.CODEX_SKIP_V112_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v112-self-test.mjs', 'v112SelfTestStatus', 'CODEX_V112_SELF_TEST_REPORT', gateEnv);
+  const reports = buildV112Report();
+  Object.assign(report, reports);
+  report.v112SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
+    ...reports.v112SelfTestStatus,
+    ...selfTestStatus,
+    status: selfTestStatus.status || reports.v112SelfTestStatus.status,
+  };
+}
+
+function initializeV112Statuses(report) { for (const key of V112_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
 
 function legacySelfTestPreservedStatus(legacyVersion) {
   return {
@@ -5654,7 +5673,7 @@ function computeTargetQualityScoreStatus(report) {
 
 
 
-    if (HARNESS_VERSION === '1.1.1') {
+    if (HARNESS_VERSION === '1.1.1' || HARNESS_VERSION === '1.1.2') {
 
 
 
@@ -11677,6 +11696,7 @@ async function runSourceHarnessCoreContractGate() {
   initializeV109Statuses(report);
   initializeV110Statuses(report);
   initializeV111Statuses(report);
+  initializeV112Statuses(report);
 
   if (report.sourceHarnessValidationStatus.status === 'fail') failures.push(...report.sourceHarnessValidationStatus.failures);
   if (report.secretScan.status === 'fail') failures.push({ id: 'secretScan.failed', message: 'secret safety scan failed' });
@@ -11708,6 +11728,7 @@ async function runSourceHarnessCoreContractGate() {
   runV109Gates(report, gateEnv);
   runV110Gates(report, gateEnv);
   runV111Gates(report, gateEnv);
+  runV112Gates(report, gateEnv);
 
   for (const [key, value] of Object.entries({
     changeClassificationStatus: report.changeClassificationStatus,
@@ -11727,6 +11748,7 @@ async function runSourceHarnessCoreContractGate() {
     ...Object.fromEntries(V109_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V110_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V111_STATUS_KEYS.map((name) => [name, report[name]])),
+    ...Object.fromEntries(V112_STATUS_KEYS.map((name) => [name, report[name]])),
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }
@@ -11790,7 +11812,7 @@ async function runSourceHarnessCoreContractGate() {
   else {
     console.log(`status: ${report.status}`);
     console.log(`qualityScore: ${report.qualityScoreStatus.score}`);
-    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS, ...V104_STATUS_KEYS, ...V105_STATUS_KEYS, ...V106_STATUS_KEYS, ...V107_STATUS_KEYS, ...V108_STATUS_KEYS, ...V109_STATUS_KEYS, ...V110_STATUS_KEYS, ...V111_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
+    for (const key of [...V101_STATUS_KEYS, ...V102_STATUS_KEYS, ...V103_STATUS_KEYS, ...V104_STATUS_KEYS, ...V105_STATUS_KEYS, ...V106_STATUS_KEYS, ...V107_STATUS_KEYS, ...V108_STATUS_KEYS, ...V109_STATUS_KEYS, ...V110_STATUS_KEYS, ...V111_STATUS_KEYS, ...V112_STATUS_KEYS]) console.log(`${key}: ${report[key].status}`);
   }
   process.exit(failures.length ? 1 : 0);
 }

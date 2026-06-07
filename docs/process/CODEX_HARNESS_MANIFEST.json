@@ -1,16 +1,16 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.1",
-  "schemaVersion": "1.1.1",
-  "sourceHarnessVersion": "1.1.1",
-  "harnessVersion": "1.1.1",
-  "activeHarnessVersion": "1.1.1",
-  "targetHarnessVersion": "1.1.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.2",
+  "schemaVersion": "1.1.2",
+  "sourceHarnessVersion": "1.1.2",
+  "harnessVersion": "1.1.2",
+  "activeHarnessVersion": "1.1.2",
+  "targetHarnessVersion": "1.1.2",
   "evidenceSchemaVersion": 6,
-  "profileTemplateVersion": "1.1.1",
+  "profileTemplateVersion": "1.1.2",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v110_to_v111",
-  "activeSelfTestSuite": "v111",
-  "activeSelfTestStatusKey": "v111SelfTestStatus",
+  "upgradePath": "direct_v111_to_v112",
+  "activeSelfTestSuite": "v112",
+  "activeSelfTestStatusKey": "v112SelfTestStatus",
   "legacySelfTests": {
     "v108": "blocking_compatibility",
     "v107": "blocking_compatibility",
@@ -18,7 +18,8 @@
     "v105": "advisory",
     "v104": "advisory",
     "v103": "advisory",
-    "v109": "blocking_compatibility"
+    "v109": "blocking_compatibility",
+    "v111": "blocking_compatibility"
   },
   "sourceOnlyRelease": true,
   "targetRollout": "not_started",
@@ -26,7 +27,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Token Hard Cap, Context Capsule, and Failure Closure",
+  "theme": "Conversation Surface Minimization and Evidence Fidelity",
   "requiredStatuses": [
     "v109SelfTestStatus",
     "decisionLedgerStatus",
@@ -286,7 +287,62 @@
     "qualityGateCostProfileStatus",
     "tokenEconomyLossAuditStatus",
     "operationalClosureScoreStatus",
-    "precisionBenchmarkParityStatus"
+    "precisionBenchmarkParityStatus",
+    "v112SelfTestStatus",
+    "tokenBudgetGovernorV2Status",
+    "conversationSurfaceBudgetStatus",
+    "toolOutputBudgetStatus",
+    "safeSummaryExtractorVNextStatus",
+    "qualityGateJsonNoStdoutStatus",
+    "largeJsonConsoleSuppressionStatus",
+    "artifactPointerContractStatus",
+    "evidencePointerShaStatus",
+    "noRawExpandedArtifactStatus",
+    "rolloutStateCapsuleV2Status",
+    "repoSummaryCapsuleStatus",
+    "completedTargetLedgerStatus",
+    "knownGoodSourceCapsuleStatus",
+    "finalReportCompressionV2Status",
+    "finalTemplateCompactStatus",
+    "notStartedSectionElisionStatus",
+    "completedRepoElisionStatus",
+    "selectiveArtifactReaderStatus",
+    "jsonPathAllowlistStatus",
+    "lazyEvidenceExpansionStatus",
+    "statusDeltaReporterV2Status",
+    "knownPassBaselineStatus",
+    "passStatusCounterStatus",
+    "passStatusElisionStatus",
+    "commandOutputPolicyRegistryStatus",
+    "consoleSilenceByDefaultStatus",
+    "githubJsonFieldBudgetStatus",
+    "runMetadataSlimModeStatus",
+    "githubJobsStepNoEchoStatus",
+    "ciWatcherThinModeStatus",
+    "searchOutputCapStatus",
+    "rgResultCapStatus",
+    "fileReadMemoizationStatus",
+    "prBodyGateDecouplingStatus",
+    "prBodyMinimalContractStatus",
+    "instructionDeduplicatorStatus",
+    "repoBoundaryMacroStatus",
+    "repoRolloutManifestStatus",
+    "versionedSafetyProfileStatus",
+    "reasonCodeDictionaryStatus",
+    "failureTaxonomyTopNStatus",
+    "topBlockerDigestStatus",
+    "compactMergeReadinessStatus",
+    "safetyOutcomeBitsetStatus",
+    "toolResultSummarizerStatus",
+    "errorOutputSanitizerStatus",
+    "noTeeFullJsonStatus",
+    "outputShapeNegotiationStatus",
+    "adaptiveVerbosityGateStatus",
+    "humanMachineReadableSplitStatus",
+    "narrationThrottleStatus",
+    "precisionBenchmarkParityV2Status",
+    "evidenceFidelityPreservationStatus",
+    "conversationSurfaceReductionStatus"
   ],
   "repoSpecificRegistrations": [
     "voxweaveReviewEvidenceClassifierStatus",
@@ -631,6 +687,27 @@
     ],
     "sessionEfficiencyScoreStatus": [
       "activeSessionCountHardCapStatus"
+    ]
+  },
+  "absorbedStatusMap": {
+    "tokenBudgetGovernorV2Status": [
+      "tokenBudgetStatus",
+      "inputTokenBudgetStatus"
+    ],
+    "conversationSurfaceBudgetStatus": [
+      "chatHardCapStatus",
+      "proSummaryFirstStatus"
+    ],
+    "ciWatcherThinModeStatus": [
+      "ciWatcherStatus",
+      "ciWatcherV2Status"
+    ],
+    "finalReportCompressionV2Status": [
+      "mainReflectionPackageStatus",
+      "mainReflectionPackageV2Status"
+    ],
+    "precisionBenchmarkParityV2Status": [
+      "precisionBenchmarkParityStatus"
     ]
   }
 }
