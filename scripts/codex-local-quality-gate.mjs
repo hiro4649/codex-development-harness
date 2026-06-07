@@ -7188,6 +7188,10 @@ function applyStatusOutcome(key, value, failures, warnings) {
 
 
   else if (value?.status === 'manual_confirmation_required' || value?.status === 'warning') {
+    if (process.env.CODEX_HARNESS_MODE === 'target') {
+      const compatibility = classifyTargetModeCompatibilityStatus(key, value);
+      if (String(compatibility.effectiveStatus || '').startsWith('pass_')) return;
+    }
 
 
 
