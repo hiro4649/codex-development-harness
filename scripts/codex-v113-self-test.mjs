@@ -12,6 +12,7 @@ import {
   buildMinimalBlockersArtifact,
   buildNonRuntimeSharedUtilityProfile,
   buildProgressiveGatePlan,
+  buildRequiredStatusClosureV3Fixture,
   buildRepairLoopReport,
   buildRepresentativeFixtureSuite,
   buildRolloutDryRun,
@@ -28,6 +29,7 @@ import {
   validatePrBody,
   validateTargetHarnessScopeFirewall,
 } from './codex-v113-minimal-surface.mjs';
+import { buildRequiredStatusClosureV3Report, evaluateWorkflowReport } from './codex-workflow-quality-runner.mjs';
 
 function test(name, fn) {
   try {
@@ -60,6 +62,31 @@ const decisionAllowed = buildDecisionObject();
 const decisionBlocked = buildDecisionObject({ requiredCheckFailed: true });
 const artifactIndex = buildSafeArtifactIndex();
 const costLedger = buildConversationCostLedger();
+const criptoPr31Fixture = buildRequiredStatusClosureV3Fixture({
+  workflowRequiredStatusFailure: true,
+  targetSummaryPass: true,
+  targetMergeReady: true,
+  contractsPass: true,
+  typeScriptPass: true,
+  minimalBlockersPresent: true,
+  decisionObjectPresent: true,
+});
+const criptoPr31WorkflowReport = {
+  harnessVersion: '1.1.3',
+  targetQualityScoreStatus: { status: 'pass', score: 95, safeSummaryOnly: true },
+  targetMergeReady: true,
+  targetManifestStatus: { status: 'pass', safeSummaryOnly: true },
+  secretScan: { status: 'pass', safeSummaryOnly: true },
+  agentsContextStatus: { status: 'pass', safeSummaryOnly: true },
+  safeOutputScanStatus: { status: 'pass', safeSummaryOnly: true },
+  changeClassificationStatus: { status: 'pass', safeSummaryOnly: true },
+  failures: [],
+  warnings: [],
+  status: 'pass',
+  safeSummaryOnly: true,
+};
+const criptoRequiredFailures = ['prProfileStatus=fail', 'promptGovernanceStatus=fail', 'knowledgeGovernanceStatus=fail'];
+const criptoClosureReport = buildRequiredStatusClosureV3Report(criptoPr31WorkflowReport, criptoRequiredFailures);
 
 const cases = [
   test('all_v113_status_keys_default_pass', () => V113_STATUS_KEYS.every((key) => statuses[key]?.status === 'pass')),
@@ -89,6 +116,12 @@ const cases = [
   test('single_decision_object_blocks_required_check', () => decisionBlocked.decision === 'blocked_by_required_check' && decisionBlocked.merge === 'blocked'),
   test('decision_contradiction_passes_consistent_state', () => detectDecisionContradictions({ merge: 'blocked', requiredChecksPass: false, qualityScore: 95, hardBlockerCount: 0 }).status === 'pass'),
   test('decision_contradiction_blocks_allowed_failed_required_check', () => detectDecisionContradictions({ merge: 'allowed', requiredChecksPass: false }).status === 'fail'),
+  test('required_status_closure_fixture_repairs_cripto_pr31_shape', () => criptoPr31Fixture.status === 'pass' && criptoPr31Fixture.falseWorkflowRequiredStatusFailure === true),
+  test('required_status_closure_preserves_real_required_check_failure', () => buildRequiredStatusClosureV3Fixture({ workflowRequiredStatusFailure: true, realRequiredCheckFailed: true }).status === 'fail'),
+  test('required_status_closure_preserves_true_blockers', () => buildRequiredStatusClosureV3Fixture({ workflowRequiredStatusFailure: true, trueBlockerPresent: true }).status === 'fail'),
+  test('workflow_required_status_closure_v3_passes_false_failure', () => criptoClosureReport.workflowRequiredStatusClosureRepairStatus.status === 'pass' && criptoClosureReport.requiredStatusClosureV3Status.closedFalseWorkflowRequiredStatusFailure === true),
+  test('workflow_required_status_closure_does_not_substitute_remote_required_checks', () => buildRequiredStatusClosureV3Report(criptoPr31WorkflowReport, criptoRequiredFailures, { requiredRemoteChecksPass: false }).workflowRequiredStatusClosureRepairStatus.status === 'fail'),
+  test('workflow_evaluate_closes_cripto_pr31_false_required_status_failure', () => evaluateWorkflowReport(criptoPr31WorkflowReport, { harnessMode: 'target' }).failures.length === 0),
   test('safe_artifact_index_entry_points', () => artifactIndex.decision === 'codex-decision-object.safe.json' && artifactIndex.minimalBlockers === 'codex-minimal-blockers.safe.json'),
   test('conversation_cost_ledger_no_full_json_console', () => costLedger.fullJsonConsoleLines === 0 && costLedger.visibleStatusCount <= 7),
   test('pro_summary_lint_blocks_long_report', () => lintProSummary({ finalReportLines: 31 }).status === 'fail'),

@@ -412,7 +412,10 @@
     "repairPrBudgetStatus",
     "remoteEvidenceStateSplitStatus",
     "remoteProductEvidenceRoutingTableStatus",
-    "nonRuntimeSharedUtilityProfileStatus"
+    "nonRuntimeSharedUtilityProfileStatus",
+    "requiredStatusClosureV3Status",
+    "targetSafeSummaryRequiredClosureStatus",
+    "workflowRequiredStatusClosureRepairStatus"
   ],
   "repoSpecificRegistrations": [
     "voxweaveReviewEvidenceClassifierStatus",
