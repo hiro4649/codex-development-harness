@@ -72,6 +72,7 @@ export const V111_STATUS_KEYS = [
   'remoteNpmResultStatus',
   'activeMarkerInternalVersionAlignmentStatus',
   'fixtureContractRegistryStatus',
+  'targetModeLegacyCompatibilityStatus',
   'narrowFixtureNoBroadGateStatus',
   'fullSuiteInterferenceDetectorStatus',
   'legacyAdvisoryClassifierV2Status',
@@ -109,7 +110,154 @@ export const V111_ABSORPTION_MAP = {
   operatorEffortScoreStatus: ['tokenEconomyLossAuditStatus', 'operationalClosureScoreStatus'],
   outputVolumeScoreStatus: ['chatHardCapStatus'],
   sessionEfficiencyScoreStatus: ['activeSessionCountHardCapStatus'],
+  decisionLedgerStatus: ['decisionLedgerFileStatus', 'contextCapsuleStatus'],
+  gateLedgerStatus: ['gateLedgerFileStatus', 'ledgerAbsorptionFirstStatus'],
+  repairPlanSafeJsonStatus: ['terminalBlockedPlaybookStatus', 'safeFailingTestArtifactStatus'],
+  safeCiFailureArtifactV2Status: ['safeFailingTestArtifactStatus', 'ciWatcherArtifactStatus'],
+  requiredCheckClosureV2Status: ['sameHeadCiLedgerStatus'],
+  missingStatusTaxonomyStatus: ['targetModeLegacyCompatibilityStatus'],
+  operatorDigestV4Status: ['chatHardCapStatus', 'artifactPointerOnlyStatus'],
+  mergeCriticalSummaryStatus: ['mergeTopBlockerStatus'],
+  remoteArtifactSemanticClassifierStatus: ['remoteProductEvidenceSplitStatus'],
+  failureTriageEngineStatus: ['terminalBlockedPlaybookStatus', 'safeFailingTestArtifactStatus'],
+  workflowLedgerStatus: ['executableStopResumeStatus', 'validationResumePlanStatus'],
+  ciWatcherStatus: ['ciWatcherArtifactStatus'],
+  prInventoryReductionStatus: ['noNewPrUnlessDeltaStatus', 'ledgerAbsorptionFirstStatus'],
+  mainReflectionPackageStatus: ['mainReflectionPackageV2Status'],
+  reviewEvidenceProtocolV2Status: ['reviewEvidenceProtocolV4Status'],
+  runtimeReturnGateStatus: ['runtimeReadinessBlockerDigestV3Status'],
 };
+
+export const TARGET_MODE_LEGACY_ADVISORY_STATUSES = new Set([
+  'v080SelfTestStatus',
+  'v081SelfTestStatus',
+  'v082SelfTestStatus',
+  'v083SelfTestStatus',
+  'v084SelfTestStatus',
+  'v085SelfTestStatus',
+  'v086SelfTestStatus',
+  'v087SelfTestStatus',
+  'v088SelfTestStatus',
+  'v089SelfTestStatus',
+  'v090SelfTestStatus',
+  'v092SelfTestStatus',
+  'v093SelfTestStatus',
+  'v094SelfTestStatus',
+  'v095SelfTestStatus',
+  'v096SelfTestStatus',
+  'v097SelfTestStatus',
+  'v098SelfTestStatus',
+  'v099SelfTestStatus',
+  'v100SelfTestStatus',
+  'v101SelfTestStatus',
+  'v102SelfTestStatus',
+  'v103SelfTestStatus',
+  'v104SelfTestStatus',
+  'v105SelfTestStatus',
+  'v106SelfTestStatus',
+  'v107SelfTestStatus',
+  'v108SelfTestStatus',
+  'v109SelfTestStatus',
+  'v110SelfTestStatus',
+  'versionLineageStatus',
+  'knowledgeGovernanceStatus',
+  'goldenSetStatus',
+]);
+
+export const TARGET_MODE_TRUE_BLOCKER_REASON_CODES = new Set([
+  'unsafe_value_detected',
+  'secret_leak_detected',
+  'raw_log_leak_detected',
+  'raw_logs_read',
+  'same_head_mismatch',
+  'required_check_failed',
+  'required_check_missing',
+  'required_check_no_status_reported',
+  'runtime_readiness_claimed',
+  'production_readiness_claimed',
+  'product_code_changed',
+  'wallet_rpc_deploy_access_blocked',
+  'self_approval_blocked',
+  'self_merge_blocked',
+  'subagent_merge_authority_blocked',
+  'eight_session_default_denied',
+  'product_repair_inside_harness_rollout',
+]);
+
+export function classifyTargetModeCompatibilityStatus(key, entry = {}, report = {}) {
+  const statusValue = entry?.status || 'missing';
+  const reasonCodes = Array.isArray(entry?.reasonCodes) ? entry.reasonCodes : [];
+  const absorbingStatuses = V111_ABSORPTION_MAP[key] || [];
+  const replacementPresent = absorbingStatuses.some((name) => report[name]?.status === 'pass');
+  const trueBlocker = reasonCodes.some((code) => TARGET_MODE_TRUE_BLOCKER_REASON_CODES.has(code));
+  if (trueBlocker || statusValue === 'no_status_reported') {
+    return {
+      classification: 'blocking_current',
+      effectiveStatus: 'fail',
+      reasonCodes: trueBlocker ? ['current_true_blocker_preserved'] : ['no_status_reported_blocking'],
+      safeSummaryOnly: true,
+    };
+  }
+  if (key === 'v111SelfTestStatus') {
+    return {
+      classification: statusValue === 'pass' ? 'blocking_current' : 'missing_blocking',
+      effectiveStatus: statusValue === 'pass' ? 'pass' : 'fail',
+      reasonCodes: statusValue === 'pass' ? [] : ['v111_self_test_required'],
+      safeSummaryOnly: true,
+    };
+  }
+  if (absorbingStatuses.length) {
+    return {
+      classification: replacementPresent ? 'absorbed_by_v111' : 'missing_nonblocking',
+      effectiveStatus: replacementPresent ? 'pass_absorbed' : 'pass_missing_nonblocking',
+      reasonCodes: replacementPresent ? ['absorbed_by_v111'] : ['legacy_absorbed_status_missing_nonblocking'],
+      absorbedBy: absorbingStatuses,
+      safeSummaryOnly: true,
+    };
+  }
+  if (TARGET_MODE_LEGACY_ADVISORY_STATUSES.has(key)) {
+    return {
+      classification: 'advisory_legacy',
+      effectiveStatus: 'pass_advisory',
+      reasonCodes: ['legacy_target_mode_advisory'],
+      safeSummaryOnly: true,
+    };
+  }
+  if (statusValue === 'missing') {
+    return {
+      classification: 'missing_blocking',
+      effectiveStatus: 'missing',
+      reasonCodes: ['current_status_missing_blocking'],
+      safeSummaryOnly: true,
+    };
+  }
+  return {
+    classification: 'blocking_current',
+    effectiveStatus: statusValue,
+    reasonCodes: [],
+    safeSummaryOnly: true,
+  };
+}
+
+export function buildTargetModeLegacyCompatibilityReport(report = {}) {
+  const checked = [
+    ...Object.keys(V111_ABSORPTION_MAP),
+    ...TARGET_MODE_LEGACY_ADVISORY_STATUSES,
+    'v111SelfTestStatus',
+  ];
+  const classifications = checked.map((key) => ({
+    key,
+    ...classifyTargetModeCompatibilityStatus(key, report[key], report),
+  }));
+  const blocking = classifications.filter((item) => ['fail', 'missing', 'not_run'].includes(item.effectiveStatus));
+  return {
+    status: blocking.length ? 'fail' : 'pass',
+    classifications,
+    blockingCount: blocking.length,
+    reasonCodes: blocking.length ? ['target_mode_compatibility_blocking_status'] : [],
+    safeSummaryOnly: true,
+  };
+}
 
 function status(key, value = 'pass', extra = {}) {
   return {

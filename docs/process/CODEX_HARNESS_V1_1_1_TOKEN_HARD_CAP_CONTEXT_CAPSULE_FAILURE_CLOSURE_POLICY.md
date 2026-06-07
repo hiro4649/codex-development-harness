@@ -44,6 +44,17 @@ rollout, must not rerun without state delta, and must either close or record the
 PR as terminal blocked according to repo policy. Future repair requires a
 separate owner-authorized product scope.
 
+## Target-Mode Legacy Compatibility
+
+Target-mode rollout gates must classify legacy status surfaces explicitly.
+Absorbed v1.1.0 and v1.0.9 statuses are nonblocking only when their v1.1.1
+replacement status is present. Legacy self-test lineage is advisory unless the
+current policy marks it blocking, and it never substitutes for
+`v111SelfTestStatus`. Unsafe output, raw logs, same-head failures, required
+check failures, readiness claims, forbidden product changes, self approval,
+self merge, subagent merge authority, wallet/RPC/deploy access, and 8-session
+default violations remain hard blockers.
+
 ## Precision Parity
 
 Summary, macro instruction, and Context Capsule decisions must preserve the same

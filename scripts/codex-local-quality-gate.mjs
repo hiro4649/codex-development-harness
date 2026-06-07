@@ -50,7 +50,7 @@ import * as v107Gates from './codex-v107-gate-lib.mjs';
 import * as v108Gates from './codex-v108-gate-lib.mjs';
 import { V109_STATUS_KEYS, buildDefaultV109Statuses } from './codex-status-taxonomy.mjs';
 import { V110_STATUS_KEYS, buildDefaultV110Statuses } from './codex-v110-token-economy.mjs';
-import { V111_STATUS_KEYS, buildDefaultV111Statuses } from './codex-v111-token-hard-cap.mjs';
+import { V111_STATUS_KEYS, buildDefaultV111Statuses, buildTargetModeLegacyCompatibilityReport, classifyTargetModeCompatibilityStatus } from './codex-v111-token-hard-cap.mjs';
 
 
 
@@ -5646,11 +5646,39 @@ function computeTargetQualityScoreStatus(report) {
 
 
 
+    let compatibility = null;
+
+
+
     if (allowedNotApplicable.has(key) && status === 'not_applicable') effectiveStatus = 'pass_optional';
 
 
 
-    return { key, status, effectiveStatus };
+    if (HARNESS_VERSION === '1.1.1') {
+
+
+
+      compatibility = classifyTargetModeCompatibilityStatus(key, report[key], report);
+
+
+
+      if (['absorbed_by_v111', 'advisory_legacy', 'not_applicable_for_lane', 'not_required_for_target_mode', 'missing_nonblocking'].includes(compatibility.classification)) {
+
+
+
+        effectiveStatus = compatibility.effectiveStatus;
+
+
+
+      }
+
+
+
+    }
+
+
+
+    return { key, status, effectiveStatus, compatibilityClass: compatibility?.classification || 'blocking_current' };
 
 
 
@@ -11153,6 +11181,10 @@ async function runTargetHarnessGate() {
 
 
   if (report.safeArtifactValidation.status === 'fail') failures.push({ id: 'safeArtifactValidation.failed', message: 'safe artifact validation failed' });
+
+
+
+  report.targetModeLegacyCompatibilityStatus = buildTargetModeLegacyCompatibilityReport(report);
 
 
 
