@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.1.2
+CODEX_QUALITY_HARNESS_FILE v1.1.3
 
 ## Prime Directive
 
@@ -50,6 +50,10 @@ For v1.1.2 Conversation Surface Minimization and Evidence Fidelity, use
 `docs/process/CODEX_HARNESS_V1_1_2_CONVERSATION_SURFACE_EVIDENCE_FIDELITY_POLICY.md`,
 and the matching v1.1.2 taxonomy, reason dictionary, rollout manifest, and
 command output policy files.
+For v1.1.3 Minimal Surface, Fast Gates, Typed Decisions, and Compatibility
+Proof, use `docs/process/CODEX_V113_SPEC.md`,
+`docs/process/CODEX_HARNESS_V1_1_3_MINIMAL_SURFACE_FAST_GATES_COMPATIBILITY_PROOF_POLICY.md`,
+and `docs/process/CODEX_STATUS_TAXONOMY_V1_1_3.json`.
 
 ## Plan-First Rule
 
