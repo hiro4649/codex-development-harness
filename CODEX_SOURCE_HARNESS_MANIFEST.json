@@ -1,7 +1,7 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.0",
-  "harnessVersion": "1.1.0",
-  "sourceHarnessVersion": "1.1.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.1",
+  "harnessVersion": "1.1.1",
+  "sourceHarnessVersion": "1.1.1",
   "profileTemplateVersion": "0.7.0",
   "compatibleProfileTemplateVersions": [
     "0.7.0"
@@ -76,7 +76,12 @@
     "docs/process/CODEX_V110_SPEC.md",
     "docs/process/CODEX_STATUS_TAXONOMY_V1_1_0.json",
     "scripts/codex-v110-token-economy.mjs",
-    "scripts/codex-v110-self-test.mjs"
+    "scripts/codex-v110-self-test.mjs",
+    "docs/process/CODEX_HARNESS_V1_1_1_TOKEN_HARD_CAP_CONTEXT_CAPSULE_FAILURE_CLOSURE_POLICY.md",
+    "docs/process/CODEX_V111_SPEC.md",
+    "docs/process/CODEX_STATUS_TAXONOMY_V1_1_1.json",
+    "scripts/codex-v111-token-hard-cap.mjs",
+    "scripts/codex-v111-self-test.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -528,7 +533,10 @@
     "docs/process/CODEX_REVIEW_EVIDENCE_INTAKE_SCHEMA_V1_0_8.json",
     "docs/process/CODEX_MANUAL_GATE_AUDIT_CHAIN_V1_0_8.json",
     "docs/process/CODEX_THREAT_MODEL_TO_VERIFY_POLICY_V1_0_8.json",
-    "docs/process/CODEX_ORCHESTRATION_GOVERNANCE_V1_0_8.json"
+    "docs/process/CODEX_ORCHESTRATION_GOVERNANCE_V1_0_8.json",
+    "docs/process/CODEX_HARNESS_V1_1_1_TOKEN_HARD_CAP_CONTEXT_CAPSULE_FAILURE_CLOSURE_POLICY.md",
+    "docs/process/CODEX_V111_SPEC.md",
+    "docs/process/CODEX_STATUS_TAXONOMY_V1_1_1.json"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -884,12 +892,14 @@
     "codex-v107-self-test.mjs",
     "codex-update-evidence-from-github.mjs",
     "codex-render-pr-body.mjs",
-    "codex-harness-doctor.mjs"
+    "codex-harness-doctor.mjs",
+    "codex-v111-token-hard-cap.mjs",
+    "codex-v111-self-test.mjs"
   ],
   "optionalFiles": [],
   "activeHarnessVersion": "1.1.0",
-  "activeSelfTestSuite": "v110",
-  "activeSelfTestStatusKey": "v110SelfTestStatus",
+  "activeSelfTestSuite": "v111",
+  "activeSelfTestStatusKey": "v111SelfTestStatus",
   "legacySelfTestSuites": {
     "v107": "blocking_compatibility",
     "v106": "advisory",
@@ -1297,7 +1307,7 @@
   ],
   "targetHarnessVersion": "1.1.0",
   "evidenceSchemaVersion": 6,
-  "theme": "Token Economy and Operational Closure",
+  "theme": "Token Hard Cap, Context Capsule, and Failure Closure",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",
@@ -1338,7 +1348,78 @@
     "performanceBudgetV2Status",
     "operatorEffortScoreStatus",
     "outputVolumeScoreStatus",
-    "sessionEfficiencyScoreStatus"
+    "sessionEfficiencyScoreStatus",
+    "v111SelfTestStatus",
+    "contextCapsuleStatus",
+    "contextCapsuleFreshnessStatus",
+    "compactThreadHandoffStatus",
+    "chatHardCapStatus",
+    "inputTokenBudgetStatus",
+    "artifactPointerOnlyStatus",
+    "detailEscalationGateStatus",
+    "evaluationDigestIngestStatus",
+    "codexInstructionMacroStatus",
+    "noHistoryReplayStatus",
+    "stateDeltaRequiredStatus",
+    "terminalBlockedCacheStatus",
+    "activeSessionCountHardCapStatus",
+    "eightSessionDefaultDeniedStatus",
+    "sessionSpawnBudgetStatus",
+    "orchestrationCostLedgerStatus",
+    "fanInOnceStatus",
+    "duplicateInvestigationBlockStatus",
+    "terminalBlockedPlaybookStatus",
+    "safeFailingTestArtifactStatus",
+    "safeTestSummaryStatus",
+    "rawStackOmittedStatus",
+    "prLifecycleStateMachineStatus",
+    "evidenceRefreshPollingStatus",
+    "safePendingOutputStatus",
+    "longRunningValidationPlannerV2Status",
+    "executableStopResumeStatus",
+    "validationResumePlanStatus",
+    "validationIncompleteTimeoutStatus",
+    "ciWatcherArtifactStatus",
+    "sameHeadCiLedgerStatus",
+    "noNewPrUnlessDeltaStatus",
+    "ledgerAbsorptionFirstStatus",
+    "prInventoryNumericCapStatus",
+    "duplicatePrDetectorStatus",
+    "obsoletePrCloseRecommenderStatus",
+    "mainReflectionPackageV2Status",
+    "mainReflectionExecutionReadinessStatus",
+    "canonicalOwnershipLedgerStatus",
+    "reviewEvidenceProtocolV4Status",
+    "typedReviewApprovalSchemaStatus",
+    "vgcTokenStageArtifactV2Status",
+    "ownerValuesWorkflowV2Status",
+    "deployApprovalStateMachineV2Status",
+    "tokenPreflightGateLedgerStatus",
+    "funkyLaneLedgerStatus",
+    "runtimeReadinessBlockerDigestV3Status",
+    "mergeTopBlockerStatus",
+    "live2dCriticalInvariantTopGateStatus",
+    "live2dRealResidentEvidenceBoundaryStatus",
+    "motionDatasetExecutableBlockStatus",
+    "trustedLoaderEnablementBlockStatus",
+    "avatarUxSafetyBoundaryStatus",
+    "safeEvidenceWordingAllowlistStatus",
+    "remoteProductEvidenceSplitStatus",
+    "remoteNpmRequiredStatus",
+    "remoteNpmExecutedStatus",
+    "remoteNpmArtifactPresentStatus",
+    "remoteNpmNormalizedStatus",
+    "remoteNpmResultStatus",
+    "activeMarkerInternalVersionAlignmentStatus",
+    "fixtureContractRegistryStatus",
+    "narrowFixtureNoBroadGateStatus",
+    "fullSuiteInterferenceDetectorStatus",
+    "legacyAdvisoryClassifierV2Status",
+    "performanceBudgetV3Status",
+    "qualityGateCostProfileStatus",
+    "tokenEconomyLossAuditStatus",
+    "operationalClosureScoreStatus",
+    "precisionBenchmarkParityStatus"
   ],
   "v110AbsorptionMap": {
     "decisionLedgerStatus": [
@@ -1388,6 +1469,101 @@
     "orchestrationAbsorptionMapStatus": [
       "sessionBudgetStatus",
       "mainThreadAuthorityStatus"
+    ]
+  },
+  "tokenHardCap": "required",
+  "contextCapsule": "required",
+  "failureClosure": "required",
+  "v111AbsorptionMap": {
+    "proSummaryFirstStatus": [
+      "chatHardCapStatus",
+      "artifactPointerOnlyStatus"
+    ],
+    "detailOnDemandStatus": [
+      "detailEscalationGateStatus"
+    ],
+    "deltaOnlyReportingStatus": [
+      "stateDeltaRequiredStatus",
+      "noHistoryReplayStatus"
+    ],
+    "tokenBudgetStatus": [
+      "inputTokenBudgetStatus",
+      "chatHardCapStatus"
+    ],
+    "sessionBudgetStatus": [
+      "activeSessionCountHardCapStatus",
+      "eightSessionDefaultDeniedStatus"
+    ],
+    "codexInstructionCompressionStatus": [
+      "codexInstructionMacroStatus"
+    ],
+    "standingPolicyReferenceStatus": [
+      "codexInstructionMacroStatus",
+      "noHistoryReplayStatus"
+    ],
+    "repoBoundaryReferenceStatus": [
+      "contextCapsuleStatus"
+    ],
+    "noRepeatContextGuardStatus": [
+      "noHistoryReplayStatus",
+      "stateDeltaRequiredStatus"
+    ],
+    "decisionLedgerFileStatus": [
+      "contextCapsuleStatus",
+      "ledgerAbsorptionFirstStatus"
+    ],
+    "gateLedgerFileStatus": [
+      "ledgerAbsorptionFirstStatus"
+    ],
+    "stopResumeContractStatus": [
+      "executableStopResumeStatus",
+      "validationResumePlanStatus"
+    ],
+    "longRunningValidationPlannerStatus": [
+      "longRunningValidationPlannerV2Status"
+    ],
+    "ciWatcherV2Status": [
+      "ciWatcherArtifactStatus",
+      "sameHeadCiLedgerStatus"
+    ],
+    "forbiddenContentScannerV2Status": [
+      "safeEvidenceWordingAllowlistStatus",
+      "forbiddenContentScannerV2Status"
+    ],
+    "readinessLanguageLinterV2Status": [
+      "readinessLanguageLinterV2Status"
+    ],
+    "noDeployProofArtifactStatus": [
+      "tokenPreflightGateLedgerStatus",
+      "deployApprovalStateMachineV2Status"
+    ],
+    "vgcTokenStageArtifactStatus": [
+      "vgcTokenStageArtifactV2Status"
+    ],
+    "ownerValuesWorkflowStatus": [
+      "ownerValuesWorkflowV2Status"
+    ],
+    "deployApprovalStateMachineStatus": [
+      "deployApprovalStateMachineV2Status"
+    ],
+    "runtimeReadinessBlockerDigestStatus": [
+      "runtimeReadinessBlockerDigestV3Status"
+    ],
+    "live2dCriticalInvariantStatus": [
+      "live2dCriticalInvariantTopGateStatus"
+    ],
+    "performanceBudgetV2Status": [
+      "performanceBudgetV3Status"
+    ],
+    "operatorEffortScoreStatus": [
+      "tokenEconomyLossAuditStatus",
+      "operationalClosureScoreStatus"
+    ],
+    "outputVolumeScoreStatus": [
+      "chatHardCapStatus"
+    ],
+    "sessionEfficiencyScoreStatus": [
+      "activeSessionCountHardCapStatus"
     ]
   }
 }
