@@ -164,6 +164,8 @@ export const TARGET_MODE_LEGACY_ADVISORY_STATUSES = new Set([
   'versionSuccessionStatus',
   'knowledgeGovernanceStatus',
   'goldenSetStatus',
+  'promptGovernanceStatus',
+  'oldHarnessMarkerStatus',
 ]);
 
 export const TARGET_MODE_TRUE_BLOCKER_REASON_CODES = new Set([
