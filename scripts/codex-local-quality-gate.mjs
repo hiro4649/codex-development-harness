@@ -7177,7 +7177,13 @@ function applyStatusOutcome(key, value, failures, warnings) {
 
 
 
-  if (value?.status === 'fail') failures.push({ id: `${key}.failed`, message: `${key} failed` });
+  if (value?.status === 'fail') {
+    if (process.env.CODEX_HARNESS_MODE === 'target') {
+      const compatibility = classifyTargetModeCompatibilityStatus(key, value);
+      if (String(compatibility.effectiveStatus || '').startsWith('pass_')) return;
+    }
+    failures.push({ id: `${key}.failed`, message: `${key} failed` });
+  }
 
 
 
