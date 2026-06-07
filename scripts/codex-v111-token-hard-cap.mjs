@@ -159,7 +159,9 @@ export const TARGET_MODE_LEGACY_ADVISORY_STATUSES = new Set([
   'v108SelfTestStatus',
   'v109SelfTestStatus',
   'v110SelfTestStatus',
+  'agentsContextStatus',
   'versionLineageStatus',
+  'versionSuccessionStatus',
   'knowledgeGovernanceStatus',
   'goldenSetStatus',
 ]);
