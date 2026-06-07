@@ -177,6 +177,8 @@ export const TARGET_MODE_LEGACY_ADVISORY_STATUSES = new Set([
   'v085StabilityStatus',
   'codeReviewMonitorStatus',
   'requiredHeadingHintStatus',
+  'activeSelfTestRegistryStatus',
+  'newHarnessSelfTestStatus',
 ]);
 
 export const TARGET_MODE_TRUE_BLOCKER_REASON_CODES = new Set([
