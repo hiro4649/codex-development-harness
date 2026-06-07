@@ -114,7 +114,7 @@ jobs:
           echo "CODEX_PRODUCT_VERIFICATION_EVIDENCE_PATH=$RUNNER_TEMP/codex-product-verification-evidence.remote.json" >> "$GITHUB_ENV"
           echo "CODEX_REMOTE_PRODUCT_BASELINE_PATH=$RUNNER_TEMP/codex-remote-product-baseline.json" >> "$GITHUB_ENV"
           echo "CODEX_NPM_TEST_SAFE_SUMMARY_PATH=$RUNNER_TEMP/codex-remote-npm-diagnostic.safe.json" >> "$GITHUB_ENV"
-          if [ -f CODEX_SOURCE_HARNESS_MANIFEST.json ]; then
+          if [ "${GITHUB_REPOSITORY:-}" = "hiro4649/codex-development-harness" ] && [ -f CODEX_SOURCE_HARNESS_MANIFEST.json ]; then
             is_pr=false
             if [ "${CODEX_EVENT_NAME:-}" = "pull_request" ]; then is_pr=true; fi
             runner_json="$(IS_PR="$is_pr" node -e "const input={productRelevant:false,isPullRequest:process.env.IS_PR==='true',eventName:process.env.CODEX_EVENT_NAME||'',headSha:process.env.CODEX_PR_HEAD_SHA||'',baseSha:process.env.CODEX_PR_BASE_SHA||'',repository:process.env.CODEX_REPOSITORY||'',npmExecuted:false,npmExitCode:0}; process.stdout.write(JSON.stringify(input));")"
