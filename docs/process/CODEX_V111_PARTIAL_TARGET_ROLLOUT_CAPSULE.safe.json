@@ -1,0 +1,15 @@
+{
+  "activeHarness": "v1.1.1",
+  "nextHarness": "v1.1.2",
+  "completedTargets": ["VOXWEAVE", "IRIS-live2d-renderer"],
+  "blockedTarget": "FUNKY",
+  "blockedReason": "untracked_product_backend_files",
+  "notStartedTargets": ["IRIS", "CRIPTO-TIP"],
+  "safeNextAction": "develop_source_harness_v112",
+  "rawLogsRead": false,
+  "productCodeChanged": false,
+  "runtimeReadinessClaimed": false,
+  "productionReadinessClaimed": false,
+  "eightSessionUsed": false,
+  "safeSummaryOnly": true
+}
