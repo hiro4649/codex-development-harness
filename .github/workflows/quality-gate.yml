@@ -165,7 +165,7 @@ jobs:
             export CODEX_HUMAN_CONFIRMATION_STRICT="${CODEX_HUMAN_CONFIRMATION_STRICT:-0}"
             export CODEX_REMOTE_VERIFICATION_MODE="${CODEX_REMOTE_VERIFICATION_MODE:-source_main_workflow_dispatch}"
           fi
-          if [ -f CODEX_SOURCE_HARNESS_MANIFEST.json ]; then
+          if [ "${GITHUB_REPOSITORY:-}" = "hiro4649/codex-development-harness" ] && [ -f CODEX_SOURCE_HARNESS_MANIFEST.json ]; then
             export CODEX_HARNESS_SOURCE_REPO=1
             export CODEX_HARNESS_MODE=core
             export CODEX_PROFILE_COMPAT_MODE=optional
