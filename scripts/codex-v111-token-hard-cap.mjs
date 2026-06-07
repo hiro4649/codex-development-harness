@@ -166,6 +166,17 @@ export const TARGET_MODE_LEGACY_ADVISORY_STATUSES = new Set([
   'goldenSetStatus',
   'promptGovernanceStatus',
   'oldHarnessMarkerStatus',
+  'pullRequestContextFidelityStatus',
+  'productVerificationContextStatus',
+  'reviewIndependenceStatus',
+  'taskBriefCompilerStatus',
+  'prProfileStatus',
+  'contractGovernanceStatus',
+  'complexityGovernanceStatus',
+  'bestOfNEvidenceStatus',
+  'v085StabilityStatus',
+  'codeReviewMonitorStatus',
+  'requiredHeadingHintStatus',
 ]);
 
 export const TARGET_MODE_TRUE_BLOCKER_REASON_CODES = new Set([
