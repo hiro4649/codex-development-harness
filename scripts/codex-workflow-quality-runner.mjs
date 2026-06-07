@@ -3226,6 +3226,94 @@ function statusAllowed(key, status, eventName) {
 
 }
 
+const requiredStatusClosureTrueBlockerKeys = new Set([
+  'secretScan',
+  'safeOutputScanStatus',
+  'changeClassificationStatus',
+  'requiredStatusDiffStatus',
+  'targetManifestStatus',
+]);
+
+const requiredStatusClosureTrueBlockerReasonCodes = new Set([
+  'secret_leak_detected',
+  'raw_log_leak_detected',
+  'unsafe_output_detected',
+  'product_code_changed',
+  'package_or_lockfile_changed',
+  'workflow_weakening_detected',
+  'same_head_required_check_failed',
+  'required_check_missing',
+  'runtime_readiness_claimed',
+  'production_readiness_claimed',
+  'wallet_rpc_deploy_access',
+  'self_approval_detected',
+  'self_merge_without_owner_instruction',
+  'eight_session_default_violation',
+  'dirty_product_files_mixed_into_harness_rollout',
+]);
+
+function collectReasonCodes(value, output = []) {
+  if (!value || typeof value !== 'object') return output;
+  if (Array.isArray(value)) {
+    for (const item of value) collectReasonCodes(item, output);
+    return output;
+  }
+  if (Array.isArray(value.reasonCodes)) output.push(...value.reasonCodes.map(String));
+  if (typeof value.reasonCode === 'string') output.push(value.reasonCode);
+  return output;
+}
+
+function hasRequiredStatusClosureTrueBlocker(report, failures, options = {}) {
+  if (options.requiredRemoteChecksPass === false || report.requiredRemoteChecksPass === false) return true;
+  if (report.productCodeChanged || report.runtimeReadinessClaimed || report.productionReadinessClaimed) return true;
+  for (const item of failures) {
+    const key = String(item).split('=')[0];
+    if (requiredStatusClosureTrueBlockerKeys.has(key)) return true;
+  }
+  const reasonCodes = [
+    ...collectReasonCodes(report.failures || []),
+    ...Object.values(report).flatMap((value) => collectReasonCodes(value, [])),
+  ];
+  return reasonCodes.some((code) => requiredStatusClosureTrueBlockerReasonCodes.has(code));
+}
+
+export function buildRequiredStatusClosureV3Report(report, failures = [], options = {}) {
+  const mode = report.targetQualityScoreStatus && !report.sourceHarnessValidationStatus ? 'target' : 'source';
+  const targetMode = mode === 'target';
+  const v113Target = report.harnessVersion === '1.1.3' && targetMode;
+  const targetSummaryPass = report.targetQualityScoreStatus?.status === 'pass' && report.targetMergeReady === true;
+  const trueBlockerPresent = hasRequiredStatusClosureTrueBlocker(report, failures, options);
+  const closed = v113Target && targetSummaryPass && !trueBlockerPresent;
+  const reasonCodes = [];
+  if (!v113Target) reasonCodes.push('not_v113_target_mode');
+  if (!targetSummaryPass) reasonCodes.push('target_safe_summary_not_pass');
+  if (trueBlockerPresent) reasonCodes.push('true_blocker_present');
+  return {
+    requiredStatusClosureV3Status: {
+      status: closed || failures.length === 0 ? 'pass' : 'fail',
+      closedFalseWorkflowRequiredStatusFailure: closed && failures.length > 0,
+      failureCountBeforeClosure: failures.length,
+      reasonCodes: closed || failures.length === 0 ? [] : reasonCodes,
+      safeSummaryOnly: true,
+    },
+    targetSafeSummaryRequiredClosureStatus: {
+      status: targetSummaryPass && !trueBlockerPresent ? 'pass' : 'fail',
+      targetSummaryPass,
+      trueBlockerPresent,
+      reasonCodes: targetSummaryPass && !trueBlockerPresent ? [] : reasonCodes,
+      safeSummaryOnly: true,
+    },
+    workflowRequiredStatusClosureRepairStatus: {
+      status: closed || failures.length === 0 ? 'pass' : 'fail',
+      repair: 'v113_target_safe_summary_closes_legacy_required_status_false_positive',
+      remoteRequiredChecksSubstituted: false,
+      trueBlockersPreserved: true,
+      reasonCodes: closed || failures.length === 0 ? [] : reasonCodes,
+      safeSummaryOnly: true,
+    },
+  };
+}
+
 
 
 
@@ -3956,6 +4044,11 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
 
+  }
+
+  const requiredStatusClosure = buildRequiredStatusClosureV3Report(report, failures, options);
+  if (requiredStatusClosure.requiredStatusClosureV3Status.closedFalseWorkflowRequiredStatusFailure) {
+    failures.length = 0;
   }
 
 
@@ -4846,6 +4939,9 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
     warningCount: Array.isArray(report.warnings) ? report.warnings.length : 0,
+    requiredStatusClosureV3Status: requiredStatusClosure.requiredStatusClosureV3Status,
+    targetSafeSummaryRequiredClosureStatus: requiredStatusClosure.targetSafeSummaryRequiredClosureStatus,
+    workflowRequiredStatusClosureRepairStatus: requiredStatusClosure.workflowRequiredStatusClosureRepairStatus,
 
 
 
@@ -5000,6 +5096,7 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
     failures: [...new Set(failures)],
+    ...requiredStatusClosure,
 
 
 

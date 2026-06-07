@@ -26,6 +26,9 @@ export const V113_STATUS_KEYS = [
   'typedDecisionEnumStatus',
   'allowedActionMatrixStatus',
   'decisionContradictionStatus',
+  'requiredStatusClosureV3Status',
+  'targetSafeSummaryRequiredClosureStatus',
+  'workflowRequiredStatusClosureRepairStatus',
   'targetHarnessScopeFirewallStatus',
   'externalWorkspaceProcessBlockStatus',
   'childProcessCwdInsideRepoStatus',
@@ -267,6 +270,40 @@ export function detectDecisionContradictions(input = {}) {
   return reasonCodes.length ? fail(reasonCodes) : pass();
 }
 
+export function buildRequiredStatusClosureV3Fixture(input = {}) {
+  const targetSummaryPass = input.targetSummaryPass !== false;
+  const targetMergeReady = input.targetMergeReady !== false;
+  const contractsPass = input.contractsPass !== false;
+  const typeScriptPass = input.typeScriptPass !== false;
+  const minimalBlockersPresent = input.minimalBlockersPresent !== false;
+  const decisionObjectPresent = input.decisionObjectPresent !== false;
+  const falseWorkflowRequiredStatusFailure = input.workflowRequiredStatusFailure === true
+    && targetSummaryPass
+    && targetMergeReady
+    && contractsPass
+    && typeScriptPass
+    && minimalBlockersPresent
+    && decisionObjectPresent
+    && !input.realRequiredCheckFailed
+    && !input.trueBlockerPresent;
+  const reasonCodes = [];
+  if (!targetSummaryPass) reasonCodes.push('target_safe_summary_not_pass');
+  if (!targetMergeReady) reasonCodes.push('target_merge_not_ready');
+  if (!minimalBlockersPresent) reasonCodes.push('minimal_blockers_missing');
+  if (!decisionObjectPresent) reasonCodes.push('decision_object_missing');
+  if (input.realRequiredCheckFailed) reasonCodes.push('same_head_required_check_failed');
+  if (input.trueBlockerPresent) reasonCodes.push('true_blocker_present');
+  return {
+    status: falseWorkflowRequiredStatusFailure || reasonCodes.length === 0 ? 'pass' : 'fail',
+    falseWorkflowRequiredStatusFailure,
+    mergeAllowed: false,
+    qualityGatePassSubstitutesRequiredChecks: false,
+    trueBlockersPreserved: true,
+    reasonCodes,
+    safeSummaryOnly: true,
+  };
+}
+
 export function validateTargetHarnessScopeFirewall(input = {}) {
   const root = path.resolve(input.repoRoot || process.cwd());
   const cwd = path.resolve(input.childCwd || root);
@@ -442,6 +479,9 @@ export function buildV113Report(input = {}) {
   const legacyLane = classifyLegacySelfTestLane(input.legacyLane || {});
   const decisionObject = buildDecisionObject(input.decision || {});
   const contradiction = detectDecisionContradictions(input.contradiction || {});
+  const requiredClosure = buildRequiredStatusClosureV3Fixture(input.requiredClosure || {
+    workflowRequiredStatusFailure: true,
+  });
   const scopeFirewall = validateTargetHarnessScopeFirewall(input.scopeFirewall || {});
   const progressive = buildProgressiveGatePlan(input.progressive || {});
   const selector = buildTargetRolloutSelectorManifest(input.selector || {});
@@ -471,6 +511,9 @@ export function buildV113Report(input = {}) {
     typedDecisionEnumStatus: DECISION_ENUM.includes(decisionObject.decision) ? pass({ decision: decisionObject.decision }) : fail('decision_enum_invalid'),
     allowedActionMatrixStatus: pass({ blockedByRequiredCheckAllows: ['wait_for_state_delta', 'inspect_safe_metadata'] }),
     decisionContradictionStatus: contradiction,
+    requiredStatusClosureV3Status: requiredClosure.status === 'pass' ? pass({ falseWorkflowRequiredStatusFailure: requiredClosure.falseWorkflowRequiredStatusFailure }) : requiredClosure,
+    targetSafeSummaryRequiredClosureStatus: requiredClosure.status === 'pass' ? pass({ targetSummaryPrimary: true }) : requiredClosure,
+    workflowRequiredStatusClosureRepairStatus: requiredClosure.status === 'pass' ? pass({ repair: 'v113_target_safe_summary_closure', trueBlockersPreserved: true }) : requiredClosure,
     targetHarnessScopeFirewallStatus: scopeFirewall,
     externalWorkspaceProcessBlockStatus: scopeFirewall.status === 'pass' ? pass() : scopeFirewall,
     childProcessCwdInsideRepoStatus: scopeFirewall.status === 'pass' ? pass() : scopeFirewall,

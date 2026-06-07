@@ -90,7 +90,10 @@
     "repairPrBudgetStatus",
     "remoteEvidenceStateSplitStatus",
     "remoteProductEvidenceRoutingTableStatus",
-    "nonRuntimeSharedUtilityProfileStatus"
+    "nonRuntimeSharedUtilityProfileStatus",
+    "requiredStatusClosureV3Status",
+    "targetSafeSummaryRequiredClosureStatus",
+    "workflowRequiredStatusClosureRepairStatus"
   ],
   "trueBlockerReasonCodes": [
     "secret_leak_detected",
