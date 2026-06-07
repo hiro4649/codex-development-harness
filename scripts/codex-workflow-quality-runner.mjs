@@ -70,6 +70,7 @@ import { buildDiagnosticConsolidatedSummary } from './codex-diagnostic-consolida
 
 import { buildInvalidReportRecoverySummary } from './codex-invalid-report-recovery.mjs';
 import { V101_STATUS_KEYS } from './codex-v101-gate-lib.mjs';
+import { classifyTargetModeCompatibilityStatus } from './codex-v111-token-hard-cap.mjs';
 
 
 
@@ -3915,6 +3916,12 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
     const status = report[key]?.status || 'missing';
+
+    if (mode === 'target') {
+      const compatibility = classifyTargetModeCompatibilityStatus(key, report[key], report);
+      if (String(compatibility.effectiveStatus || '').startsWith('pass_')) continue;
+    }
+
 
 
 
