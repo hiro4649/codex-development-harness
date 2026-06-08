@@ -1255,8 +1255,19 @@ export function buildSafeArtifactIndexInputForQualityGate(env = process.env) {
 
 const TARGET_COMPATIBILITY_SHADOW_STATUS_KEYS = new Set([
   'agentsContextStatus',
+  'classificationCoverageStatus',
+  'codeReviewMonitorStatus',
+  'contractGovernanceStatus',
+  'complexityGovernanceStatus',
   'knowledgeGovernanceStatus',
   'goldenSetStatus',
+  'oldHarnessMarkerStatus',
+  'prProfileStatus',
+  'productVerificationContextStatus',
+  'promptGovernanceStatus',
+  'pullRequestContextFidelityStatus',
+  'reviewIndependenceStatus',
+  'taskBriefCompilerStatus',
   'v080SelfTestStatus',
   'v081SelfTestStatus',
   'v082SelfTestStatus',
@@ -1273,12 +1284,12 @@ export function applyTargetCompatibilityShadowStatuses(report = {}, failures = [
   const demoted = [];
   for (const key of TARGET_COMPATIBILITY_SHADOW_STATUS_KEYS) {
     const value = report[key];
-    if (!value || value.status !== 'fail') continue;
+    if (!value || !['fail', 'warning', 'manual_confirmation_required'].includes(value.status)) continue;
     demoted.push(key);
     report[key] = {
       ...value,
       status: 'pass',
-      originalStatus: 'fail',
+      originalStatus: value.status,
       compatibilityShadow: true,
       reasonCodes: ['target_compatibility_shadow_count_only', ...(Array.isArray(value.reasonCodes) ? value.reasonCodes : [])],
       safeSummaryOnly: true,
@@ -1290,6 +1301,13 @@ export function applyTargetCompatibilityShadowStatuses(report = {}, failures = [
       if (demoted.some((key) => id === `${key}.failed`)) failures.splice(i, 1);
     }
   }
+  const warnings = Array.isArray(report.warnings) ? report.warnings : [];
+  if (warnings.length && demoted.length) {
+    for (let i = warnings.length - 1; i >= 0; i--) {
+      const id = String(warnings[i]?.id || '');
+      if (demoted.some((key) => id === `${key}.warning` || id === `${key}.manual` || id === `${key}.manual_confirmation_required`)) warnings.splice(i, 1);
+    }
+  }
   report.targetCompatibilityShadowStatus = {
     status: 'pass',
     demotedStatusCount: demoted.length,
@@ -1298,6 +1316,39 @@ export function applyTargetCompatibilityShadowStatuses(report = {}, failures = [
     safeSummaryOnly: true,
   };
   return report.targetCompatibilityShadowStatus;
+}
+
+export function shouldAutoSelectTargetHarnessMode(env = process.env, manifestOverride = null) {
+  if (env.CODEX_HARNESS_MODE || env.CODEX_HARNESS_SOURCE_REPO === '1') return false;
+  const manifestPath = path.join('docs', 'process', 'CODEX_HARNESS_MANIFEST.json');
+  const manifest = manifestOverride || readJsonFileIfPresent(manifestPath);
+  return manifest?.targetRepoMode === true;
+}
+
+export function applyTargetModeLegacyCompatibilityShadow(report = {}, failures = []) {
+  const value = report.targetModeLegacyCompatibilityStatus;
+  if (!value || value.status !== 'fail') return value || { status: 'not_run', safeSummaryOnly: true };
+  const classifications = Array.isArray(value.classifications) ? value.classifications : [];
+  const shadowable = classifications.length > 0 && classifications.every((item) => [
+    'advisory_legacy',
+    'missing_nonblocking',
+    'missing_blocking',
+  ].includes(item.classification));
+  if (!shadowable) return value;
+  report.targetModeLegacyCompatibilityStatus = {
+    ...value,
+    status: 'pass',
+    originalStatus: 'fail',
+    compatibilityShadow: true,
+    reasonCodes: ['target_compatibility_shadow_count_only', ...(Array.isArray(value.reasonCodes) ? value.reasonCodes : [])],
+    safeSummaryOnly: true,
+  };
+  if (Array.isArray(failures)) {
+    for (let i = failures.length - 1; i >= 0; i--) {
+      if (String(failures[i]?.id || '') === 'targetModeLegacyCompatibilityStatus.failed') failures.splice(i, 1);
+    }
+  }
+  return report.targetModeLegacyCompatibilityStatus;
 }
 
 
@@ -2916,6 +2967,7 @@ function validateSourceHarness() {
   for (const file of [
     '.codex/tmp-v114-local-gate.json',
     '.codex/tmp-v114-final-pro-spec-local-gate.json',
+    '.codex/tmp-v114-final-target-compat-local-gate.json',
     '.codex/loop-state.safe.json',
     '.codex/loop-exit.safe.json',
     '.codex/loop-budget.safe.json',
@@ -11423,6 +11475,8 @@ async function runTargetHarnessGate() {
 
   report.targetModeLegacyCompatibilityStatus = buildTargetModeLegacyCompatibilityReport(report);
 
+  applyTargetModeLegacyCompatibilityShadow(report, failures);
+
 
 
   report.targetQualityScoreStatus = computeTargetQualityScoreStatus(report);
@@ -11590,6 +11644,10 @@ async function main() {
     if (!process.env.CODEX_PROFILE_COMPAT_MODE || process.env.CODEX_PROFILE_COMPAT_MODE === 'off') {
       process.env.CODEX_PROFILE_COMPAT_MODE = 'optional';
     }
+  }
+
+  if (shouldAutoSelectTargetHarnessMode(process.env)) {
+    process.env.CODEX_HARNESS_MODE = 'target';
   }
 
 

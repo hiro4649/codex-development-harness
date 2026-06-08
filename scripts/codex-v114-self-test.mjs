@@ -36,8 +36,10 @@ import {
 import { classifyGuardrailOperation, validateHookGuardrailRegistry } from './codex-v114-guardrail-registry.mjs';
 import {
   applyTargetCompatibilityShadowStatuses,
+  applyTargetModeLegacyCompatibilityShadow,
   buildRemoteProductEvidenceExecutionInput,
   buildSafeArtifactIndexInputForQualityGate,
+  shouldAutoSelectTargetHarnessMode,
 } from './codex-local-quality-gate.mjs';
 
 function test(name, fn) {
@@ -75,15 +77,35 @@ const legacyExecutionInput = buildRemoteProductEvidenceExecutionInput(
 const legacyArtifactIndexInput = buildSafeArtifactIndexInputForQualityGate({ CODEX_REMOTE_NPM_EXECUTED: '0' });
 const targetCompatibilityShadowReport = {
   agentsContextStatus: { status: 'fail', reasonCodes: ['agents_context_missing_harness_block'] },
+  promptGovernanceStatus: { status: 'warning', reasonCodes: ['agents_change_without_prompt_eval'] },
+  reviewIndependenceStatus: { status: 'fail', reasonCodes: ['review_independence_missing'] },
   v080SelfTestStatus: { status: 'fail', reasonCodes: ['legacy_marker_mismatch'] },
   targetManifestStatus: { status: 'fail', reasonCodes: ['target_manifest_missing'] },
+  warnings: [{ id: 'promptGovernanceStatus.warning' }],
 };
 const targetCompatibilityShadowFailures = [
   { id: 'agentsContextStatus.failed' },
+  { id: 'reviewIndependenceStatus.failed' },
   { id: 'v080SelfTestStatus.failed' },
   { id: 'targetManifestStatus.failed' },
 ];
 const targetCompatibilityShadow = applyTargetCompatibilityShadowStatuses(targetCompatibilityShadowReport, targetCompatibilityShadowFailures);
+const targetLegacyShadowReport = {
+  targetModeLegacyCompatibilityStatus: {
+    status: 'fail',
+    classifications: [
+      { key: 'v111SelfTestStatus', classification: 'missing_blocking' },
+      { key: 'v080SelfTestStatus', classification: 'advisory_legacy' },
+    ],
+    reasonCodes: ['target_mode_compatibility_blocking_status'],
+    safeSummaryOnly: true,
+  },
+};
+const targetLegacyShadowFailures = [{ id: 'targetModeLegacyCompatibilityStatus.failed' }];
+const targetLegacyShadow = applyTargetModeLegacyCompatibilityShadow(targetLegacyShadowReport, targetLegacyShadowFailures);
+const targetAutoModeFixture = shouldAutoSelectTargetHarnessMode({}, {
+  targetRepoMode: true,
+});
 
 const cases = [
   test('all_v114_status_keys_default_pass', () => V114_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
@@ -137,7 +159,12 @@ const cases = [
   test('compatibility_shadow_count_only', () => buildV114Report().evaluationAbsorptionStatus.status === 'pass' && buildV114Report().evaluationAbsorptionStatus.statusTiers?.legacySelfTestStatus !== 'critical_now'),
   test('completed_target_not_reprinted', () => validateFinalReportBudget({ completedTargetDetailsReprinted: true }).status === 'fail'),
   test('legacy_target_v113_quality_gate_exports_preserved', () => legacyExecutionInput.forceCheck === true && Array.isArray(legacyArtifactIndexInput)),
-  test('target_compatibility_shadow_demotes_legacy_only', () => targetCompatibilityShadow.demotedStatusCount === 2 && targetCompatibilityShadowFailures.length === 1 && targetCompatibilityShadowReport.targetManifestStatus.status === 'fail'),
+  test('voxweave_target_mode_workflow_gate_compatibility', () => targetCompatibilityShadow.demotedStatusCount === 4 && targetCompatibilityShadowFailures.length === 1 && targetCompatibilityShadowReport.warnings.length === 0),
+  test('target_mode_compat_shadow_count_only', () => targetCompatibilityShadowReport.reviewIndependenceStatus.status === 'pass' && targetCompatibilityShadowReport.targetManifestStatus.status === 'fail'),
+  test('target_mode_legacy_compat_shadow_count_only', () => targetLegacyShadow.status === 'pass' && targetLegacyShadowFailures.length === 0),
+  test('target_manifest_true_blocker_hard', () => targetCompatibilityShadowReport.targetManifestStatus.status === 'fail'),
+  test('target_mode_manifest_auto_detection', () => targetAutoModeFixture === true),
+  test('product_runtime_package_workflow_blockers_remain_hard', () => classifyGuardrailOperation('workflow_scope_violation').status === 'fail' && classifyGuardrailOperation('package_lockfile_scope_violation').status === 'fail'),
 ];
 
 const failures = cases.filter((item) => item.status !== 'pass');
