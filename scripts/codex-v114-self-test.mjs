@@ -35,6 +35,7 @@ import {
 } from './codex-v114-loop-kernel.mjs';
 import { classifyGuardrailOperation, validateHookGuardrailRegistry } from './codex-v114-guardrail-registry.mjs';
 import {
+  applyTargetCompatibilityShadowStatuses,
   buildRemoteProductEvidenceExecutionInput,
   buildSafeArtifactIndexInputForQualityGate,
 } from './codex-local-quality-gate.mjs';
@@ -72,6 +73,17 @@ const legacyExecutionInput = buildRemoteProductEvidenceExecutionInput(
   { CODEX_PR_HEAD_SHA: 'head-a', CODEX_EVENT_NAME: 'pull_request' },
 );
 const legacyArtifactIndexInput = buildSafeArtifactIndexInputForQualityGate({ CODEX_REMOTE_NPM_EXECUTED: '0' });
+const targetCompatibilityShadowReport = {
+  agentsContextStatus: { status: 'fail', reasonCodes: ['agents_context_missing_harness_block'] },
+  v080SelfTestStatus: { status: 'fail', reasonCodes: ['legacy_marker_mismatch'] },
+  targetManifestStatus: { status: 'fail', reasonCodes: ['target_manifest_missing'] },
+};
+const targetCompatibilityShadowFailures = [
+  { id: 'agentsContextStatus.failed' },
+  { id: 'v080SelfTestStatus.failed' },
+  { id: 'targetManifestStatus.failed' },
+];
+const targetCompatibilityShadow = applyTargetCompatibilityShadowStatuses(targetCompatibilityShadowReport, targetCompatibilityShadowFailures);
 
 const cases = [
   test('all_v114_status_keys_default_pass', () => V114_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
@@ -125,6 +137,7 @@ const cases = [
   test('compatibility_shadow_count_only', () => buildV114Report().evaluationAbsorptionStatus.status === 'pass' && buildV114Report().evaluationAbsorptionStatus.statusTiers?.legacySelfTestStatus !== 'critical_now'),
   test('completed_target_not_reprinted', () => validateFinalReportBudget({ completedTargetDetailsReprinted: true }).status === 'fail'),
   test('legacy_target_v113_quality_gate_exports_preserved', () => legacyExecutionInput.forceCheck === true && Array.isArray(legacyArtifactIndexInput)),
+  test('target_compatibility_shadow_demotes_legacy_only', () => targetCompatibilityShadow.demotedStatusCount === 2 && targetCompatibilityShadowFailures.length === 1 && targetCompatibilityShadowReport.targetManifestStatus.status === 'fail'),
 ];
 
 const failures = cases.filter((item) => item.status !== 'pass');
