@@ -35,6 +35,7 @@ import {
 } from './codex-v114-loop-kernel.mjs';
 import { classifyGuardrailOperation, validateHookGuardrailRegistry } from './codex-v114-guardrail-registry.mjs';
 import {
+  applyTargetActiveSelfTestRegistryMapping,
   applyTargetCompatibilityShadowStatuses,
   applyTargetModeLegacyCompatibilityShadow,
   buildRemoteProductEvidenceExecutionInput,
@@ -106,6 +107,53 @@ const targetLegacyShadow = applyTargetModeLegacyCompatibilityShadow(targetLegacy
 const targetAutoModeFixture = shouldAutoSelectTargetHarnessMode({}, {
   targetRepoMode: true,
 });
+const funkyLegacySelfTestShadowReport = {
+  newHarnessSelfTestStatus: { status: 'fail', reasonCodes: ['new_harness_self_test_failed'] },
+  v101SelfTestStatus: { status: 'fail', reasonCodes: ['legacy_target_self_test_missing'] },
+  v102SelfTestStatus: { status: 'fail', reasonCodes: ['legacy_target_self_test_missing'] },
+  v103SelfTestStatus: { status: 'fail', reasonCodes: ['legacy_target_self_test_missing'] },
+  targetManifestStatus: { status: 'pass' },
+};
+const funkyLegacySelfTestShadowFailures = [
+  { id: 'newHarnessSelfTestStatus.failed' },
+  { id: 'v101SelfTestStatus.failed' },
+  { id: 'v102SelfTestStatus.failed' },
+  { id: 'v103SelfTestStatus.failed' },
+];
+const funkyLegacySelfTestShadow = applyTargetCompatibilityShadowStatuses(funkyLegacySelfTestShadowReport, funkyLegacySelfTestShadowFailures);
+const funkyActiveRegistryReport = {
+  activeSelfTestRegistryStatus: {
+    status: 'fail',
+    reasonCodes: ['active_self_test_registry_missing'],
+  },
+};
+const funkyActiveRegistryFailures = [{ id: 'activeSelfTestRegistryStatus.failed' }];
+const funkyActiveRegistry = applyTargetActiveSelfTestRegistryMapping(funkyActiveRegistryReport, funkyActiveRegistryFailures, {
+  manifest: {
+    targetRepoMode: true,
+    harnessVersion: '1.1.4',
+    activeSelfTestSuite: 'v114',
+    activeSelfTestStatusKey: 'v114SelfTestStatus',
+  },
+  localGateText: 'v114SelfTestStatus',
+  selfTestPresent: true,
+});
+const funkyMissingRegistryReport = {
+  activeSelfTestRegistryStatus: {
+    status: 'fail',
+    reasonCodes: ['active_self_test_registry_missing'],
+  },
+};
+const funkyMissingRegistry = applyTargetActiveSelfTestRegistryMapping(funkyMissingRegistryReport, [], {
+  manifest: {
+    targetRepoMode: true,
+    harnessVersion: '1.1.4',
+    activeSelfTestSuite: 'v114',
+    activeSelfTestStatusKey: 'v113SelfTestStatus',
+  },
+  localGateText: 'v114SelfTestStatus',
+  selfTestPresent: true,
+});
 
 const cases = [
   test('all_v114_status_keys_default_pass', () => V114_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
@@ -164,6 +212,9 @@ const cases = [
   test('target_mode_legacy_compat_shadow_count_only', () => targetLegacyShadow.status === 'pass' && targetLegacyShadowFailures.length === 0),
   test('target_manifest_true_blocker_hard', () => targetCompatibilityShadowReport.targetManifestStatus.status === 'fail'),
   test('target_mode_manifest_auto_detection', () => targetAutoModeFixture === true),
+  test('funky_target_v101_v103_compat_shadow_count_only', () => funkyLegacySelfTestShadow.demotedStatusCount === 4 && funkyLegacySelfTestShadowFailures.length === 0),
+  test('funky_target_active_v114_registry_required', () => funkyActiveRegistry.status === 'pass' && funkyActiveRegistryFailures.length === 0 && funkyActiveRegistryReport.activeSelfTestRegistryStatus.targetModeMapping === true),
+  test('funky_target_manifest_active_key_mismatch_remains_hard', () => funkyMissingRegistry.status === 'fail' && funkyMissingRegistryReport.activeSelfTestRegistryStatus.status === 'fail'),
   test('product_runtime_package_workflow_blockers_remain_hard', () => classifyGuardrailOperation('workflow_scope_violation').status === 'fail' && classifyGuardrailOperation('package_lockfile_scope_violation').status === 'fail'),
 ];
 
