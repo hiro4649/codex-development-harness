@@ -1273,6 +1273,7 @@ const TARGET_COMPATIBILITY_SHADOW_STATUS_KEYS = new Set([
   'v082SelfTestStatus',
   'v083SelfTestStatus',
   'v087SelfTestStatus',
+  'v085SelfTestStatus',
   'v090SelfTestStatus',
   'v092SelfTestStatus',
   'versionSuccessionStatus',
