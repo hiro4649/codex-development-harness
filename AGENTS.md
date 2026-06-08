@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.1.3
+CODEX_QUALITY_HARNESS_FILE v1.1.4
 
 ## Prime Directive
 
@@ -54,6 +54,13 @@ For v1.1.3 Minimal Surface, Fast Gates, Typed Decisions, and Compatibility
 Proof, use `docs/process/CODEX_V113_SPEC.md`,
 `docs/process/CODEX_HARNESS_V1_1_3_MINIMAL_SURFACE_FAST_GATES_COMPATIBILITY_PROOF_POLICY.md`,
 and `docs/process/CODEX_STATUS_TAXONOMY_V1_1_3.json`.
+For v1.1.4 Loop Kernel and Deterministic Guardrails, use
+`docs/process/CODEX_V114_SPEC.md`. Preserve v1.1.3 safety profile, same-head
+checks, token economy, raw-log prohibition, 8-session default fail, and target
+rollout prohibition until a separate owner instruction authorizes rollout.
+v1.1.4 finalizes Loop Kernel with Decision Core, Minimal Blockers, status
+tiering, remote evidence state machine, forbidden scope IDs, and token cost
+ledger.
 
 ## Plan-First Rule
 
