@@ -34,6 +34,10 @@ import {
   validateOneSafeNextAction,
 } from './codex-v114-loop-kernel.mjs';
 import { classifyGuardrailOperation, validateHookGuardrailRegistry } from './codex-v114-guardrail-registry.mjs';
+import {
+  buildRemoteProductEvidenceExecutionInput,
+  buildSafeArtifactIndexInputForQualityGate,
+} from './codex-local-quality-gate.mjs';
 
 function test(name, fn) {
   try {
@@ -63,6 +67,11 @@ const remoteNpmFailed = classifyRemoteEvidenceState({ remoteNpmRequired: true, r
 const validationGraph = buildValidationDependencyGraph({ changedFiles: ['scripts/codex-v114-self-test.mjs'] });
 const cacheKey = buildSafeValidationCacheKey({ headSha: 'abc', inputHash: 'def', changedFiles: ['scripts/codex-v114-self-test.mjs'] });
 const tokenLedger = buildTokenCostLedger({ duplicatedBoundaryText: 1 });
+const legacyExecutionInput = buildRemoteProductEvidenceExecutionInput(
+  { changeClassificationStatus: { classification: { productSourceChanged: true } } },
+  { CODEX_PR_HEAD_SHA: 'head-a', CODEX_EVENT_NAME: 'pull_request' },
+);
+const legacyArtifactIndexInput = buildSafeArtifactIndexInputForQualityGate({ CODEX_REMOTE_NPM_EXECUTED: '0' });
 
 const cases = [
   test('all_v114_status_keys_default_pass', () => V114_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
@@ -115,6 +124,7 @@ const cases = [
   test('stale_diagnostic_reintroduction_fails', () => classifyGuardrailOperation('stale_diagnostic_reintroduction').reasonCode === 'stale_diagnostic_reintroduction'),
   test('compatibility_shadow_count_only', () => buildV114Report().evaluationAbsorptionStatus.status === 'pass' && buildV114Report().evaluationAbsorptionStatus.statusTiers?.legacySelfTestStatus !== 'critical_now'),
   test('completed_target_not_reprinted', () => validateFinalReportBudget({ completedTargetDetailsReprinted: true }).status === 'fail'),
+  test('legacy_target_v113_quality_gate_exports_preserved', () => legacyExecutionInput.forceCheck === true && Array.isArray(legacyArtifactIndexInput)),
 ];
 
 const failures = cases.filter((item) => item.status !== 'pass');
