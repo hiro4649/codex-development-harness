@@ -154,6 +154,16 @@ const funkyMissingRegistry = applyTargetActiveSelfTestRegistryMapping(funkyMissi
   localGateText: 'v114SelfTestStatus',
   selfTestPresent: true,
 });
+const criptoTipV085ShadowReport = {
+  v085SelfTestStatus: {
+    status: 'fail',
+    failures: ['harness-only change with no product claim -> manual_confirmation_required'],
+    safeSummaryOnly: true,
+  },
+  targetManifestStatus: { status: 'pass' },
+};
+const criptoTipV085ShadowFailures = [{ id: 'v085SelfTestStatus.failed' }];
+const criptoTipV085Shadow = applyTargetCompatibilityShadowStatuses(criptoTipV085ShadowReport, criptoTipV085ShadowFailures);
 
 const cases = [
   test('all_v114_status_keys_default_pass', () => V114_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
@@ -215,6 +225,13 @@ const cases = [
   test('funky_target_v101_v103_compat_shadow_count_only', () => funkyLegacySelfTestShadow.demotedStatusCount === 4 && funkyLegacySelfTestShadowFailures.length === 0),
   test('funky_target_active_v114_registry_required', () => funkyActiveRegistry.status === 'pass' && funkyActiveRegistryFailures.length === 0 && funkyActiveRegistryReport.activeSelfTestRegistryStatus.targetModeMapping === true),
   test('funky_target_manifest_active_key_mismatch_remains_hard', () => funkyMissingRegistry.status === 'fail' && funkyMissingRegistryReport.activeSelfTestRegistryStatus.status === 'fail'),
+  test('cripto_tip_target_v085_legacy_shadow_count_only', () => criptoTipV085Shadow.demotedStatusCount === 1 && criptoTipV085ShadowFailures.length === 0 && criptoTipV085ShadowReport.v085SelfTestStatus.status === 'pass'),
+  test('cripto_tip_target_active_v114_registry_required', () => funkyActiveRegistry.status === 'pass' && funkyMissingRegistry.status === 'fail'),
+  test('cripto_tip_target_new_harness_self_test_target_mode', () => funkyLegacySelfTestShadowReport.newHarnessSelfTestStatus.status === 'pass' && funkyLegacySelfTestShadowReport.newHarnessSelfTestStatus.compatibilityShadow === true),
+  test('cripto_tip_domain_boundary_crypto_youtube_claims_hard', () => classifyGuardrailOperation('legal_compliance_claim').status === 'fail' && classifyGuardrailOperation('youtube_policy_compliance_claim').status === 'fail'),
+  test('wallet_rpc_deploy_blockers_remain_hard', () => classifyGuardrailOperation('wallet_rpc_deploy_access').status === 'fail'),
+  test('legal_youtube_compliance_claim_blockers_remain_hard', () => classifyGuardrailOperation('legal_compliance_claim').allowed === false && classifyGuardrailOperation('youtube_policy_compliance_claim').allowed === false),
+  test('missing_required_target_artifact_hard_fail', () => targetCompatibilityShadowReport.targetManifestStatus.status === 'fail' && targetCompatibilityShadowFailures.some((item) => item.id === 'targetManifestStatus.failed')),
   test('product_runtime_package_workflow_blockers_remain_hard', () => classifyGuardrailOperation('workflow_scope_violation').status === 'fail' && classifyGuardrailOperation('package_lockfile_scope_violation').status === 'fail'),
 ];
 
