@@ -16,6 +16,20 @@ export const GUARDRAIL_OPERATIONS = [
   'self_approval',
   'self_merge',
   'github_approval_review',
+  'legal_compliance_claim',
+  'youtube_policy_compliance_claim',
+  'production_go_claim',
+  'runtime_readiness_claim',
+  'target_branch_mutation',
+  'external_workspace_process',
+  'stale_diagnostic_reintroduction',
+  'owner_values_treated_as_deploy_approval',
+  'fixture_pass_treated_as_real_evidence',
+  'pr_body_treated_as_source_of_truth',
+  'duplicate_inventory_pr',
+  'full_json_stdout',
+  'oversized_final_report',
+  'multiple_safe_next_actions',
 ];
 
 const SAFE_NEXT_ACTIONS = {
@@ -31,6 +45,20 @@ const SAFE_NEXT_ACTIONS = {
   self_approval: 'do_not_submit_approval_review',
   self_merge: 'wait_for_explicit_owner_merge_instruction',
   github_approval_review: 'do_not_submit_github_approval_review',
+  legal_compliance_claim: 'replace_with_non_claim_boundary',
+  youtube_policy_compliance_claim: 'replace_with_non_claim_boundary',
+  production_go_claim: 'require_owner_production_scope_and_real_evidence',
+  runtime_readiness_claim: 'replace_with_runtime_boundary_status',
+  target_branch_mutation: 'stop_and_restore_caller_branch_boundary',
+  external_workspace_process: 'stop_and_remove_external_process_from_harness_scope',
+  stale_diagnostic_reintroduction: 'prefer_formal_same_head_evidence',
+  owner_values_treated_as_deploy_approval: 'require_typed_deploy_receipt',
+  fixture_pass_treated_as_real_evidence: 'classify_fixture_as_non_real_evidence',
+  pr_body_treated_as_source_of_truth: 'use_safe_artifact_as_source_of_truth',
+  duplicate_inventory_pr: 'close_or_absorb_existing_inventory_before_new_pr',
+  full_json_stdout: 'write_full_json_to_file_only',
+  oversized_final_report: 'compress_to_pro_summary_budget',
+  multiple_safe_next_actions: 'select_exactly_one_safe_next_action',
 };
 
 function status(value, reasonCode, extra = {}) {

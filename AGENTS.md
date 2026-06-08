@@ -58,6 +58,9 @@ For v1.1.4 Loop Kernel and Deterministic Guardrails, use
 `docs/process/CODEX_V114_SPEC.md`. Preserve v1.1.3 safety profile, same-head
 checks, token economy, raw-log prohibition, 8-session default fail, and target
 rollout prohibition until a separate owner instruction authorizes rollout.
+v1.1.4 finalizes Loop Kernel with Decision Core, Minimal Blockers, status
+tiering, remote evidence state machine, forbidden scope IDs, and token cost
+ledger.
 
 ## Plan-First Rule
 

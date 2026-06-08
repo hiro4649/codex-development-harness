@@ -8,13 +8,30 @@ import {
   buildLoopHandoff,
   buildLoopNextAction,
   buildLoopState,
+  buildDecisionCore,
+  buildMinimalBlockerEntry,
   buildTerminalCloseout,
+  buildTokenCostLedger,
+  buildValidationDependencyGraph,
+  buildSafeValidationCacheKey,
   buildV114Report,
+  classifyForbiddenScopeSet,
+  classifyInventoryCloseout,
   classifyLoopFailure,
+  classifyManualGateReceipt,
+  classifyReadinessClaim,
+  classifyRealEvidenceBoundary,
+  classifyRemoteEvidenceState,
+  classifyRenderedOutputFailure,
+  classifyStatusSurfaceTier,
+  classifyTargetProcessGuard,
   evaluateLoopExit,
   loopTypes,
+  validateDecisionCoreAuthoritative,
+  validateFinalReportBudget,
   validateLoopGuardrails,
   validateNoSpeculativeRepair,
+  validateOneSafeNextAction,
 } from './codex-v114-loop-kernel.mjs';
 import { classifyGuardrailOperation, validateHookGuardrailRegistry } from './codex-v114-guardrail-registry.mjs';
 
@@ -37,6 +54,15 @@ const compactBudget = buildLoopBudget({ operatorVisibleStatusCount: 7, topReason
 const largeBudget = buildLoopBudget({ operatorVisibleStatusCount: 11 });
 const handoff = buildLoopHandoff({ currentBlocker: 'state_delta_required' });
 const terminal = buildTerminalCloseout({ classification: 'separate_owner_scope_preserved' });
+const decisionCore = buildDecisionCore({ primaryClass: 'same_head_required_check_failed', requiredChecksPass: false });
+const minimalBlocker = buildMinimalBlockerEntry({ primaryClass: 'same_head_required_check_failed' });
+const remoteNpmExecutionMissing = classifyRemoteEvidenceState({ remoteNpmRequired: true });
+const remoteNpmArtifactMissing = classifyRemoteEvidenceState({ remoteNpmRequired: true, remoteNpmExecuted: true });
+const remoteNpmNormalizationFailed = classifyRemoteEvidenceState({ remoteNpmRequired: true, remoteNpmExecuted: true, remoteNpmArtifactPresent: true });
+const remoteNpmFailed = classifyRemoteEvidenceState({ remoteNpmRequired: true, remoteNpmExecuted: true, remoteNpmArtifactPresent: true, remoteNpmNormalized: true, remoteNpmResult: 'fail' });
+const validationGraph = buildValidationDependencyGraph({ changedFiles: ['scripts/codex-v114-self-test.mjs'] });
+const cacheKey = buildSafeValidationCacheKey({ headSha: 'abc', inputHash: 'def', changedFiles: ['scripts/codex-v114-self-test.mjs'] });
+const tokenLedger = buildTokenCostLedger({ duplicatedBoundaryText: 1 });
 
 const cases = [
   test('all_v114_status_keys_default_pass', () => V114_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
@@ -61,6 +87,34 @@ const cases = [
   test('hook_guardrail_registry_blocks_forbidden_operations', () => validateHookGuardrailRegistry().status === 'pass'),
   test('raw_output_never_printed', () => report.rawLogsRead === false && report.eightSessionUsed === false && report.walletRpcDeployAccess === false),
   test('source_only_non_goals_preserved', () => report.targetRollout === 'not_started' && report.targetReposTouched === false && report.productCodeChanged === false),
+  test('decision_core_authoritative', () => validateDecisionCoreAuthoritative({ primaryClass: 'owner_decision_required' }).status === 'pass' && decisionCore.artifactPointer === 'codex-decision-core.safe.json'),
+  test('minimal_blockers_single_entry', () => Object.keys(minimalBlocker).filter((key) => key !== 'safeSummaryOnly').length === 8 && minimalBlocker.primaryBlocker === 'same_head_required_check_failed'),
+  test('status_surface_tiered', () => classifyStatusSurfaceTier('v114SelfTestStatus') === 'critical_now' && classifyStatusSurfaceTier('legacySelfTestStatus') === 'compatibility_shadow'),
+  test('pr_body_not_source_of_truth', () => validateDecisionCoreAuthoritative({ prBodyOverridesSafeArtifact: true }).status === 'fail'),
+  test('rendered_output_failure_not_product_failure', () => classifyRenderedOutputFailure({ prBodyFailure: true }).productFailure === false),
+  test('remote_npm_state_machine', () => classifyRemoteEvidenceState({ remoteNpmRequired: false }).blocking_reason === 'not_required'),
+  test('remote_npm_execution_missing', () => remoteNpmExecutionMissing.blocking_reason === 'execution_missing'),
+  test('remote_npm_artifact_missing', () => remoteNpmArtifactMissing.blocking_reason === 'artifact_missing'),
+  test('remote_npm_normalization_failed', () => remoteNpmNormalizationFailed.blocking_reason === 'normalization_shape_mismatch'),
+  test('remote_npm_failed', () => remoteNpmFailed.blocking_reason === 'npm_failed'),
+  test('validation_dependency_graph_avoids_redundant_full_replay', () => validationGraph.avoidsRedundantFullReplay === true),
+  test('safe_validation_cache_not_merge_authority', () => cacheKey.cacheAllowed === true && cacheKey.mergeAuthority === false),
+  test('forbidden_scope_set_id_applied', () => classifyForbiddenScopeSet('CRIPTO_TIP_CORE_BOUNDARY_V1').status === 'pass'),
+  test('readiness_claim_classifier_negative_boundary_allowed', () => classifyReadinessClaim({ type: 'negative_boundary' }).status === 'pass'),
+  test('readiness_claim_classifier_affirmative_claim_blocked', () => classifyReadinessClaim({ type: 'affirmative_claim' }).status === 'fail'),
+  test('owner_values_not_deploy_approval', () => classifyManualGateReceipt({ ownerValues: true }).status === 'fail'),
+  test('manual_gate_typed_receipt_required', () => classifyManualGateReceipt({ typedDeployReceipt: true }).deployApproval === true),
+  test('real_evidence_boundary_fixture_pass_not_production_go', () => classifyRealEvidenceBoundary({ productionGoByFixture: true }).status === 'fail'),
+  test('target_branch_mutation_blocked', () => classifyTargetProcessGuard({ targetBranchMutated: true }).status === 'fail'),
+  test('external_workspace_process_blocked', () => classifyTargetProcessGuard({ externalWorkspaceProcess: true }).status === 'fail'),
+  test('inventory_duplicate_blocks_new_pr', () => classifyInventoryCloseout({ sameTargetSameBlockerSameEvidenceSameNextAction: true }).status === 'fail'),
+  test('token_cost_ledger_detects_duplicate_boundary_text', () => tokenLedger.status === 'fail' && tokenLedger.reasonCodes.includes('duplicated_boundary_text_present')),
+  test('final_report_12_line_budget', () => validateFinalReportBudget({ lines: 12 }).status === 'pass' && validateFinalReportBudget({ lines: 13 }).status === 'fail'),
+  test('one_safe_next_action_only', () => validateOneSafeNextAction({ safeNextAction: ['a', 'b'] }).status === 'fail'),
+  test('formal_evidence_overrides_stale_diagnostic', () => classifyGuardrailOperation('stale_diagnostic_reintroduction').allowed === false),
+  test('stale_diagnostic_reintroduction_fails', () => classifyGuardrailOperation('stale_diagnostic_reintroduction').reasonCode === 'stale_diagnostic_reintroduction'),
+  test('compatibility_shadow_count_only', () => buildV114Report().evaluationAbsorptionStatus.status === 'pass' && buildV114Report().evaluationAbsorptionStatus.statusTiers?.legacySelfTestStatus !== 'critical_now'),
+  test('completed_target_not_reprinted', () => validateFinalReportBudget({ completedTargetDetailsReprinted: true }).status === 'fail'),
 ];
 
 const failures = cases.filter((item) => item.status !== 'pass');

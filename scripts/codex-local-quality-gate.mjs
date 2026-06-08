@@ -2762,6 +2762,7 @@ function validateSourceHarness() {
   const optional = new Set((manifest.optionalFiles || []).map(normalizePath));
   for (const file of [
     '.codex/tmp-v114-local-gate.json',
+    '.codex/tmp-v114-final-pro-spec-local-gate.json',
     '.codex/loop-state.safe.json',
     '.codex/loop-exit.safe.json',
     '.codex/loop-budget.safe.json',

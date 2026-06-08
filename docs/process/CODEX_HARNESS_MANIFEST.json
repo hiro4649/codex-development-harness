@@ -28,7 +28,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Loop Kernel and Deterministic Guardrails",
+  "theme": "Loop Kernel, Decision Core, Minimal Evidence Surface, and Deterministic Guardrails",
   "requiredStatuses": [
     "v109SelfTestStatus",
     "decisionLedgerStatus",
@@ -356,6 +356,7 @@
     "loopHandoffStatus",
     "loopTerminalCloseoutStatus",
     "hookGuardrailRegistryStatus",
+    "evaluationAbsorptionStatus",
     "evidenceSingleSourceStatus",
     "minimalBlockersArtifactStatus",
     "artifactReadOrderIndexStatus",
@@ -483,6 +484,28 @@
     "vgcBscScanVerificationBoundaryStatus",
     "vgcMainnetReadinessBoundaryStatus"
   ],
+  "statusSurfaceTiersV114": {
+    "critical_now": [
+      "v114SelfTestStatus",
+      "loopKernelStatus",
+      "loopExitCriteriaStatus",
+      "noSpeculativeRepairStatus",
+      "evaluationAbsorptionStatus"
+    ],
+    "evidence_critical": [
+      "loopBudgetStatus",
+      "loopGuardrailStatus",
+      "loopFailureClassifierStatus",
+      "loopHandoffStatus",
+      "loopTerminalCloseoutStatus",
+      "hookGuardrailRegistryStatus"
+    ],
+    "compatibility_shadow": [
+      "v113SelfTestStatus",
+      "legacySelfTestLaneSeparationStatus",
+      "targetModeCompatibilityBridgeV3Status"
+    ]
+  },
   "sourceProfileStubsV109": {
     "VOXWEAVE": {
       "criticalInvariants": [
