@@ -1,0 +1,209 @@
+{
+  "schemaVersion": "1.1.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.5",
+  "skillProfiles": {
+    "VOXWEAVE_PRODUCT_MINOR_BOUNDARY": {
+      "allowedFileClasses": ["harness", "docs", "product_minor_owner_scoped"],
+      "forbiddenFileClasses": ["runtime", "tts_runtime", "package_lockfile", "workflow_unscoped"],
+      "forbiddenClaims": ["runtime_readiness", "production_readiness"],
+      "requiredEvidence": ["same_head_required_checks", "decision_core"],
+      "defaultPermissionProfile": "product_minor",
+      "defaultValidationTier": "tier3",
+      "defaultFinalReportBudget": 20
+    },
+    "LIVE2D_REAL_EVIDENCE_BOUNDARY": {
+      "allowedFileClasses": ["harness", "docs", "real_evidence_owner_scoped"],
+      "forbiddenFileClasses": ["runtime_loader", "sdk_vendor", "package_lockfile"],
+      "forbiddenClaims": ["renderer_readiness", "runtime_readiness", "production_readiness"],
+      "requiredEvidence": ["same_head_required_checks", "safe_artifact"],
+      "defaultPermissionProfile": "blocked_triage",
+      "defaultValidationTier": "tier3",
+      "defaultFinalReportBudget": 20
+    },
+    "FUNKY_D8_BACKEND_BOUNDARY": {
+      "allowedFileClasses": ["harness", "docs", "backend_owner_scoped"],
+      "forbiddenFileClasses": ["contracts", "wallet_rpc", "package_lockfile", "workflow_unscoped"],
+      "forbiddenClaims": ["runtime_readiness", "production_readiness", "staging_no_tx_pass"],
+      "requiredEvidence": ["backend_cwd", "same_head_required_checks", "decision_core"],
+      "defaultPermissionProfile": "product_repair",
+      "defaultValidationTier": "tier3",
+      "defaultFinalReportBudget": 20
+    },
+    "IRIS_PRIORITY1_NO_PRODUCTION_GO": {
+      "allowedFileClasses": ["harness", "docs", "priority1_owner_scoped"],
+      "forbiddenFileClasses": ["core_runtime", "canonical_enum", "adapter_runtime", "package_lockfile"],
+      "forbiddenClaims": ["priority1_unblocked", "runtime_readiness", "production_readiness", "production_go"],
+      "requiredEvidence": ["priority1_blocked_preserved", "same_head_required_checks"],
+      "defaultPermissionProfile": "blocked_triage",
+      "defaultValidationTier": "tier3",
+      "defaultFinalReportBudget": 20
+    },
+    "CRIPTO_TIP_CRYPTO_YOUTUBE_BOUNDARY": {
+      "allowedFileClasses": ["harness", "docs", "crypto_youtube_owner_scoped"],
+      "forbiddenFileClasses": ["wallet_rpc", "youtube_connector", "chain_listener", "package_lockfile"],
+      "forbiddenClaims": ["legal_compliance", "youtube_policy_compliance", "runtime_readiness", "production_readiness"],
+      "requiredEvidence": ["same_head_required_checks", "safe_artifact", "decision_core"],
+      "defaultPermissionProfile": "blocked_triage",
+      "defaultValidationTier": "tier3",
+      "defaultFinalReportBudget": 20
+    },
+    "VGC_NO_DEPLOY_OWNER_VALUES": {
+      "allowedFileClasses": ["harness", "docs", "audit_owner_scoped"],
+      "forbiddenFileClasses": ["deploy", "wallet_rpc", "contract_mutation", "package_lockfile"],
+      "forbiddenClaims": ["deploy_readiness", "runtime_readiness", "production_readiness"],
+      "requiredEvidence": ["owner_values_no_deploy", "decision_core"],
+      "defaultPermissionProfile": "owner_values_no_deploy",
+      "defaultValidationTier": "tier2",
+      "defaultFinalReportBudget": 20
+    },
+    "HARNESS_ROLLOUT_ONLY": {
+      "allowedFileClasses": ["harness", "docs_process", "scripts_codex"],
+      "forbiddenFileClasses": ["product", "runtime", "package_lockfile", "workflow_unscoped"],
+      "forbiddenClaims": ["runtime_readiness", "production_readiness"],
+      "requiredEvidence": ["same_head_required_checks", "decision_core", "minimal_blockers"],
+      "defaultPermissionProfile": "harness_rollout",
+      "defaultValidationTier": "tier4",
+      "defaultFinalReportBudget": 20
+    },
+    "METADATA_ONLY_POLISH": {
+      "allowedFileClasses": ["AGENTS", "CODEX_HARNESS_MANIFEST"],
+      "forbiddenFileClasses": ["product", "runtime", "package_lockfile", "workflow"],
+      "forbiddenClaims": ["runtime_readiness", "production_readiness"],
+      "requiredEvidence": ["changed_file_boundary", "active_self_test"],
+      "defaultPermissionProfile": "metadata_only_polish",
+      "defaultValidationTier": "tier2",
+      "defaultFinalReportBudget": 12
+    },
+    "BLOCKED_TRIAGE_READONLY": {
+      "allowedFileClasses": ["metadata", "safe_artifact"],
+      "forbiddenFileClasses": ["all_writes", "product", "runtime", "package_lockfile", "workflow"],
+      "forbiddenClaims": ["merge_ready", "runtime_readiness", "production_readiness"],
+      "requiredEvidence": ["safe_metadata", "decision_core"],
+      "defaultPermissionProfile": "read_only_audit",
+      "defaultValidationTier": "tier1",
+      "defaultFinalReportBudget": 12
+    }
+  },
+  "permissionProfiles": {
+    "read_only_audit": {
+      "read": true,
+      "write": false,
+      "shell": "safe_metadata_only",
+      "githubMetadata": true,
+      "githubMerge": false,
+      "productFiles": false,
+      "packageLockfile": false,
+      "workflow": false,
+      "externalNetwork": false,
+      "walletRpcDeploy": false,
+      "rawLogs": false,
+      "ownerConfirmation": false,
+      "eightSession": false
+    },
+    "harness_rollout": {
+      "read": true,
+      "write": "harness_files_only",
+      "shell": "bounded_validation",
+      "githubMetadata": true,
+      "githubMerge": "conditional_owner_same_head",
+      "productFiles": false,
+      "packageLockfile": false,
+      "workflow": false,
+      "externalNetwork": false,
+      "walletRpcDeploy": false,
+      "rawLogs": false,
+      "ownerConfirmation": true,
+      "eightSession": false
+    },
+    "metadata_only_polish": {
+      "read": true,
+      "write": "metadata_files_only",
+      "shell": "tier0_tier2",
+      "githubMetadata": true,
+      "githubMerge": "conditional_owner_same_head",
+      "productFiles": false,
+      "packageLockfile": false,
+      "workflow": false,
+      "externalNetwork": false,
+      "walletRpcDeploy": false,
+      "rawLogs": false,
+      "ownerConfirmation": true,
+      "eightSession": false
+    },
+    "product_minor": {
+      "read": true,
+      "write": "owner_scoped_product_minor",
+      "shell": "bounded_validation",
+      "githubMetadata": true,
+      "githubMerge": "conditional_owner_same_head",
+      "productFiles": "owner_scoped",
+      "packageLockfile": false,
+      "workflow": false,
+      "externalNetwork": false,
+      "walletRpcDeploy": false,
+      "rawLogs": false,
+      "ownerConfirmation": true,
+      "eightSession": false
+    },
+    "product_repair": {
+      "read": true,
+      "write": "owner_scoped_product_repair",
+      "shell": "bounded_validation",
+      "githubMetadata": true,
+      "githubMerge": "conditional_owner_same_head",
+      "productFiles": "owner_scoped",
+      "packageLockfile": "explicit_owner_scope_only",
+      "workflow": false,
+      "externalNetwork": false,
+      "walletRpcDeploy": false,
+      "rawLogs": false,
+      "ownerConfirmation": true,
+      "eightSession": false
+    },
+    "blocked_triage": {
+      "read": true,
+      "write": false,
+      "shell": "safe_artifact_only",
+      "githubMetadata": true,
+      "githubMerge": false,
+      "productFiles": false,
+      "packageLockfile": false,
+      "workflow": false,
+      "externalNetwork": false,
+      "walletRpcDeploy": false,
+      "rawLogs": false,
+      "ownerConfirmation": true,
+      "eightSession": false
+    },
+    "owner_values_no_deploy": {
+      "read": true,
+      "write": "docs_or_audit_only",
+      "shell": "bounded_validation",
+      "githubMetadata": true,
+      "githubMerge": "conditional_owner_same_head",
+      "productFiles": false,
+      "packageLockfile": false,
+      "workflow": false,
+      "externalNetwork": false,
+      "walletRpcDeploy": false,
+      "rawLogs": false,
+      "ownerConfirmation": true,
+      "eightSession": false
+    },
+    "runtime_real_evidence_scope": {
+      "read": true,
+      "write": "explicit_owner_scope_only",
+      "shell": "bounded_real_evidence",
+      "githubMetadata": true,
+      "githubMerge": "conditional_owner_same_head",
+      "productFiles": "owner_scoped",
+      "packageLockfile": "explicit_owner_scope_only",
+      "workflow": "explicit_owner_scope_only",
+      "externalNetwork": "explicit_owner_scope_only",
+      "walletRpcDeploy": "explicit_owner_scope_only",
+      "rawLogs": false,
+      "ownerConfirmation": true,
+      "eightSession": false
+    }
+  }
+}
