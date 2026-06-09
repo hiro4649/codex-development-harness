@@ -12171,6 +12171,35 @@ async function runSourceHarnessCoreContractGate() {
   report.walletRpcDeployAccess = false;
   report.syntheticRepresentativeValidation = report.representativeProductPrValidationStatus?.status === 'pass' ? 'pass' : 'fail';
   report.status = failures.length ? 'fail' : (warnings.length ? 'manual_confirmation_required' : 'pass');
+  if (failures.length) {
+    const topFailures = failures.slice(0, 3).map((item) => item.id || item.reasonCode || 'source_core_contract_gate_failed');
+    report.decisionCore = {
+      ...(report.decisionCore || {}),
+      decision: 'blocked',
+      primaryClass: topFailures[0],
+      secondaryReasonCodes: topFailures.slice(1, 3),
+      mergeAllowed: false,
+      repairAllowedInCurrentScope: false,
+      productRepairAllowed: false,
+      harnessRepairAllowed: true,
+      ownerConfirmationRequired: true,
+      safeNextAction: 'read_minimal_blockers',
+      evidenceSource: 'sourceHarnessValidationStatus',
+      traceId: report.traceId || report.decisionCore?.traceId || 'trace-source-gate',
+      safeSummaryOnly: true,
+    };
+    report.top3Blockers = {
+      primary_blocker: topFailures[0],
+      secondary_blocker: topFailures[1] || 'none',
+      tertiary_blocker: topFailures[2] || 'none',
+      safe_next_action: 'read_minimal_blockers',
+      repair_scope_allowed: 'source_harness_repair',
+      merge_allowed: false,
+      reasonCodes: topFailures,
+      passStatusPrintedCount: 0,
+      safeSummaryOnly: true,
+    };
+  }
   report.mergeReady = failures.length === 0 && warnings.length === 0;
   report.localGate = { status: report.status };
 
@@ -12178,9 +12207,9 @@ async function runSourceHarnessCoreContractGate() {
   else {
     console.log(`status: ${report.status}`);
     console.log(`qualityScore: ${report.qualityScoreStatus.score}`);
-    console.log(`v113SelfTestStatus: ${report.v113SelfTestStatus.status}`);
-    console.log(`v114SelfTestStatus: ${report.v114SelfTestStatus.status}`);
-    for (const key of V115_STATUS_KEYS) console.log(`${key}: ${report[key].status}`);
+    console.log(`decision: ${report.decisionCore?.decision || report.status}`);
+    console.log(`primaryClass: ${report.decisionCore?.primaryClass || 'none'}`);
+    console.log(`traceId: ${report.traceId || report.decisionCore?.traceId || ''}`);
     console.log(`safeNextAction: ${report.decisionCore?.safeNextAction || 'owner_authorized_merge_after_same_head_checks'}`);
   }
   process.exit(failures.length ? 1 : 0);

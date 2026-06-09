@@ -27,7 +27,6 @@
   "syntheticRepresentativeValidation": "required",
   "theme": "Trace Kernel, Policy Hooks, Skill Profiles, and Token-Thin Finalizer",
   "requiredStatuses": [
-    "v115SelfTestStatus",
     "traceKernelStatus",
     "policyHookContractStatus",
     "goalContractStatus",

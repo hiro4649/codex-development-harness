@@ -113,7 +113,7 @@ export function buildSafeTraceRecord(input = {}) {
 export function validateTraceKernel(input = {}) {
   const record = buildSafeTraceRecord(input);
   const serialized = JSON.stringify(record);
-  const forbiddenKeys = ['rawLog', 'stdout', 'fullJson', 'secret', 'privateUrl', 'privatePath', 'passStatuses', 'forbiddenBoundaryText'];
+  const forbiddenKeys = ['rawLog', 'stdout', 'fullStdout', 'stdoutText', 'fullJson', 'fullJsonOutput', 'secret', 'privateUrl', 'privatePath', 'passStatuses', 'forbiddenBoundaryText'];
   const reasonCodes = [];
   for (const key of forbiddenKeys) {
     if (Object.prototype.hasOwnProperty.call(record, key)) reasonCodes.push('trace_forbidden_key_present');

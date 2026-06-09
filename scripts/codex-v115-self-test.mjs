@@ -50,6 +50,7 @@ const cases = [
   test('all_v115_status_keys_default_pass', () => V115_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
   test('trace_kernel_safe_data_only', () => validateTraceKernel(trace).status === 'pass'),
   test('trace_excludes_raw_logs_and_full_stdout', () => trace.rawLogsRead === false && !JSON.stringify(trace).includes('fullStdout')),
+  test('trace_rejects_nested_full_stdout', () => validateTraceKernel({ tokenCost: { fullStdout: 'unsafe verbose output' } }).status === 'fail'),
   test('trace_artifact_shape_safe', () => buildTraceArtifactIndex({ traceId: 'trace-test' }).files.every((file) => file.includes('.safe.'))),
   test('decision_core_v2_authoritative', () => validateDecisionCoreV2({ prBodyOverridesDecision: true }).status === 'fail'),
   test('decision_core_v2_required_fields', () => buildDecisionCoreV2({ primaryClass: 'blocked' }).traceId.startsWith('trace-')),
