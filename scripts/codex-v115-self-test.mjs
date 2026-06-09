@@ -2,6 +2,7 @@
 // CODEX_QUALITY_HARNESS_FILE v1.1.5
 
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
+import { renderPrEvidenceBlocks } from './codex-pr-evidence-block-renderer.mjs';
 import {
   buildDecisionCoreV2,
   buildNoDeltaCloseout,
@@ -87,6 +88,23 @@ const cases = [
   test('v114_self_test_still_pass_reference', () => true),
   test('quality_gate_pass_alone_not_merge_ready', () => buildDecisionCoreV2({ mergeAllowed: true, requiredChecksPass: false, ownerMergeScope: true }).mergeAllowed === false),
   test('same_head_required_checks_fail_blocks_merge', () => buildDecisionCoreV2({ mergeAllowed: true, sameHead: false, requiredChecksPass: true, ownerMergeScope: true }).mergeAllowed === false),
+  test('pr_evidence_artifact_id_pending_warning_only', () => {
+    const result = renderPrEvidenceBlocks(
+      {
+        repository: 'hiro4649/disco-funky-repair',
+        prNumber: '287',
+        baseSha: '1234567890abcdef1234567890abcdef12345678',
+        headSha: 'abcdef1234567890abcdef1234567890abcdef12',
+        currentHeadSha: 'abcdef1234567890abcdef1234567890abcdef12',
+        changedFiles: ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'scripts/codex-local-quality-gate.mjs'],
+        productCodeChanged: false,
+        runtimeReadinessClaimed: false,
+        humanConfirmation: { present: true, confirmedByRole: 'project-owner', headSha: 'abcdef1234567890abcdef1234567890abcdef12' },
+      },
+      { CODEX_EVENT_NAME: 'pull_request', CODEX_PR_NUMBER: '287', CODEX_PR_HEAD_SHA: 'abcdef1234567890abcdef1234567890abcdef12', CODEX_PR_BASE_SHA: '1234567890abcdef1234567890abcdef12345678' },
+    ).prEvidenceRendererStatus;
+    return result.status === 'pass' && result.warnings.includes('artifact_id_pending');
+  }),
   test('missing_required_artifact_hard_fail', () => classifyLegacyCompatibility({ reasonCode: 'missing_required_artifact' }).status === 'fail'),
   test('runtime_readiness_claim_hard_fail', () => classifyLegacyCompatibility({ reasonCode: 'runtime_readiness_claimed' }).status === 'fail'),
   test('production_readiness_claim_hard_fail', () => classifyLegacyCompatibility({ reasonCode: 'production_readiness_claimed' }).status === 'fail'),
