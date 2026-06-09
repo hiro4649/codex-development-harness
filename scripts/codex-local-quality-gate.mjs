@@ -9540,6 +9540,64 @@ async function runSourceHarnessGate() {
 
   report.status = failures.length ? 'fail' : (warnings.length ? 'manual_confirmation_required' : 'pass');
 
+  if (report.status !== 'pass') {
+    const blockerIds = [...failures, ...warnings]
+      .map((item) => item?.id || item?.reasonCode || item?.message || 'safe_detail_unavailable')
+      .filter(Boolean)
+      .slice(0, 3);
+    const primaryClass = blockerIds[0] || 'safe_detail_unavailable';
+    report.decisionCore = {
+      ...(report.decisionCore || {}),
+      decision: 'blocked',
+      primaryClass,
+      secondaryReasonCodes: blockerIds.slice(1, 3),
+      mergeAllowed: false,
+      repairAllowedInCurrentScope: false,
+      productRepairAllowed: false,
+      harnessRepairAllowed: true,
+      ownerConfirmationRequired: true,
+      safeNextAction: 'read_minimal_blockers',
+      evidenceSource: 'codex-minimal-safe-failure.json',
+      traceId: report.traceId || report.decisionCore?.traceId || 'trace-target-gate',
+      rawLogsRead: false,
+      eightSessionUsed: false,
+      safeSummaryOnly: true,
+    };
+    report.top3Blockers = {
+      primary_blocker: primaryClass,
+      secondary_blocker: blockerIds[1] || 'none',
+      tertiary_blocker: blockerIds[2] || 'none',
+      safe_next_action: 'read_minimal_blockers',
+      repair_scope_allowed: 'source_harness_repair',
+      merge_allowed: false,
+      reasonCodes: blockerIds,
+      passStatusPrintedCount: 0,
+      safeSummaryOnly: true,
+    };
+    report.minimalBlockers = report.top3Blockers;
+    if (process.env.CODEX_LIFEBOAT_PATH) {
+      const lifeboat = {
+        status: report.status,
+        classification: 'safe_artifact_contract_failure',
+        decisionCore: report.decisionCore,
+        minimalBlockers: report.minimalBlockers,
+        top3Blockers: report.top3Blockers,
+        qualityScore: report.targetQualityScoreStatus?.score ?? report.qualityScore ?? null,
+        productRepairAllowed: false,
+        harnessRepairAllowed: true,
+        mergeAllowed: false,
+        rawLogsRead: false,
+        eightSessionUsed: false,
+        safeSummaryOnly: true,
+      };
+      try {
+        fs.writeFileSync(process.env.CODEX_LIFEBOAT_PATH, JSON.stringify(lifeboat, null, 2));
+      } catch {
+        // Keep the gate result authoritative even if the emergency artifact cannot be refreshed.
+      }
+    }
+  }
+
 
 
   report.mergeReady = failures.length === 0 && warnings.length === 0 && ['pass', 'not_required'].includes(report.humanConfirmationStatus.status);

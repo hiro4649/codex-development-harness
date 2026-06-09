@@ -3,6 +3,7 @@
 
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import { renderPrEvidenceBlocks } from './codex-pr-evidence-block-renderer.mjs';
+import { summarizeSafeReport } from './codex-safe-summary-pick.mjs';
 import {
   buildDecisionCoreV2,
   buildNoDeltaCloseout,
@@ -46,6 +47,32 @@ function test(name, fn) {
 const trace = buildSafeTraceRecord({ repo: 'hiro4649/codex-development-harness', branch: 'main', headSha: 'abc', decision: 'blocked' });
 const top3 = extractTop3Blockers({ blockers: ['one', 'two', 'three', 'four'], safeNextAction: 'wait' });
 const report = buildV115Report({ decision: 'blocked', primaryClass: 'owner_decision_required', safeNextAction: 'owner_decision_or_state_delta' });
+const unavailableSafeSummary = summarizeSafeReport({
+  status: 'fail',
+  lastKnownReasonCodes: [],
+  safeNextAction: 'Review safe reason codes and rerun after the smallest correction.',
+  safeSummaryOnly: true,
+}, 'codex-minimal-safe-failure.json');
+const decisionEnvelope = {
+  status: 'fail',
+  decisionCore: buildDecisionCoreV2({
+    decision: 'blocked',
+    primaryClass: 'safe_detail_unavailable',
+    productRepairAllowed: false,
+    harnessRepairAllowed: true,
+    mergeAllowed: false,
+    safeNextAction: 'read_minimal_blockers',
+  }),
+  minimalBlockers: extractTop3Blockers({
+    primaryClass: 'safe_detail_unavailable',
+    safeNextAction: 'read_minimal_blockers',
+    mergeAllowed: false,
+    reasonCodes: ['safe_detail_unavailable'],
+  }),
+  rawLogsRead: false,
+  eightSessionUsed: false,
+  safeSummaryOnly: true,
+};
 
 const cases = [
   test('all_v115_status_keys_default_pass', () => V115_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
@@ -88,6 +115,13 @@ const cases = [
   test('v114_self_test_still_pass_reference', () => true),
   test('quality_gate_pass_alone_not_merge_ready', () => buildDecisionCoreV2({ mergeAllowed: true, requiredChecksPass: false, ownerMergeScope: true }).mergeAllowed === false),
   test('same_head_required_checks_fail_blocks_merge', () => buildDecisionCoreV2({ mergeAllowed: true, sameHead: false, requiredChecksPass: true, ownerMergeScope: true }).mergeAllowed === false),
+  test('funky_pr287_remote_fail_safe_detail_unavailable', () => unavailableSafeSummary.decisionCore.primaryClass === 'safe_detail_unavailable'),
+  test('target_remote_fail_without_reason_codes_blocks_merge', () => unavailableSafeSummary.decisionCore.mergeAllowed === false),
+  test('safe_artifact_missing_does_not_require_raw_logs', () => unavailableSafeSummary.rawLogsRead === false),
+  test('decision_core_exists_for_safe_detail_unavailable', () => decisionEnvelope.decisionCore.primaryClass === 'safe_detail_unavailable'),
+  test('minimal_blockers_exists_for_safe_detail_unavailable', () => decisionEnvelope.minimalBlockers.primary_blocker === 'safe_detail_unavailable'),
+  test('safe_summary_picker_surfaces_safe_detail_unavailable', () => unavailableSafeSummary.top3Blockers.primary === 'safe_detail_unavailable'),
+  test('product_repair_forbidden_when_safe_detail_unavailable', () => unavailableSafeSummary.decisionCore.productRepairAllowed === false),
   test('pr_evidence_artifact_id_pending_warning_only', () => {
     const result = renderPrEvidenceBlocks(
       {

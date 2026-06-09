@@ -2,10 +2,9 @@
 // CODEX_QUALITY_HARNESS_FILE v1.1.5
 
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { pickSafeSummary } from './codex-v112-conversation-surface.mjs';
 
-const filePath = process.argv[2] || '';
-const rawInput = filePath && fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
 function parseReport(raw) {
   if (!raw.trim()) return {};
   try {
@@ -24,34 +23,71 @@ function parseReport(raw) {
     return report;
   }
 }
-const report = parseReport(rawInput);
-const base = pickSafeSummary(report, { safeArtifactPath: filePath });
-const decisionCore = report.decisionCore || report.decisionCoreV2Status?.decision || {};
-const top3 = report.top3Blockers || {};
-const summary = {
-  status: report.status || base.status || 'unknown',
-  qualityScore: base.qualityScore ?? report.qualityScore ?? null,
-  decisionCore: {
-    decision: decisionCore.decision || report.status || 'unknown',
-    primaryClass: decisionCore.primaryClass || top3.primary_blocker || 'none',
-    mergeAllowed: decisionCore.mergeAllowed === true,
-    safeNextAction: decisionCore.safeNextAction || top3.safe_next_action || 'read_decision_core',
-  },
-  top3Blockers: {
-    primary: top3.primary_blocker || base.topBlockingReasonCodes?.[0] || 'none',
-    secondary: top3.secondary_blocker || base.topBlockingReasonCodes?.[1] || 'none',
-    tertiary: top3.tertiary_blocker || base.topBlockingReasonCodes?.[2] || 'none',
-  },
-  traceId: report.traceId || decisionCore.traceId || '',
-  skillProfile: report.skillProfile || '',
-  permissionProfile: report.permissionProfile || '',
-  tokenCostSummary: report.tokenCostSummary || report.tokenRuntimeMeterStatus?.meter || {},
-  artifactPointer: decisionCore.evidenceSource || report.safeArtifactIndexStatus?.artifactPointer || (filePath ? 'safe-summary-input' : ''),
-  passStatusCount: base.passStatusCount || 0,
-  passStatusesListed: false,
-  legacyDetailSuppressed: true,
-  longForbiddenTextSuppressed: true,
-  completedTargetDetailsSuppressed: true,
-  safeSummaryOnly: true,
-};
-console.log(JSON.stringify(summary, null, 2));
+function inferSafeDetailDecision(report = {}) {
+  const reasonCodes = [
+    ...(Array.isArray(report.reasonCodes) ? report.reasonCodes : []),
+    ...(Array.isArray(report.lastKnownReasonCodes) ? report.lastKnownReasonCodes : []),
+  ].filter(Boolean);
+  const lacksSafeDetail = (report.status === 'fail' || report.status === 'unknown')
+    && reasonCodes.length === 0
+    && !report.decisionCore
+    && !report.decisionCoreV2Status?.decision
+    && !report.minimalBlockers
+    && !report.top3Blockers;
+  if (!lacksSafeDetail) return {};
+  return {
+    decision: 'blocked',
+    primaryClass: 'safe_detail_unavailable',
+    mergeAllowed: false,
+    productRepairAllowed: false,
+    harnessRepairAllowed: true,
+    safeNextAction: 'owner_decision_for_source_compatibility_repair',
+    evidenceSource: 'codex-minimal-safe-failure.json',
+    traceId: 'trace-safe-detail-unavailable',
+    safeSummaryOnly: true,
+  };
+}
+
+export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
+  const base = pickSafeSummary(report, { safeArtifactPath });
+  const decisionCore = report.decisionCore || report.decisionCoreV2Status?.decision || inferSafeDetailDecision(report);
+  const top3 = report.top3Blockers || report.minimalBlockers || {};
+  return {
+    status: report.status || base.status || 'unknown',
+    qualityScore: base.qualityScore ?? report.qualityScore ?? null,
+    decisionCore: {
+      decision: decisionCore.decision || report.status || 'unknown',
+      primaryClass: decisionCore.primaryClass || top3.primary_blocker || 'none',
+      mergeAllowed: decisionCore.mergeAllowed === true,
+      productRepairAllowed: decisionCore.productRepairAllowed === true,
+      harnessRepairAllowed: decisionCore.harnessRepairAllowed === true,
+      safeNextAction: decisionCore.safeNextAction || top3.safe_next_action || 'read_decision_core',
+    },
+    top3Blockers: {
+      primary: top3.primary_blocker || decisionCore.primaryClass || base.topBlockingReasonCodes?.[0] || 'none',
+      secondary: top3.secondary_blocker || base.topBlockingReasonCodes?.[1] || 'none',
+      tertiary: top3.tertiary_blocker || base.topBlockingReasonCodes?.[2] || 'none',
+    },
+    traceId: report.traceId || decisionCore.traceId || '',
+    skillProfile: report.skillProfile || '',
+    permissionProfile: report.permissionProfile || '',
+    tokenCostSummary: report.tokenCostSummary || report.tokenRuntimeMeterStatus?.meter || {},
+    artifactPointer: decisionCore.evidenceSource || report.safeArtifactIndexStatus?.artifactPointer || (safeArtifactPath ? 'safe-summary-input' : ''),
+    passStatusCount: base.passStatusCount || 0,
+    passStatusesListed: false,
+    legacyDetailSuppressed: true,
+    longForbiddenTextSuppressed: true,
+    completedTargetDetailsSuppressed: true,
+    rawLogsRead: false,
+    eightSessionUsed: false,
+    safeSummaryOnly: true,
+  };
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const filePath = process.argv[2] || '';
+  const rawInput = filePath && fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const report = parseReport(rawInput);
+  const summary = summarizeSafeReport(report, filePath);
+  console.log(JSON.stringify(summary, null, 2));
+}
