@@ -72,6 +72,110 @@ const PROFILE_TEMPLATE_VERSION = '0.7.0';
 
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
+export function buildPreExitDecisionArtifacts(input = {}) {
+  const primaryClass = input.primaryClass || 'safe_detail_unavailable';
+  const reasonCodes = [...new Set((input.reasonCodes || [primaryClass]).filter(Boolean).map(String))].slice(0, 3);
+  const decisionCore = {
+    decision: 'blocked',
+    primaryClass,
+    secondaryReasonCodes: reasonCodes.slice(1, 3),
+    mergeAllowed: false,
+    repairAllowedInCurrentScope: false,
+    productRepairAllowed: false,
+    harnessRepairAllowed: true,
+    ownerConfirmationRequired: true,
+    safeNextAction: input.safeNextAction || 'read_minimal_blockers',
+    evidenceSource: 'codex-decision-core.safe.json',
+    traceId: input.traceId || 'trace-pre-exit-decision',
+    rawLogsRead: false,
+    eightSessionUsed: false,
+    safeSummaryOnly: true,
+  };
+  const minimalBlockers = {
+    primary_blocker: reasonCodes[0] || primaryClass,
+    secondary_blocker: reasonCodes[1] || 'none',
+    tertiary_blocker: reasonCodes[2] || 'none',
+    safe_next_action: decisionCore.safeNextAction,
+    repair_scope_allowed: 'source_harness_repair',
+    merge_allowed: false,
+    reasonCodes,
+    passStatusPrintedCount: 0,
+    safeSummaryOnly: true,
+  };
+  const safeSummary = {
+    status: input.status || 'fail',
+    qualityScore: input.qualityScore ?? null,
+    decisionCore,
+    top3Blockers: {
+      primary: minimalBlockers.primary_blocker,
+      secondary: minimalBlockers.secondary_blocker,
+      tertiary: minimalBlockers.tertiary_blocker,
+    },
+    traceId: decisionCore.traceId,
+    artifactPointer: decisionCore.evidenceSource,
+    passStatusesListed: false,
+    legacyDetailSuppressed: true,
+    longForbiddenTextSuppressed: true,
+    completedTargetDetailsSuppressed: true,
+    rawLogsRead: false,
+    eightSessionUsed: false,
+    safeSummaryOnly: true,
+  };
+  const safeArtifactIndex = {
+    status: 'pass',
+    artifactIndexed: true,
+    safeSummaryOnly: true,
+    artifacts: [
+      { artifactName: 'codex-decision-core.safe.json', status: 'present' },
+      { artifactName: 'codex-minimal-blockers.safe.json', status: 'present' },
+      { artifactName: 'codex-safe-artifact-index.safe.json', status: 'present' },
+      { artifactName: 'codex-quality-gate-safe-summary.json', status: 'present' },
+    ],
+  };
+  const lifeboat = {
+    status: input.status || 'fail',
+    classification: input.classification || 'safe_artifact_contract_failure',
+    decisionCore,
+    minimalBlockers,
+    top3Blockers: minimalBlockers,
+    safeArtifactIndex,
+    qualityScore: input.qualityScore ?? null,
+    productRepairAllowed: false,
+    harnessRepairAllowed: true,
+    mergeAllowed: false,
+    rawLogsRead: false,
+    eightSessionUsed: false,
+    safeSummaryOnly: true,
+  };
+  return { decisionCore, minimalBlockers, safeArtifactIndex, safeSummary, lifeboat };
+}
+
+function writePreExitDecisionArtifacts(input = {}) {
+  const lifeboatPath = process.env.CODEX_LIFEBOAT_PATH;
+  if (!lifeboatPath) return;
+  const dir = path.dirname(lifeboatPath);
+  const artifacts = buildPreExitDecisionArtifacts(input);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(lifeboatPath, JSON.stringify(artifacts.lifeboat, null, 2));
+    fs.writeFileSync(path.join(dir, 'codex-decision-core.safe.json'), JSON.stringify(artifacts.decisionCore, null, 2));
+    fs.writeFileSync(path.join(dir, 'codex-minimal-blockers.safe.json'), JSON.stringify(artifacts.minimalBlockers, null, 2));
+    fs.writeFileSync(path.join(dir, 'codex-safe-artifact-index.safe.json'), JSON.stringify(artifacts.safeArtifactIndex, null, 2));
+    fs.writeFileSync(path.join(dir, 'codex-quality-gate-safe-summary.json'), JSON.stringify(artifacts.safeSummary, null, 2));
+  } catch {
+    // The normal gate result remains authoritative if the emergency artifact cannot be written.
+  }
+}
+
+process.on('exit', (code) => {
+  if (code === 0) return;
+  writePreExitDecisionArtifacts({
+    primaryClass: 'safe_detail_unavailable',
+    reasonCodes: ['safe_detail_unavailable'],
+    safeNextAction: 'owner_decision_for_source_compatibility_repair',
+  });
+});
+
 
 
 

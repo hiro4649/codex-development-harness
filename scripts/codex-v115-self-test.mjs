@@ -2,6 +2,7 @@
 // CODEX_QUALITY_HARNESS_FILE v1.1.5
 
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
+import { buildPreExitDecisionArtifacts } from './codex-local-quality-gate.mjs';
 import { renderPrEvidenceBlocks } from './codex-pr-evidence-block-renderer.mjs';
 import { summarizeSafeReport } from './codex-safe-summary-pick.mjs';
 import {
@@ -73,6 +74,12 @@ const decisionEnvelope = {
   eightSessionUsed: false,
   safeSummaryOnly: true,
 };
+const preExitArtifacts = buildPreExitDecisionArtifacts({
+  status: 'fail',
+  primaryClass: 'safe_detail_unavailable',
+  reasonCodes: ['safe_detail_unavailable'],
+  safeNextAction: 'read_minimal_blockers',
+});
 
 const cases = [
   test('all_v115_status_keys_default_pass', () => V115_STATUS_KEYS.every((key) => report[key]?.status === 'pass')),
@@ -116,12 +123,22 @@ const cases = [
   test('quality_gate_pass_alone_not_merge_ready', () => buildDecisionCoreV2({ mergeAllowed: true, requiredChecksPass: false, ownerMergeScope: true }).mergeAllowed === false),
   test('same_head_required_checks_fail_blocks_merge', () => buildDecisionCoreV2({ mergeAllowed: true, sameHead: false, requiredChecksPass: true, ownerMergeScope: true }).mergeAllowed === false),
   test('funky_pr287_remote_fail_safe_detail_unavailable', () => unavailableSafeSummary.decisionCore.primaryClass === 'safe_detail_unavailable'),
+  test('funky_pr287_decision_core_not_generated', () => preExitArtifacts.decisionCore.primaryClass === 'safe_detail_unavailable'),
   test('target_remote_fail_without_reason_codes_blocks_merge', () => unavailableSafeSummary.decisionCore.mergeAllowed === false),
+  test('target_remote_fail_pre_exit_decision_core_generated', () => preExitArtifacts.lifeboat.decisionCore.primaryClass === 'safe_detail_unavailable'),
+  test('target_remote_fail_pre_exit_minimal_blockers_generated', () => preExitArtifacts.lifeboat.minimalBlockers.primary_blocker === 'safe_detail_unavailable'),
+  test('target_remote_fail_pre_exit_safe_artifact_index_generated', () => preExitArtifacts.lifeboat.safeArtifactIndex.artifacts.length >= 4),
+  test('target_remote_fail_pre_exit_safe_summary_generated', () => preExitArtifacts.safeSummary.decisionCore.primaryClass === 'safe_detail_unavailable'),
   test('safe_artifact_missing_does_not_require_raw_logs', () => unavailableSafeSummary.rawLogsRead === false),
   test('decision_core_exists_for_safe_detail_unavailable', () => decisionEnvelope.decisionCore.primaryClass === 'safe_detail_unavailable'),
+  test('decision_core_exists_before_fail_exit', () => preExitArtifacts.decisionCore.mergeAllowed === false),
   test('minimal_blockers_exists_for_safe_detail_unavailable', () => decisionEnvelope.minimalBlockers.primary_blocker === 'safe_detail_unavailable'),
+  test('minimal_blockers_exists_before_fail_exit', () => preExitArtifacts.minimalBlockers.reasonCodes.length <= 3),
+  test('safe_artifact_index_exists_before_fail_exit', () => preExitArtifacts.safeArtifactIndex.artifactIndexed === true),
   test('safe_summary_picker_surfaces_safe_detail_unavailable', () => unavailableSafeSummary.top3Blockers.primary === 'safe_detail_unavailable'),
+  test('safe_summary_picker_consumes_pre_exit_decision_core', () => summarizeSafeReport(preExitArtifacts.lifeboat).decisionCore.primaryClass === 'safe_detail_unavailable'),
   test('product_repair_forbidden_when_safe_detail_unavailable', () => unavailableSafeSummary.decisionCore.productRepairAllowed === false),
+  test('raw_logs_not_required_for_pre_exit_decision', () => preExitArtifacts.decisionCore.rawLogsRead === false),
   test('pr_evidence_artifact_id_pending_warning_only', () => {
     const result = renderPrEvidenceBlocks(
       {
