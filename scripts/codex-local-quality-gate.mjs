@@ -2,7 +2,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v1.1.6
+// CODEX_QUALITY_HARNESS_FILE v1.1.7
 
 
 
@@ -56,6 +56,7 @@ import { V113_STATUS_KEYS, buildV113Report } from './codex-v113-minimal-surface.
 import { V114_STATUS_KEYS, buildV114Report, writeLoopArtifacts } from './codex-v114-loop-kernel.mjs';
 import { V115_STATUS_KEYS, buildV115Report } from './codex-v115-trace-kernel.mjs';
 import { OPERATOR_STATUS_KEYS as V116_STATUS_KEYS, buildV116Report } from './codex-decision-capsule.mjs';
+import { OPERATOR_STATUS_KEYS as V117_STATUS_KEYS, buildV117Report } from './codex-verifier-capsule.mjs';
 
 
 
@@ -63,7 +64,7 @@ import { OPERATOR_STATUS_KEYS as V116_STATUS_KEYS, buildV116Report } from './cod
 
 
 
-const HARNESS_VERSION = '1.1.6';
+const HARNESS_VERSION = '1.1.7';
 
 
 
@@ -1955,6 +1956,9 @@ function expectedMarkerVersionForPath(file, profileVersions) {
 
 
   if (normalized.startsWith('profiles/')) return profileVersions;
+  if (HARNESS_VERSION === '1.1.7') {
+    return [HARNESS_VERSION, '1.1.6', '1.1.5', '1.1.4', '1.1.3', '1.1.2', '1.1.1', '1.1.0', '1.0.9', '1.0.8', '1.0.7'];
+  }
   if (HARNESS_VERSION === '1.1.6') {
     return [HARNESS_VERSION, '1.1.5', '1.1.4', '1.1.3', '1.1.2', '1.1.1', '1.1.0', '1.0.9', '1.0.8', '1.0.7'];
   }
@@ -3039,6 +3043,34 @@ function runV116Gates(report, gateEnv) {
 }
 
 function initializeV116Statuses(report) { for (const key of V116_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' }; }
+
+function runV117Gates(report, gateEnv) {
+  const selfTestStatus = process.env.CODEX_SKIP_V117_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v117-self-test.mjs', 'v117SelfTestStatus', 'CODEX_V117_SELF_TEST_REPORT', gateEnv);
+  const reports = buildV117Report({
+    decision: 'blocked',
+    primaryClass: 'owner_decision_required',
+    primaryBlocker: 'owner_decision_required',
+    sameHeadRequiredChecks: {
+      sameHead: true,
+      allPass: false,
+      headSha: process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'unknown',
+    },
+    tokenBudget: { operatorVisibleStatuses: V117_STATUS_KEYS.length, safeArtifactReads: 2 },
+  });
+  Object.assign(report, reports);
+  report.v117SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
+    ...reports.v117SelfTestStatus,
+    ...selfTestStatus,
+    status: selfTestStatus.status || reports.v117SelfTestStatus.status,
+  };
+}
+
+function initializeV117Statuses(report) {
+  for (const key of V117_STATUS_KEYS) if (!report[key]) report[key] = { status: 'not_run' };
+  if (!report.v117SelfTestStatus) report.v117SelfTestStatus = { status: 'not_run' };
+}
 
 function legacySelfTestPreservedStatus(legacyVersion) {
   return {
@@ -8347,6 +8379,7 @@ async function runSourceHarnessGate() {
   initializeV099Statuses(report);
   initializeV100Statuses(report);
   initializeV116Statuses(report);
+  initializeV117Statuses(report);
   initializeV101Statuses(report);
   initializeV102Statuses(report);
   initializeV103Statuses(report);
@@ -10771,6 +10804,7 @@ async function runTargetHarnessGate() {
   runV102Gates(report, gateEnv);
   runV103Gates(report, gateEnv);
   runV116Gates(report, gateEnv);
+  runV117Gates(report, gateEnv);
 
 
   report.workflowPreflightStatus = runGateScript('scripts/codex-workflow-preflight.mjs', 'workflowPreflightStatus', 'CODEX_WORKFLOW_PREFLIGHT_REPORT', gateEnv);
@@ -11688,6 +11722,7 @@ async function runTargetHarnessGate() {
     ...Object.fromEntries(V102_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V103_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V116_STATUS_KEYS.map((key) => [key, report[key]])),
+    ...Object.fromEntries(V117_STATUS_KEYS.map((key) => [key, report[key]])),
 
 
 
@@ -12275,6 +12310,7 @@ async function runSourceHarnessCoreContractGate() {
   initializeV114Statuses(report);
   initializeV115Statuses(report);
   initializeV116Statuses(report);
+  initializeV117Statuses(report);
 
   if (report.sourceHarnessValidationStatus.status === 'fail') failures.push(...report.sourceHarnessValidationStatus.failures);
   if (report.secretScan.status === 'fail') failures.push({ id: 'secretScan.failed', message: 'secret safety scan failed' });
@@ -12311,6 +12347,7 @@ async function runSourceHarnessCoreContractGate() {
   runV114Gates(report, gateEnv);
   runV115Gates(report, gateEnv);
   runV116Gates(report, gateEnv);
+  runV117Gates(report, gateEnv);
 
   for (const [key, value] of Object.entries({
     changeClassificationStatus: report.changeClassificationStatus,
@@ -12335,6 +12372,7 @@ async function runSourceHarnessCoreContractGate() {
     ...Object.fromEntries(V114_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V115_STATUS_KEYS.map((name) => [name, report[name]])),
     ...Object.fromEntries(V116_STATUS_KEYS.map((name) => [name, report[name]])),
+    ...Object.fromEntries(V117_STATUS_KEYS.map((name) => [name, report[name]])),
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }
@@ -12389,7 +12427,7 @@ async function runSourceHarnessCoreContractGate() {
   report.subagentMergeAuthority = false;
   report.localAgentSecretAccess = false;
   report.walletRpcDeployAccess = false;
-  report.operatorVisibleStatuses = V116_STATUS_KEYS;
+  report.operatorVisibleStatuses = V117_STATUS_KEYS;
   report.syntheticRepresentativeValidation = report.representativeProductPrValidationStatus?.status === 'pass' ? 'pass' : 'fail';
   report.status = failures.length ? 'fail' : (warnings.length ? 'manual_confirmation_required' : 'pass');
   if (failures.length) {

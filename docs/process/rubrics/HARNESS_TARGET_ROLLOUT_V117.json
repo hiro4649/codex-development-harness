@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.1.7",
+  "rubric": "HARNESS_TARGET_ROLLOUT_V117",
+  "targetRollout": "not_started_by_source_body",
+  "operatorVisibleStatusLimit": 12,
+  "requiredSourceEvidence": [
+    "decisionCapsuleAuthorityStatus",
+    "outcomeContractStatus",
+    "verifierCapsuleStatus",
+    "artifactConsistencyStatus",
+    "deltaOnlyFinalizerStatus",
+    "safeFailureReaderStatus"
+  ],
+  "targetNonGoals": [
+    "productCodeChange",
+    "packageOrLockfileChange",
+    "runtimeReadinessClaim",
+    "productionReadinessClaim",
+    "rawLogAccess",
+    "eightSessionOperation"
+  ],
+  "freshTargetRolloutRequired": true,
+  "sameHeadRequiredChecksRequired": true
+}
