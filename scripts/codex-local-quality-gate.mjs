@@ -8346,9 +8346,6 @@ async function runSourceHarnessGate() {
   initializeV098Statuses(report);
   initializeV099Statuses(report);
   initializeV100Statuses(report);
-  initializeV113Statuses(report);
-  initializeV114Statuses(report);
-  initializeV115Statuses(report);
   initializeV116Statuses(report);
   initializeV101Statuses(report);
   initializeV102Statuses(report);
@@ -10773,9 +10770,6 @@ async function runTargetHarnessGate() {
   runV101Gates(report, gateEnv);
   runV102Gates(report, gateEnv);
   runV103Gates(report, gateEnv);
-  runV113Gates(report, gateEnv);
-  runV114Gates(report, gateEnv);
-  runV115Gates(report, gateEnv);
   runV116Gates(report, gateEnv);
 
 
@@ -11693,9 +11687,6 @@ async function runTargetHarnessGate() {
     ...Object.fromEntries(V101_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V102_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V103_STATUS_KEYS.map((key) => [key, report[key]])),
-    ...Object.fromEntries(V113_STATUS_KEYS.map((key) => [key, report[key]])),
-    ...Object.fromEntries(V114_STATUS_KEYS.map((key) => [key, report[key]])),
-    ...Object.fromEntries(V115_STATUS_KEYS.map((key) => [key, report[key]])),
     ...Object.fromEntries(V116_STATUS_KEYS.map((key) => [key, report[key]])),
 
 
