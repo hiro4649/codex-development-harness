@@ -92,6 +92,8 @@ export function validateDecisionCapsule(input = {}) {
   const reasonCodes = [];
   if (capsule.harnessVersion !== HARNESS_VERSION) reasonCodes.push('decision_capsule_version_mismatch');
   if (!DECISION_VALUES.has(capsule.decision)) reasonCodes.push('decision_capsule_unknown_decision');
+  if (capsule.decision === 'allowed' && capsule.mergeAllowed !== true) reasonCodes.push('allowed_with_merge_false');
+  if (capsule.mergeAllowed === false && !['blocked', 'owner_decision_required'].includes(capsule.decision)) reasonCodes.push('merge_false_requires_blocked_decision');
   if (!capsule.primaryClass || !capsule.primaryBlocker) reasonCodes.push('decision_capsule_required_field_missing');
   if (!capsule.safeNextAction || Array.isArray(capsule.safeNextAction)) reasonCodes.push('safe_next_action_count_invalid');
   if (!REPAIR_TYPES.has(capsule.repairType)) reasonCodes.push('repair_type_invalid');
@@ -100,6 +102,22 @@ export function validateDecisionCapsule(input = {}) {
   if (capsule.mergeAllowed && capsule.sameHeadRequiredChecks?.allPass !== true) reasonCodes.push('merge_without_same_head_required_checks');
   if (capsule.productRepairAllowed && capsule.scopeProfile === 'source_harness') reasonCodes.push('product_repair_in_source_harness_scope');
   return reasonCodes.length ? fail(reasonCodes, { capsule }) : pass({ capsule });
+}
+
+export function buildDecisionCapsuleArtifactIndex(capsule = buildDecisionCapsule()) {
+  return {
+    status: 'pass',
+    artifactIndexed: true,
+    firstReadArtifact: 'codex-decision-capsule.safe.json',
+    artifacts: [
+      { artifactName: 'codex-decision-capsule.safe.json', status: 'present', loadBearing: true },
+      { artifactName: 'codex-decision-core.safe.json', status: 'supporting' },
+      { artifactName: 'codex-minimal-blockers.safe.json', status: 'supporting' },
+      { artifactName: 'codex-safe-artifact-index.safe.json', status: 'supporting' },
+    ],
+    decisionCapsuleHashSource: [capsule.harnessVersion, capsule.repo, capsule.headSha, capsule.decision, capsule.primaryClass].join('|'),
+    safeSummaryOnly: true,
+  };
 }
 
 export function detectDecisionConflict({ capsule = {}, decisionCore = {}, minimalBlockers = {}, safeArtifactIndex = {} } = {}) {
@@ -166,6 +184,23 @@ export function validateExecutionIntent(input = {}) {
   return pass({ taskMode });
 }
 
+export function validateHardSafetyClaims(input = {}) {
+  const reasonCodes = [];
+  if (input.runtimeReadinessClaimed === true) reasonCodes.push('runtime_readiness_claimed');
+  if (input.productionReadinessClaimed === true) reasonCodes.push('production_readiness_claimed');
+  if (input.legalComplianceClaimed === true) reasonCodes.push('legal_compliance_claimed');
+  if (input.youtubePolicyComplianceClaimed === true) reasonCodes.push('youtube_policy_compliance_claimed');
+  if (input.walletRpcDeployAccess === true) reasonCodes.push('wallet_rpc_deploy_access');
+  if (input.rawLogsRead === true) reasonCodes.push('raw_logs_read');
+  if (input.eightSessionUsed === true) reasonCodes.push('eight_session_used');
+  return reasonCodes.length ? fail(reasonCodes) : pass();
+}
+
+export function validateLegacyShadow(input = {}) {
+  if (input.trueBlocker === true && input.shadowAttemptsHide === true) return fail('true_blocker_not_shadowable');
+  return pass({ shadowCountOnly: true });
+}
+
 export function buildV116Report(input = {}) {
   const capsule = buildDecisionCapsule(input);
   const decisionCapsuleStatus = validateDecisionCapsule(capsule);
@@ -173,7 +208,12 @@ export function buildV116Report(input = {}) {
   const canonical = validateCanonicalStatusRegistry(input.operatorVisibleStatuses || OPERATOR_STATUS_KEYS);
   const conflict = detectDecisionConflict({ capsule, ...(input.supportingEvidence || {}) });
   const sameHeadStatus = capsule.sameHeadRequiredChecks.sameHead ? pass({ state: capsule.sameHeadRequiredChecks.allPass ? 'pass' : 'source-local-not-remote-yet' }) : fail('same_head_required_checks_failed');
-  const safeArtifactStatus = input.safeArtifactMissing === true ? fail('missing_load_bearing_artifact') : pass({ firstRead: 'codex-decision-capsule.safe.json' });
+  const decisionCapsuleArtifactIndex = buildDecisionCapsuleArtifactIndex(capsule);
+  const safeArtifactStatus = input.safeArtifactMissing === true ? fail('missing_load_bearing_artifact') : pass({
+    firstRead: 'codex-decision-capsule.safe.json',
+    artifactName: 'codex-decision-capsule.safe.json',
+    indexed: true,
+  });
   const scopeBoundaryStatus = validateExecutionIntent({ taskMode: input.taskMode || 'harness_implementation', sourceBodyTask: true });
   const validationTierStatus = pass({ maxTier: 'tier4', remoteRequiredBeforeMerge: true });
   const continuationStatus = input.sameFailureAfterOneRepair === true ? fail('same_failure_after_one_repair') : pass({ safeNextAction: capsule.safeNextAction });
@@ -182,7 +222,7 @@ export function buildV116Report(input = {}) {
     sameHeadStatus,
     safeArtifactStatus,
     scopeBoundaryStatus,
-    tokenBudgetStatus: tokenBudgetStatus.status === 'fail' ? tokenBudgetStatus : canonical,
+    tokenBudgetStatus,
     validationTierStatus,
     continuationStatus,
   };
@@ -190,6 +230,8 @@ export function buildV116Report(input = {}) {
     v116SelfTestStatus: pass({ version: HARNESS_VERSION }),
     ...statuses,
     decisionCapsule: capsule,
+    safeArtifactIndex: decisionCapsuleArtifactIndex,
+    canonicalStatusRegistrySupport: canonical,
     operatorVisibleStatusCount: OPERATOR_STATUS_KEYS.length,
     legacyShadowCountOnly: true,
     passStatusesPrinted: 0,

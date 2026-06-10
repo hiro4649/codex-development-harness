@@ -76,6 +76,27 @@ const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 export function buildPreExitDecisionArtifacts(input = {}) {
   const primaryClass = input.primaryClass || 'safe_detail_unavailable';
   const reasonCodes = [...new Set((input.reasonCodes || [primaryClass]).filter(Boolean).map(String))].slice(0, 3);
+  const decisionCapsule = {
+    harnessVersion: HARNESS_VERSION,
+    repo: 'hiro4649/codex-development-harness',
+    headSha: input.headSha || 'unknown',
+    decision: 'blocked',
+    mergeAllowed: false,
+    primaryClass,
+    primaryBlocker: reasonCodes[0] || primaryClass,
+    safeNextAction: input.safeNextAction || 'read_minimal_blockers',
+    sameHeadRequiredChecks: { required: true, sameHead: false, allPass: false, headSha: input.headSha || 'unknown' },
+    scopeProfile: 'source_harness',
+    permissionProfile: 'harness_implementation',
+    repairType: 'source_harness_repair',
+    repairAllowedInCurrentScope: false,
+    productRepairAllowed: false,
+    harnessRepairAllowed: true,
+    rawLogsRead: false,
+    eightSessionUsed: false,
+    detailsRef: 'codex-decision-capsule.safe.json',
+    safeSummaryOnly: true,
+  };
   const decisionCore = {
     decision: 'blocked',
     primaryClass,
@@ -127,6 +148,7 @@ export function buildPreExitDecisionArtifacts(input = {}) {
     artifactIndexed: true,
     safeSummaryOnly: true,
     artifacts: [
+      { artifactName: 'codex-decision-capsule.safe.json', status: 'present', loadBearing: true },
       { artifactName: 'codex-decision-core.safe.json', status: 'present' },
       { artifactName: 'codex-minimal-blockers.safe.json', status: 'present' },
       { artifactName: 'codex-safe-artifact-index.safe.json', status: 'present' },
@@ -136,6 +158,7 @@ export function buildPreExitDecisionArtifacts(input = {}) {
   const lifeboat = {
     status: input.status || 'fail',
     classification: input.classification || 'safe_artifact_contract_failure',
+    decisionCapsule,
     decisionCore,
     minimalBlockers,
     top3Blockers: minimalBlockers,
@@ -148,7 +171,7 @@ export function buildPreExitDecisionArtifacts(input = {}) {
     eightSessionUsed: false,
     safeSummaryOnly: true,
   };
-  return { decisionCore, minimalBlockers, safeArtifactIndex, safeSummary, lifeboat };
+  return { decisionCapsule, decisionCore, minimalBlockers, safeArtifactIndex, safeSummary, lifeboat };
 }
 
 function writePreExitDecisionArtifacts(input = {}) {
@@ -159,6 +182,7 @@ function writePreExitDecisionArtifacts(input = {}) {
   try {
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(lifeboatPath, JSON.stringify(artifacts.lifeboat, null, 2));
+    fs.writeFileSync(path.join(dir, 'codex-decision-capsule.safe.json'), JSON.stringify(artifacts.decisionCapsule, null, 2));
     fs.writeFileSync(path.join(dir, 'codex-decision-core.safe.json'), JSON.stringify(artifacts.decisionCore, null, 2));
     fs.writeFileSync(path.join(dir, 'codex-minimal-blockers.safe.json'), JSON.stringify(artifacts.minimalBlockers, null, 2));
     fs.writeFileSync(path.join(dir, 'codex-safe-artifact-index.safe.json'), JSON.stringify(artifacts.safeArtifactIndex, null, 2));

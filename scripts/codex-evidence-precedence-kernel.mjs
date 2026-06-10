@@ -56,7 +56,19 @@ export function validateRemoteEvidenceState(input = {}) {
   const state = input.state || classifyRemoteEvidenceState(input);
   if (!REMOTE_EVIDENCE_STATES.has(state)) return fail('remote_evidence_state_unknown', { state });
   if (state === 'stale_head') return fail('stale_path_artifact', { state });
-  if (['decision_capsule_missing', 'artifact_index_missing', 'safe_summary_missing', 'artifact_upload_contract_failed'].includes(state)) return fail(state, { state });
+  if ([
+    'executed_failed',
+    'normalization_mismatch',
+    'executed_artifact_missing',
+    'executed_diagnostic_missing',
+    'summary_picker_incompatible',
+    'remote_metadata_only_blocked',
+    'decision_capsule_missing',
+    'artifact_index_missing',
+    'safe_summary_missing',
+    'artifact_upload_contract_failed',
+    'safe_detail_unavailable_terminal',
+  ].includes(state)) return fail(state, { state, manualBlocking: true });
   return pass({ state });
 }
 
