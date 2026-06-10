@@ -8911,7 +8911,7 @@ async function runSourceHarnessGate() {
 
 
 
-  report.v081SelfTestStatus = process.env.CODEX_HARNESS_MODE === 'core' && process.env.CODEX_RUN_FULL_LEGACY_SELF_TESTS !== '1'
+  report.v081SelfTestStatus = ['core', 'target'].includes(process.env.CODEX_HARNESS_MODE) && process.env.CODEX_RUN_FULL_LEGACY_SELF_TESTS !== '1'
 
 
 
@@ -8931,7 +8931,7 @@ async function runSourceHarnessGate() {
 
 
 
-  report.v082SelfTestStatus = process.env.CODEX_HARNESS_MODE === 'core' && process.env.CODEX_RUN_FULL_LEGACY_SELF_TESTS !== '1'
+  report.v082SelfTestStatus = ['core', 'target'].includes(process.env.CODEX_HARNESS_MODE) && process.env.CODEX_RUN_FULL_LEGACY_SELF_TESTS !== '1'
 
 
 
@@ -11093,7 +11093,7 @@ async function runTargetHarnessGate() {
 
 
 
-  report.v081SelfTestStatus = process.env.CODEX_SKIP_V081_SELF_TEST === '1'
+  report.v081SelfTestStatus = process.env.CODEX_SKIP_V081_SELF_TEST === '1' || (process.env.CODEX_HARNESS_MODE === 'target' && process.env.CODEX_RUN_FULL_LEGACY_SELF_TESTS !== '1')
 
 
 
@@ -11105,7 +11105,7 @@ async function runTargetHarnessGate() {
 
 
 
-  report.v082SelfTestStatus = process.env.CODEX_SKIP_V082_SELF_TEST === '1'
+  report.v082SelfTestStatus = process.env.CODEX_SKIP_V082_SELF_TEST === '1' || (process.env.CODEX_HARNESS_MODE === 'target' && process.env.CODEX_RUN_FULL_LEGACY_SELF_TESTS !== '1')
 
 
 
