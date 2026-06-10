@@ -75,5 +75,17 @@ Source v1.1.7 is acceptable only when:
 - Verifier Capsule is read-only, independent, and raw-log-free.
 - Artifact Consistency proves load-bearing artifacts are generated, indexed,
   uploaded, and observed on the same head.
+- The load-bearing artifact set is:
+  `codex-decision-capsule.safe.json`,
+  `codex-artifact-consistency.safe.json`,
+  `codex-minimal-blockers.safe.json`, and
+  `codex-quality-gate-safe-summary.json`.
+- The source quality gate must emit these artifacts as real safe files and the
+  workflow upload contract must include them. If the safe index says a
+  load-bearing artifact is present but the artifact is missing, the primary
+  class is `artifact_index_consistency_failure`. If an artifact exists for a
+  stale head, the primary class is `artifact_stale_head`.
+- `safe_detail_unavailable` is the final fallback only after the load-bearing
+  artifact consistency path cannot provide safe detail.
 - Delta-only final output excludes unchanged history.
 - Safe Failure Reader uses safe artifacts only.

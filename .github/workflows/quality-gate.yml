@@ -350,6 +350,9 @@ jobs:
           name: codex-quality-gate-safe-artifacts
           path: |
             codex-quality-gate-safe-summary.json
+            codex-decision-capsule.safe.json
+            codex-artifact-consistency.safe.json
+            codex-minimal-blockers.safe.json
             codex-minimal-safe-failure.json
             ${{ runner.temp }}/codex-minimal-safe-failure.json
             codex-diagnostic-consolidated-summary.json

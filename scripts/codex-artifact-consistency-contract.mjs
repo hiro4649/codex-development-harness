@@ -61,9 +61,9 @@ export function validateArtifactConsistency(input = {}) {
   const reasonCodes = [];
   if (input.safeSummaryPresent === false) reasonCodes.push('safe_summary_missing');
   if (!LOAD_BEARING_ARTIFACTS.includes(artifactName)) reasonCodes.push('artifact_not_load_bearing');
-  if (indexed === 'pass' && generated !== 'pass') reasonCodes.push('artifact_indexed_without_generated_source');
+  if (indexed === 'pass' && generated !== 'pass') reasonCodes.push('artifact_index_consistency_failure');
   if (generated === 'pass' && indexed !== 'pass') reasonCodes.push('artifact_generated_not_indexed');
-  if (indexed === 'pass' && uploaded !== 'pass') reasonCodes.push('artifact_index_claim_upload_missing');
+  if (indexed === 'pass' && uploaded !== 'pass') reasonCodes.push('artifact_index_consistency_failure');
   if (uploaded === 'pass' && generated !== 'pass') reasonCodes.push('artifact_uploaded_without_generated_source');
   if (uploaded === 'pass' && downloadObserved !== 'pass') reasonCodes.push('artifact_download_not_observed');
   if (downloadObserved === 'pass' && headMatch !== 'pass') reasonCodes.push('artifact_head_mismatch');
@@ -80,16 +80,19 @@ export function validateArtifactConsistency(input = {}) {
     safeSummaryOnly: true,
   };
   if (reasonCodes.length) {
-    return fail(reasonCodes, {
-      ...base,
-      primaryClass: classifyArtifactConsistency({
+    const primaryClass = reasonCodes.includes('artifact_head_mismatch')
+      ? 'artifact_stale_head'
+      : (reasonCodes.includes('artifact_index_consistency_failure') ? 'artifact_index_consistency_failure' : classifyArtifactConsistency({
         artifactName,
         artifactGeneratedStatus: generated,
         artifactIndexedStatus: indexed,
         artifactUploadedStatus: uploaded,
         artifactDownloadObservedStatus: downloadObserved,
         artifactHeadMatchStatus: headMatch,
-      }),
+      }));
+    return fail(reasonCodes, {
+      ...base,
+      primaryClass,
       repairType: 'target_workflow_artifact_contract',
       safeNextAction: 'owner artifact-contract scope decision',
     });
