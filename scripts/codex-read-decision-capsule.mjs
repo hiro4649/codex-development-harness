@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.6
+// CODEX_QUALITY_HARNESS_FILE v1.1.7
 
 import fs from 'node:fs';
 
@@ -42,12 +42,15 @@ export function renderDecisionCapsuleLines(report = {}) {
     `decision: ${capsule.decision || report.status || 'unknown'}`,
     `mergeAllowed: ${capsule.mergeAllowed === true ? 'yes' : 'no'}`,
     `primaryClass: ${capsule.primaryClass || 'unknown'}`,
+    `head: ${capsule.headSha || capsule.head || report.head || report.headSha || 'unknown'}`,
     `repairType: ${capsule.repairType || 'unknown'}`,
     `safeNextAction: ${capsule.safeNextAction || 'read_decision_capsule'}`,
     `sameHeadStatus: ${report.sameHeadStatus?.status || report.sameHeadStatus || capsule.sameHeadRequiredChecks?.state || 'unknown'}`,
     `scopeProfile: ${capsule.scopeProfile || 'unknown'}`,
     `tokenBudgetStatus: ${report.tokenBudgetStatus?.status || report.tokenBudgetStatus || 'unknown'}`,
     `detailsRef: ${capsule.detailsRef || 'codex-decision-capsule.safe.json'}`,
+    `outcomeContractStatus: ${report.outcomeContractStatus?.status || 'unknown'}`,
+    `artifactConsistencyStatus: ${report.artifactConsistencyStatus?.status || 'unknown'}`,
   ];
   return lines.slice(0, 20);
 }

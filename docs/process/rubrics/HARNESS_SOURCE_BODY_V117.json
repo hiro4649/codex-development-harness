@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.1.7",
+  "rubric": "HARNESS_SOURCE_BODY_V117",
+  "operatorVisibleStatusLimit": 12,
+  "p0Statuses": [
+    "decisionCapsuleAuthorityStatus",
+    "outcomeContractStatus",
+    "verifierCapsuleStatus",
+    "artifactConsistencyStatus",
+    "deltaOnlyFinalizerStatus",
+    "safeFailureReaderStatus"
+  ],
+  "p1aMinimalOrFixtureOnly": [
+    "scopeGrantMatrixStatus",
+    "legacyCompatibilityCompressionStatus",
+    "validationFastPathStatus"
+  ],
+  "p1bSpecOrFixtureOnly": [
+    "boundaryRegistryCompressionStatus",
+    "failureContractV2Status",
+    "ownerConfirmationIngestionStatus",
+    "harnessProductTestClassificationStatus"
+  ],
+  "p2SpecOrFixtureOnly": [
+    "verifiedMemoryRulesStatus",
+    "consultedMemoryAuditStatus",
+    "memoryInvalidationStatus",
+    "repairExperimentLedgerStatus",
+    "externalVerifierModelStatus"
+  ],
+  "hardFailIf": [
+    "decisionCapsuleDelegatesToPrBody",
+    "allowedDecisionWithoutMergeAllowed",
+    "artifactIndexClaimsMissingSafeSummary",
+    "rawLogsRead",
+    "eightSessionUsed",
+    "productCodeChanged",
+    "packageOrLockfileChanged",
+    "targetRolloutStarted"
+  ]
+}

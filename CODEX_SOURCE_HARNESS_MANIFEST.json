@@ -31,6 +31,7 @@
     "docs/process/*.md",
     "docs/process/*.json",
     "docs/process/golden/*.json",
+    "docs/process/rubrics/*.json",
     "docs/process/skills/*.md",
     "scripts/codex-*",
     "scripts/codex-v105-gate-lib.mjs",

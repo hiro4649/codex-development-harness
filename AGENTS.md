@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.1.6
+CODEX_QUALITY_HARNESS_FILE v1.1.7
 
 ## Prime Directive
 
@@ -76,6 +76,12 @@ machine evidence. Token Hard Budget is enforced. Policy/profile IDs replace
 long forbidden text. Same-head required checks remain mandatory. Raw logs and
 8-session are forbidden. Product/harness repair separation is required. Target
 rollout is not part of Source body tasks.
+For v1.1.7 Outcome-Verified Decision Capsule and Artifact-Consistent Minimal
+Surface, use `docs/process/CODEX_V117_SPEC.md`. Preserve Decision Capsule
+authority, require concrete Outcome and read-only Verifier Capsules, prove
+load-bearing artifact consistency, emit delta-only final summaries, and read
+failures through safe artifacts only. Keep operator-visible statuses within the
+budget and keep target rollout out of Source body tasks.
 
 ## Plan-First Rule
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.6
+// CODEX_QUALITY_HARNESS_FILE v1.1.7
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -59,6 +59,7 @@ export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
     safeNextAction: report.safeNextAction,
     detailsRef: report.detailsRef,
   } : {});
+  const artifactConsistency = report.artifactConsistency || report.artifactConsistencyStatus?.artifactConsistency || {};
   const decisionCore = capsule.decision
     ? {
       decision: capsule.decision,
@@ -93,12 +94,16 @@ export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
     permissionProfile: report.permissionProfile || '',
     tokenCostSummary: report.tokenCostSummary || report.tokenRuntimeMeterStatus?.meter || {},
     decisionCapsule: capsule,
+    outcomeContractStatus: report.outcomeContractStatus?.status || 'unknown',
+    verifierCapsuleStatus: report.verifierCapsuleStatus?.status || 'unknown',
+    artifactConsistencyStatus: report.artifactConsistencyStatus?.status || 'unknown',
+    safeFailureReaderStatus: report.safeFailureReaderStatus?.status || 'unknown',
     primaryBlocker: capsule.primaryBlocker || top3.primary_blocker || decisionCore.primaryClass || 'none',
     repairType: capsule.repairType || 'external_confirmation_required',
     sameHeadStatus: report.sameHeadStatus?.status || 'unknown',
     tokenBudgetStatus: report.tokenBudgetStatus?.status || 'unknown',
     detailsRef: capsule.detailsRef || decisionCore.evidenceSource || 'codex-decision-capsule.safe.json',
-    artifactPointer: capsule.detailsRef || decisionCore.evidenceSource || report.safeArtifactIndexStatus?.artifactPointer || (safeArtifactPath ? 'safe-summary-input' : ''),
+    artifactPointer: capsule.detailsRef || artifactConsistency.firstReadArtifact || decisionCore.evidenceSource || report.safeArtifactIndexStatus?.artifactPointer || (safeArtifactPath ? 'safe-summary-input' : ''),
     passStatusCount: base.passStatusCount || 0,
     passStatusesListed: false,
     legacyDetailSuppressed: true,
