@@ -1,10 +1,16 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.0.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.1.8 -->
 # Codex Development Harness
 
-Version: v1.0.5
-Name: Claim-to-Code Verification, Boundary Linting, Evidence v2, and Risk Hysteresis
+Version: v1.1.8
+Name: Final Decision Kernel and Mode-Aware Evidence Contract
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. v1.0.3 preserves v1.0.2 clean-main, fixture isolation, product PR recovery, external blocked separation, handover snapshot, protected state, and workflow resume.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. The current authority is `AGENTS.md`, `docs/process/CODEX_V118_SPEC.md`, and the active manifest files under `docs/process/`.
+
+Harness `skillProfiles` are machine-readable harness/profile identifiers. They are not OpenAI Codex Skills and should not be renamed in this pass.
+
+Historical v1.0.x material below is preserved as migration history, not as the current operating version.
+
+v1.0.3 preserves v1.0.2 clean-main, fixture isolation, product PR recovery, external blocked separation, handover snapshot, protected state, and workflow resume.
 
 v1.0.3 adds final aggregation consistency, remote npm truth, product surface routing, active self-test artifact source, PR body governance auto-repair, review evidence taxonomy, contract readiness profile, stale input freshness, 5.5 low mode, and Dynamic Workflow Lite.
 
