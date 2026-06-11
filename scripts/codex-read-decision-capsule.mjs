@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.7
+// CODEX_QUALITY_HARNESS_FILE v1.1.8
 
 import fs from 'node:fs';
 
@@ -37,14 +37,15 @@ export function pickDecisionCapsule(report = {}) {
 }
 
 export function renderDecisionCapsuleLines(report = {}) {
+  const finalDecision = report.finalDecision || report.finalDecisionStatus?.finalDecision || {};
   const capsule = pickDecisionCapsule(report);
   const lines = [
-    `decision: ${capsule.decision || report.status || 'unknown'}`,
-    `mergeAllowed: ${capsule.mergeAllowed === true ? 'yes' : 'no'}`,
-    `primaryClass: ${capsule.primaryClass || 'unknown'}`,
+    `decision: ${finalDecision.decision || capsule.decision || report.status || 'unknown'}`,
+    `mergeAllowed: ${finalDecision.mergeAllowed === true || capsule.mergeAllowed === true ? 'yes' : 'no'}`,
+    `primaryClass: ${finalDecision.primaryClass || capsule.primaryClass || 'unknown'}`,
     `head: ${capsule.headSha || capsule.head || report.head || report.headSha || 'unknown'}`,
     `repairType: ${capsule.repairType || 'unknown'}`,
-    `safeNextAction: ${capsule.safeNextAction || 'read_decision_capsule'}`,
+    `safeNextAction: ${finalDecision.safeNextAction || capsule.safeNextAction || 'read_decision_capsule'}`,
     `sameHeadStatus: ${report.sameHeadStatus?.status || report.sameHeadStatus || capsule.sameHeadRequiredChecks?.state || 'unknown'}`,
     `scopeProfile: ${capsule.scopeProfile || 'unknown'}`,
     `tokenBudgetStatus: ${report.tokenBudgetStatus?.status || report.tokenBudgetStatus || 'unknown'}`,

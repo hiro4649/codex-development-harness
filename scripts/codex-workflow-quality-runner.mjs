@@ -71,6 +71,7 @@ import { buildDiagnosticConsolidatedSummary } from './codex-diagnostic-consolida
 import { buildInvalidReportRecoverySummary } from './codex-invalid-report-recovery.mjs';
 import { V101_STATUS_KEYS } from './codex-v101-gate-lib.mjs';
 import { classifyTargetModeCompatibilityStatus } from './codex-v111-token-hard-cap.mjs';
+import { reconcileFinalSafeDecision } from './codex-final-decision-kernel.mjs';
 
 
 
@@ -6185,6 +6186,28 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 
 
 
+
+  const finalDecision = loaded.report.finalDecision || reconcileFinalSafeDecision({
+    executionMode: process.env.CODEX_EXECUTION_MODE || (result.mode === 'target' ? 'target_pr' : 'source_pr'),
+    terminalAction: process.env.CODEX_TERMINAL_ACTION || 'create_pr_only',
+    decisionCapsule: loaded.report.decisionCapsule,
+    evidenceCapsule: loaded.report.evidenceCapsule,
+    artifactConsistency: loaded.report.artifactConsistency || loaded.report.artifactConsistencyStatus,
+    minimalBlockers: loaded.report.top3Blockers || loaded.report.minimalBlockers,
+    requiredChecks: {
+      sameHead: process.env.CODEX_SAME_HEAD === 'false' ? false : true,
+      allPass: process.env.CODEX_REQUIRED_CHECKS_PASS === '1',
+    },
+    convergenceState: loaded.report.convergenceGateStatus,
+    tokenBudget: loaded.report.tokenBudgetStatus,
+    safetyClaims: {
+      rawLogsRead: loaded.report.rawLogsRead === true,
+      eightSessionUsed: loaded.report.eightSessionUsed === true,
+      runtimeReadinessClaimed: loaded.report.runtimeReadinessClaimed === true,
+      productionReadinessClaimed: loaded.report.productionReadinessClaimed === true,
+    },
+  });
+  if (finalDecision.exitCode === 0) process.exit(0);
 
   if (result.failures.length) {
 

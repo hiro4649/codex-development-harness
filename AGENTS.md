@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.1.7
+CODEX_QUALITY_HARNESS_FILE v1.1.8
 
 ## Prime Directive
 
@@ -82,6 +82,14 @@ authority, require concrete Outcome and read-only Verifier Capsules, prove
 load-bearing artifact consistency, emit delta-only final summaries, and read
 failures through safe artifacts only. Keep operator-visible statuses within the
 budget and keep target rollout out of Source body tasks.
+For v1.1.8 Final Decision Kernel and Mode-Aware Evidence Contract, use
+`docs/process/CODEX_V118_SPEC.md`. Final Decision is execution and exit-code
+authority; Decision Capsule remains domain decision authority. Evidence Capsule
+is machine evidence authority, Safe Summary is display-only, and workflow exit
+must delegate to Final Decision. Preserve mode-aware artifact contracts,
+local/remote evidence separation, convergence stop rules, token budget limits,
+raw-log prohibition, 8-session default fail, product/harness repair separation,
+and target rollout prohibition.
 
 ## Plan-First Rule
 

@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.2",
-  "harnessVersion": "1.1.2",
-  "sourceHarnessVersion": "1.1.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.8",
+  "harnessVersion": "1.1.8",
+  "sourceHarnessVersion": "1.1.8",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.1.2",
+  "schemaVersion": "1.1.8",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
