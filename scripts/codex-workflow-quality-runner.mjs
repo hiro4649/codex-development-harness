@@ -71,6 +71,7 @@ import { buildDiagnosticConsolidatedSummary } from './codex-diagnostic-consolida
 import { buildInvalidReportRecoverySummary } from './codex-invalid-report-recovery.mjs';
 import { V101_STATUS_KEYS } from './codex-v101-gate-lib.mjs';
 import { classifyTargetModeCompatibilityStatus } from './codex-v111-token-hard-cap.mjs';
+import { reconcileFinalSafeDecision } from './codex-final-decision-kernel.mjs';
 
 
 
@@ -4925,6 +4926,20 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
     v097SelfTestStatus: report.v097SelfTestStatus || { status: 'missing' },
+    v113SelfTestStatus: report.v113SelfTestStatus || { status: 'missing' },
+    v114SelfTestStatus: report.v114SelfTestStatus || { status: 'missing' },
+    v115SelfTestStatus: report.v115SelfTestStatus || { status: 'missing' },
+    v116SelfTestStatus: report.v116SelfTestStatus || { status: 'missing' },
+    v117SelfTestStatus: report.v117SelfTestStatus || { status: 'missing' },
+    v118SelfTestStatus: report.v118SelfTestStatus || { status: 'missing' },
+    finalDecisionStatus: report.finalDecisionStatus || { status: 'missing' },
+    decisionCapsuleStatus: report.decisionCapsuleStatus || report.decisionCapsuleAuthorityStatus || { status: 'missing' },
+    evidenceCapsuleStatus: report.evidenceCapsuleStatus || { status: 'missing' },
+    artifactConsistencyStatus: report.artifactConsistencyStatus || { status: 'missing' },
+    convergenceGateStatus: report.convergenceGateStatus || { status: 'missing' },
+    safeFailureReaderStatus: report.safeFailureReaderStatus || { status: 'missing' },
+    tokenBudgetStatus: report.tokenBudgetStatus || { status: 'missing' },
+    scopeBoundaryStatus: report.scopeBoundaryStatus || { status: 'missing' },
 
 
 
@@ -5215,7 +5230,7 @@ function writeArtifacts(result, report) {
 
 
 
-  const selfTestStatus = report.v098SelfTestStatus || report.v097SelfTestStatus || report.v096SelfTestStatus || report.v095SelfTestStatus || report.v094SelfTestStatus || report.v093SelfTestStatus || report.v092SelfTestStatus || report.selfTestCaseExportStatus || {};
+  const selfTestStatus = report.v118SelfTestStatus || report.v117SelfTestStatus || report.v116SelfTestStatus || report.v115SelfTestStatus || report.v114SelfTestStatus || report.v113SelfTestStatus || report.v098SelfTestStatus || report.v097SelfTestStatus || report.v096SelfTestStatus || report.v095SelfTestStatus || report.v094SelfTestStatus || report.v093SelfTestStatus || report.v092SelfTestStatus || report.selfTestCaseExportStatus || {};
 
 
 
@@ -6185,6 +6200,28 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 
 
 
+
+  const finalDecision = loaded.report.finalDecision || reconcileFinalSafeDecision({
+    executionMode: process.env.CODEX_EXECUTION_MODE || (result.mode === 'target' ? 'target_pr' : 'source_pr'),
+    terminalAction: process.env.CODEX_TERMINAL_ACTION || 'create_pr_only',
+    decisionCapsule: loaded.report.decisionCapsule,
+    evidenceCapsule: loaded.report.evidenceCapsule,
+    artifactConsistency: loaded.report.artifactConsistency || loaded.report.artifactConsistencyStatus,
+    minimalBlockers: loaded.report.top3Blockers || loaded.report.minimalBlockers,
+    requiredChecks: {
+      sameHead: process.env.CODEX_SAME_HEAD === 'false' ? false : true,
+      allPass: process.env.CODEX_REQUIRED_CHECKS_PASS === '1',
+    },
+    convergenceState: loaded.report.convergenceGateStatus,
+    tokenBudget: loaded.report.tokenBudgetStatus,
+    safetyClaims: {
+      rawLogsRead: loaded.report.rawLogsRead === true,
+      eightSessionUsed: loaded.report.eightSessionUsed === true,
+      runtimeReadinessClaimed: loaded.report.runtimeReadinessClaimed === true,
+      productionReadinessClaimed: loaded.report.productionReadinessClaimed === true,
+    },
+  });
+  if (finalDecision.exitCode === 0) process.exit(0);
 
   if (result.failures.length) {
 

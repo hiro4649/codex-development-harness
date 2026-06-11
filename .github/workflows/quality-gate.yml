@@ -154,6 +154,7 @@ jobs:
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           CODEX_REPOSITORY: ${{ github.repository }}
           CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
+          CODEX_SAFE_ARTIFACT_DIR: ${{ github.workspace }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -350,7 +351,9 @@ jobs:
           name: codex-quality-gate-safe-artifacts
           path: |
             codex-quality-gate-safe-summary.json
+            codex-final-decision.safe.json
             codex-decision-capsule.safe.json
+            codex-evidence-capsule.safe.json
             codex-artifact-consistency.safe.json
             codex-minimal-blockers.safe.json
             codex-minimal-safe-failure.json

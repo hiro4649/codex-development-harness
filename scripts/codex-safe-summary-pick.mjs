@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.7
+// CODEX_QUALITY_HARNESS_FILE v1.1.8
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -50,6 +50,8 @@ function inferSafeDetailDecision(report = {}) {
 
 export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
   const base = pickSafeSummary(report, { safeArtifactPath });
+  const finalDecision = report.finalDecision || report.finalDecisionStatus?.finalDecision || {};
+  const evidenceCapsule = report.evidenceCapsule || report.evidenceCapsuleStatus?.evidenceCapsule || {};
   const capsule = report.decisionCapsule || report.decisionCapsuleStatus?.capsule || (report.decision ? {
     decision: report.decision,
     mergeAllowed: String(report.mergeAllowed || '').toLowerCase() === 'yes' || report.mergeAllowed === true,
@@ -77,9 +79,9 @@ export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
     status: report.status || base.status || 'unknown',
     qualityScore: base.qualityScore ?? report.qualityScore ?? null,
     decisionCore: {
-      decision: decisionCore.decision || report.status || 'unknown',
-      primaryClass: decisionCore.primaryClass || top3.primary_blocker || 'none',
-      mergeAllowed: decisionCore.mergeAllowed === true,
+      decision: finalDecision.decision || decisionCore.decision || report.status || 'unknown',
+      primaryClass: finalDecision.primaryClass || decisionCore.primaryClass || top3.primary_blocker || 'none',
+      mergeAllowed: finalDecision.mergeAllowed === true || decisionCore.mergeAllowed === true,
       productRepairAllowed: decisionCore.productRepairAllowed === true,
       harnessRepairAllowed: decisionCore.harnessRepairAllowed === true,
       safeNextAction: decisionCore.safeNextAction || top3.safe_next_action || 'read_decision_core',
@@ -93,7 +95,13 @@ export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
     skillProfile: report.skillProfile || '',
     permissionProfile: report.permissionProfile || '',
     tokenCostSummary: report.tokenCostSummary || report.tokenRuntimeMeterStatus?.meter || {},
+    finalDecision,
+    evidenceCapsule,
     decisionCapsule: capsule,
+    finalDecisionStatus: report.finalDecisionStatus?.status || 'unknown',
+    evidenceCapsuleStatus: report.evidenceCapsuleStatus?.status || 'unknown',
+    convergenceGateStatus: report.convergenceGateStatus?.status || 'unknown',
+    scopeBoundaryStatus: report.scopeBoundaryStatus?.status || 'unknown',
     outcomeContractStatus: report.outcomeContractStatus?.status || 'unknown',
     verifierCapsuleStatus: report.verifierCapsuleStatus?.status || 'unknown',
     artifactConsistencyStatus: report.artifactConsistencyStatus?.status || 'unknown',
