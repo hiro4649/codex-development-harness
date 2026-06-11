@@ -4926,6 +4926,20 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
     v097SelfTestStatus: report.v097SelfTestStatus || { status: 'missing' },
+    v113SelfTestStatus: report.v113SelfTestStatus || { status: 'missing' },
+    v114SelfTestStatus: report.v114SelfTestStatus || { status: 'missing' },
+    v115SelfTestStatus: report.v115SelfTestStatus || { status: 'missing' },
+    v116SelfTestStatus: report.v116SelfTestStatus || { status: 'missing' },
+    v117SelfTestStatus: report.v117SelfTestStatus || { status: 'missing' },
+    v118SelfTestStatus: report.v118SelfTestStatus || { status: 'missing' },
+    finalDecisionStatus: report.finalDecisionStatus || { status: 'missing' },
+    decisionCapsuleStatus: report.decisionCapsuleStatus || report.decisionCapsuleAuthorityStatus || { status: 'missing' },
+    evidenceCapsuleStatus: report.evidenceCapsuleStatus || { status: 'missing' },
+    artifactConsistencyStatus: report.artifactConsistencyStatus || { status: 'missing' },
+    convergenceGateStatus: report.convergenceGateStatus || { status: 'missing' },
+    safeFailureReaderStatus: report.safeFailureReaderStatus || { status: 'missing' },
+    tokenBudgetStatus: report.tokenBudgetStatus || { status: 'missing' },
+    scopeBoundaryStatus: report.scopeBoundaryStatus || { status: 'missing' },
 
 
 
@@ -5216,7 +5230,7 @@ function writeArtifacts(result, report) {
 
 
 
-  const selfTestStatus = report.v098SelfTestStatus || report.v097SelfTestStatus || report.v096SelfTestStatus || report.v095SelfTestStatus || report.v094SelfTestStatus || report.v093SelfTestStatus || report.v092SelfTestStatus || report.selfTestCaseExportStatus || {};
+  const selfTestStatus = report.v118SelfTestStatus || report.v117SelfTestStatus || report.v116SelfTestStatus || report.v115SelfTestStatus || report.v114SelfTestStatus || report.v113SelfTestStatus || report.v098SelfTestStatus || report.v097SelfTestStatus || report.v096SelfTestStatus || report.v095SelfTestStatus || report.v094SelfTestStatus || report.v093SelfTestStatus || report.v092SelfTestStatus || report.selfTestCaseExportStatus || {};
 
 
 
