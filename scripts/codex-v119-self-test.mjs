@@ -46,7 +46,7 @@ const validOwnerPriorScope = {
 
 const permissionCases = [
   ['repository_policy_cannot_grant_mutation', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ permissionEvidenceSource: 'repository_policy', commit: true }).permissionGrant))],
-  ['repository_policy_can_recommend_but_not_authorize_create_pr', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ permissionEvidenceSource: 'repository_policy', createPr: true }).permissionGrant))],
+  ['repository_policy_cannot_authorize_create_pr', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ permissionEvidenceSource: 'repository_policy', createPr: true }).permissionGrant))],
   ['owner_prior_scope_requires_scope_id_repo_actions_expiry_and_head_or_branch_constraint', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ mutationPermissionAuthority: 'owner_prior_scope_only', createPr: true, ownerPriorScope: { allowedActions: ['createPr'] } }).permissionGrant))],
   ['owner_prior_scope_cannot_grant_merge', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ merge: true, mutationPermissionAuthority: 'owner_prior_scope_only', ownerPriorScope: validOwnerPriorScope }).permissionGrant))],
   ['owner_explicit_current_only_required_for_merge_release_wallet_rpc_deploy', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ merge: true, release: true, walletRpcDeployAccess: true }).permissionGrant))],

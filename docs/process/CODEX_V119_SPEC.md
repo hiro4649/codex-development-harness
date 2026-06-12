@@ -59,11 +59,10 @@ publish, BscScan, transaction, secret, or merge permission.
 ## Permission Model
 
 Harness policy is a blocking and classification source, not mutation authority.
-Repository policy may recommend read-only audit, triage, monitor, safe
-classification, and create-PR consideration, but it must not authorize commit,
-push, PR creation, CI rerun, CI fix, merge, release, publish, wallet/RPC/deploy,
-secret access, funded transaction, governance transaction, or BscScan
-verification.
+Repository policy may allow only read-only audit, triage, monitor, and safe
+classification. It must not authorize commit, push, PR creation, CI rerun, CI
+fix, merge, release, publish, wallet/RPC/deploy, secret access, funded
+transaction, governance transaction, or BscScan verification.
 
 `owner_prior_scope` may authorize only explicitly scoped commit, push, createPr,
 rerunCi, and fixCi. It must include `scopeId`, `repo`, `allowedActions`,
