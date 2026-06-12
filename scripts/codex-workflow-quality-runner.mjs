@@ -72,6 +72,7 @@ import { buildInvalidReportRecoverySummary } from './codex-invalid-report-recove
 import { V101_STATUS_KEYS } from './codex-v101-gate-lib.mjs';
 import { classifyTargetModeCompatibilityStatus } from './codex-v111-token-hard-cap.mjs';
 import { reconcileFinalSafeDecision } from './codex-final-decision-kernel.mjs';
+import { V119_OPERATOR_STATUS_KEYS } from './codex-orchestration-capsule.mjs';
 
 
 
@@ -3143,6 +3144,21 @@ function readReport(file) {
 
 }
 
+function readSafeJsonArtifact(file) {
+  try {
+    if (!file || !fs.existsSync(file)) return null;
+    const artifact = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (scanSafeOutput(artifact).findings.length) return null;
+    return artifact;
+  } catch {
+    return null;
+  }
+}
+
+function statusFromArtifact(artifact, extra = {}) {
+  return artifact ? { status: 'pass', safeSummaryOnly: true, ...extra } : { status: 'missing', safeSummaryOnly: true, ...extra };
+}
+
 
 
 
@@ -4127,6 +4143,21 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
 
+  const orchestrationCapsule = report.orchestrationCapsule || readSafeJsonArtifact('codex-orchestration-capsule.safe.json');
+  const workerProofCapsule = report.workerProofCapsule || readSafeJsonArtifact('codex-worker-proof.safe.json');
+  const ownerDecisionBrief = report.ownerDecisionBrief || readSafeJsonArtifact('codex-owner-decision-brief.safe.json');
+  const finalDecisionArtifact = report.finalDecision || readSafeJsonArtifact('codex-final-decision.safe.json');
+  const v119StatusFallbacks = {
+    orchestrationModeStatus: statusFromArtifact(orchestrationCapsule, { orchestrationMode: orchestrationCapsule?.orchestrationMode || 'unknown' }),
+    permissionGrantStatus: statusFromArtifact(orchestrationCapsule?.permissionGrant ? orchestrationCapsule : null),
+    localRepoReadinessStatus: statusFromArtifact(orchestrationCapsule?.localRepoReadiness ? orchestrationCapsule : null),
+    workerContractStatus: statusFromArtifact(orchestrationCapsule?.workerContract ? orchestrationCapsule : null),
+    workerProofStatus: statusFromArtifact(workerProofCapsule),
+    reviewChainStatus: statusFromArtifact(workerProofCapsule?.reviewChain ? workerProofCapsule : null),
+    ownerDecisionBriefStatus: statusFromArtifact(ownerDecisionBrief),
+    finalDecisionPointerStatus: statusFromArtifact(finalDecisionArtifact, { finalAuthority: 'v1.1.8_final_decision_kernel' }),
+  };
+
   const safeSummary = {
 
 
@@ -4178,6 +4209,12 @@ export function evaluateWorkflowReport(report, options = {}) {
 
     humanReviewRequired: Boolean(report.humanReviewRequired),
 
+
+
+
+
+
+    qualityScore: report.qualityScore ?? report.qualityScoreStatus?.score ?? report.targetQualityScoreStatus?.score ?? null,
 
 
 
@@ -4932,6 +4969,26 @@ export function evaluateWorkflowReport(report, options = {}) {
     v116SelfTestStatus: report.v116SelfTestStatus || { status: 'missing' },
     v117SelfTestStatus: report.v117SelfTestStatus || { status: 'missing' },
     v118SelfTestStatus: report.v118SelfTestStatus || { status: 'missing' },
+    v119SelfTestStatus: report.v119SelfTestStatus || { status: 'missing' },
+    ...Object.fromEntries(V119_OPERATOR_STATUS_KEYS.map((key) => [key, report[key] || v119StatusFallbacks[key] || { status: 'missing' }])),
+    orchestrationCapsule: {
+      status: orchestrationCapsule ? 'present' : 'missing',
+      artifactName: 'codex-orchestration-capsule.safe.json',
+      finalAuthority: orchestrationCapsule?.finalAuthority || 'v1.1.8_final_decision_kernel',
+      safeSummaryOnly: true,
+    },
+    workerProofCapsule: {
+      status: workerProofCapsule ? 'present' : 'missing',
+      artifactName: 'codex-worker-proof.safe.json',
+      rawLogsRead: workerProofCapsule?.liveProof?.rawLogsRead === true,
+      safeSummaryOnly: true,
+    },
+    ownerDecisionBrief: {
+      status: ownerDecisionBrief ? 'present' : 'missing',
+      artifactName: 'codex-owner-decision-brief.safe.json',
+      decisionReady: ownerDecisionBrief?.decisionReady === true,
+      safeSummaryOnly: true,
+    },
     finalDecisionStatus: report.finalDecisionStatus || { status: 'missing' },
     decisionCapsuleStatus: report.decisionCapsuleStatus || report.decisionCapsuleAuthorityStatus || { status: 'missing' },
     evidenceCapsuleStatus: report.evidenceCapsuleStatus || { status: 'missing' },
