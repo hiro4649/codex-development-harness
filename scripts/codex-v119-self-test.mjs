@@ -11,6 +11,7 @@ import {
   validatePermissionGrant,
   validateLocalRepoReadiness,
   validateWorkerContract,
+  validateReviewAgentContract,
 } from './codex-orchestration-capsule.mjs';
 import {
   buildWorkerProofCapsule,
@@ -92,6 +93,19 @@ const workerCases = [
   ['worker_contract_has_allowed_files_forbidden_scope_acceptance_stop_boundary', () => validateWorkerContract(buildOrchestrationCapsule().workerContract).status === 'pass'],
   ['worker_context_minimal_no_full_history_by_default', () => buildOrchestrationCapsule().workerContract.contextBudgetTokens <= 3000],
   ['worker_must_not_delegate_by_default', () => buildOrchestrationCapsule().workerContract.mustNotDelegate === true],
+  ['review_agent_contract_inside_existing_three_artifacts', () => Boolean(buildOrchestrationCapsule().reviewAgentContract) && V119_P0_ARTIFACTS.length === 3],
+  ['specialist_review_cannot_approve_or_merge', () => {
+    const capsule = buildOrchestrationCapsule({ allowedFiles: ['docs/process/CODEX_V119_SPEC.md'], reviewAgentContract: { enabled: true, repairAllowedFiles: ['docs/process/CODEX_V119_SPEC.md'], canApprove: true, canMerge: true } });
+    return failed(validateReviewAgentContract({ ...capsule.reviewAgentContract, canApprove: true, canMerge: true }, capsule.workerContract));
+  }],
+  ['specialist_review_cannot_claim_readiness', () => {
+    const capsule = buildOrchestrationCapsule({ allowedFiles: ['docs/process/CODEX_V119_SPEC.md'], reviewAgentContract: { enabled: true, repairAllowedFiles: ['docs/process/CODEX_V119_SPEC.md'], canClaimReadiness: true } });
+    return failed(validateReviewAgentContract({ ...capsule.reviewAgentContract, canClaimReadiness: true }, capsule.workerContract));
+  }],
+  ['self_review_cannot_substitute_specialist_review', () => {
+    const capsule = buildOrchestrationCapsule({ workerId: 'same-agent', allowedFiles: ['docs/process/CODEX_V119_SPEC.md'], reviewAgentContract: { enabled: true, reviewerId: 'same-agent', repairAllowedFiles: ['docs/process/CODEX_V119_SPEC.md'] } });
+    return failed(validateReviewAgentContract(capsule.reviewAgentContract, capsule.workerContract));
+  }],
 ];
 
 const proofCases = [
@@ -103,6 +117,11 @@ const proofCases = [
   ['mock_fixture_ci_remote_pass_not_runtime_readiness', () => buildWorkerProofCapsule({ ci: 'pass' }).liveProof.status === 'not_required_with_reason'],
   ['self_review_cannot_pass_review_chain_alone', () => failed(validateWorkerProofCapsule({ ...buildWorkerProofCapsule(), reviewChain: { selfReviewStatus: 'pass', specComplianceReviewStatus: 'not_required_with_reason', codeQualityReviewStatus: 'not_required_with_reason', finalReviewStatus: 'pass', sameWorkerSelfReviewCanPass: true } }))],
   ['spec_and_quality_review_required_for_implementation', () => failed(buildWorkerProofReport({ finalReviewStatus: 'pass', specComplianceReviewStatus: 'not_required_with_reason', codeQualityReviewStatus: 'pass' }).reviewChainStatus)],
+  ['specialist_review_requires_safe_artifacts_only', () => failed(validateWorkerProofCapsule(buildWorkerProofCapsule({ usesOnlySafeArtifacts: false })))],
+  ['auto_repair_stops_after_same_primary_class_twice', () => failed(validateWorkerProofCapsule(buildWorkerProofCapsule({ repairIterations: 2, repairIterationId: 'r2', lastRepairHeadSha: 'def', sameFailureRepeated: true, primaryClassHistory: ['artifact_contract', 'artifact_contract'] })))],
+  ['auto_repair_blocks_on_package_lockfile_runtime_secret_deploy_scope', () => failed(validateWorkerProofCapsule(buildWorkerProofCapsule({ repairIterations: 1, repairIterationId: 'r1', lastRepairHeadSha: 'def', forbiddenScopeDetected: true })))],
+  ['review_findings_must_be_concrete_for_auto_repair', () => failed(validateWorkerProofCapsule(buildWorkerProofCapsule({ acceptedFindings: ['subjective polish'], findingClasses: ['style_preference'] })))],
+  ['specialist_review_head_must_match_current_head', () => failed(validateWorkerProofCapsule(buildWorkerProofCapsule({ headSha: 'head-2', reviewHeadSha: 'head-1', specialistReviewStatus: 'pass' })))],
 ];
 
 const ownerBriefCases = [
@@ -114,6 +133,7 @@ const ownerBriefCases = [
   ['owner_decision_brief_records_delegated_continuation', () => validateOwnerDecisionBrief(buildOwnerDecisionBrief({ delegatedContinuationEnabled: true, technicalAcceptance: true, autoContinueAllowed: true, delegatedAllowedActions: ['createPr', 'merge'] })).status === 'pass'],
   ['delegated_auto_continue_requires_technical_acceptance', () => failed(validateOwnerDecisionBrief(buildOwnerDecisionBrief({ delegatedContinuationEnabled: true, technicalAcceptance: false, autoContinueAllowed: true, delegatedAllowedActions: ['createPr'] })))],
   ['delegated_continuation_cannot_include_non_delegable_actions', () => failed(validateOwnerDecisionBrief(buildOwnerDecisionBrief({ delegatedContinuationEnabled: true, technicalAcceptance: true, autoContinueAllowed: true, delegatedAllowedActions: ['release'] })))],
+  ['delegated_continuation_records_remaining_owner_only_choices', () => buildOwnerDecisionBrief({ delegatedContinuationEnabled: true }).delegatedContinuation.remainingOwnerOnlyChoices.length <= 3],
 ];
 
 const nonExpansionCases = [
@@ -129,6 +149,7 @@ const nonExpansionCases = [
   ['self_harness_proposal_auto_apply_false', () => true],
   ['v119_delegates_final_authority_to_v118', () => buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
   ['v119_does_not_create_second_merge_authority', () => buildOrchestrationCapsule().permissionGrant.merge === false],
+  ['delegated_same_head_merge_requires_owner_delegated_current_only_and_v118_final_decision', () => validatePermissionGrant(buildOrchestrationCapsule({ merge: true, mergePermissionAuthority: 'owner_delegated_current_only', reviewDelegation: validReviewDelegation }).permissionGrant).status === 'pass' && buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
   ['autonomous_candidate_is_not_execution_permission', () => !buildOrchestrationCapsule({ triage: true }).permissionGrant.implement],
   ['heartbeat_state_delta_false_silent', () => buildOrchestrationCapsule().lightHeartbeat.routineHeartbeatOutput === 'silent' && buildOrchestrationCapsule().lightHeartbeat.stateDeltaDetected === false],
   ['pass_status_detail_count_only', () => true],

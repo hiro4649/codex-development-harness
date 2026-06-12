@@ -43,6 +43,7 @@ const MUTATION_ACTIONS = new Set(['commit', 'push', 'createPr', 'rerunCi', 'fixC
 const CURRENT_OWNER_ONLY_ACTIONS = new Set(['merge', 'release', 'publish', 'secretAccess', 'walletRpcDeployAccess']);
 const REVIEW_DELEGABLE_ACTIONS = new Set(['commit', 'push', 'createPr', 'rerunCi', 'fixCi', 'merge']);
 const NON_DELEGABLE_CURRENT_ACTIONS = new Set(['release', 'publish', 'secretAccess', 'walletRpcDeployAccess']);
+const REVIEW_AGENT_ALLOWED_ACTIONS = new Set(['inspect', 'classify', 'request_repair', 're_review']);
 
 function status(ok, reasonCodes = [], extra = {}) {
   return ok ? pass(extra) : fail(reasonCodes, extra);
@@ -77,6 +78,25 @@ function defaultReviewDelegation(input = {}) {
     headSha: input.headSha || null,
     branchConstraint: input.branchConstraint || null,
     sourceInstructionRef: input.sourceInstructionRef || null,
+  };
+}
+
+function defaultReviewAgentContract(input = {}) {
+  return {
+    enabled: input.enabled === true,
+    workerId: input.workerId || 'single_worker',
+    reviewerId: input.reviewerId || 'specialist_reviewer',
+    reviewerRole: input.reviewerRole || 'specialist_review_agent',
+    reviewScope: input.reviewScope || 'worker_output_safe_artifacts_only',
+    allowedActions: truncateList(input.allowedActions || ['inspect', 'classify', 'request_repair', 're_review'], 8),
+    forbiddenActions: truncateList(input.forbiddenActions || ['approve', 'merge', 'claim_readiness', 'release', 'publish', 'walletRpcDeployAccess', 'secretAccess'], 20),
+    repairAllowedFiles: truncateList(input.repairAllowedFiles || [], 50),
+    maxRepairIterations: Math.min(Number(input.maxRepairIterations || 2), 2),
+    sameFailureStopThreshold: Math.min(Number(input.sameFailureStopThreshold || 2), 2),
+    requiresIndependentContext: input.requiresIndependentContext !== false,
+    canApprove: false,
+    canMerge: false,
+    canClaimReadiness: false,
   };
 }
 
@@ -135,6 +155,10 @@ export function buildOrchestrationCapsule(input = {}) {
     terminalAction: input.terminalAction || 'create_pr_only',
     contextBudgetTokens: Math.min(Number(input.contextBudgetTokens || 3000), 3000),
   };
+  const reviewAgentContract = defaultReviewAgentContract({
+    ...(input.reviewAgentContract || {}),
+    workerId: workerContract.workerId,
+  });
   return {
     orchestrationVersion: '1',
     activeHarnessVersion: '1.1.9',
@@ -144,6 +168,7 @@ export function buildOrchestrationCapsule(input = {}) {
     permissionGrant,
     localRepoReadiness,
     workerContract,
+    reviewAgentContract,
     lightHeartbeat: {
       routineHeartbeatOutput: 'silent',
       stateDeltaDetected: input.stateDelta === true,
@@ -165,6 +190,13 @@ export function buildOrchestrationCapsule(input = {}) {
     eightSessionUsed: false,
     safeSummaryOnly: true,
   };
+}
+
+function isSubset(values = [], allowed = []) {
+  if (!Array.isArray(values) || !Array.isArray(allowed)) return false;
+  if (allowed.length === 0) return values.length === 0;
+  const allowedSet = new Set(allowed);
+  return values.every((item) => allowedSet.has(item));
 }
 
 function ownerPriorScopeValid(scope = {}) {
@@ -246,6 +278,22 @@ export function validateWorkerContract(contract = {}) {
   return reasons.length ? fail(reasons) : pass({ terminalAction: contract.terminalAction });
 }
 
+export function validateReviewAgentContract(contract = {}, workerContract = {}) {
+  const reasons = [];
+  if (contract.enabled !== true) return pass({ enabled: false });
+  if (contract.workerId && contract.reviewerId && contract.workerId === contract.reviewerId) reasons.push('self_review_cannot_substitute_specialist_review');
+  if (contract.canApprove !== false) reasons.push('specialist_review_cannot_approve');
+  if (contract.canMerge !== false) reasons.push('specialist_review_cannot_merge');
+  if (contract.canClaimReadiness !== false) reasons.push('specialist_review_cannot_claim_readiness');
+  if (contract.requiresIndependentContext !== true) reasons.push('review_agent_requires_independent_context');
+  if (Number(contract.maxRepairIterations || 0) > 2 || Number(contract.sameFailureStopThreshold || 0) > 2) reasons.push('auto_repair_iteration_limits_exceeded');
+  for (const action of contract.allowedActions || []) {
+    if (!REVIEW_AGENT_ALLOWED_ACTIONS.has(action)) reasons.push(`review_agent_action_not_allowed_${action}`);
+  }
+  if (!isSubset(contract.repairAllowedFiles || [], workerContract.allowedFiles || [])) reasons.push('repair_allowed_files_must_be_subset_of_worker_contract');
+  return reasons.length ? fail(reasons) : pass({ enabled: true, maxRepairIterations: contract.maxRepairIterations });
+}
+
 export function validateOrchestrationCapsule(capsule = {}) {
   const modeOk = ORCHESTRATION_MODES.has(capsule.orchestrationMode) && capsule.finalAuthority === 'v1.1.8_final_decision_kernel';
   return {
@@ -253,6 +301,7 @@ export function validateOrchestrationCapsule(capsule = {}) {
     permissionGrantStatus: validatePermissionGrant(capsule.permissionGrant || {}),
     localRepoReadinessStatus: validateLocalRepoReadiness(capsule.localRepoReadiness || {}),
     workerContractStatus: validateWorkerContract(capsule.workerContract || {}),
+    reviewAgentContractStatus: validateReviewAgentContract(capsule.reviewAgentContract || {}, capsule.workerContract || {}),
   };
 }
 

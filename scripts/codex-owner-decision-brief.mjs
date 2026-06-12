@@ -39,6 +39,7 @@ export function buildOwnerDecisionBrief(input = {}) {
       autoContinueAllowed: input.autoContinueAllowed === true,
       allowedActions: bounded(input.delegatedAllowedActions || [], 8),
       blockedActions: bounded(input.delegatedBlockedActions || ['release', 'publish', 'walletRpcDeployAccess', 'secretAccess'], 8),
+      remainingOwnerOnlyChoices: bounded(input.remainingOwnerOnlyChoices || ['release', 'publish', 'walletRpcDeployAccess', 'secretAccess'], 3),
       safeNextAction: input.delegatedSafeNextAction || 'owner_delegation_or_owner_decision_required',
     },
     safeNextAction: input.safeNextAction || 'owner_merge_decision_only',
@@ -58,6 +59,7 @@ export function validateOwnerDecisionBrief(brief = {}) {
   const delegated = brief.delegatedContinuation || {};
   if (delegated.enabled === true) {
     if (delegated.autoContinueAllowed === true && delegated.technicalAcceptance !== true) reasons.push('delegated_auto_continue_requires_technical_acceptance');
+    if (!Array.isArray(delegated.remainingOwnerOnlyChoices) || delegated.remainingOwnerOnlyChoices.length > 3) reasons.push('delegated_continuation_remaining_owner_choices_required');
     for (const action of delegated.allowedActions || []) {
       if (!DELEGATED_CONTINUATION_ACTIONS.has(action)) reasons.push(`delegated_continuation_action_not_allowed_${action}`);
       if (NON_DELEGABLE_ACTIONS.has(action)) reasons.push(`delegated_continuation_forbidden_${action}`);

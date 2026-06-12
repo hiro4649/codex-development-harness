@@ -99,6 +99,7 @@ not GitHub approval review.
 - `permissionGrant`
 - `localRepoReadiness`
 - `workerContract`
+- `reviewAgentContract`
 - `lightHeartbeat`
 - `orchestrationMode`
 - `stateDelta`
@@ -122,6 +123,19 @@ review authority:
 
 The delegation is fail-closed when the specialist acceptance is missing, stale,
 wrong-head, expired, or asks for non-delegable actions.
+
+`reviewAgentContract` records the bounded Specialist Review Auto-Repair Loop.
+It is P1 implemented inside the existing Orchestration Capsule, not a new
+artifact, status, or scheduler. It contains `enabled`, `workerId`,
+`reviewerId`, `reviewerRole`, `reviewScope`, `allowedActions`,
+`forbiddenActions`, `repairAllowedFiles`, `maxRepairIterations`,
+`sameFailureStopThreshold`, `requiresIndependentContext`, `canApprove: false`,
+`canMerge: false`, and `canClaimReadiness: false`.
+
+The review agent must be independent from the worker. Its repair file boundary
+must remain a subset of `workerContract.allowedFiles`. It may inspect,
+classify, request repair, and re-review only. It cannot approve, merge, claim
+readiness, or broaden scope.
 
 Local repo readiness blocks implementation, commit, push, PR creation, CI fix,
 merge, and release when the worktree is dirty without preservation, the repo is
@@ -151,6 +165,7 @@ must not exceed 3000.
 - `testEvidence`
 - `liveProof`
 - `reviewChain`
+- `specialistReview`
 - `missingProofReason`
 - `waiverStatus`
 - `safeNextAction`
@@ -167,6 +182,26 @@ Self-review is advisory. Same-worker self-review cannot pass the review chain
 alone. Implementation tasks require spec-compliance and code-quality review.
 Reviewer comments do not grant owner approval. ChatGPT Pro technical review is
 not GitHub approval review.
+
+`specialistReview` records review status, findings, accepted findings, rejected
+findings, finding classes, repair iterations, repeated failure state,
+`reviewHeadSha`, `lastRepairHeadSha`, focused validation path, and safe-artifact
+usage. It must use only safe artifacts, must not read raw logs, and must become
+stale if `reviewHeadSha` does not match the reviewed head.
+
+Auto-repair may continue only when permission allows the action, local repo
+readiness passes, the worker contract is present, changed files remain inside
+the allowed boundary, findings are concrete, repair iterations are within the
+limit, the same primary class has not repeated twice, focused validation exists
+or is explicitly not required, and no package, lockfile, runtime, deploy,
+secret, wallet/RPC, BscScan, release, transaction, or owner-only scope appears.
+
+Auto-repair stops when the same primary class repeats twice, the allowed file
+boundary is exceeded, package or lockfile change is required, runtime behavior
+change is required, an external secret or endpoint is required, wallet/RPC,
+deploy, BscScan, release, funded/governance transaction, or production
+readiness is required, the reviewer cannot classify, tests worsen, or an
+owner-only decision remains.
 
 ## Owner Decision Brief
 
@@ -200,10 +235,10 @@ chain status, and exact safe choices are recorded.
 If `delegatedContinuation.autoContinueAllowed` is true, Codex may continue
 without asking the owner again only for the delegated actions recorded in
 `permissionGrant.reviewDelegation`. The owner brief must still record
-`technicalAcceptance`, `allowedActions`, `blockedActions`, and one
-`safeNextAction`. It must not convert delegated continuation into runtime,
-production, release, deploy, wallet/RPC, secret, BscScan, transaction, or
-GitHub approval-review authority.
+`technicalAcceptance`, `allowedActions`, `blockedActions`,
+`remainingOwnerOnlyChoices`, and one `safeNextAction`. It must not convert
+delegated continuation into runtime, production, release, deploy, wallet/RPC,
+secret, BscScan, transaction, or GitHub approval-review authority.
 
 ## Token And Surface Limits
 
