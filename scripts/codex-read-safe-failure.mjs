@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.8
+// CODEX_QUALITY_HARNESS_FILE v1.1.9
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,6 +8,9 @@ import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import { pass, fail } from './codex-outcome-contract.mjs';
 
 export const SAFE_FAILURE_READ_ORDER = [
+  'codex-orchestration-capsule.safe.json',
+  'codex-worker-proof.safe.json',
+  'codex-owner-decision-brief.safe.json',
   'codex-final-decision.safe.json',
   'codex-evidence-capsule.safe.json',
   'codex-minimal-blockers.safe.json',
@@ -29,6 +32,9 @@ function readJson(file) {
 export function pickSafeFailureEvidence(dir = '.', order = SAFE_FAILURE_READ_ORDER) {
   if (dir && typeof dir === 'object' && !Array.isArray(dir)) {
     if (dir.finalDecision) return { selected: 'codex-final-decision.safe.json', finalDecision: dir.finalDecision };
+    if (dir.orchestrationCapsule) return { selected: 'codex-orchestration-capsule.safe.json', orchestrationCapsule: dir.orchestrationCapsule };
+    if (dir.workerProofCapsule) return { selected: 'codex-worker-proof.safe.json', workerProofCapsule: dir.workerProofCapsule };
+    if (dir.ownerDecisionBrief) return { selected: 'codex-owner-decision-brief.safe.json', ownerDecisionBrief: dir.ownerDecisionBrief };
     if (dir.evidenceCapsule) return { selected: 'codex-evidence-capsule.safe.json', evidenceCapsule: dir.evidenceCapsule };
     if (dir.decisionCapsule || dir.decisionArtifact) return { selected: 'codex-decision-capsule.safe.json', decisionArtifact: dir.decisionCapsule || dir.decisionArtifact };
     if (dir.artifactConsistency) return { selected: 'codex-artifact-consistency.safe.json', artifactConsistency: dir.artifactConsistency };
@@ -43,12 +49,18 @@ export function pickSafeFailureEvidence(dir = '.', order = SAFE_FAILURE_READ_ORD
     else rejected.push(artifact);
   }
   const finalDecision = accepted.find((item) => item.artifact === 'codex-final-decision.safe.json')?.value;
+  const orchestrationCapsule = accepted.find((item) => item.artifact === 'codex-orchestration-capsule.safe.json')?.value;
+  const workerProofCapsule = accepted.find((item) => item.artifact === 'codex-worker-proof.safe.json')?.value;
+  const ownerDecisionBrief = accepted.find((item) => item.artifact === 'codex-owner-decision-brief.safe.json')?.value;
   const evidenceCapsule = accepted.find((item) => item.artifact === 'codex-evidence-capsule.safe.json')?.value;
   const decision = accepted.find((item) => item.artifact === 'codex-decision-capsule.safe.json')?.value;
   const consistency = accepted.find((item) => item.artifact === 'codex-artifact-consistency.safe.json')?.value;
   const minimal = accepted.find((item) => item.artifact === 'codex-minimal-blockers.safe.json')?.value;
   return {
     selected: accepted[0]?.artifact || 'none',
+    orchestrationCapsule: orchestrationCapsule || null,
+    workerProofCapsule: workerProofCapsule || null,
+    ownerDecisionBrief: ownerDecisionBrief || null,
     finalDecision: finalDecision || null,
     evidenceCapsule: evidenceCapsule || null,
     decisionArtifact: decision || null,
@@ -61,6 +73,8 @@ export function pickSafeFailureEvidence(dir = '.', order = SAFE_FAILURE_READ_ORD
 
 export function renderSafeFailureLines(input = {}) {
   const finalDecision = input.finalDecision || {};
+  const orchestration = input.orchestrationCapsule || {};
+  const ownerBrief = input.ownerDecisionBrief || {};
   const decision = input.decisionArtifact || input.decisionCapsule || {};
   const consistency = input.artifactConsistency || {};
   const primaryClass = finalDecision.primaryClass || decision.primaryClass || consistency.primaryClass || input.primaryClass || 'unknown';
@@ -68,6 +82,8 @@ export function renderSafeFailureLines(input = {}) {
     `decision: ${finalDecision.decision || decision.decision || input.decision || 'blocked'}`,
     `head: ${decision.head || finalDecision.head || consistency.head || input.head || 'unknown'}`,
     `primaryClass: ${primaryClass}`,
+    `orchestrationMode: ${orchestration.orchestrationMode || 'unknown'}`,
+    `ownerDecisionReady: ${ownerBrief.decisionReady === true ? 'true' : 'false'}`,
     `blockingArtifact: ${consistency.artifactName || decision.detailsRef || input.blockingArtifact || 'unknown'}`,
     `acceptedEvidence: ${(input.acceptedEvidence || []).slice(0, 5).join(',') || 'none'}`,
     `rejectedEvidence: ${(input.rejectedEvidence || []).slice(0, 5).join(',') || 'none'}`,

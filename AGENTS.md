@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.1.8
+CODEX_QUALITY_HARNESS_FILE v1.1.9
 
 ## Prime Directive
 
@@ -90,6 +90,14 @@ must delegate to Final Decision. Preserve mode-aware artifact contracts,
 local/remote evidence separation, convergence stop rules, token budget limits,
 raw-log prohibition, 8-session default fail, product/harness repair separation,
 and target rollout prohibition.
+For v1.1.9 Maintainer Orchestration Lite and Worker Proof Contract, use
+`docs/process/CODEX_V119_SPEC.md`. v1.1.9 adds only preparatory orchestration
+evidence through exactly three P0 safe artifacts: Orchestration Capsule, Worker
+Proof, and Owner Decision Brief. v1.1.8 Final Decision remains the only final
+pass/block/mergeAllowed/exit-code authority. v1.1.9 must not create workflow
+engine behavior, release/deploy/wallet/RPC authority, broad memory, scheduler,
+external verifier runtime, target rollout, or extra operator-visible status
+surface.
 
 ## Plan-First Rule
 

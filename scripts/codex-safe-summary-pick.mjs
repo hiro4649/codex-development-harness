@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.8
+// CODEX_QUALITY_HARNESS_FILE v1.1.9
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -52,6 +52,9 @@ export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
   const base = pickSafeSummary(report, { safeArtifactPath });
   const finalDecision = report.finalDecision || report.finalDecisionStatus?.finalDecision || {};
   const evidenceCapsule = report.evidenceCapsule || report.evidenceCapsuleStatus?.evidenceCapsule || {};
+  const orchestrationCapsule = report.orchestrationCapsule || report.orchestrationCapsuleStatus?.capsule || {};
+  const workerProofCapsule = report.workerProofCapsule || report.workerProofStatus?.capsule || {};
+  const ownerDecisionBrief = report.ownerDecisionBrief || report.ownerDecisionBriefStatus?.brief || {};
   const capsule = report.decisionCapsule || report.decisionCapsuleStatus?.capsule || (report.decision ? {
     decision: report.decision,
     mergeAllowed: String(report.mergeAllowed || '').toLowerCase() === 'yes' || report.mergeAllowed === true,
@@ -97,6 +100,9 @@ export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
     tokenCostSummary: report.tokenCostSummary || report.tokenRuntimeMeterStatus?.meter || {},
     finalDecision,
     evidenceCapsule,
+    orchestrationCapsule,
+    workerProofCapsule,
+    ownerDecisionBrief,
     decisionCapsule: capsule,
     finalDecisionStatus: report.finalDecisionStatus?.status || 'unknown',
     evidenceCapsuleStatus: report.evidenceCapsuleStatus?.status || 'unknown',
@@ -106,6 +112,14 @@ export function summarizeSafeReport(report = {}, safeArtifactPath = '') {
     verifierCapsuleStatus: report.verifierCapsuleStatus?.status || 'unknown',
     artifactConsistencyStatus: report.artifactConsistencyStatus?.status || 'unknown',
     safeFailureReaderStatus: report.safeFailureReaderStatus?.status || 'unknown',
+    orchestrationModeStatus: report.orchestrationModeStatus?.status || 'unknown',
+    permissionGrantStatus: report.permissionGrantStatus?.status || 'unknown',
+    localRepoReadinessStatus: report.localRepoReadinessStatus?.status || 'unknown',
+    workerContractStatus: report.workerContractStatus?.status || 'unknown',
+    workerProofStatus: report.workerProofStatus?.status || 'unknown',
+    reviewChainStatus: report.reviewChainStatus?.status || 'unknown',
+    ownerDecisionBriefStatus: report.ownerDecisionBriefStatus?.status || 'unknown',
+    finalDecisionPointerStatus: report.finalDecisionPointerStatus?.status || 'unknown',
     primaryBlocker: capsule.primaryBlocker || top3.primary_blocker || decisionCore.primaryClass || 'none',
     repairType: capsule.repairType || 'external_confirmation_required',
     sameHeadStatus: report.sameHeadStatus?.status || 'unknown',
