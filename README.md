@@ -1,10 +1,10 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.1.8 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.1.9 -->
 # Codex Development Harness
 
-Version: v1.1.8
-Name: Final Decision Kernel and Mode-Aware Evidence Contract
+Version: v1.1.9
+Name: Maintainer Orchestration Lite and Worker Proof Contract
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. The current authority is `AGENTS.md`, `docs/process/CODEX_V118_SPEC.md`, and the active manifest files under `docs/process/`.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. The current authority is `AGENTS.md`, `docs/process/CODEX_V119_SPEC.md`, and the active manifest files under `docs/process/`.
 
 Harness `skillProfiles` are machine-readable harness/profile identifiers. They are not OpenAI Codex Skills and should not be renamed in this pass.
 
