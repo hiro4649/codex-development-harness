@@ -44,6 +44,20 @@ const validOwnerPriorScope = {
   sourceInstructionRef: 'owner-message-current-thread',
 };
 
+const validReviewDelegation = {
+  enabled: true,
+  delegateId: 'technical-reviewer',
+  delegateRole: 'technical_reviewer',
+  allowedActions: ['commit', 'push', 'createPr', 'rerunCi', 'fixCi', 'merge'],
+  requiredReviewStatus: 'technical_acceptance_yes',
+  currentReviewStatus: 'technical_acceptance_yes',
+  autoContinue: true,
+  expiresAt: '2099-01-01T00:00:00Z',
+  headSha: 'abc',
+  branchConstraint: null,
+  sourceInstructionRef: 'owner-delegation-current-thread',
+};
+
 const permissionCases = [
   ['repository_policy_cannot_grant_mutation', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ permissionEvidenceSource: 'repository_policy', commit: true }).permissionGrant))],
   ['repository_policy_cannot_authorize_create_pr', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ permissionEvidenceSource: 'repository_policy', createPr: true }).permissionGrant))],
@@ -59,6 +73,9 @@ const permissionCases = [
     return grant.release === false && grant.publish === false && grant.secretAccess === false && grant.walletRpcDeployAccess === false;
   }],
   ['permission_boolean_requires_matching_authority', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ secretAccess: true, secretAccessAuthority: 'none' }).permissionGrant))],
+  ['owner_delegated_current_allows_bounded_auto_continue_after_review', () => validatePermissionGrant(buildOrchestrationCapsule({ createPr: true, merge: true, mutationPermissionAuthority: 'owner_delegated_current_only', mergePermissionAuthority: 'owner_delegated_current_only', reviewDelegation: validReviewDelegation }).permissionGrant).status === 'pass'],
+  ['owner_delegated_current_requires_technical_acceptance', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ createPr: true, mutationPermissionAuthority: 'owner_delegated_current_only', reviewDelegation: { ...validReviewDelegation, currentReviewStatus: 'none' } }).permissionGrant))],
+  ['review_delegate_cannot_authorize_release_wallet_secret', () => failed(validatePermissionGrant(buildOrchestrationCapsule({ release: true, walletRpcDeployAccess: true, secretAccess: true, releasePermissionAuthority: 'owner_delegated_current_only', walletRpcDeployPermissionAuthority: 'owner_delegated_current_only', secretAccessAuthority: 'owner_delegated_current_only', reviewDelegation: { ...validReviewDelegation, allowedActions: ['release', 'walletRpcDeployAccess', 'secretAccess'] } }).permissionGrant))],
 ];
 
 const readinessCases = [
@@ -94,6 +111,9 @@ const ownerBriefCases = [
   ['owner_decision_brief_max_five_risks', () => buildOwnerDecisionBrief({ residualRisks: ['a', 'b', 'c', 'd', 'e', 'f'] }).residualRisks.length === 5],
   ['owner_decision_brief_max_eight_proof_items', () => buildOwnerDecisionBrief({ proofCompleted: Array(20).fill('p') }).proofCompleted.length === 8],
   ['next_implementable_slice_is_bounded_owner_scope', () => buildOwnerDecisionBrief().nextImplementableSlice.requiresOwnerScope === true],
+  ['owner_decision_brief_records_delegated_continuation', () => validateOwnerDecisionBrief(buildOwnerDecisionBrief({ delegatedContinuationEnabled: true, technicalAcceptance: true, autoContinueAllowed: true, delegatedAllowedActions: ['createPr', 'merge'] })).status === 'pass'],
+  ['delegated_auto_continue_requires_technical_acceptance', () => failed(validateOwnerDecisionBrief(buildOwnerDecisionBrief({ delegatedContinuationEnabled: true, technicalAcceptance: false, autoContinueAllowed: true, delegatedAllowedActions: ['createPr'] })))],
+  ['delegated_continuation_cannot_include_non_delegable_actions', () => failed(validateOwnerDecisionBrief(buildOwnerDecisionBrief({ delegatedContinuationEnabled: true, technicalAcceptance: true, autoContinueAllowed: true, delegatedAllowedActions: ['release'] })))],
 ];
 
 const nonExpansionCases = [

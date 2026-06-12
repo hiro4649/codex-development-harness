@@ -68,12 +68,29 @@ transaction, governance transaction, or BscScan verification.
 rerunCi, and fixCi. It must include `scopeId`, `repo`, `allowedActions`,
 `expiresAt`, `sourceInstructionRef`, and `headSha` or `branchConstraint`.
 
-`owner_explicit_current_only` is required for merge, release, publish,
+`owner_delegated_current_only` may authorize automatic continuation after a
+named specialist review only when the owner pre-delegated the exact repo,
+action, head or branch constraint, expiry, delegate, and required review
+status. Delegated continuation may cover only commit, push, createPr, rerunCi,
+fixCi, and same-head `merge_current_pr`.
+
+`owner_explicit_current_only` is required for release, publish,
 wallet/RPC/deploy access, secret access, funded transaction, governance
-transaction, and BscScan verification.
+transaction, and BscScan verification. These actions are not review-delegable in
+v1.1.9.
+
+Same-head merge may use `owner_explicit_current_only` or
+`owner_delegated_current_only`. Delegated merge requires an accepted specialist
+review, current-head constraint, same-head remote gate pass through v1.1.8 Final
+Decision, and no product/package/runtime/target-rollout scope breach.
 
 Permission booleans must match their authority fields. For example, `merge:
 true` with `mergePermissionAuthority: none` is invalid.
+
+Specialist technical review is not owner approval by itself. It becomes
+continuation authority only when recorded as owner-delegated current authority
+inside `permissionGrant.reviewDelegation`. ChatGPT Pro technical review is still
+not GitHub approval review.
 
 ## Orchestration Capsule
 
@@ -88,6 +105,23 @@ true` with `mergePermissionAuthority: none` is invalid.
 - `evidenceBundle`
 - `preserveExitCondition`
 - `safeNextAction`
+
+`permissionGrant.reviewDelegation` records optional owner-delegated specialist
+review authority:
+
+- `enabled`
+- `delegateId`
+- `delegateRole`
+- `allowedActions`
+- `requiredReviewStatus`
+- `currentReviewStatus`
+- `autoContinue`
+- `expiresAt`
+- `headSha` or `branchConstraint`
+- `sourceInstructionRef`
+
+The delegation is fail-closed when the specialist acceptance is missing, stale,
+wrong-head, expired, or asks for non-delegable actions.
 
 Local repo readiness blocks implementation, commit, push, PR creation, CI fix,
 merge, and release when the worktree is dirty without preservation, the repo is
@@ -147,6 +181,7 @@ not GitHub approval review.
 - recommendation
 - exact choices
 - next implementable slice
+- delegated continuation status
 - safe next action
 
 Limits:
@@ -161,6 +196,14 @@ Owner may be asked only after permission check, local repo readiness, worker
 contract, safe classification, validation status or reason-not-required, CI
 status or needs-run classification, live proof status or missing reason, review
 chain status, and exact safe choices are recorded.
+
+If `delegatedContinuation.autoContinueAllowed` is true, Codex may continue
+without asking the owner again only for the delegated actions recorded in
+`permissionGrant.reviewDelegation`. The owner brief must still record
+`technicalAcceptance`, `allowedActions`, `blockedActions`, and one
+`safeNextAction`. It must not convert delegated continuation into runtime,
+production, release, deploy, wallet/RPC, secret, BscScan, transaction, or
+GitHub approval-review authority.
 
 ## Token And Surface Limits
 

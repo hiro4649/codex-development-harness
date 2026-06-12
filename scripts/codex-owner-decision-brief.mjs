@@ -10,6 +10,9 @@ function bounded(values = [], limit = 8) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
 }
 
+const DELEGATED_CONTINUATION_ACTIONS = new Set(['commit', 'push', 'createPr', 'rerunCi', 'fixCi', 'merge']);
+const NON_DELEGABLE_ACTIONS = new Set(['release', 'publish', 'secretAccess', 'walletRpcDeployAccess', 'deploy', 'fundedTransaction', 'governanceTransaction', 'bscScanVerification']);
+
 export function buildOwnerDecisionBrief(input = {}) {
   return {
     ownerDecisionBriefVersion: '1',
@@ -29,6 +32,15 @@ export function buildOwnerDecisionBrief(input = {}) {
       summary: input.nextImplementableSliceSummary || 'none',
       requiresOwnerScope: input.nextImplementableSliceRequiresOwnerScope !== false,
     },
+    delegatedContinuation: {
+      enabled: input.delegatedContinuationEnabled === true,
+      delegateRole: input.delegateRole || 'technical_reviewer',
+      technicalAcceptance: input.technicalAcceptance === true,
+      autoContinueAllowed: input.autoContinueAllowed === true,
+      allowedActions: bounded(input.delegatedAllowedActions || [], 8),
+      blockedActions: bounded(input.delegatedBlockedActions || ['release', 'publish', 'walletRpcDeployAccess', 'secretAccess'], 8),
+      safeNextAction: input.delegatedSafeNextAction || 'owner_delegation_or_owner_decision_required',
+    },
     safeNextAction: input.safeNextAction || 'owner_merge_decision_only',
     rawLogsRead: false,
     eightSessionUsed: false,
@@ -43,6 +55,14 @@ export function validateOwnerDecisionBrief(brief = {}) {
   if (!Array.isArray(brief.residualRisks) || brief.residualRisks.length > 5) reasons.push('owner_decision_brief_max_five_risks');
   if (!Array.isArray(brief.proofCompleted) || brief.proofCompleted.length > 8 || !Array.isArray(brief.proofMissing) || brief.proofMissing.length > 8) reasons.push('owner_decision_brief_max_eight_proof_items');
   if (!brief.whatChanges || !brief.whyOwnerDecisionNeededNow || !brief.recommendation) reasons.push('owner_decision_brief_required_before_owner_question');
+  const delegated = brief.delegatedContinuation || {};
+  if (delegated.enabled === true) {
+    if (delegated.autoContinueAllowed === true && delegated.technicalAcceptance !== true) reasons.push('delegated_auto_continue_requires_technical_acceptance');
+    for (const action of delegated.allowedActions || []) {
+      if (!DELEGATED_CONTINUATION_ACTIONS.has(action)) reasons.push(`delegated_continuation_action_not_allowed_${action}`);
+      if (NON_DELEGABLE_ACTIONS.has(action)) reasons.push(`delegated_continuation_forbidden_${action}`);
+    }
+  }
   if (brief.rawLogsRead === true) reasons.push('raw_logs_forbidden_in_owner_decision_brief');
   return reasons.length ? fail(reasons) : pass({ decisionReady: brief.decisionReady === true });
 }

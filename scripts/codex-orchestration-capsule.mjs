@@ -41,6 +41,8 @@ const TERMINAL_ACTIONS = new Set([
 
 const MUTATION_ACTIONS = new Set(['commit', 'push', 'createPr', 'rerunCi', 'fixCi']);
 const CURRENT_OWNER_ONLY_ACTIONS = new Set(['merge', 'release', 'publish', 'secretAccess', 'walletRpcDeployAccess']);
+const REVIEW_DELEGABLE_ACTIONS = new Set(['commit', 'push', 'createPr', 'rerunCi', 'fixCi', 'merge']);
+const NON_DELEGABLE_CURRENT_ACTIONS = new Set(['release', 'publish', 'secretAccess', 'walletRpcDeployAccess']);
 
 function status(ok, reasonCodes = [], extra = {}) {
   return ok ? pass(extra) : fail(reasonCodes, extra);
@@ -55,6 +57,22 @@ function defaultOwnerPriorScope(input = {}) {
     scopeId: input.scopeId || null,
     repo: input.repo || null,
     allowedActions: truncateList(input.allowedActions, 20),
+    expiresAt: input.expiresAt || null,
+    headSha: input.headSha || null,
+    branchConstraint: input.branchConstraint || null,
+    sourceInstructionRef: input.sourceInstructionRef || null,
+  };
+}
+
+function defaultReviewDelegation(input = {}) {
+  return {
+    enabled: input.enabled === true,
+    delegateId: input.delegateId || null,
+    delegateRole: input.delegateRole || 'technical_reviewer',
+    allowedActions: truncateList(input.allowedActions, 20),
+    requiredReviewStatus: input.requiredReviewStatus || 'technical_acceptance_yes',
+    currentReviewStatus: input.currentReviewStatus || 'none',
+    autoContinue: input.autoContinue === true,
     expiresAt: input.expiresAt || null,
     headSha: input.headSha || null,
     branchConstraint: input.branchConstraint || null,
@@ -86,6 +104,7 @@ export function buildOrchestrationCapsule(input = {}) {
     walletRpcDeployPermissionAuthority: input.walletRpcDeployPermissionAuthority || 'none',
     secretAccessAuthority: input.secretAccessAuthority || 'none',
     ownerPriorScope: defaultOwnerPriorScope(input.ownerPriorScope || {}),
+    reviewDelegation: defaultReviewDelegation(input.reviewDelegation || {}),
     scope: input.scope || 'source_only',
   };
   const localRepoReadiness = {
@@ -154,8 +173,23 @@ function ownerPriorScopeValid(scope = {}) {
   return Boolean(scope.scopeId && scope.repo && Array.isArray(scope.allowedActions) && scope.allowedActions.length && scope.expiresAt && scope.sourceInstructionRef && hasConstraint);
 }
 
+function reviewDelegationValid(delegation = {}, action = null) {
+  if (!delegation || typeof delegation !== 'object' || delegation.enabled !== true) return false;
+  const hasConstraint = Boolean(delegation.headSha || delegation.branchConstraint);
+  const accepted = delegation.currentReviewStatus === delegation.requiredReviewStatus;
+  const actionAllowed = !action || delegation.allowedActions?.includes(action);
+  return Boolean(delegation.delegateId && delegation.delegateRole && delegation.requiredReviewStatus && accepted && actionAllowed && delegation.expiresAt && delegation.sourceInstructionRef && hasConstraint);
+}
+
 export function validatePermissionGrant(grant = {}) {
   const reasons = [];
+  const delegation = grant.reviewDelegation || {};
+  if (delegation.enabled === true) {
+    if (!reviewDelegationValid(delegation)) reasons.push('review_delegation_metadata_or_acceptance_missing');
+    for (const action of delegation.allowedActions || []) {
+      if (!REVIEW_DELEGABLE_ACTIONS.has(action)) reasons.push(`review_delegate_cannot_authorize_${action}`);
+    }
+  }
   if (grant.permissionEvidenceSource === 'repository_policy') {
     for (const action of [...MUTATION_ACTIONS, ...CURRENT_OWNER_ONLY_ACTIONS]) {
       if (grant[action] === true) reasons.push(`repository_policy_cannot_authorize_${action}`);
@@ -167,15 +201,25 @@ export function validatePermissionGrant(grant = {}) {
       if (grant[action] === true && !grant.ownerPriorScope?.allowedActions?.includes(action)) reasons.push(`owner_prior_scope_missing_${action}`);
     }
   }
+  if (grant.mutationPermissionAuthority === 'owner_delegated_current_only') {
+    for (const action of MUTATION_ACTIONS) {
+      if (grant[action] === true && !reviewDelegationValid(delegation, action)) reasons.push(`owner_delegated_scope_missing_${action}`);
+    }
+  }
   for (const action of CURRENT_OWNER_ONLY_ACTIONS) {
     if (grant[action] !== true) continue;
     const authorityKey = action === 'walletRpcDeployAccess' ? 'walletRpcDeployPermissionAuthority'
       : action === 'secretAccess' ? 'secretAccessAuthority'
         : `${action}PermissionAuthority`;
-    if (grant[authorityKey] !== 'owner_explicit_current_only') reasons.push(`${action}_requires_owner_explicit_current_only`);
+    if (action === 'merge') {
+      if (grant[authorityKey] === 'owner_delegated_current_only' && !reviewDelegationValid(delegation, 'merge')) reasons.push('merge_requires_accepted_review_delegation');
+      if (!['owner_explicit_current_only', 'owner_delegated_current_only'].includes(grant[authorityKey])) reasons.push('merge_requires_owner_explicit_or_delegated_current_only');
+    } else if (NON_DELEGABLE_CURRENT_ACTIONS.has(action) && grant[authorityKey] !== 'owner_explicit_current_only') {
+      reasons.push(`${action}_requires_owner_explicit_current_only`);
+    }
   }
-  if (grant.createPr === true && !['owner_prior_scope_only', 'owner_explicit_only'].includes(grant.mutationPermissionAuthority)) reasons.push('create_pr_requires_owner_scope');
-  if (grant.push === true && grant.merge === true && grant.mergePermissionAuthority !== 'owner_explicit_current_only') reasons.push('push_permission_does_not_grant_merge');
+  if (grant.createPr === true && !['owner_prior_scope_only', 'owner_explicit_only', 'owner_delegated_current_only'].includes(grant.mutationPermissionAuthority)) reasons.push('create_pr_requires_owner_scope');
+  if (grant.push === true && grant.merge === true && !['owner_explicit_current_only', 'owner_delegated_current_only'].includes(grant.mergePermissionAuthority)) reasons.push('push_permission_does_not_grant_merge');
   return reasons.length ? fail(reasons) : pass({ permissionEvidenceSource: grant.permissionEvidenceSource || 'none' });
 }
 
