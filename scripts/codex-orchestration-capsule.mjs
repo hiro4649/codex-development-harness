@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.0
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -22,6 +22,41 @@ export const V119_P0_ARTIFACTS = [
   'codex-worker-proof.safe.json',
   'codex-owner-decision-brief.safe.json',
 ];
+
+export const V120_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
+export const V120_P0_ARTIFACTS = V119_P0_ARTIFACTS;
+
+const MODEL_TIERS = new Set(['low_cost_worker', 'standard_worker', 'specialist_reviewer', 'highest_reasoning_reviewer']);
+const TYPED_BLOCKERS = new Set([
+  'none',
+  'repeated_failure',
+  'unclear_root_cause',
+  'reviewer_disagreement',
+  'scope_boundary',
+  'authority_boundary',
+  'evidence_contradiction',
+  'token_budget_exceeded',
+  'validation_unavailable',
+  'security_sensitive_ambiguity',
+  'restricted_asset_ambiguity',
+  'runtime_readiness_boundary',
+]);
+const ESCALATION_REASONS = new Set([
+  'none',
+  'same_primary_class_repeated',
+  'same_test_failure_repeated',
+  'reviewer_cannot_classify',
+  'tests_worsened',
+  'root_cause_unclear',
+  'scope_boundary_uncertainty',
+  'security_sensitive_ambiguity',
+  'cross_repo_dependency_ambiguity',
+  'package_runtime_boundary_uncertainty',
+  'delegated_continuation_uncertainty',
+  'evidence_contradiction',
+]);
+const DE_ESCALATION_REASONS = new Set(['none', 'root_cause_classified', 'repair_plan_bounded', 'validation_path_known', 'next_action_mechanical']);
+const REVIEWER_MODES = new Set(['none', 'lightweight_single', 'specialist_single', 'specialist_pair', 'highest_reasoning_review']);
 
 const ORCHESTRATION_MODES = new Set([
   'analysis_only',
@@ -100,6 +135,68 @@ function defaultReviewAgentContract(input = {}) {
   };
 }
 
+function defaultAdaptiveIntelligenceRouting(input = {}) {
+  return {
+    routingVersion: '1',
+    typedBlocker: TYPED_BLOCKERS.has(input.typedBlocker) ? input.typedBlocker : 'none',
+    defaultTier: 'low_cost_worker',
+    currentTier: MODEL_TIERS.has(input.currentTier) ? input.currentTier : 'low_cost_worker',
+    highestTierUsed: input.highestTierUsed === true,
+    escalationCount: Math.min(Number(input.escalationCount || 0), 2),
+    deEscalationCount: Math.min(Number(input.deEscalationCount || 0), 4),
+    maxEscalationsPerTask: 2,
+    maxRepairIterationsBeforeEscalation: 2,
+    maxRepairIterationsTotal: 4,
+    escalationReason: ESCALATION_REASONS.has(input.escalationReason) ? input.escalationReason : 'none',
+    deEscalationReady: input.deEscalationReady === true,
+    deEscalationReason: DE_ESCALATION_REASONS.has(input.deEscalationReason) ? input.deEscalationReason : 'none',
+    hysteresis: {
+      requireBoundedValidationAfterHighestTier: true,
+      sameTypedBlockerReEscalationRequiresNewEvidence: true,
+      stopOnSameTypedBlockerAfterHighestTier: true,
+      highTierRepairPlanPreferredOverRepeatedHighTier: true,
+    },
+    authorityBoundary: 'v1.1.8_final_decision_and_owner_boundaries_preserved',
+    safeNextAction: input.routingSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultReviewPoolPolicy(input = {}) {
+  return {
+    reviewPoolVersion: '1',
+    defaultReviewerCount: 1,
+    currentReviewerCount: Math.min(Number(input.currentReviewerCount || 0), 3),
+    maxReviewersDefault: 2,
+    maxReviewersHard: 3,
+    reviewerMode: REVIEWER_MODES.has(input.reviewerMode) ? input.reviewerMode : 'none',
+    reviewerIndependenceRequired: true,
+    sameWorkerSelfReviewCanPass: false,
+    sameWorkerOutputCanSatisfyIndependentReview: false,
+    sameRepairLoopCanSelfAccept: false,
+    sameAgentSelfReviewAdvisoryOnly: true,
+    boundedContextPacketRequired: true,
+    findingRequiresPrimaryClassOrCannotClassify: true,
+    reviewerCanApproveOwnerDecision: false,
+    reviewerCanSubmitGitHubApprovalReview: false,
+    reviewerCanClaimReadiness: false,
+    safeNextAction: input.reviewPoolSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultModelTierBudget(input = {}) {
+  return {
+    maxWorkerContextTokens: Math.min(Number(input.maxWorkerContextTokens || 3000), 3000),
+    maxSpecialistContextTokens: Math.min(Number(input.maxSpecialistContextTokens || 5000), 5000),
+    maxHighestReviewerContextTokens: Math.min(Number(input.maxHighestReviewerContextTokens || 8000), 8000),
+    fullConversationAllowedForHighTier: false,
+    rawLogsAllowedForHighTier: false,
+    secretValuesAllowedForHighTier: false,
+    unrelatedRepoHistoryAllowedForHighTier: false,
+    passStatusDetail: 'count_only',
+    routineProgressOutput: 'silent',
+  };
+}
+
 export function buildOrchestrationCapsule(input = {}) {
   const permissionGrant = {
     triage: input.triage === true,
@@ -146,7 +243,7 @@ export function buildOrchestrationCapsule(input = {}) {
     itemUrl: input.itemUrl || null,
     allowedFiles: truncateList(input.allowedFiles, 50),
     forbiddenFiles: truncateList(input.forbiddenFiles, 50),
-    forbiddenScopeProfile: input.forbiddenScopeProfile || 'SOURCE_HARNESS_BODY_ONLY_V119',
+    forbiddenScopeProfile: input.forbiddenScopeProfile || 'SOURCE_HARNESS_BODY_ONLY_V120',
     acceptanceCriteria: truncateList(input.acceptanceCriteria, 8),
     nonGoals: truncateList(input.nonGoals, 8),
     stopBoundary: truncateList(input.stopBoundary, 8),
@@ -161,7 +258,7 @@ export function buildOrchestrationCapsule(input = {}) {
   });
   return {
     orchestrationVersion: '1',
-    activeHarnessVersion: '1.1.9',
+    activeHarnessVersion: input.activeHarnessVersion || '1.2.0',
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,
@@ -169,6 +266,30 @@ export function buildOrchestrationCapsule(input = {}) {
     localRepoReadiness,
     workerContract,
     reviewAgentContract,
+    adaptiveIntelligenceRouting: defaultAdaptiveIntelligenceRouting(input.adaptiveIntelligenceRouting || input),
+    reviewPoolPolicy: defaultReviewPoolPolicy(input.reviewPoolPolicy || input),
+    escalationPolicy: {
+      escalateOnlyOnTypedBlocker: true,
+      highestReasoningOnlyForPersistentAmbiguity: true,
+      typedBlockerTaxonomy: [...TYPED_BLOCKERS],
+    },
+    deEscalationPolicy: {
+      deEscalateWhenRootCauseAndRepairPlanBounded: true,
+      requireBoundedSuccessfulValidationAfterHighestTier: true,
+      nextActionMustBeMechanical: true,
+    },
+    modelTierBudget: defaultModelTierBudget(input.modelTierBudget || input),
+    authorityBoundary: {
+      conflictPrecedence: [
+        'v1.1.8_final_decision_over_v1.1.9_and_v1.2.0',
+        'v1.1.9_orchestration_over_v1.2.0_routing',
+        'owner_only_boundary_over_reviewer_output',
+      ],
+      highTierReviewCreatesOwnerApproval: false,
+      reviewPoolConsensusCreatesMergePermission: false,
+      adaptiveRoutingCreatesMergePermission: false,
+      mayRecordMergeCurrentPrEligibilityOnly: true,
+    },
     lightHeartbeat: {
       routineHeartbeatOutput: 'silent',
       stateDeltaDetected: input.stateDelta === true,
@@ -294,6 +415,54 @@ export function validateReviewAgentContract(contract = {}, workerContract = {}) 
   return reasons.length ? fail(reasons) : pass({ enabled: true, maxRepairIterations: contract.maxRepairIterations });
 }
 
+export function validateAdaptiveIntelligenceRouting(routing = {}) {
+  const reasons = [];
+  if (routing.routingVersion !== '1') reasons.push('adaptive_routing_version_invalid');
+  if (!TYPED_BLOCKERS.has(routing.typedBlocker)) reasons.push('typed_blocker_invalid');
+  if (routing.defaultTier !== 'low_cost_worker') reasons.push('low_cost_worker_must_be_default');
+  if (!MODEL_TIERS.has(routing.currentTier)) reasons.push('current_model_tier_invalid');
+  if (!ESCALATION_REASONS.has(routing.escalationReason)) reasons.push('escalation_reason_invalid');
+  if (!DE_ESCALATION_REASONS.has(routing.deEscalationReason)) reasons.push('de_escalation_reason_invalid');
+  if (Number(routing.maxEscalationsPerTask || 0) > 2) reasons.push('max_escalations_per_task_exceeded');
+  if (Number(routing.maxRepairIterationsBeforeEscalation || 0) > 2) reasons.push('max_repair_iterations_before_escalation_exceeded');
+  if (Number(routing.maxRepairIterationsTotal || 0) > 4) reasons.push('max_repair_iterations_total_exceeded');
+  if (routing.authorityBoundary !== 'v1.1.8_final_decision_and_owner_boundaries_preserved') reasons.push('adaptive_routing_authority_boundary_changed');
+  if (routing.highestTierUsed === true && routing.deEscalationReady === true && routing.hysteresis?.requireBoundedValidationAfterHighestTier !== true) reasons.push('highest_tier_deescalation_requires_bounded_validation');
+  return reasons.length ? fail(reasons) : pass({ currentTier: routing.currentTier, typedBlocker: routing.typedBlocker });
+}
+
+export function validateReviewPoolPolicy(policy = {}) {
+  const reasons = [];
+  if (policy.reviewPoolVersion !== '1') reasons.push('review_pool_version_invalid');
+  if (!REVIEWER_MODES.has(policy.reviewerMode)) reasons.push('reviewer_mode_invalid');
+  if (Number(policy.maxReviewersDefault || 0) > 2) reasons.push('review_pool_default_max_two');
+  if (Number(policy.maxReviewersHard || 0) > 3) reasons.push('review_pool_hard_max_three');
+  if (policy.reviewerIndependenceRequired !== true) reasons.push('reviewer_independence_required');
+  if (policy.sameWorkerSelfReviewCanPass !== false) reasons.push('same_worker_self_review_cannot_pass');
+  if (policy.sameWorkerOutputCanSatisfyIndependentReview !== false) reasons.push('same_worker_output_cannot_satisfy_independent_review');
+  if (policy.sameRepairLoopCanSelfAccept !== false) reasons.push('same_repair_loop_cannot_self_accept');
+  if (policy.boundedContextPacketRequired !== true) reasons.push('reviewer_bounded_context_packet_required');
+  if (policy.findingRequiresPrimaryClassOrCannotClassify !== true) reasons.push('reviewer_finding_requires_primary_class_or_cannot_classify');
+  if (policy.reviewerCanApproveOwnerDecision !== false) reasons.push('reviewer_cannot_be_owner_approval');
+  if (policy.reviewerCanSubmitGitHubApprovalReview !== false) reasons.push('reviewer_cannot_submit_github_approval_review');
+  if (policy.reviewerCanClaimReadiness !== false) reasons.push('reviewer_cannot_claim_readiness');
+  return reasons.length ? fail(reasons) : pass({ reviewerMode: policy.reviewerMode, currentReviewerCount: policy.currentReviewerCount });
+}
+
+export function validateModelTierBudget(budget = {}) {
+  const reasons = [];
+  if (Number(budget.maxWorkerContextTokens || 0) > 3000) reasons.push('worker_context_max_3000');
+  if (Number(budget.maxSpecialistContextTokens || 0) > 5000) reasons.push('specialist_context_max_5000');
+  if (Number(budget.maxHighestReviewerContextTokens || 0) > 8000) reasons.push('highest_reviewer_context_max_8000');
+  if (budget.fullConversationAllowedForHighTier !== false) reasons.push('high_tier_full_conversation_forbidden_by_default');
+  if (budget.rawLogsAllowedForHighTier !== false) reasons.push('high_tier_raw_logs_forbidden');
+  if (budget.secretValuesAllowedForHighTier !== false) reasons.push('high_tier_secret_values_forbidden');
+  if (budget.unrelatedRepoHistoryAllowedForHighTier !== false) reasons.push('high_tier_unrelated_history_forbidden');
+  if (budget.passStatusDetail !== 'count_only') reasons.push('pass_status_detail_must_be_count_only');
+  if (budget.routineProgressOutput !== 'silent') reasons.push('routine_progress_output_silent');
+  return reasons.length ? fail(reasons) : pass({ maxHighestReviewerContextTokens: budget.maxHighestReviewerContextTokens });
+}
+
 export function validateOrchestrationCapsule(capsule = {}) {
   const modeOk = ORCHESTRATION_MODES.has(capsule.orchestrationMode) && capsule.finalAuthority === 'v1.1.8_final_decision_kernel';
   return {
@@ -302,6 +471,9 @@ export function validateOrchestrationCapsule(capsule = {}) {
     localRepoReadinessStatus: validateLocalRepoReadiness(capsule.localRepoReadiness || {}),
     workerContractStatus: validateWorkerContract(capsule.workerContract || {}),
     reviewAgentContractStatus: validateReviewAgentContract(capsule.reviewAgentContract || {}, capsule.workerContract || {}),
+    adaptiveRoutingInternalStatus: validateAdaptiveIntelligenceRouting(capsule.adaptiveIntelligenceRouting || {}),
+    reviewPoolInternalStatus: validateReviewPoolPolicy(capsule.reviewPoolPolicy || {}),
+    modelTierBudgetInternalStatus: validateModelTierBudget(capsule.modelTierBudget || {}),
   };
 }
 
