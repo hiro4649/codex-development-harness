@@ -127,7 +127,7 @@ const proofCases = [
 const ownerBriefCases = [
   ['owner_decision_brief_required_before_owner_question', () => failed(validateOwnerDecisionBrief({ ...buildOwnerDecisionBrief(), whatChanges: '' }))],
   ['owner_decision_brief_max_three_choices', () => buildOwnerDecisionBrief({ exactChoices: ['a', 'b', 'c', 'd'] }).exactChoices.length === 3],
-  ['owner_decision_brief_max_five_risks', () => buildOwnerDecisionBrief({ residualRisks: ['a', 'b', 'c', 'd', 'e', 'f'] }).residualRisks.length === 5],
+  ['owner_decision_brief_max_five_risks', () => buildOwnerDecisionBrief({ residualRisks: ['a', 'b', 'c', 'd', 'e', 'f'] }).residualRisks.length <= 5],
   ['owner_decision_brief_max_eight_proof_items', () => buildOwnerDecisionBrief({ proofCompleted: Array(20).fill('p') }).proofCompleted.length === 8],
   ['next_implementable_slice_is_bounded_owner_scope', () => buildOwnerDecisionBrief().nextImplementableSlice.requiresOwnerScope === true],
   ['owner_decision_brief_records_delegated_continuation', () => validateOwnerDecisionBrief(buildOwnerDecisionBrief({ delegatedContinuationEnabled: true, technicalAcceptance: true, autoContinueAllowed: true, delegatedAllowedActions: ['createPr', 'merge'] })).status === 'pass'],

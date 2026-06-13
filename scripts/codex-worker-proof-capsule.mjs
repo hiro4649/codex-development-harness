@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.0
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -10,9 +10,58 @@ const VALID_PROOF_REASONS = new Set(['docs_only', 'harness_metadata', 'test_only
 const VALID_LIVE_STATUSES = new Set(['pass', 'fail', 'not_required_with_reason', 'blocked_owner_scope', 'waived_explicitly']);
 const VALID_SPECIALIST_REVIEW_STATUSES = new Set(['pass', 'fail', 'not_required_with_reason', 'needs_review', 'blocked_owner_scope']);
 const CONCRETE_FINDING_CLASSES = new Set(['concrete_machine_blocker', 'spec_violation', 'scope_violation', 'test_failure']);
+const MODEL_TIERS = new Set(['low_cost_worker', 'standard_worker', 'specialist_reviewer', 'highest_reasoning_reviewer']);
+const TYPED_BLOCKERS = new Set([
+  'none',
+  'repeated_failure',
+  'unclear_root_cause',
+  'reviewer_disagreement',
+  'scope_boundary',
+  'authority_boundary',
+  'evidence_contradiction',
+  'token_budget_exceeded',
+  'validation_unavailable',
+  'security_sensitive_ambiguity',
+  'restricted_asset_ambiguity',
+  'runtime_readiness_boundary',
+]);
+const ESCALATION_REASONS = new Set([
+  'none',
+  'same_primary_class_repeated',
+  'same_test_failure_repeated',
+  'reviewer_cannot_classify',
+  'tests_worsened',
+  'root_cause_unclear',
+  'scope_boundary_uncertainty',
+  'security_sensitive_ambiguity',
+  'cross_repo_dependency_ambiguity',
+  'package_runtime_boundary_uncertainty',
+  'delegated_continuation_uncertainty',
+  'evidence_contradiction',
+]);
 
 function list(values = [], limit = 50) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
+}
+
+function tier(value, fallback = 'low_cost_worker') {
+  return MODEL_TIERS.has(value) ? value : fallback;
+}
+
+function typedBlocker(value) {
+  return TYPED_BLOCKERS.has(value) ? value : 'none';
+}
+
+function highTierRepairPlan(input = {}) {
+  return {
+    rootCauseClass: input.rootCauseClass || 'none',
+    typedBlocker: typedBlocker(input.typedBlocker),
+    allowedFiles: list(input.allowedFiles, 50),
+    exactRepairSteps: list(input.exactRepairSteps, 5),
+    validationCommand: input.validationCommand || 'not_required_with_reason',
+    stopCondition: input.stopCondition || 'owner_only_boundary_or_repeated_blocker',
+    deEscalationTarget: tier(input.deEscalationTarget, 'low_cost_worker'),
+  };
 }
 
 export function buildWorkerProofCapsule(input = {}) {
@@ -72,6 +121,34 @@ export function buildWorkerProofCapsule(input = {}) {
       usesOnlySafeArtifacts: input.usesOnlySafeArtifacts !== false,
       rawLogsRead: false,
     },
+    modelTierTrace: {
+      defaultTier: 'low_cost_worker',
+      currentTier: tier(input.currentTier),
+      highestTierUsed: input.highestTierUsed === true,
+      highestTierUsedForOwnerAuthority: false,
+      escalationCount: Math.min(Number(input.escalationCount || 0), 2),
+      deEscalationCount: Math.min(Number(input.deEscalationCount || 0), 4),
+      fullConversationAllowedForHighTier: false,
+      rawLogsAllowedForHighTier: false,
+      secretValuesAllowedForHighTier: false,
+      unrelatedRepoHistoryAllowedForHighTier: false,
+    },
+    reviewerPoolTrace: {
+      reviewerCount: Math.min(Number(input.reviewerCount || 0), 3),
+      maxReviewersDefault: 2,
+      maxReviewersHard: 3,
+      reviewerMode: input.reviewerMode || 'none',
+      independentReviewSatisfied: input.independentReviewSatisfied === true,
+      sameWorkerSelfReviewCanPass: false,
+      sameRepairLoopCanSelfAccept: false,
+      consensus: input.reviewConsensus || 'not_required_with_reason',
+    },
+    escalationReason: ESCALATION_REASONS.has(input.escalationReason) ? input.escalationReason : 'none',
+    typedBlocker: typedBlocker(input.typedBlocker),
+    repairPlanFromHighTier: input.highTierRepairPlan ? highTierRepairPlan(input.highTierRepairPlan) : highTierRepairPlan(input),
+    deEscalationReady: input.deEscalationReady === true,
+    reviewConsensus: input.reviewConsensus || 'not_required_with_reason',
+    sameFailureRepeated: input.sameFailureRepeated === true,
     missingProofReason: input.missingProofReason || 'not_required_with_reason',
     waiverStatus: input.waiverExplicit === true ? 'waived_explicitly' : 'not_required_with_reason',
     safeNextAction: input.safeNextAction || 'run_required_validation_or_owner_decision',
@@ -107,6 +184,24 @@ export function validateWorkerProofCapsule(capsule = {}) {
   if (Number(specialistReview.repairIterations || 0) > 0 && !specialistReview.focusedValidationCommand) reasons.push('auto_repair_requires_focused_validation_path');
   if (specialistReview.forbiddenScopeDetected === true) reasons.push('auto_repair_blocks_on_package_lockfile_runtime_secret_deploy_scope');
   if (specialistReview.testsWorsened === true) reasons.push('auto_repair_stops_when_tests_worsen');
+  const modelTierTrace = capsule.modelTierTrace || {};
+  const reviewerPoolTrace = capsule.reviewerPoolTrace || {};
+  if (modelTierTrace.defaultTier !== 'low_cost_worker') reasons.push('low_cost_worker_default_required');
+  if (!MODEL_TIERS.has(modelTierTrace.currentTier)) reasons.push('model_tier_trace_current_tier_invalid');
+  if (modelTierTrace.highestTierUsedForOwnerAuthority === true) reasons.push('highest_reviewer_cannot_owner_approve');
+  if (modelTierTrace.fullConversationAllowedForHighTier !== false) reasons.push('high_tier_context_packet_excludes_full_history');
+  if (modelTierTrace.rawLogsAllowedForHighTier !== false) reasons.push('high_tier_context_packet_excludes_raw_logs');
+  if (modelTierTrace.secretValuesAllowedForHighTier !== false) reasons.push('high_tier_context_packet_excludes_secrets');
+  if (Number(reviewerPoolTrace.maxReviewersDefault || 0) > 2) reasons.push('review_pool_default_max_two');
+  if (Number(reviewerPoolTrace.maxReviewersHard || 0) > 3) reasons.push('review_pool_hard_max_three');
+  if (reviewerPoolTrace.sameWorkerSelfReviewCanPass !== false) reasons.push('same_worker_self_review_cannot_pass');
+  if (reviewerPoolTrace.sameRepairLoopCanSelfAccept !== false) reasons.push('same_repair_loop_cannot_self_accept');
+  if (!TYPED_BLOCKERS.has(capsule.typedBlocker)) reasons.push('typed_blocker_invalid');
+  if (!ESCALATION_REASONS.has(capsule.escalationReason)) reasons.push('escalation_reason_invalid');
+  if (capsule.sameFailureRepeated === true && modelTierTrace.highestTierUsed === true) reasons.push('auto_repair_stops_after_same_primary_class_after_escalation');
+  if (capsule.reviewConsensus === 'failed') reasons.push('review_pool_consensus_failed');
+  const plan = capsule.repairPlanFromHighTier || {};
+  if (modelTierTrace.highestTierUsed === true && (!plan.rootCauseClass || !Array.isArray(plan.exactRepairSteps) || plan.exactRepairSteps.length > 5)) reasons.push('high_tier_repair_plan_required');
   if (capsule.rawLogsRead === true) reasons.push('raw_logs_forbidden_in_worker_proof');
   return reasons.length ? fail(reasons) : pass({ changedFilesListedCount: capsule.changedFilesListedCount || 0 });
 }

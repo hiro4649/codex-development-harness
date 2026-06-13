@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.1.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.0
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -12,20 +12,33 @@ function bounded(values = [], limit = 8) {
 
 const DELEGATED_CONTINUATION_ACTIONS = new Set(['commit', 'push', 'createPr', 'rerunCi', 'fixCi', 'merge']);
 const NON_DELEGABLE_ACTIONS = new Set(['release', 'publish', 'secretAccess', 'walletRpcDeployAccess', 'deploy', 'fundedTransaction', 'governanceTransaction', 'bscScanVerification']);
+const RECOMMENDATIONS = new Set(['merge', 'repair', 'preserve', 'stop', 'owner_merge_decision_only_after_same_head_remote_pass']);
+
+function escalationSummary(input = {}) {
+  return {
+    typedBlocker: input.typedBlocker || 'none',
+    highestTierUsed: input.highestTierUsed === true,
+    reviewerCount: Math.min(Number(input.reviewerCount || 0), 3),
+    highTierRepairPlanAvailable: input.highTierRepairPlanAvailable === true,
+    deEscalationReady: input.deEscalationReady === true,
+  };
+}
 
 export function buildOwnerDecisionBrief(input = {}) {
   return {
     ownerDecisionBriefVersion: '1',
     decisionReady: input.decisionReady === true,
     itemUrl: input.itemUrl || null,
-    whatChanges: input.whatChanges || 'source_harness_v119_body_only',
+    whatChanges: input.whatChanges || 'source_harness_v120_body_only',
     whoBenefits: input.whoBenefits || 'maintainer_and_worker_context_reduction',
     whyOwnerDecisionNeededNow: input.whyOwnerDecisionNeededNow || 'owner_merge_instruction_not_provided',
     proofCompleted: bounded(input.proofCompleted, 8),
     proofMissing: bounded(input.proofMissing || ['same_head_remote_quality_gate'], 8),
-    residualRisks: bounded(input.residualRisks || ['owner_merge_instruction_required'], 5),
+    residualRisks: bounded(input.residualRisks || ['owner_merge_instruction_required'], 3),
     recommendation: input.recommendation || 'owner_merge_decision_only_after_same_head_remote_pass',
     exactChoices: bounded(input.exactChoices || ['approve_merge_after_same_head_pass', 'request_narrow_repair', 'leave_pr_open'], 3),
+    escalationSummary: escalationSummary(input.escalationSummary || input),
+    remainingOwnerOnlyChoices: bounded(input.remainingOwnerOnlyChoices || ['merge_after_same_head_pass'], 3),
     ownerOnlyDecision: true,
     nextImplementableSlice: {
       available: input.nextImplementableSliceAvailable === true,
@@ -52,8 +65,10 @@ export function buildOwnerDecisionBrief(input = {}) {
 export function validateOwnerDecisionBrief(brief = {}) {
   const reasons = [];
   if (brief.ownerOnlyDecision !== true) reasons.push('owner_decision_brief_owner_only_required');
+  if (!RECOMMENDATIONS.has(brief.recommendation)) reasons.push('owner_decision_brief_recommendation_invalid');
   if (!Array.isArray(brief.exactChoices) || brief.exactChoices.length > 3) reasons.push('owner_decision_brief_max_three_choices');
-  if (!Array.isArray(brief.residualRisks) || brief.residualRisks.length > 5) reasons.push('owner_decision_brief_max_five_risks');
+  if (!Array.isArray(brief.residualRisks) || brief.residualRisks.length > 3) reasons.push('owner_decision_brief_max_three_risks');
+  if (!Array.isArray(brief.remainingOwnerOnlyChoices) || brief.remainingOwnerOnlyChoices.length > 3) reasons.push('owner_decision_brief_max_three_remaining_owner_choices');
   if (!Array.isArray(brief.proofCompleted) || brief.proofCompleted.length > 8 || !Array.isArray(brief.proofMissing) || brief.proofMissing.length > 8) reasons.push('owner_decision_brief_max_eight_proof_items');
   if (!brief.whatChanges || !brief.whyOwnerDecisionNeededNow || !brief.recommendation) reasons.push('owner_decision_brief_required_before_owner_question');
   const delegated = brief.delegatedContinuation || {};

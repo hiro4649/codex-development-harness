@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.1.9
+CODEX_QUALITY_HARNESS_FILE v1.2.0
 
 ## Prime Directive
 
@@ -98,6 +98,15 @@ pass/block/mergeAllowed/exit-code authority. v1.1.9 must not create workflow
 engine behavior, release/deploy/wallet/RPC authority, broad memory, scheduler,
 external verifier runtime, target rollout, or extra operator-visible status
 surface.
+For v1.2.0 Adaptive Intelligence Escalation and Review Pool, use
+`docs/process/CODEX_V120_SPEC.md`. v1.2.0 adds only token-aware model-tier
+routing, typed blockers, review-pool policy, escalation hysteresis, and
+high-tier repair planning inside the existing v1.1.9 P0 artifacts. Preserve
+the v1.1.9 top-level operator status surface, especially `reviewChainStatus`.
+v1.2.0 must not create owner approval, GitHub approval review, release, deploy,
+wallet/RPC, BscScan, readiness, legal compliance, YouTube policy compliance,
+new P0 artifacts, scheduler behavior, external verifier runtime, memory
+routing, target rollout, or merge authority.
 
 ## Plan-First Rule
 
