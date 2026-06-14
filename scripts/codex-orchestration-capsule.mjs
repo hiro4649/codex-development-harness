@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.0
+// CODEX_QUALITY_HARNESS_FILE v1.2.1
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -25,6 +25,8 @@ export const V119_P0_ARTIFACTS = [
 
 export const V120_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V120_P0_ARTIFACTS = V119_P0_ARTIFACTS;
+export const V121_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
+export const V121_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 
 const MODEL_TIERS = new Set(['low_cost_worker', 'standard_worker', 'specialist_reviewer', 'highest_reasoning_reviewer']);
 const TYPED_BLOCKERS = new Set([
@@ -57,6 +59,8 @@ const ESCALATION_REASONS = new Set([
 ]);
 const DE_ESCALATION_REASONS = new Set(['none', 'root_cause_classified', 'repair_plan_bounded', 'validation_path_known', 'next_action_mechanical']);
 const REVIEWER_MODES = new Set(['none', 'lightweight_single', 'specialist_single', 'specialist_pair', 'highest_reasoning_review']);
+const TOKEN_SAVINGS_CLASSES = new Set(['unknown', 'none', 'low', 'medium', 'high']);
+const SAFE_SUMMARY_STATUSES = new Set(['unknown', 'pass', 'fail', 'not_required_with_reason']);
 
 const ORCHESTRATION_MODES = new Set([
   'analysis_only',
@@ -197,6 +201,107 @@ function defaultModelTierBudget(input = {}) {
   };
 }
 
+function defaultAdaptiveMetrics(input = {}) {
+  const tierCounts = input.modelTierUsedCount || {};
+  const safeArtifactReadCount = Math.max(0, Number(input.safeArtifactReadCount || 0));
+  const finalReportLineCount = Math.max(0, Number(input.finalReportLineCount || 0));
+  const ownerQuestionCount = Math.max(0, Number(input.ownerQuestionCount || 0));
+  return {
+    metricsVersion: '1',
+    taskId: input.taskId || 'unknown',
+    repo: input.repo || 'hiro4649/codex-development-harness',
+    headSha: input.headSha || null,
+    modelTierUsedCount: {
+      low_cost_worker: Math.max(0, Number(tierCounts.low_cost_worker || input.lowCostWorkerCount || 1)),
+      standard_worker: Math.max(0, Number(tierCounts.standard_worker || input.standardWorkerCount || 0)),
+      specialist_reviewer: Math.max(0, Number(tierCounts.specialist_reviewer || input.specialistReviewerCount || 0)),
+      highest_reasoning_reviewer: Math.max(0, Number(tierCounts.highest_reasoning_reviewer || input.highestReasoningReviewerCount || 0)),
+    },
+    highestTierUsed: input.highestTierUsed === true,
+    highestTierReason: input.highestTierReason || input.typedBlocker || 'none',
+    escalationCount: Math.max(0, Math.min(Number(input.escalationCount || 0), 2)),
+    deEscalationCount: Math.max(0, Math.min(Number(input.deEscalationCount || 0), 4)),
+    repairIterationCount: Math.max(0, Number(input.repairIterationCount || input.repairIterations || 0)),
+    ownerQuestionCount,
+    safeArtifactReadCount,
+    finalReportLineCount,
+    calibrationTargets: {
+      safeArtifactReadCountTarget: Math.max(1, Number(input.safeArtifactReadCountTarget || 4)),
+      finalReportLineCountTarget: Math.max(1, Number(input.finalReportLineCountTarget || 14)),
+      ownerQuestionCountTarget: Math.max(0, Number(input.ownerQuestionCountTarget || 1)),
+    },
+    calibrationWarnings: {
+      safeArtifactReadCountAboveTarget: safeArtifactReadCount > Math.max(1, Number(input.safeArtifactReadCountTarget || 4)),
+      finalReportLineCountAboveTarget: finalReportLineCount > Math.max(1, Number(input.finalReportLineCountTarget || 14)),
+      ownerQuestionCountAboveTarget: ownerQuestionCount > Math.max(0, Number(input.ownerQuestionCountTarget || 1)),
+    },
+    estimatedRepeatedContextSuppressed: Math.max(0, Number(input.estimatedRepeatedContextSuppressed || 0)),
+    estimatedTokenSavingsClass: TOKEN_SAVINGS_CLASSES.has(input.estimatedTokenSavingsClass) ? input.estimatedTokenSavingsClass : 'unknown',
+    rawLogsRead: false,
+    safeNextAction: input.metricsSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultRoutingCalibration(input = {}) {
+  return {
+    calibrationVersion: '1',
+    typedBlocker: TYPED_BLOCKERS.has(input.typedBlocker) ? input.typedBlocker : 'none',
+    defaultTier: 'low_cost_worker',
+    currentTier: MODEL_TIERS.has(input.currentTier) ? input.currentTier : 'low_cost_worker',
+    escalationWasRequired: input.escalationWasRequired === true,
+    escalationReason: ESCALATION_REASONS.has(input.escalationReason) ? input.escalationReason : 'none',
+    escalationEvidence: input.escalationEvidence || 'safe_summary_only',
+    overEscalationDetected: input.overEscalationDetected === true,
+    deEscalationReady: input.deEscalationReady === true,
+    deEscalationBlockedReason: input.deEscalationBlockedReason || 'none',
+    safeNextAction: input.calibrationSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultTargetScoreBaseline(input = {}) {
+  const accepted = Number(input.acceptedTargetQualityScore ?? 89);
+  const current = Number(input.currentTargetQualityScore ?? accepted);
+  return {
+    baselineVersion: '1',
+    repo: input.repo || 'target_repo',
+    acceptedTargetQualityScore: accepted,
+    currentTargetQualityScore: current,
+    scoreRegressionDetected: input.scoreRegressionDetected === true || current < accepted,
+    scoreImprovementRequired: input.scoreImprovementRequired === true && current < accepted,
+    repairAllowedForScoreOnly: input.repairAllowedForScoreOnly === true,
+    reason: input.targetScoreReason || 'remote_pass_and_no_blocker',
+    safeNextAction: input.targetScoreSafeNextAction || 'none',
+  };
+}
+
+function defaultEvidenceFreshnessGuard(input = {}) {
+  const safeSummaryStatus = SAFE_SUMMARY_STATUSES.has(input.safeSummaryStatus) ? input.safeSummaryStatus : 'unknown';
+  const sameHead = input.sameHead !== false;
+  const mergeEvidenceCoherent = input.mergeEvidenceCoherent !== false;
+  const drift = input.evidenceDriftDetected === true || sameHead === false || mergeEvidenceCoherent === false || safeSummaryStatus === 'fail';
+  return {
+    freshnessVersion: '1',
+    workflowSuccessRequiresSafeSummaryPass: input.workflowSuccessRequiresSafeSummaryPass !== false,
+    githubCheckConclusion: input.githubCheckConclusion || 'unknown',
+    safeSummaryStatus,
+    sameHead,
+    mergeEvidenceCoherent,
+    evidenceDriftDetected: drift,
+    safeNextAction: input.freshnessSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultMinimalReverificationMatrix(input = {}) {
+  return {
+    matrixVersion: '1',
+    sameHeadRequired: input.sameHeadRequired !== false,
+    localGateRequiredAfterHarnessChange: input.localGateRequiredAfterHarnessChange !== false,
+    remoteGateRequiredBeforeMerge: input.remoteGateRequiredBeforeMerge !== false,
+    rerunRequiredOnlyOnStateDelta: input.rerunRequiredOnlyOnStateDelta !== false,
+    safeArtifactsOnly: true,
+  };
+}
+
 export function buildOrchestrationCapsule(input = {}) {
   const permissionGrant = {
     triage: input.triage === true,
@@ -243,7 +348,7 @@ export function buildOrchestrationCapsule(input = {}) {
     itemUrl: input.itemUrl || null,
     allowedFiles: truncateList(input.allowedFiles, 50),
     forbiddenFiles: truncateList(input.forbiddenFiles, 50),
-    forbiddenScopeProfile: input.forbiddenScopeProfile || 'SOURCE_HARNESS_BODY_ONLY_V120',
+    forbiddenScopeProfile: input.forbiddenScopeProfile || 'SOURCE_HARNESS_BODY_ONLY_V121',
     acceptanceCriteria: truncateList(input.acceptanceCriteria, 8),
     nonGoals: truncateList(input.nonGoals, 8),
     stopBoundary: truncateList(input.stopBoundary, 8),
@@ -258,7 +363,7 @@ export function buildOrchestrationCapsule(input = {}) {
   });
   return {
     orchestrationVersion: '1',
-    activeHarnessVersion: input.activeHarnessVersion || '1.2.0',
+    activeHarnessVersion: input.activeHarnessVersion || '1.2.1',
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,
@@ -279,10 +384,15 @@ export function buildOrchestrationCapsule(input = {}) {
       nextActionMustBeMechanical: true,
     },
     modelTierBudget: defaultModelTierBudget(input.modelTierBudget || input),
+    adaptiveMetrics: defaultAdaptiveMetrics(input.adaptiveMetrics || input),
+    routingCalibration: defaultRoutingCalibration(input.routingCalibration || input),
+    targetScoreBaseline: defaultTargetScoreBaseline(input.targetScoreBaseline || input),
+    evidenceFreshnessGuard: defaultEvidenceFreshnessGuard(input.evidenceFreshnessGuard || input),
+    minimalReverificationMatrix: defaultMinimalReverificationMatrix(input.minimalReverificationMatrix || input),
     authorityBoundary: {
       conflictPrecedence: [
-        'v1.1.8_final_decision_over_v1.1.9_and_v1.2.0',
-        'v1.1.9_orchestration_over_v1.2.0_routing',
+        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_and_v1.2.1',
+        'v1.1.9_orchestration_over_v1.2.0_routing_and_v1.2.1_calibration',
         'owner_only_boundary_over_reviewer_output',
       ],
       highTierReviewCreatesOwnerApproval: false,
@@ -463,6 +573,53 @@ export function validateModelTierBudget(budget = {}) {
   return reasons.length ? fail(reasons) : pass({ maxHighestReviewerContextTokens: budget.maxHighestReviewerContextTokens });
 }
 
+export function validateAdaptiveMetrics(metrics = {}) {
+  const reasons = [];
+  if (metrics.metricsVersion !== '1') reasons.push('adaptive_metrics_version_invalid');
+  for (const tierName of MODEL_TIERS) {
+    if (Number(metrics.modelTierUsedCount?.[tierName] || 0) < 0) reasons.push(`adaptive_metrics_negative_${tierName}`);
+  }
+  if (metrics.rawLogsRead === true) reasons.push('adaptive_metrics_raw_logs_forbidden');
+  if (!TOKEN_SAVINGS_CLASSES.has(metrics.estimatedTokenSavingsClass)) reasons.push('adaptive_metrics_token_savings_class_invalid');
+  if (metrics.highestTierUsed === true && (!metrics.highestTierReason || metrics.highestTierReason === 'none')) reasons.push('highest_tier_metric_requires_reason');
+  return reasons.length ? fail(reasons) : pass({ highestTierUsed: metrics.highestTierUsed === true, estimatedTokenSavingsClass: metrics.estimatedTokenSavingsClass || 'unknown' });
+}
+
+export function validateRoutingCalibration(calibration = {}) {
+  const reasons = [];
+  if (calibration.calibrationVersion !== '1') reasons.push('routing_calibration_version_invalid');
+  if (!TYPED_BLOCKERS.has(calibration.typedBlocker)) reasons.push('routing_calibration_typed_blocker_invalid');
+  if (calibration.defaultTier !== 'low_cost_worker') reasons.push('routing_calibration_default_tier_invalid');
+  if (!MODEL_TIERS.has(calibration.currentTier)) reasons.push('routing_calibration_current_tier_invalid');
+  if (!ESCALATION_REASONS.has(calibration.escalationReason)) reasons.push('routing_calibration_escalation_reason_invalid');
+  if (calibration.currentTier === 'highest_reasoning_reviewer' && calibration.escalationWasRequired !== true) reasons.push('highest_tier_requires_required_escalation');
+  if (calibration.currentTier === 'highest_reasoning_reviewer' && calibration.typedBlocker === 'none') reasons.push('highest_tier_requires_typed_blocker');
+  if (calibration.escalationWasRequired === true && calibration.escalationReason !== 'none' && calibration.typedBlocker === 'none') reasons.push('escalation_requires_typed_blocker');
+  if (calibration.overEscalationDetected === true && calibration.deEscalationReady !== true) reasons.push('over_escalation_requires_deescalation_ready');
+  if (calibration.escalationEvidence !== 'safe_summary_only') reasons.push('routing_calibration_requires_safe_summary_evidence');
+  return reasons.length ? fail(reasons) : pass({ currentTier: calibration.currentTier, overEscalationDetected: calibration.overEscalationDetected === true });
+}
+
+export function validateTargetScoreBaseline(baseline = {}) {
+  const reasons = [];
+  if (baseline.baselineVersion !== '1') reasons.push('target_score_baseline_version_invalid');
+  if (Number(baseline.currentTargetQualityScore || 0) < Number(baseline.acceptedTargetQualityScore || 0) && baseline.scoreRegressionDetected !== true) reasons.push('target_score_regression_must_be_recorded');
+  if (baseline.repairAllowedForScoreOnly === true) reasons.push('target_score_only_repair_forbidden');
+  if (baseline.scoreImprovementRequired === true && baseline.reason === 'remote_pass_and_no_blocker') reasons.push('remote_pass_without_blocker_cannot_require_score_repair');
+  return reasons.length ? fail(reasons) : pass({ currentTargetQualityScore: baseline.currentTargetQualityScore ?? null });
+}
+
+export function validateEvidenceFreshnessGuard(guard = {}) {
+  const reasons = [];
+  if (guard.freshnessVersion !== '1') reasons.push('evidence_freshness_version_invalid');
+  if (guard.workflowSuccessRequiresSafeSummaryPass !== true) reasons.push('workflow_success_requires_safe_summary_pass');
+  if (!SAFE_SUMMARY_STATUSES.has(guard.safeSummaryStatus)) reasons.push('safe_summary_status_invalid');
+  if (guard.sameHead === false || guard.mergeEvidenceCoherent === false || guard.safeSummaryStatus === 'fail') {
+    if (guard.evidenceDriftDetected !== true) reasons.push('evidence_drift_must_be_recorded');
+  }
+  return reasons.length ? fail(reasons) : pass({ evidenceDriftDetected: guard.evidenceDriftDetected === true });
+}
+
 export function validateOrchestrationCapsule(capsule = {}) {
   const modeOk = ORCHESTRATION_MODES.has(capsule.orchestrationMode) && capsule.finalAuthority === 'v1.1.8_final_decision_kernel';
   return {
@@ -474,6 +631,10 @@ export function validateOrchestrationCapsule(capsule = {}) {
     adaptiveRoutingInternalStatus: validateAdaptiveIntelligenceRouting(capsule.adaptiveIntelligenceRouting || {}),
     reviewPoolInternalStatus: validateReviewPoolPolicy(capsule.reviewPoolPolicy || {}),
     modelTierBudgetInternalStatus: validateModelTierBudget(capsule.modelTierBudget || {}),
+    adaptiveMetricsInternalStatus: validateAdaptiveMetrics(capsule.adaptiveMetrics || {}),
+    routingCalibrationInternalStatus: validateRoutingCalibration(capsule.routingCalibration || {}),
+    targetScoreBaselineInternalStatus: validateTargetScoreBaseline(capsule.targetScoreBaseline || {}),
+    evidenceFreshnessGuardInternalStatus: validateEvidenceFreshnessGuard(capsule.evidenceFreshnessGuard || {}),
   };
 }
 

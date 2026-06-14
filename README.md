@@ -1,17 +1,20 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.2.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.2.1 -->
 # Codex Development Harness
 
-Version: v1.2.0
-Name: Adaptive Intelligence Escalation and Review Pool
+Version: v1.2.1
+Name: Adaptive Routing Metrics and Evidence Calibration Guard
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. The current authority is `AGENTS.md`, `docs/process/CODEX_V120_SPEC.md`, and the active manifest files under `docs/process/`.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. The current authority is `AGENTS.md`, `docs/process/CODEX_V121_SPEC.md`, and the active manifest files under `docs/process/`.
 
-v1.2.0 keeps v1.1.8 Final Decision as final authority and v1.1.9 as the
-orchestration/proof layer. It adds adaptive model-tier routing, typed blockers,
-review-pool policy, escalation hysteresis, and high-tier repair planning inside
-the existing three v1.1.9 P0 artifacts only. It does not add target rollout,
-new P0 artifacts, scheduler behavior, release/deploy/wallet/RPC authority,
-readiness authority, or GitHub approval review authority.
+v1.2.1 keeps v1.1.8 Final Decision as final authority, v1.1.9 as the
+orchestration/proof layer, and v1.2.0 adaptive routing/review pool behavior.
+It adds internal calibration fields for evidence freshness, routing metrics,
+target score baselines, root-cause loop guards, boundary diff classification,
+claim lint, owner burden, and merge decision integrity inside the existing
+three v1.1.9 P0 artifacts only. It does not add target rollout, new P0
+artifacts, new top-level operator statuses, scheduler behavior,
+release/deploy/wallet/RPC authority, readiness authority, legal/YouTube policy
+compliance authority, or GitHub approval review authority.
 
 Harness `skillProfiles` are machine-readable harness/profile identifiers. They are not OpenAI Codex Skills and should not be renamed in this pass.
 
