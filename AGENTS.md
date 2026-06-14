@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.2
+CODEX_QUALITY_HARNESS_FILE v1.2.3
 
 ## Prime Directive
 
@@ -132,6 +132,22 @@ rollout, product/package/runtime/workflow changes, raw-log access, full
 history reads without scope, wallet/RPC/deploy access, self approval, GitHub
 approval review, readiness claims, legal compliance claims, or YouTube policy
 compliance claims.
+For v1.2.3 Observed Skill Evidence and Decision Closure, use
+`docs/process/CODEX_V123_SPEC.md` and
+`docs/process/CODEX_ACTIVE_POLICY_INDEX.json`. v1.2.3 adds only internal
+observed context/skill evidence, final decision closure, workspace identity,
+skill contract, escalation effectiveness, reviewer independence, review loop,
+and owner closure summary fields inside the existing v1.1.9 P0 artifacts.
+It turns skill and md routing from declaration toward bounded observed
+metadata, and blocks unexplained contradictions between target quality, same
+head evidence, blockers, merge scope, terminalAction, and mergeAllowed.
+Preserve v1.1.8 Final Decision authority, the v1.1.9 artifact/status surface,
+v1.2.0 adaptive routing/review pool, v1.2.1 calibration, and v1.2.2 read
+budget routing. v1.2.3 must not add new P0 artifacts, top-level statuses, new
+Skills, target rollout, product/package/runtime/workflow changes, raw-log
+access, full history reads without scope, wallet/RPC/deploy access, self
+approval, GitHub approval review, readiness claims, legal compliance claims,
+or YouTube policy compliance claims.
 
 ## Plan-First Rule
 

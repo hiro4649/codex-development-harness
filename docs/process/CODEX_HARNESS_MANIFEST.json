@@ -1,18 +1,19 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.2",
-  "schemaVersion": "1.2.2",
-  "sourceHarnessVersion": "1.2.2",
-  "harnessVersion": "1.2.2",
-  "activeHarnessVersion": "1.2.2",
-  "targetHarnessVersion": "1.2.2",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.3",
+  "schemaVersion": "1.2.3",
+  "sourceHarnessVersion": "1.2.3",
+  "harnessVersion": "1.2.3",
+  "activeHarnessVersion": "1.2.3",
+  "targetHarnessVersion": "1.2.3",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v121_to_v122",
-  "activeSelfTestSuite": "v122",
-  "activeSelfTestStatusKey": "v122SelfTestStatus",
+  "upgradePath": "direct_v122_to_v123",
+  "activeSelfTestSuite": "v123",
+  "activeSelfTestStatusKey": "v123SelfTestStatus",
   "legacySelfTests": {
-    "v122": "blocking_current",
+    "v123": "blocking_current",
+    "v122": "blocking_compatibility",
     "v121": "blocking_compatibility",
     "v120": "blocking_compatibility",
     "v119": "blocking_compatibility",
@@ -30,7 +31,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Context-Aware Skill Routing and Read Budget Discipline",
+  "theme": "Observed Skill Evidence and Decision Closure",
   "requiredStatuses": [
     "orchestrationModeStatus",
     "permissionGrantStatus",
@@ -440,10 +441,31 @@
     ]
   },
   "contextRouting": {
-    "version": "1.2.2",
+    "version": "1.2.3",
     "field": "orchestrationCapsule.skillContextRouting",
     "newP0Artifact": false,
     "newTopLevelStatus": false,
     "subtitle": "Read Less, Preserve Authority"
+  },
+  "observedSkillDecisionClosure": {
+    "version": "1.2.3",
+    "fields": [
+      "orchestrationCapsule.finalDecisionClosure",
+      "orchestrationCapsule.workspaceIdentityGate",
+      "orchestrationCapsule.activePolicyIndex",
+      "orchestrationCapsule.contextReadLedger",
+      "orchestrationCapsule.skillContractRegistry",
+      "orchestrationCapsule.skillEffectivenessLedger",
+      "orchestrationCapsule.escalationEffectivenessLedger",
+      "workerProofCapsule.reviewerIndependenceProof",
+      "workerProofCapsule.reviewLoopVerification",
+      "ownerDecisionBrief.finalDecisionClosureSummary"
+    ],
+    "activePolicyIndex": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "targetRollout": "not_started",
+    "subtitle": "Prove what was read. Prove what worked. Prove why it stopped."
   }
 }

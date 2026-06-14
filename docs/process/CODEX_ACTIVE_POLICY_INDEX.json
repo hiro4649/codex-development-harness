@@ -1,0 +1,110 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.3",
+  "schemaVersion": "1.2.3",
+  "indexVersion": "1",
+  "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+  "purpose": "Bound md and skill reads by task profile while preserving active authority.",
+  "defaultTaskProfile": "routine",
+  "profileIdOnlyMode": true,
+  "rawLogsForbidden": true,
+  "fullHistoryForbidden": true,
+  "legacySpecReadDefault": "forbidden_unless_compatibility_failure_or_authority_conflict",
+  "prHistoryReadDefault": "forbidden_unless_safe_artifact_pointer_or_owner_request",
+  "profiles": {
+    "routine": {
+      "requiredReads": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_V123_SPEC.md"
+      ],
+      "deferredReads": [
+        "README.md",
+        "legacy_specs",
+        "pr_history_docs"
+      ],
+      "mdFilesReadMax": 3,
+      "selectedSkillsMax": 2,
+      "thirdSkillAllowed": false
+    },
+    "metadata_light": {
+      "requiredReads": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json"
+      ],
+      "deferredReads": [
+        "docs/process/CODEX_V123_SPEC.md",
+        "README.md",
+        "legacy_specs",
+        "pr_history_docs"
+      ],
+      "mdFilesReadMax": 2,
+      "selectedSkillsMax": 1,
+      "thirdSkillAllowed": false
+    },
+    "target_rollout": {
+      "requiredReads": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_V123_SPEC.md",
+        "owner_rollout_instruction"
+      ],
+      "deferredReads": [
+        "README.md",
+        "legacy_specs",
+        "pr_history_docs"
+      ],
+      "mdFilesReadMax": 4,
+      "selectedSkillsMax": 2,
+      "thirdSkillAllowed": false
+    },
+    "harness_source_body": {
+      "requiredReads": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_V123_SPEC.md"
+      ],
+      "deferredReads": [
+        "README.md",
+        "legacy_specs",
+        "pr_history_docs"
+      ],
+      "mdFilesReadMax": 6,
+      "selectedSkillsMax": 3,
+      "thirdSkillAllowed": true,
+      "thirdSkillRequiresTypedJustification": true
+    },
+    "compatibility_repair": {
+      "requiredReads": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_V123_SPEC.md",
+        "failing_legacy_spec_only"
+      ],
+      "deferredReads": [
+        "README.md",
+        "unrelated_legacy_specs",
+        "pr_history_docs"
+      ],
+      "mdFilesReadMax": 6,
+      "selectedSkillsMax": 3,
+      "thirdSkillAllowed": true,
+      "thirdSkillRequiresTypedJustification": true
+    }
+  },
+  "requiredReads": [
+    "AGENTS.md",
+    "docs/process/CODEX_HARNESS_MANIFEST.json",
+    "docs/process/CODEX_V123_SPEC.md"
+  ],
+  "deferredReads": [
+    "README.md",
+    "legacy_specs",
+    "pr_history_docs"
+  ],
+  "selectedSkillsMax": 2,
+  "mdFilesReadMax": 3,
+  "newP0Artifact": false,
+  "newTopLevelStatus": false,
+  "newSkill": false,
+  "safeSummaryOnly": true
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.2
+// CODEX_QUALITY_HARNESS_FILE v1.2.3
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +29,8 @@ export const V121_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V121_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 export const V122_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V122_P0_ARTIFACTS = V119_P0_ARTIFACTS;
+export const V123_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
+export const V123_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 
 const MODEL_TIERS = new Set(['low_cost_worker', 'standard_worker', 'specialist_reviewer', 'highest_reasoning_reviewer']);
 const TYPED_BLOCKERS = new Set([
@@ -75,6 +77,21 @@ const READ_BUDGET_BY_TASK_PROFILE = {
   harness_source_body: { mdFilesReadMax: 6, selectedSkillsMax: 3 },
   compatibility_repair: { mdFilesReadMax: 6, selectedSkillsMax: 3 },
 };
+const FINAL_DECISION_PHASES = new Set(['create_pr_only', 'remote_validation', 'merge_consideration', 'post_merge_verify', 'preserve_only']);
+const FINAL_DECISION_TERMINAL_ACTIONS = new Set(['create_pr_only', 'merge_current_pr', 'preserve_only', 'investigate_only', 'stop']);
+const TARGET_QUALITY_STATUSES = new Set(['pass', 'fail', 'pending', 'not_required']);
+const SAME_HEAD_REMOTE_GATE_STATUSES = new Set(['pass', 'fail', 'pending', 'not_required']);
+const MERGE_SCOPE_STATUSES = new Set(['valid', 'missing', 'not_required_for_phase']);
+const CLOSURE_STATUSES = new Set(['pass', 'inconsistent', 'blocked_with_reason']);
+const CLOSURE_REASONS = new Set(['phase_create_pr_only', 'remote_gate_missing', 'owner_merge_decision_missing', 'delegated_scope_missing', 'decision_closure_inconsistent', 'merge_allowed', 'preserve_only', 'none']);
+const CONTEXT_LEDGER_STATUSES = new Set(['pass', 'warn', 'blocked']);
+const OBSERVED_CONTEXT_SOURCE_TYPES = new Set(['agentsMd', 'manifest', 'activeSpec', 'skill', 'readme', 'legacySpec', 'prHistory', 'safeArtifact', 'githubMetadata', 'rawLog', 'fullHistory']);
+const OBSERVED_READ_REASONS = new Set(['active_authority', 'task_profile_required', 'safe_artifact_pointer', 'compatibility_failure', 'authority_conflict', 'owner_requested', 'not_recorded']);
+const SKILL_EFFECTIVENESS_STATUSES = new Set(['pass', 'warn', 'blocked']);
+const SKILL_CONTRIBUTIONS = new Set(['useful', 'neutral', 'harmful', 'unknown']);
+const SKILL_DECISION_IMPACTS = new Set(['blocked_forbidden_action', 'shortened_validation', 'reduced_md_reads', 'review_primary_class', 'owner_question_reduced', 'no_effect', 'unknown']);
+const ESCALATION_EFFECTIVENESS_STATUSES = new Set(['effective', 'neutral', 'harmful', 'unknown', 'not_used']);
+const ESCALATED_AGENT_ROLES = new Set(['none', 'specialist_reviewer', 'highest_reasoning_reviewer']);
 
 const ORCHESTRATION_MODES = new Set([
   'analysis_only',
@@ -330,10 +347,10 @@ function normalizeContextSources(input = {}) {
 
 function defaultActiveAuthorityTuple(input = {}) {
   return {
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.2',
-    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.2',
-    activeSelfTestSuite: input.activeSelfTestSuite || 'v122',
-    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V122_SPEC.md',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.3',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.3',
+    activeSelfTestSuite: input.activeSelfTestSuite || 'v123',
+    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V123_SPEC.md',
     finalAuthorityPointer: input.finalAuthorityPointer || 'v1.1.8_final_decision_kernel',
     sourceOnlyRelease: input.sourceOnlyRelease !== false,
   };
@@ -367,13 +384,13 @@ function defaultSkillContextRouting(input = {}) {
         ? 'blocked'
         : 'pass';
   return {
-    schemaVersion: '1.2.2',
+    schemaVersion: input.schemaVersion || '1.2.3',
     taskProfile,
     selectedSkills,
     rejectedSkills: truncateList(input.rejectedSkills || [], 10),
     mdFilesRead,
     mdFilesRejected: truncateList(input.mdFilesRejected || [], 20),
-    requiredFirstReads: truncateList(input.requiredFirstReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V122_SPEC.md'], 8),
+    requiredFirstReads: truncateList(input.requiredFirstReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V123_SPEC.md'], 8),
     deferredReads: truncateList(input.deferredReads || ['README.md', 'legacy_specs', 'pr_history_docs'], 12),
     forbiddenReads: truncateList(input.forbiddenReads || ['raw_logs', 'full_history_without_scope'], 12),
     contextSourceType: normalizeContextSources(input.contextSourceType || {}),
@@ -406,10 +423,232 @@ function defaultSkillContextRouting(input = {}) {
     fullHistoryReadAllowed: input.fullHistoryReadAllowed === true,
     readBudgetStatus: READ_BUDGET_STATUS.has(input.readBudgetStatus) ? input.readBudgetStatus : inferredStatus,
     blockerClasses,
-    activeAuthorityTuple: defaultActiveAuthorityTuple(input.activeAuthorityTuple || {}),
+    activeAuthorityTuple: defaultActiveAuthorityTuple(input.activeAuthorityTuple || input),
     sourceHardFail: input.sourceHardFail === true,
     targetAdvisoryOnly: input.targetAdvisoryOnly === true,
     safeNextAction: input.skillContextSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultFinalDecisionClosure(input = {}) {
+  const phase = FINAL_DECISION_PHASES.has(input.phase) ? input.phase : 'create_pr_only';
+  const terminalAction = FINAL_DECISION_TERMINAL_ACTIONS.has(input.terminalAction) ? input.terminalAction : 'create_pr_only';
+  const mergeAllowed = input.mergeAllowed === true;
+  const targetQualityStatus = TARGET_QUALITY_STATUSES.has(input.targetQualityStatus) ? input.targetQualityStatus : 'not_required';
+  const blockingReasonsCount = Math.max(0, Number(input.blockingReasonsCount || 0));
+  const sameHeadRemoteGate = SAME_HEAD_REMOTE_GATE_STATUSES.has(input.sameHeadRemoteGate) ? input.sameHeadRemoteGate : 'not_required';
+  const ownerOrDelegatedMergeScope = MERGE_SCOPE_STATUSES.has(input.ownerOrDelegatedMergeScope) ? input.ownerOrDelegatedMergeScope : 'not_required_for_phase';
+  const mergeReadyButFalse = phase === 'merge_consideration'
+    && sameHeadRemoteGate === 'pass'
+    && targetQualityStatus === 'pass'
+    && blockingReasonsCount === 0
+    && ownerOrDelegatedMergeScope === 'valid'
+    && mergeAllowed === false;
+  const inferredReason = input.singleClosureReason
+    || (mergeAllowed ? 'merge_allowed'
+      : mergeReadyButFalse ? 'decision_closure_inconsistent'
+        : phase === 'create_pr_only' ? 'phase_create_pr_only'
+          : sameHeadRemoteGate !== 'pass' ? 'remote_gate_missing'
+            : ownerOrDelegatedMergeScope === 'missing' ? 'owner_merge_decision_missing'
+              : phase === 'preserve_only' ? 'preserve_only'
+                : 'none');
+  const closureStatus = CLOSURE_STATUSES.has(input.closureStatus)
+    ? input.closureStatus
+    : (inferredReason === 'decision_closure_inconsistent' ? 'inconsistent' : 'pass');
+  return {
+    closureVersion: '1.2.3',
+    phase,
+    terminalAction,
+    mergeAllowed,
+    targetQualityStatus,
+    blockingReasonsCount,
+    sameHeadRemoteGate,
+    ownerOrDelegatedMergeScope,
+    closureStatus,
+    singleClosureReason: CLOSURE_REASONS.has(inferredReason) ? inferredReason : 'none',
+    safeNextAction: input.finalDecisionClosureSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultWorkspaceIdentityGate(input = {}) {
+  const mutationTask = input.mutationTask === true;
+  const readOnlyAudit = input.readOnlyAudit === true || input.taskMode === 'read_only_audit';
+  const worktreeClean = input.worktreeClean !== false;
+  const repoResolvableOnGitHub = input.repoResolvableOnGitHub !== false;
+  const wrongRepo = input.wrongRepo === true;
+  const frozenBranchUsed = input.frozenBranchUsed === true;
+  const localOnlyState = input.localOnlyState === true;
+  const dirtyAllowed = input.dirtyWorktreePreservationScope === true;
+  const blocked = (wrongRepo && !readOnlyAudit)
+    || frozenBranchUsed
+    || (mutationTask && repoResolvableOnGitHub === false)
+    || (mutationTask && localOnlyState)
+    || (mutationTask && worktreeClean === false && !dirtyAllowed);
+  const warn = !blocked && (wrongRepo || repoResolvableOnGitHub === false || worktreeClean === false || localOnlyState);
+  return {
+    workspaceIdentityVersion: '1.2.3',
+    expectedRepo: input.expectedRepo || input.repo || 'hiro4649/codex-development-harness',
+    actualRemoteUrl: input.actualRemoteUrl || 'safe_url_or_hash',
+    defaultBranch: input.defaultBranch || 'main',
+    currentBranch: input.currentBranch || input.branch || 'unknown',
+    headSha: input.headSha || null,
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.3',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.3',
+    mutationTask,
+    readOnlyAudit,
+    worktreeClean,
+    repoResolvableOnGitHub,
+    frozenBranchUsed,
+    localOnlyState,
+    wrongRepo,
+    dirtyWorktreePreservationScope: dirtyAllowed,
+    workspaceIdentityStatus: blocked ? 'blocked' : (warn ? 'warn' : 'pass'),
+    safeNextAction: input.workspaceIdentitySafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultActivePolicyIndex(input = {}) {
+  return {
+    schemaVersion: '1.2.3',
+    indexPath: input.indexPath || 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
+    taskProfile: TASK_PROFILES.has(input.taskProfile) ? input.taskProfile : 'routine',
+    requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V123_SPEC.md'], 8),
+    allowedConditionalReads: truncateList(input.allowedConditionalReads || [], 8),
+    forbiddenByDefault: truncateList(input.forbiddenByDefault || ['README.md', 'legacy_specs', 'pr_history_docs'], 8),
+    selectedSkillsMax: Math.max(0, Number(input.selectedSkillsMax || 2)),
+    mdFilesReadMax: Math.max(0, Number(input.mdFilesReadMax || 3)),
+    activePolicyIndexStatus: input.activePolicyIndexStatus || 'pass',
+    safeNextAction: input.activePolicyIndexSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function normalizeObservedReads(values = []) {
+  return Array.isArray(values) ? values.slice(0, 20).map((item) => ({
+    sourceType: OBSERVED_CONTEXT_SOURCE_TYPES.has(item?.sourceType) ? item.sourceType : 'safeArtifact',
+    pathOrRef: String(item?.pathOrRef || 'safe_identifier'),
+    readReason: OBSERVED_READ_REASONS.has(item?.readReason) ? item.readReason : 'not_recorded',
+    taskProfile: TASK_PROFILES.has(item?.taskProfile) ? item.taskProfile : 'routine',
+    countsTowardBudget: item?.countsTowardBudget !== false,
+  })) : [];
+}
+
+function defaultContextReadLedger(input = {}) {
+  const observedToolReads = normalizeObservedReads(input.observedToolReads || []);
+  const observedButUndeclaredUse = truncateList(input.observedButUndeclaredUse || [], 20);
+  const hardObserved = observedToolReads.some((item) => ['rawLog', 'fullHistory'].includes(item.sourceType)
+    || (item.sourceType === 'legacySpec' && !['compatibility_failure', 'authority_conflict'].includes(item.readReason))
+    || (item.sourceType === 'prHistory' && !['safe_artifact_pointer', 'owner_requested'].includes(item.readReason)));
+  const blocked = hardObserved || observedButUndeclaredUse.some((item) => ['rawLog', 'legacySpec', 'prHistory', 'fullHistory', 'forbiddenSkill'].includes(item));
+  const softObserved = (Array.isArray(input.unobservedDeclaredUse) && input.unobservedDeclaredUse.length > 0)
+    || observedButUndeclaredUse.some((item) => !['rawLog', 'legacySpec', 'prHistory', 'fullHistory', 'forbiddenSkill'].includes(item));
+  return {
+    ledgerVersion: '1.2.3',
+    observedToolReads,
+    declaredContextUse: truncateList(input.declaredContextUse || [], 20),
+    ownerProvidedContext: {
+      present: input.ownerProvidedContext?.present === true,
+      countedAsFileRead: false,
+    },
+    unobservedDeclaredUse: truncateList(input.unobservedDeclaredUse || [], 20),
+    observedButUndeclaredUse,
+    contextLedgerStatus: blocked ? 'blocked' : (softObserved ? 'warn' : (input.contextLedgerStatus || 'pass')),
+    safeNextAction: input.contextLedgerSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function normalizeSkillContracts(values = []) {
+  return Array.isArray(values) ? values.slice(0, 12).map((contract) => ({
+    schemaVersion: contract?.schemaVersion || 'skill-contract-v2',
+    skillId: String(contract?.skillId || ''),
+    allowed_repo_profiles: truncateList(contract?.allowed_repo_profiles || [], 20),
+    forbidden_repo_profiles: truncateList(contract?.forbidden_repo_profiles || [], 20),
+    task_profiles: truncateList(contract?.task_profiles || [], 20),
+    max_context_tokens: Math.max(0, Number(contract?.max_context_tokens || 0)),
+    when_to_use: truncateList(contract?.when_to_use || [], 20),
+    when_not_to_use: truncateList(contract?.when_not_to_use || [], 20),
+    required_artifacts: truncateList(contract?.required_artifacts || [], 20),
+    forbidden_actions: truncateList(contract?.forbidden_actions || [], 20),
+    artifact_pointer_first: contract?.artifact_pointer_first === true,
+    raw_logs_forbidden: contract?.raw_logs_forbidden === true,
+    owner_decision_boundary: contract?.owner_decision_boundary === true,
+    output_contract: contract?.output_contract || null,
+  })) : [];
+}
+
+function defaultSkillContractRegistry(input = {}) {
+  return {
+    registryVersion: '1.2.3',
+    currentRepoProfile: input.currentRepoProfile || input.repoProfile || 'source_harness',
+    selectedSkillIds: truncateList(input.selectedSkillIds || input.selectedSkills || [], 8),
+    contracts: normalizeSkillContracts(input.contracts || []),
+    selectedSkillContractRequired: input.selectedSkillContractRequired !== false,
+    skillContractStatus: input.skillContractStatus || 'pass',
+    safeNextAction: input.skillContractSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function normalizeSkillUseRecords(values = []) {
+  return Array.isArray(values) ? values.slice(0, 12).map((record) => ({
+    skillId: String(record?.skillId || ''),
+    selectionReason: record?.selectionReason || 'task_profile_match',
+    repoProfile: record?.repoProfile || 'source_harness',
+    taskProfile: TASK_PROFILES.has(record?.taskProfile) ? record.taskProfile : 'routine',
+    contribution: SKILL_CONTRIBUTIONS.has(record?.contribution) ? record.contribution : 'unknown',
+    detectedIssue: record?.detectedIssue || 'none',
+    decisionImpact: SKILL_DECISION_IMPACTS.has(record?.decisionImpact) ? record.decisionImpact : 'unknown',
+    misfireDetected: record?.misfireDetected === true,
+    misfireReason: record?.misfireReason || 'none',
+    forbiddenActionRecommended: record?.forbiddenActionRecommended === true,
+  })) : [];
+}
+
+function defaultSkillEffectivenessLedger(input = {}) {
+  const records = normalizeSkillUseRecords(input.skillUseRecords || []);
+  const blocked = records.some((record) => record.misfireDetected || record.forbiddenActionRecommended || record.contribution === 'harmful');
+  const unknown = records.some((record) => record.contribution === 'unknown' || record.decisionImpact === 'unknown');
+  const sourceHard = input.sourceHard === true;
+  return {
+    ledgerVersion: '1.2.3',
+    selectedSkills: truncateList(input.selectedSkills || [], 8),
+    rejectedSkills: truncateList(input.rejectedSkills || [], 12),
+    skillUseRecords: records,
+    sourceHard,
+    skillEffectivenessStatus: blocked ? 'blocked' : (unknown ? (sourceHard ? 'blocked' : 'warn') : (input.skillEffectivenessStatus || 'pass')),
+    safeNextAction: input.skillEffectivenessSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultEscalationEffectivenessLedger(input = {}) {
+  const highTierUsed = input.highTierUsed === true || input.escalatedAgentRole === 'highest_reasoning_reviewer';
+  const escalatedAgentRole = ESCALATED_AGENT_ROLES.has(input.escalatedAgentRole) ? input.escalatedAgentRole : (highTierUsed ? 'highest_reasoning_reviewer' : 'none');
+  const escalationUsed = escalatedAgentRole !== 'none' || (input.escalationReason && input.escalationReason !== 'none');
+  const newFindingProduced = input.newFindingProduced === true;
+  const repairPlanChanged = input.repairPlanChanged === true;
+  const validationImproved = input.validationImproved === true;
+  const sameRootCauseResolved = input.sameRootCauseResolved === true;
+  const effective = newFindingProduced || repairPlanChanged || validationImproved || sameRootCauseResolved;
+  const noSignalAfterHighTier = highTierUsed && !effective;
+  const sameRootCauseRepeatCount = Math.max(0, Number(input.sameRootCauseRepeatCount || 0));
+  return {
+    ledgerVersion: '1.2.3',
+    beforeEscalationBlocker: TYPED_BLOCKERS.has(input.beforeEscalationBlocker) ? input.beforeEscalationBlocker : (TYPED_BLOCKERS.has(input.typedBlocker) ? input.typedBlocker : 'none'),
+    escalationReason: ESCALATION_REASONS.has(input.escalationReason) ? input.escalationReason : 'none',
+    escalatedAgentRole,
+    inputContextPacket: {
+      fullConversationUsed: input.inputContextPacket?.fullConversationUsed === true,
+      rawLogsUsed: input.inputContextPacket?.rawLogsUsed === true,
+      safeArtifactsUsed: truncateList(input.inputContextPacket?.safeArtifactsUsed || [], 8),
+      mdFilesUsed: truncateList(input.inputContextPacket?.mdFilesUsed || [], 8),
+      changedFileExcerptsUsed: input.inputContextPacket?.changedFileExcerptsUsed !== false,
+    },
+    newFindingProduced,
+    repairPlanChanged,
+    validationImproved,
+    sameRootCauseResolved,
+    sameRootCauseRepeatCount,
+    deEscalationResult: input.deEscalationResult || (highTierUsed ? 'stopped' : 'returned_to_low_cost_worker'),
+    effectivenessStatus: noSignalAfterHighTier ? 'neutral' : (escalationUsed ? (effective ? 'effective' : 'neutral') : 'not_used'),
+    safeNextAction: noSignalAfterHighTier ? 'stop_escalation_no_new_information' : (input.escalationEffectivenessSafeNextAction || input.safeNextAction || 'one_action'),
   };
 }
 
@@ -459,7 +698,7 @@ export function buildOrchestrationCapsule(input = {}) {
     itemUrl: input.itemUrl || null,
     allowedFiles: truncateList(input.allowedFiles, 50),
     forbiddenFiles: truncateList(input.forbiddenFiles, 50),
-    forbiddenScopeProfile: input.forbiddenScopeProfile || 'SOURCE_HARNESS_BODY_ONLY_V122',
+    forbiddenScopeProfile: input.forbiddenScopeProfile || 'SOURCE_HARNESS_BODY_ONLY_V123',
     acceptanceCriteria: truncateList(input.acceptanceCriteria, 8),
     nonGoals: truncateList(input.nonGoals, 8),
     stopBoundary: truncateList(input.stopBoundary, 8),
@@ -474,7 +713,7 @@ export function buildOrchestrationCapsule(input = {}) {
   });
   return {
     orchestrationVersion: '1',
-    activeHarnessVersion: input.activeHarnessVersion || '1.2.2',
+    activeHarnessVersion: input.activeHarnessVersion || '1.2.3',
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,
@@ -501,10 +740,17 @@ export function buildOrchestrationCapsule(input = {}) {
     evidenceFreshnessGuard: defaultEvidenceFreshnessGuard(input.evidenceFreshnessGuard || input),
     minimalReverificationMatrix: defaultMinimalReverificationMatrix(input.minimalReverificationMatrix || input),
     skillContextRouting: defaultSkillContextRouting(input.skillContextRouting || input),
+    finalDecisionClosure: defaultFinalDecisionClosure(input.finalDecisionClosure || input),
+    workspaceIdentityGate: defaultWorkspaceIdentityGate(input.workspaceIdentityGate || input),
+    activePolicyIndex: defaultActivePolicyIndex(input.activePolicyIndex || input),
+    contextReadLedger: defaultContextReadLedger(input.contextReadLedger || input),
+    skillContractRegistry: defaultSkillContractRegistry(input.skillContractRegistry || input),
+    skillEffectivenessLedger: defaultSkillEffectivenessLedger(input.skillEffectivenessLedger || input),
+    escalationEffectivenessLedger: defaultEscalationEffectivenessLedger(input.escalationEffectivenessLedger || input),
     authorityBoundary: {
       conflictPrecedence: [
-        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_and_v1.2.2',
-        'v1.1.9_orchestration_over_v1.2.0_routing_v1.2.1_calibration_and_v1.2.2_context_routing',
+        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_v1.2.2_and_v1.2.3',
+        'v1.1.9_orchestration_over_v1.2.0_routing_v1.2.1_calibration_v1.2.2_context_routing_and_v1.2.3_observed_evidence',
         'owner_only_boundary_over_reviewer_output',
       ],
       highTierReviewCreatesOwnerApproval: false,
@@ -732,6 +978,146 @@ export function validateEvidenceFreshnessGuard(guard = {}) {
   return reasons.length ? fail(reasons) : pass({ evidenceDriftDetected: guard.evidenceDriftDetected === true });
 }
 
+export function validateFinalDecisionClosure(closure = {}) {
+  const reasons = [];
+  if (closure.closureVersion !== '1.2.3') reasons.push('final_decision_closure_version_invalid');
+  if (!FINAL_DECISION_PHASES.has(closure.phase)) reasons.push('final_decision_closure_phase_invalid');
+  if (!FINAL_DECISION_TERMINAL_ACTIONS.has(closure.terminalAction)) reasons.push('final_decision_closure_terminal_action_invalid');
+  if (!TARGET_QUALITY_STATUSES.has(closure.targetQualityStatus)) reasons.push('final_decision_closure_target_quality_invalid');
+  if (!SAME_HEAD_REMOTE_GATE_STATUSES.has(closure.sameHeadRemoteGate)) reasons.push('final_decision_closure_same_head_invalid');
+  if (!MERGE_SCOPE_STATUSES.has(closure.ownerOrDelegatedMergeScope)) reasons.push('final_decision_closure_scope_invalid');
+  if (!CLOSURE_STATUSES.has(closure.closureStatus)) reasons.push('final_decision_closure_status_invalid');
+  if (!CLOSURE_REASONS.has(closure.singleClosureReason)) reasons.push('final_decision_closure_reason_invalid');
+  const readyButFalse = closure.phase === 'merge_consideration'
+    && closure.sameHeadRemoteGate === 'pass'
+    && closure.targetQualityStatus === 'pass'
+    && Number(closure.blockingReasonsCount || 0) === 0
+    && closure.ownerOrDelegatedMergeScope === 'valid'
+    && closure.mergeAllowed !== true;
+  if (readyButFalse) reasons.push('decision_closure_inconsistent');
+  if (closure.terminalAction === 'merge_current_pr' && closure.sameHeadRemoteGate !== 'pass') reasons.push('merge_current_pr_requires_same_head_remote_gate');
+  if (closure.terminalAction === 'merge_current_pr' && closure.ownerOrDelegatedMergeScope !== 'valid') reasons.push('merge_current_pr_requires_owner_or_delegated_scope');
+  if (closure.terminalAction === 'merge_current_pr' && closure.targetQualityStatus !== 'pass') reasons.push('merge_current_pr_requires_target_quality_pass');
+  if (closure.terminalAction === 'merge_current_pr' && Number(closure.blockingReasonsCount || 0) > 0) reasons.push('merge_current_pr_requires_no_blocking_reasons');
+  if (closure.terminalAction === 'merge_current_pr' && closure.mergeAllowed !== true) reasons.push('merge_current_pr_requires_merge_allowed_true');
+  if (closure.closureStatus === 'inconsistent') reasons.push('decision_closure_inconsistent');
+  if (closure.phase === 'create_pr_only' && closure.singleClosureReason !== 'phase_create_pr_only') reasons.push('create_pr_only_requires_phase_reason');
+  if (closure.phase === 'merge_consideration' && closure.mergeAllowed !== true && closure.singleClosureReason === 'none') reasons.push('merge_block_requires_single_closure_reason');
+  if (closure.phase === 'merge_consideration' && closure.mergeAllowed !== true && closure.sameHeadRemoteGate !== 'pass' && closure.singleClosureReason !== 'remote_gate_missing') reasons.push('remote_gate_block_requires_remote_gate_reason');
+  if (closure.phase === 'merge_consideration' && closure.mergeAllowed !== true && closure.ownerOrDelegatedMergeScope === 'missing' && !['owner_merge_decision_missing', 'delegated_scope_missing'].includes(closure.singleClosureReason)) reasons.push('merge_scope_block_requires_owner_or_delegated_reason');
+  return reasons.length ? fail(reasons) : pass({ phase: closure.phase, singleClosureReason: closure.singleClosureReason });
+}
+
+export function validateWorkspaceIdentityGate(gate = {}) {
+  const reasons = [];
+  if (gate.workspaceIdentityVersion !== '1.2.3') reasons.push('workspace_identity_version_invalid');
+  if (gate.agentsMarker !== 'CODEX_QUALITY_HARNESS_FILE v1.2.3') reasons.push('workspace_identity_agents_marker_invalid');
+  if (gate.manifestActiveHarnessVersion !== '1.2.3') reasons.push('workspace_identity_manifest_version_invalid');
+  if (gate.wrongRepo === true && gate.readOnlyAudit !== true) reasons.push('wrong_workspace_blocked');
+  if (gate.frozenBranchUsed === true) reasons.push('frozen_branch_blocked');
+  if (gate.mutationTask === true && gate.repoResolvableOnGitHub !== true) reasons.push('unresolvable_remote_for_mutation');
+  if (gate.mutationTask === true && gate.localOnlyState === true) reasons.push('local_only_state_for_pr_creation');
+  if (gate.mutationTask === true && gate.worktreeClean !== true && gate.dirtyWorktreePreservationScope !== true) reasons.push('dirty_worktree_without_preservation_scope');
+  if (gate.workspaceIdentityStatus === 'blocked') reasons.push('workspace_identity_blocked');
+  return reasons.length ? fail(reasons) : pass({ expectedRepo: gate.expectedRepo, currentBranch: gate.currentBranch });
+}
+
+export function validateActivePolicyIndex(index = {}) {
+  const reasons = [];
+  if (index.schemaVersion !== '1.2.3') reasons.push('active_policy_index_schema_invalid');
+  if (index.indexPath !== 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json') reasons.push('active_policy_index_path_invalid');
+  for (const item of ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json']) {
+    if (!Array.isArray(index.requiredReads) || !index.requiredReads.includes(item)) reasons.push(`active_policy_index_missing_${item}`);
+  }
+  if (!Array.isArray(index.requiredReads) || !index.requiredReads.includes('docs/process/CODEX_V123_SPEC.md')) reasons.push('active_policy_index_missing_v123_spec');
+  if (Array.isArray(index.requiredReads) && index.requiredReads.some((item) => ['README.md', 'legacy_specs', 'pr_history_docs'].includes(item))) reasons.push('active_policy_index_required_reads_too_broad');
+  if (Number(index.selectedSkillsMax || 0) > 3) reasons.push('active_policy_index_skill_budget_too_high');
+  if (Number(index.mdFilesReadMax || 0) > 6) reasons.push('active_policy_index_md_budget_too_high');
+  return reasons.length ? fail(reasons) : pass({ taskProfile: index.taskProfile, requiredReads: Array.isArray(index.requiredReads) ? index.requiredReads.length : 0 });
+}
+
+export function validateContextReadLedger(ledger = {}) {
+  const reasons = [];
+  if (ledger.ledgerVersion !== '1.2.3') reasons.push('context_read_ledger_version_invalid');
+  if (!CONTEXT_LEDGER_STATUSES.has(ledger.contextLedgerStatus)) reasons.push('context_read_ledger_status_invalid');
+  for (const read of ledger.observedToolReads || []) {
+    if (!OBSERVED_CONTEXT_SOURCE_TYPES.has(read.sourceType)) reasons.push('observed_context_source_type_invalid');
+    if (!OBSERVED_READ_REASONS.has(read.readReason)) reasons.push('observed_context_read_reason_invalid');
+    if (read.sourceType === 'rawLog') reasons.push('raw_logs_read');
+    if (read.sourceType === 'fullHistory') reasons.push('full_history_read_without_scope');
+    if (read.sourceType === 'legacySpec' && !['compatibility_failure', 'authority_conflict'].includes(read.readReason)) reasons.push('legacy_spec_read_without_reason');
+    if (read.sourceType === 'prHistory' && !['safe_artifact_pointer', 'owner_requested'].includes(read.readReason)) reasons.push('pr_history_read_without_pointer');
+  }
+  for (const item of ledger.observedButUndeclaredUse || []) {
+    if (['rawLog', 'legacySpec', 'prHistory', 'fullHistory', 'forbiddenSkill'].includes(item)) reasons.push(`observed_forbidden_context_${item}`);
+  }
+  if (ledger.ownerProvidedContext?.countedAsFileRead === true) reasons.push('owner_provided_context_not_file_read');
+  if (ledger.contextLedgerStatus === 'blocked') reasons.push('context_read_ledger_blocked');
+  return reasons.length ? fail(reasons) : pass({ observedToolReadCount: Array.isArray(ledger.observedToolReads) ? ledger.observedToolReads.length : 0 });
+}
+
+export function validateSkillContractRegistry(registry = {}) {
+  const reasons = [];
+  if (registry.registryVersion !== '1.2.3') reasons.push('skill_contract_registry_version_invalid');
+  const selected = new Set(registry.selectedSkillIds || []);
+  const currentRepoProfile = registry.currentRepoProfile || 'source_harness';
+  const contracts = new Map((registry.contracts || []).map((contract) => [contract.skillId, contract]));
+  if (registry.selectedSkillContractRequired !== false) {
+    for (const skillId of selected) {
+      if (!contracts.has(skillId)) reasons.push(`selected_skill_contract_missing_${skillId}`);
+    }
+  }
+  for (const contract of registry.contracts || []) {
+    if (contract.schemaVersion !== 'skill-contract-v2') reasons.push('skill_contract_schema_invalid');
+    if (!contract.skillId) reasons.push('skill_contract_id_missing');
+    for (const key of ['allowed_repo_profiles', 'forbidden_repo_profiles', 'task_profiles', 'when_to_use', 'when_not_to_use', 'required_artifacts', 'forbidden_actions']) {
+      if (!Array.isArray(contract[key])) reasons.push(`skill_contract_${key}_missing`);
+    }
+    for (const key of ['allowed_repo_profiles', 'task_profiles', 'when_to_use', 'when_not_to_use', 'required_artifacts', 'forbidden_actions']) {
+      if (Array.isArray(contract[key]) && contract[key].length === 0) reasons.push(`skill_contract_${key}_empty`);
+    }
+    if (Number(contract.max_context_tokens || 0) <= 0 || Number(contract.max_context_tokens || 0) > 8000) reasons.push('skill_contract_context_budget_invalid');
+    if (contract.artifact_pointer_first !== true) reasons.push('skill_contract_artifact_pointer_first_required');
+    if (contract.raw_logs_forbidden !== true) reasons.push('skill_contract_raw_logs_forbidden_required');
+    if (contract.owner_decision_boundary !== true) reasons.push('skill_contract_owner_boundary_required');
+    if (!contract.output_contract) reasons.push('skill_contract_output_contract_missing');
+    if (selected.has(contract.skillId) && Array.isArray(contract.forbidden_repo_profiles) && contract.forbidden_repo_profiles.includes(currentRepoProfile)) reasons.push('skill_contract_forbidden_repo_profile');
+    if (selected.has(contract.skillId) && Array.isArray(contract.allowed_repo_profiles) && contract.allowed_repo_profiles.length > 0 && !contract.allowed_repo_profiles.includes(currentRepoProfile)) reasons.push('skill_contract_repo_profile_not_allowed');
+  }
+  return reasons.length ? fail(reasons) : pass({ selectedSkillCount: selected.size, contractCount: registry.contracts?.length || 0 });
+}
+
+export function validateSkillEffectivenessLedger(ledger = {}) {
+  const reasons = [];
+  if (ledger.ledgerVersion !== '1.2.3') reasons.push('skill_effectiveness_ledger_version_invalid');
+  if (!SKILL_EFFECTIVENESS_STATUSES.has(ledger.skillEffectivenessStatus)) reasons.push('skill_effectiveness_status_invalid');
+  for (const record of ledger.skillUseRecords || []) {
+    if (!SKILL_CONTRIBUTIONS.has(record.contribution)) reasons.push('skill_effectiveness_contribution_invalid');
+    if (!SKILL_DECISION_IMPACTS.has(record.decisionImpact)) reasons.push('skill_effectiveness_decision_impact_invalid');
+    if (record.misfireDetected === true) reasons.push('skill_misfire_detected');
+    if (record.forbiddenActionRecommended === true) reasons.push('skill_forbidden_action_recommended');
+    if (record.contribution === 'harmful') reasons.push('skill_effectiveness_harmful');
+    if (ledger.sourceHard === true && (record.contribution === 'unknown' || record.decisionImpact === 'unknown')) reasons.push('skill_effectiveness_unknown_source_hard');
+  }
+  if (ledger.skillEffectivenessStatus === 'blocked') reasons.push('skill_effectiveness_blocked');
+  return reasons.length ? fail(reasons) : pass({ selectedSkillCount: ledger.selectedSkills?.length || 0 });
+}
+
+export function validateEscalationEffectivenessLedger(ledger = {}) {
+  const reasons = [];
+  if (ledger.ledgerVersion !== '1.2.3') reasons.push('escalation_effectiveness_ledger_version_invalid');
+  if (!TYPED_BLOCKERS.has(ledger.beforeEscalationBlocker)) reasons.push('escalation_effectiveness_blocker_invalid');
+  if (!ESCALATION_REASONS.has(ledger.escalationReason)) reasons.push('escalation_effectiveness_reason_invalid');
+  if (!ESCALATED_AGENT_ROLES.has(ledger.escalatedAgentRole)) reasons.push('escalated_agent_role_invalid');
+  if (!ESCALATION_EFFECTIVENESS_STATUSES.has(ledger.effectivenessStatus)) reasons.push('escalation_effectiveness_status_invalid');
+  if (ledger.inputContextPacket?.rawLogsUsed === true) reasons.push('escalation_context_raw_logs_forbidden');
+  const highTierUsed = ledger.escalatedAgentRole === 'highest_reasoning_reviewer';
+  const noSignal = ledger.newFindingProduced !== true && ledger.repairPlanChanged !== true && ledger.validationImproved !== true && ledger.sameRootCauseResolved !== true;
+  if (highTierUsed && noSignal) reasons.push('escalation_no_new_information');
+  if (highTierUsed && Number(ledger.sameRootCauseRepeatCount || 0) >= 2 && noSignal) reasons.push('same_root_cause_after_high_tier_requires_new_signal_or_stop');
+  return reasons.length ? fail(reasons) : pass({ escalatedAgentRole: ledger.escalatedAgentRole, effectivenessStatus: ledger.effectivenessStatus });
+}
+
 export function validateSkillContextRouting(routing = {}) {
   const reasons = [];
   const taskProfile = TASK_PROFILES.has(routing.taskProfile) ? routing.taskProfile : 'routine';
@@ -744,7 +1130,7 @@ export function validateSkillContextRouting(routing = {}) {
   const effectiveMdFilesReadMax = Math.min(mdFilesReadMax, budget.mdFilesReadMax);
   const authority = routing.activeAuthorityTuple || {};
   const blockers = new Set(routing.blockerClasses || []);
-  if (routing.schemaVersion !== '1.2.2') reasons.push('skill_context_routing_schema_invalid');
+  if (!['1.2.2', '1.2.3'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
   if (!TASK_PROFILES.has(routing.taskProfile)) reasons.push('task_profile_invalid');
   if (selectedSkillsMax > budget.selectedSkillsMax) reasons.push('selected_skills_max_cannot_override_task_profile_budget');
   if (mdFilesReadMax > budget.mdFilesReadMax) reasons.push('md_files_read_max_cannot_override_task_profile_budget');
@@ -766,10 +1152,10 @@ export function validateSkillContextRouting(routing = {}) {
   if (!READ_BUDGET_STATUS.has(routing.readBudgetStatus)) reasons.push('read_budget_status_invalid');
   if (routing.readBudgetStatus === 'blocked') reasons.push('read_budget_blocked');
   for (const blocker of blockers) if (HARD_CONTEXT_BLOCKERS.has(blocker)) reasons.push(blocker);
-  if (authority.agentsMarker !== 'CODEX_QUALITY_HARNESS_FILE v1.2.2') reasons.push('active_authority_agents_marker_missing');
-  if (authority.manifestActiveHarnessVersion !== '1.2.2') reasons.push('active_authority_manifest_version_missing');
-  if (authority.activeSelfTestSuite !== 'v122') reasons.push('active_authority_self_test_missing');
-  if (authority.activeSpecPath !== 'docs/process/CODEX_V122_SPEC.md') reasons.push('active_authority_spec_path_missing');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
+  if (!['1.2.2', '1.2.3'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
+  if (!['v122', 'v123'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
+  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
   if (authority.finalAuthorityPointer !== 'v1.1.8_final_decision_kernel') reasons.push('active_authority_final_decision_pointer_missing');
   if (routing.ownerProvidedContext?.countedAsFileRead === true) reasons.push('owner_provided_context_not_file_read');
   return reasons.length ? fail(reasons) : pass({ taskProfile, selectedSkills: selectedSkills.length, mdFilesRead: mdFilesRead.length, readBudgetStatus: routing.readBudgetStatus });
@@ -791,6 +1177,13 @@ export function validateOrchestrationCapsule(capsule = {}) {
     targetScoreBaselineInternalStatus: validateTargetScoreBaseline(capsule.targetScoreBaseline || {}),
     evidenceFreshnessGuardInternalStatus: validateEvidenceFreshnessGuard(capsule.evidenceFreshnessGuard || {}),
     skillContextRoutingInternalStatus: validateSkillContextRouting(capsule.skillContextRouting || {}),
+    finalDecisionClosureInternalStatus: validateFinalDecisionClosure(capsule.finalDecisionClosure || {}),
+    workspaceIdentityInternalStatus: validateWorkspaceIdentityGate(capsule.workspaceIdentityGate || {}),
+    activePolicyIndexInternalStatus: validateActivePolicyIndex(capsule.activePolicyIndex || {}),
+    contextReadLedgerInternalStatus: validateContextReadLedger(capsule.contextReadLedger || {}),
+    skillContractRegistryInternalStatus: validateSkillContractRegistry(capsule.skillContractRegistry || {}),
+    skillEffectivenessLedgerInternalStatus: validateSkillEffectivenessLedger(capsule.skillEffectivenessLedger || {}),
+    escalationEffectivenessLedgerInternalStatus: validateEscalationEffectivenessLedger(capsule.escalationEffectivenessLedger || {}),
   };
 }
 
