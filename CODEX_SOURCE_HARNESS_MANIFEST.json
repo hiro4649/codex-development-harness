@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.1",
-  "harnessVersion": "1.2.1",
-  "sourceHarnessVersion": "1.2.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.2",
+  "harnessVersion": "1.2.2",
+  "sourceHarnessVersion": "1.2.2",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.2.1",
+  "schemaVersion": "1.2.2",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -83,7 +83,9 @@
     "docs/process/CODEX_V111_SPEC.md",
     "docs/process/CODEX_STATUS_TAXONOMY_V1_1_1.json",
     "scripts/codex-v111-token-hard-cap.mjs",
-    "scripts/codex-v111-self-test.mjs"
+    "scripts/codex-v111-self-test.mjs",
+    "docs/process/CODEX_V122_SPEC.md",
+    "scripts/codex-v122-self-test.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -904,9 +906,9 @@
     "codex-v121-self-test.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.2.1",
-  "activeSelfTestSuite": "v121",
-  "activeSelfTestStatusKey": "v121SelfTestStatus",
+  "activeHarnessVersion": "1.2.2",
+  "activeSelfTestSuite": "v122",
+  "activeSelfTestStatusKey": "v122SelfTestStatus",
   "legacySelfTestSuites": {
     "v120": "blocking_compatibility",
     "v119": "blocking_compatibility",
@@ -1315,9 +1317,9 @@
     "vgcBscScanVerificationBoundaryStatus",
     "vgcMainnetReadinessBoundaryStatus"
   ],
-  "targetHarnessVersion": "1.1.0",
+  "targetHarnessVersion": "1.2.2",
   "evidenceSchemaVersion": 6,
-  "theme": "Token Hard Cap, Context Capsule, and Failure Closure",
+  "theme": "Context-Aware Skill Routing and Read Budget Discipline",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",
@@ -1575,5 +1577,25 @@
     "sessionEfficiencyScoreStatus": [
       "activeSessionCountHardCapStatus"
     ]
+  },
+  "legacySelfTests": {
+    "v122": "blocking_current",
+    "v121": "blocking_compatibility",
+    "v120": "blocking_compatibility",
+    "v119": "blocking_compatibility",
+    "v118": "blocking_compatibility",
+    "v117": "blocking_compatibility",
+    "v116": "blocking_compatibility",
+    "v115": "blocking_compatibility",
+    "v114": "blocking_compatibility",
+    "v113": "selected_critical",
+    "v080_v112": "target_shadow_legacy_count_only"
+  },
+  "contextRouting": {
+    "version": "1.2.2",
+    "field": "orchestrationCapsule.skillContextRouting",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "subtitle": "Read Less, Preserve Authority"
   }
 }
