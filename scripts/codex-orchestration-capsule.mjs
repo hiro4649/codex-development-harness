@@ -203,6 +203,9 @@ function defaultModelTierBudget(input = {}) {
 
 function defaultAdaptiveMetrics(input = {}) {
   const tierCounts = input.modelTierUsedCount || {};
+  const safeArtifactReadCount = Math.max(0, Number(input.safeArtifactReadCount || 0));
+  const finalReportLineCount = Math.max(0, Number(input.finalReportLineCount || 0));
+  const ownerQuestionCount = Math.max(0, Number(input.ownerQuestionCount || 0));
   return {
     metricsVersion: '1',
     taskId: input.taskId || 'unknown',
@@ -219,9 +222,19 @@ function defaultAdaptiveMetrics(input = {}) {
     escalationCount: Math.max(0, Math.min(Number(input.escalationCount || 0), 2)),
     deEscalationCount: Math.max(0, Math.min(Number(input.deEscalationCount || 0), 4)),
     repairIterationCount: Math.max(0, Number(input.repairIterationCount || input.repairIterations || 0)),
-    ownerQuestionCount: Math.max(0, Number(input.ownerQuestionCount || 0)),
-    safeArtifactReadCount: Math.max(0, Number(input.safeArtifactReadCount || 0)),
-    finalReportLineCount: Math.max(0, Number(input.finalReportLineCount || 0)),
+    ownerQuestionCount,
+    safeArtifactReadCount,
+    finalReportLineCount,
+    calibrationTargets: {
+      safeArtifactReadCountTarget: Math.max(1, Number(input.safeArtifactReadCountTarget || 4)),
+      finalReportLineCountTarget: Math.max(1, Number(input.finalReportLineCountTarget || 14)),
+      ownerQuestionCountTarget: Math.max(0, Number(input.ownerQuestionCountTarget || 1)),
+    },
+    calibrationWarnings: {
+      safeArtifactReadCountAboveTarget: safeArtifactReadCount > Math.max(1, Number(input.safeArtifactReadCountTarget || 4)),
+      finalReportLineCountAboveTarget: finalReportLineCount > Math.max(1, Number(input.finalReportLineCountTarget || 14)),
+      ownerQuestionCountAboveTarget: ownerQuestionCount > Math.max(0, Number(input.ownerQuestionCountTarget || 1)),
+    },
     estimatedRepeatedContextSuppressed: Math.max(0, Number(input.estimatedRepeatedContextSuppressed || 0)),
     estimatedTokenSavingsClass: TOKEN_SAVINGS_CLASSES.has(input.estimatedTokenSavingsClass) ? input.estimatedTokenSavingsClass : 'unknown',
     rawLogsRead: false,
@@ -232,6 +245,7 @@ function defaultAdaptiveMetrics(input = {}) {
 function defaultRoutingCalibration(input = {}) {
   return {
     calibrationVersion: '1',
+    typedBlocker: TYPED_BLOCKERS.has(input.typedBlocker) ? input.typedBlocker : 'none',
     defaultTier: 'low_cost_worker',
     currentTier: MODEL_TIERS.has(input.currentTier) ? input.currentTier : 'low_cost_worker',
     escalationWasRequired: input.escalationWasRequired === true,
@@ -574,10 +588,13 @@ export function validateAdaptiveMetrics(metrics = {}) {
 export function validateRoutingCalibration(calibration = {}) {
   const reasons = [];
   if (calibration.calibrationVersion !== '1') reasons.push('routing_calibration_version_invalid');
+  if (!TYPED_BLOCKERS.has(calibration.typedBlocker)) reasons.push('routing_calibration_typed_blocker_invalid');
   if (calibration.defaultTier !== 'low_cost_worker') reasons.push('routing_calibration_default_tier_invalid');
   if (!MODEL_TIERS.has(calibration.currentTier)) reasons.push('routing_calibration_current_tier_invalid');
   if (!ESCALATION_REASONS.has(calibration.escalationReason)) reasons.push('routing_calibration_escalation_reason_invalid');
   if (calibration.currentTier === 'highest_reasoning_reviewer' && calibration.escalationWasRequired !== true) reasons.push('highest_tier_requires_required_escalation');
+  if (calibration.currentTier === 'highest_reasoning_reviewer' && calibration.typedBlocker === 'none') reasons.push('highest_tier_requires_typed_blocker');
+  if (calibration.escalationWasRequired === true && calibration.escalationReason !== 'none' && calibration.typedBlocker === 'none') reasons.push('escalation_requires_typed_blocker');
   if (calibration.overEscalationDetected === true && calibration.deEscalationReady !== true) reasons.push('over_escalation_requires_deescalation_ready');
   if (calibration.escalationEvidence !== 'safe_summary_only') reasons.push('routing_calibration_requires_safe_summary_evidence');
   return reasons.length ? fail(reasons) : pass({ currentTier: calibration.currentTier, overEscalationDetected: calibration.overEscalationDetected === true });

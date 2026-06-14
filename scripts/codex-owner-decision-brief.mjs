@@ -35,10 +35,18 @@ function ownerBurdenMetrics(input = {}) {
 }
 
 function decisionCompressionMetrics(input = {}) {
+  const finalReportLineCount = Math.max(0, Number(input.finalReportLineCount || 0));
+  const safeArtifactReadCount = Math.max(0, Number(input.safeArtifactReadCount || 0));
+  const finalReportLineCountTarget = Math.max(1, Number(input.finalReportLineCountTarget || 14));
+  const safeArtifactReadCountTarget = Math.max(1, Number(input.safeArtifactReadCountTarget || 4));
   return {
     metricsVersion: '1',
-    finalReportLineCount: Math.max(0, Number(input.finalReportLineCount || 0)),
-    safeArtifactReadCount: Math.max(0, Number(input.safeArtifactReadCount || 0)),
+    finalReportLineCount,
+    safeArtifactReadCount,
+    finalReportLineCountTarget,
+    safeArtifactReadCountTarget,
+    finalReportLineCountAboveTarget: finalReportLineCount > finalReportLineCountTarget,
+    safeArtifactReadCountAboveTarget: safeArtifactReadCount > safeArtifactReadCountTarget,
     passStatusDetail: 'count_only',
     routineProgressOutput: 'silent',
     safeNextAction: input.decisionCompressionSafeNextAction || input.safeNextAction || 'one_action',

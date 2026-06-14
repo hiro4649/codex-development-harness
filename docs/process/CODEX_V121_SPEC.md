@@ -44,9 +44,13 @@ All v1.2.1 additions are internal fields in those existing artifacts.
 - model tier counts, highest-tier usage, escalation/de-escalation counts
 - repair iteration count, owner question count, safe artifact read count
 - final report line count and repeated context suppression class
+- calibration target warnings for safe artifact reads, final report lines, and
+  owner questions without adding operator-visible statuses
 
 `routingCalibration` detects over-escalation and unjustified highest-tier use.
-Highest-tier routing requires a typed, safe-summary-only escalation reason.
+Highest-tier routing requires a typed blocker plus safe-summary-only
+escalation evidence. A non-`none` escalation reason without a typed blocker is
+not valid v1.2.1 calibration.
 
 `targetScoreBaseline` prevents score-only repair churn. A target repo that has
 the accepted baseline score and same-head remote pass must not require repair
@@ -87,7 +91,8 @@ choices. Routine final reports should reduce owner burden and keep choices
 bounded to three.
 
 `decisionCompressionMetrics` records final report line count, safe artifact
-read count, count-only pass status behavior, and silent routine progress.
+read count, count-only pass status behavior, silent routine progress, and
+target-exceeded flags for routine 14-line and four-safe-artifact goals.
 
 `mergeDecisionIntegrity` records that merge requires owner decision, same-head
 remote evidence, and Final Decision compatibility. It also records no self
