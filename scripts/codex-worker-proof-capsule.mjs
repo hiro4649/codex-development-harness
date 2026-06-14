@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.0
+// CODEX_QUALITY_HARNESS_FILE v1.2.1
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -39,6 +39,17 @@ const ESCALATION_REASONS = new Set([
   'delegated_continuation_uncertainty',
   'evidence_contradiction',
 ]);
+const ROOT_CAUSE_SIGNATURES = new Set([
+  'artifact_finalization_order',
+  'permission_boundary_gap',
+  'local_remote_shape_mismatch',
+  'profile_mapping_gap',
+  'token_budget_overrun',
+  'claim_evidence_drift',
+  'unknown',
+]);
+const ROOT_CAUSE_STATUSES = new Set(['known', 'unknown', 'disputed']);
+const BOUNDARY_CHANGE_CLASSES = new Set(['metadata_only', 'harness_change', 'workflow_change', 'product_code_change', 'runtime_change', 'restricted_asset_high_risk', 'unknown']);
 
 function list(values = [], limit = 50) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
@@ -61,6 +72,82 @@ function highTierRepairPlan(input = {}) {
     validationCommand: input.validationCommand || 'not_required_with_reason',
     stopCondition: input.stopCondition || 'owner_only_boundary_or_repeated_blocker',
     deEscalationTarget: tier(input.deEscalationTarget, 'low_cost_worker'),
+  };
+}
+
+function defaultRootCauseSignature(input = {}) {
+  return {
+    status: ROOT_CAUSE_STATUSES.has(input.rootCauseStatus) ? input.rootCauseStatus : 'unknown',
+    signature: ROOT_CAUSE_SIGNATURES.has(input.rootCauseSignature) ? input.rootCauseSignature : 'unknown',
+    sameRootCauseRepeatCount: Math.max(0, Number(input.sameRootCauseRepeatCount || 0)),
+    samePrimaryClassRepeatCount: Math.max(0, Number(input.samePrimaryClassRepeatCount || 0)),
+    rootCauseChanged: input.rootCauseChanged === true,
+    newEvidenceAppeared: input.newEvidenceAppeared === true,
+    loopSaturation: input.loopSaturation === true,
+    safeNextAction: input.rootCauseSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultRepairLoopMetrics(input = {}) {
+  return {
+    metricsVersion: '1',
+    repairIterationCount: Math.max(0, Number(input.repairIterationCount || input.repairIterations || 0)),
+    sameRootCauseRepeatCount: Math.max(0, Number(input.sameRootCauseRepeatCount || 0)),
+    samePrimaryClassRepeatCount: Math.max(0, Number(input.samePrimaryClassRepeatCount || 0)),
+    highTierPlanAlreadyProduced: input.highTierPlanAlreadyProduced === true,
+    validationStillFails: input.validationStillFails === true,
+    repairLoopSaturation: input.repairLoopSaturation === true,
+    safeNextAction: input.repairLoopSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultHighTierPlanOutcome(input = {}) {
+  return {
+    status: input.highTierPlanOutcomeStatus || (input.highestTierUsed === true ? 'produced' : 'not_used'),
+    reducedRepairLoop: input.reducedRepairLoop === true,
+    returnedToLowCostWorker: input.returnedToLowCostWorker !== false,
+    ownerAuthorityCreated: input.ownerAuthorityCreated === true,
+    safeNextAction: input.highTierOutcomeSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultReviewerCalibration(input = {}) {
+  return {
+    calibrationVersion: '1',
+    reviewerCount: Math.min(Number(input.reviewerCount || 0), 3),
+    reviewerIndependenceSatisfied: input.independentReviewSatisfied === true,
+    overReviewDetected: input.overReviewDetected === true,
+    findingClassified: input.findingClassified !== false,
+    safeNextAction: input.reviewerCalibrationSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultBoundaryDiffClassification(input = {}) {
+  const changeClass = BOUNDARY_CHANGE_CLASSES.has(input.changeClass) ? input.changeClass : 'metadata_only';
+  return {
+    classificationVersion: '1',
+    changeClass,
+    productCodeChanged: input.productCodeChanged === true || changeClass === 'product_code_change',
+    packageChanged: input.packageChanged === true,
+    lockfileChanged: input.lockfileChanged === true,
+    runtimeChanged: input.runtimeChanged === true || changeClass === 'runtime_change',
+    workflowChanged: input.workflowChanged === true || changeClass === 'workflow_change',
+    restrictedAssetTouched: input.restrictedAssetTouched === true || changeClass === 'restricted_asset_high_risk',
+    safeNextAction: input.boundaryDiffSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultClaimLint(input = {}) {
+  return {
+    lintVersion: '1',
+    unsafeClaimDetected: input.unsafeClaimDetected === true,
+    runtimeReadinessClaimed: input.runtimeReadinessClaimed === true,
+    productionReadinessClaimed: input.productionReadinessClaimed === true,
+    legalComplianceClaimed: input.legalComplianceClaimed === true,
+    youtubePolicyClaimed: input.youtubePolicyClaimed === true,
+    deployClaimed: input.deployClaimed === true,
+    mergeReadyClaimed: input.mergeReadyClaimed === true,
+    safeNextAction: input.claimLintSafeNextAction || input.safeNextAction || 'one_action',
   };
 }
 
@@ -146,6 +233,12 @@ export function buildWorkerProofCapsule(input = {}) {
     escalationReason: ESCALATION_REASONS.has(input.escalationReason) ? input.escalationReason : 'none',
     typedBlocker: typedBlocker(input.typedBlocker),
     repairPlanFromHighTier: input.highTierRepairPlan ? highTierRepairPlan(input.highTierRepairPlan) : highTierRepairPlan(input),
+    rootCauseSignature: defaultRootCauseSignature(input.rootCauseSignature || input),
+    repairLoopMetrics: defaultRepairLoopMetrics(input.repairLoopMetrics || input),
+    highTierPlanOutcome: defaultHighTierPlanOutcome(input.highTierPlanOutcome || input),
+    reviewerCalibration: defaultReviewerCalibration(input.reviewerCalibration || input),
+    boundaryDiffClassification: defaultBoundaryDiffClassification(input.boundaryDiffClassification || input),
+    claimLint: defaultClaimLint(input.claimLint || input),
     deEscalationReady: input.deEscalationReady === true,
     reviewConsensus: input.reviewConsensus || 'not_required_with_reason',
     sameFailureRepeated: input.sameFailureRepeated === true,
@@ -202,6 +295,24 @@ export function validateWorkerProofCapsule(capsule = {}) {
   if (capsule.reviewConsensus === 'failed') reasons.push('review_pool_consensus_failed');
   const plan = capsule.repairPlanFromHighTier || {};
   if (modelTierTrace.highestTierUsed === true && (!plan.rootCauseClass || !Array.isArray(plan.exactRepairSteps) || plan.exactRepairSteps.length > 5)) reasons.push('high_tier_repair_plan_required');
+  const rootCause = capsule.rootCauseSignature || {};
+  const loop = capsule.repairLoopMetrics || {};
+  const highTierOutcome = capsule.highTierPlanOutcome || {};
+  const boundary = capsule.boundaryDiffClassification || {};
+  const claimLint = capsule.claimLint || {};
+  if (!ROOT_CAUSE_STATUSES.has(rootCause.status)) reasons.push('root_cause_status_invalid');
+  if (!ROOT_CAUSE_SIGNATURES.has(rootCause.signature)) reasons.push('root_cause_signature_invalid');
+  if (Number(rootCause.sameRootCauseRepeatCount || 0) >= 2 && rootCause.newEvidenceAppeared !== true) reasons.push('same_root_cause_repeat_requires_stop_or_new_evidence');
+  if (Number(rootCause.samePrimaryClassRepeatCount || 0) >= 2 && rootCause.rootCauseChanged !== true && rootCause.newEvidenceAppeared !== true) reasons.push('same_primary_class_repeat_requires_root_cause_change_or_stop');
+  if (loop.metricsVersion !== '1') reasons.push('repair_loop_metrics_version_invalid');
+  if (loop.highTierPlanAlreadyProduced === true && loop.validationStillFails === true && Number(loop.sameRootCauseRepeatCount || 0) >= 2 && loop.repairLoopSaturation !== true) reasons.push('repair_loop_saturation_must_be_recorded');
+  if (highTierOutcome.ownerAuthorityCreated === true) reasons.push('high_tier_plan_cannot_create_owner_authority');
+  if (highTierOutcome.returnedToLowCostWorker !== true && highTierOutcome.status !== 'not_used') reasons.push('high_tier_plan_must_return_to_worker_after_plan');
+  if (!BOUNDARY_CHANGE_CLASSES.has(boundary.changeClass)) reasons.push('boundary_diff_class_invalid');
+  if (boundary.productCodeChanged === true || boundary.packageChanged === true || boundary.lockfileChanged === true || boundary.runtimeChanged === true || boundary.workflowChanged === true || boundary.restrictedAssetTouched === true) reasons.push('boundary_diff_outside_metadata_or_harness_scope');
+  for (const key of ['unsafeClaimDetected', 'runtimeReadinessClaimed', 'productionReadinessClaimed', 'legalComplianceClaimed', 'youtubePolicyClaimed', 'deployClaimed', 'mergeReadyClaimed']) {
+    if (claimLint[key] === true) reasons.push(`claim_lint_forbidden_${key}`);
+  }
   if (capsule.rawLogsRead === true) reasons.push('raw_logs_forbidden_in_worker_proof');
   return reasons.length ? fail(reasons) : pass({ changedFilesListedCount: capsule.changedFilesListedCount || 0 });
 }

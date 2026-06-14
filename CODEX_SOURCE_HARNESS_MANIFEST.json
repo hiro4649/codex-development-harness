@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.1.8",
-  "harnessVersion": "1.1.8",
-  "sourceHarnessVersion": "1.1.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.1",
+  "harnessVersion": "1.2.1",
+  "sourceHarnessVersion": "1.2.1",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.1.8",
+  "schemaVersion": "1.2.1",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -896,13 +896,21 @@
     "codex-render-pr-body.mjs",
     "codex-harness-doctor.mjs",
     "codex-v111-token-hard-cap.mjs",
-    "codex-v111-self-test.mjs"
+    "codex-v111-self-test.mjs",
+    "codex-orchestration-capsule.mjs",
+    "codex-worker-proof-capsule.mjs",
+    "codex-owner-decision-brief.mjs",
+    "codex-v120-self-test.mjs",
+    "codex-v121-self-test.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.1.0",
-  "activeSelfTestSuite": "v111",
-  "activeSelfTestStatusKey": "v111SelfTestStatus",
+  "activeHarnessVersion": "1.2.1",
+  "activeSelfTestSuite": "v121",
+  "activeSelfTestStatusKey": "v121SelfTestStatus",
   "legacySelfTestSuites": {
+    "v120": "blocking_compatibility",
+    "v119": "blocking_compatibility",
+    "v118": "blocking_compatibility",
     "v107": "blocking_compatibility",
     "v106": "advisory",
     "v105": "advisory",
