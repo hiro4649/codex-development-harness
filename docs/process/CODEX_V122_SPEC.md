@@ -143,6 +143,12 @@ harness_source_body: mdFilesReadMax 6, selectedSkillsMax 3
 compatibility_repair: mdFilesReadMax 6, selectedSkillsMax 3
 ```
 
+These budgets are upper bounds owned by the task profile. Callers must not
+raise `selectedSkillsMax` or `mdFilesReadMax` through input fields. A budget
+override attempt is a v1.2.2 validation failure. A task that needs more context
+must change to the correct task profile or stop with a typed blocker; it must
+not inflate the current profile budget.
+
 A third Skill is allowed only when the task profile permits it, typed
 justification is present, token budget remains pass, and `safeNextAction`
 remains `one_action`.

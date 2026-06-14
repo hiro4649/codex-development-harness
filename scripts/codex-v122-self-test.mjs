@@ -45,9 +45,22 @@ const routingCases = [
   ['target_rollout_md_read_budget_is_four', () => buildOrchestrationCapsule({ taskProfile: 'target_rollout' }).skillContextRouting.mdFilesReadMax === 4],
   ['harness_source_body_md_read_budget_is_six', () => buildOrchestrationCapsule({ taskProfile: 'harness_source_body' }).skillContextRouting.mdFilesReadMax === 6],
   ['selected_skills_default_max_two', () => buildOrchestrationCapsule().skillContextRouting.selectedSkillsMax === 2],
+  ['selected_skills_max_cannot_override_task_profile_budget', () => failed(validateSkillContextRouting({
+    ...buildOrchestrationCapsule().skillContextRouting,
+    selectedSkillsMax: 99,
+  }))],
+  ['md_files_read_max_cannot_override_task_profile_budget', () => failed(validateSkillContextRouting({
+    ...buildOrchestrationCapsule().skillContextRouting,
+    mdFilesReadMax: 99,
+  }))],
   ['third_skill_requires_typed_justification', () => failed(validateSkillContextRouting(buildOrchestrationCapsule({
     selectedSkills: ['a', 'b', 'c'],
     selectedSkillsMax: 2,
+  }).skillContextRouting))],
+  ['third_skill_does_not_raise_global_skill_budget', () => failed(validateSkillContextRouting(buildOrchestrationCapsule({
+    selectedSkills: ['a', 'b', 'c'],
+    typedJustification: 'routine_attempted_third_skill',
+    thirdSkillAllowed: true,
   }).skillContextRouting))],
   ['third_skill_allowed_with_typed_justification_and_profile_budget', () => validateSkillContextRouting(buildOrchestrationCapsule({
     taskProfile: 'harness_source_body',

@@ -344,15 +344,28 @@ function defaultSkillContextRouting(input = {}) {
   const budget = READ_BUDGET_BY_TASK_PROFILE[taskProfile];
   const selectedSkills = truncateList(input.selectedSkills || [], 5);
   const mdFilesRead = truncateList(input.mdFilesRead || [], 10);
-  const selectedSkillsMax = Number(input.selectedSkillsMax || budget.selectedSkillsMax);
-  const mdFilesReadMax = Number(input.mdFilesReadMax || budget.mdFilesReadMax);
+  const selectedSkillsMax = budget.selectedSkillsMax;
+  const mdFilesReadMax = budget.mdFilesReadMax;
+  const requestedSelectedSkillsMax = Number(input.selectedSkillsMax || selectedSkillsMax);
+  const requestedMdFilesReadMax = Number(input.mdFilesReadMax || mdFilesReadMax);
   const blockerClasses = truncateList(input.blockerClasses || [], 10);
   const selectedSkillsOverBudget = selectedSkills.length > selectedSkillsMax;
   const mdFilesReadOverBudget = mdFilesRead.length > mdFilesReadMax;
   const typedJustificationPresent = Boolean(input.typedJustification);
-  const smallOverreadWithJustification = (selectedSkillsOverBudget || mdFilesReadOverBudget) && typedJustificationPresent && input.readBudgetStatus !== 'blocked';
+  const safeNextAction = input.skillContextSafeNextAction || input.safeNextAction || 'one_action';
+  const tokenBudgetStatus = input.tokenBudgetStatus || 'pass';
+  const budgetOverrideAttempted = requestedSelectedSkillsMax > selectedSkillsMax || requestedMdFilesReadMax > mdFilesReadMax;
+  const thirdSkillPermitted = input.thirdSkillAllowed === true && typedJustificationPresent && selectedSkillsMax >= 3 && tokenBudgetStatus === 'pass' && safeNextAction === 'one_action';
+  const thirdSkillMissingGuard = selectedSkills.length >= 3 && !thirdSkillPermitted;
+  const smallOverreadWithJustification = mdFilesReadOverBudget && typedJustificationPresent && input.readBudgetStatus !== 'blocked';
   const hardBlocked = blockerClasses.some((item) => HARD_CONTEXT_BLOCKERS.has(item));
-  const inferredStatus = hardBlocked ? 'blocked' : smallOverreadWithJustification ? 'warn' : selectedSkillsOverBudget || mdFilesReadOverBudget ? 'blocked' : 'pass';
+  const inferredStatus = hardBlocked || budgetOverrideAttempted || selectedSkillsOverBudget || thirdSkillMissingGuard
+    ? 'blocked'
+    : smallOverreadWithJustification
+      ? 'warn'
+      : mdFilesReadOverBudget
+        ? 'blocked'
+        : 'pass';
   return {
     schemaVersion: '1.2.2',
     taskProfile,
@@ -376,9 +389,13 @@ function defaultSkillContextRouting(input = {}) {
     },
     skillTokenBudget: Math.max(1, Number(input.skillTokenBudget || 1200)),
     mdTokenBudget: Math.max(1, Number(input.mdTokenBudget || 2000)),
+    tokenBudgetStatus,
     selectedSkillsMax,
     mdFilesReadMax,
-    thirdSkillAllowed: input.thirdSkillAllowed === true && typedJustificationPresent,
+    requestedSelectedSkillsMax,
+    requestedMdFilesReadMax,
+    budgetOverrideAttempted,
+    thirdSkillAllowed: thirdSkillPermitted,
     typedJustification: input.typedJustification || null,
     profileIdOnlyMode: input.profileIdOnlyMode !== false,
     repeatedForbiddenTextSuppressed: input.repeatedForbiddenTextSuppressed !== false,
@@ -723,12 +740,24 @@ export function validateSkillContextRouting(routing = {}) {
   const mdFilesRead = Array.isArray(routing.mdFilesRead) ? routing.mdFilesRead : [];
   const selectedSkillsMax = Number(routing.selectedSkillsMax || budget.selectedSkillsMax);
   const mdFilesReadMax = Number(routing.mdFilesReadMax || budget.mdFilesReadMax);
+  const effectiveSelectedSkillsMax = Math.min(selectedSkillsMax, budget.selectedSkillsMax);
+  const effectiveMdFilesReadMax = Math.min(mdFilesReadMax, budget.mdFilesReadMax);
   const authority = routing.activeAuthorityTuple || {};
   const blockers = new Set(routing.blockerClasses || []);
   if (routing.schemaVersion !== '1.2.2') reasons.push('skill_context_routing_schema_invalid');
   if (!TASK_PROFILES.has(routing.taskProfile)) reasons.push('task_profile_invalid');
-  if (selectedSkills.length > selectedSkillsMax && !(routing.thirdSkillAllowed === true && routing.typedJustification)) reasons.push('selected_skills_over_budget_without_typed_justification');
-  if (mdFilesRead.length > mdFilesReadMax && !routing.typedJustification) reasons.push('md_files_read_over_budget_without_typed_justification');
+  if (selectedSkillsMax > budget.selectedSkillsMax) reasons.push('selected_skills_max_cannot_override_task_profile_budget');
+  if (mdFilesReadMax > budget.mdFilesReadMax) reasons.push('md_files_read_max_cannot_override_task_profile_budget');
+  if (selectedSkills.length > effectiveSelectedSkillsMax) reasons.push('selected_skills_over_task_profile_budget');
+  if (selectedSkills.length >= 3) {
+    if (budget.selectedSkillsMax < 3) reasons.push('third_skill_forbidden_by_task_profile');
+    if (routing.thirdSkillAllowed !== true) reasons.push('third_skill_requires_explicit_allowance');
+    if (!routing.typedJustification) reasons.push('third_skill_requires_typed_justification');
+    if ((routing.tokenBudgetStatus || 'pass') !== 'pass') reasons.push('third_skill_requires_token_budget_pass');
+    if (routing.safeNextAction !== 'one_action') reasons.push('third_skill_requires_one_safe_next_action');
+  }
+  if (mdFilesRead.length > effectiveMdFilesReadMax && !routing.typedJustification) reasons.push('md_files_read_over_budget_without_typed_justification');
+  if (mdFilesRead.length > effectiveMdFilesReadMax && routing.typedJustification && routing.readBudgetStatus === 'pass') reasons.push('md_overread_requires_warn_or_blocked_status');
   if (routing.profileIdOnlyMode !== true) reasons.push('profile_id_only_mode_required');
   if (routing.repeatedForbiddenTextSuppressed !== true) reasons.push('repeated_forbidden_text_must_be_suppressed');
   if (routing.skillMisfireDetected === true) reasons.push('skill_misfire_detected');
