@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.2
+// CODEX_QUALITY_HARNESS_FILE v1.2.3
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,7 @@ function bounded(values = [], limit = 8) {
 const DELEGATED_CONTINUATION_ACTIONS = new Set(['commit', 'push', 'createPr', 'rerunCi', 'fixCi', 'merge']);
 const NON_DELEGABLE_ACTIONS = new Set(['release', 'publish', 'secretAccess', 'walletRpcDeployAccess', 'deploy', 'fundedTransaction', 'governanceTransaction', 'bscScanVerification']);
 const RECOMMENDATIONS = new Set(['merge', 'repair', 'preserve', 'stop', 'owner_merge_decision_only_after_same_head_remote_pass']);
+const CLOSURE_REASONS = new Set(['phase_create_pr_only', 'remote_gate_missing', 'owner_merge_decision_missing', 'delegated_scope_missing', 'decision_closure_inconsistent', 'merge_allowed', 'preserve_only', 'none']);
 
 function escalationSummary(input = {}) {
   return {
@@ -66,13 +67,27 @@ function mergeDecisionIntegrity(input = {}) {
   };
 }
 
+function finalDecisionClosureSummary(input = {}) {
+  return {
+    summaryVersion: '1.2.3',
+    phase: input.phase || 'create_pr_only',
+    terminalAction: input.terminalAction || 'create_pr_only',
+    mergeAllowed: input.mergeAllowed === true,
+    closureStatus: input.closureStatus || 'pass',
+    singleClosureReason: CLOSURE_REASONS.has(input.singleClosureReason) ? input.singleClosureReason : 'phase_create_pr_only',
+    ownerDecisionCreatesAuthority: false,
+    reviewerCreatesAuthority: false,
+    safeNextAction: input.finalDecisionClosureSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
 export function buildOwnerDecisionBrief(input = {}) {
   return {
     ownerDecisionBriefVersion: '1',
     decisionReady: input.decisionReady === true,
     itemUrl: input.itemUrl || null,
-    whatChanges: input.whatChanges || 'source_harness_v122_context_skill_routing_body_only',
-    whoBenefits: input.whoBenefits || 'maintainer_and_worker_context_reduction',
+    whatChanges: input.whatChanges || 'source_harness_v123_observed_skill_evidence_decision_closure_body_only',
+    whoBenefits: input.whoBenefits || 'maintainer_worker_context_reduction_and_decision_closure',
     whyOwnerDecisionNeededNow: input.whyOwnerDecisionNeededNow || 'owner_merge_instruction_not_provided',
     proofCompleted: bounded(input.proofCompleted, 8),
     proofMissing: bounded(input.proofMissing || ['same_head_remote_quality_gate'], 8),
@@ -84,6 +99,7 @@ export function buildOwnerDecisionBrief(input = {}) {
     ownerBurdenMetrics: ownerBurdenMetrics(input.ownerBurdenMetrics || input),
     decisionCompressionMetrics: decisionCompressionMetrics(input.decisionCompressionMetrics || input),
     mergeDecisionIntegrity: mergeDecisionIntegrity(input.mergeDecisionIntegrity || input),
+    finalDecisionClosureSummary: finalDecisionClosureSummary(input.finalDecisionClosureSummary || input),
     ownerOnlyDecision: true,
     nextImplementableSlice: {
       available: input.nextImplementableSliceAvailable === true,
@@ -119,6 +135,7 @@ export function validateOwnerDecisionBrief(brief = {}) {
   const burden = brief.ownerBurdenMetrics || {};
   const compression = brief.decisionCompressionMetrics || {};
   const integrity = brief.mergeDecisionIntegrity || {};
+  const closure = brief.finalDecisionClosureSummary || {};
   if (burden.metricsVersion !== '1') reasons.push('owner_burden_metrics_version_invalid');
   if (Number(burden.ownerQuestionCount || 0) > 3) reasons.push('owner_question_count_should_stay_bounded');
   if (Number(burden.remainingOwnerOnlyChoicesCount || 0) > 3) reasons.push('owner_only_choice_count_max_three');
@@ -129,6 +146,10 @@ export function validateOwnerDecisionBrief(brief = {}) {
   if (integrity.integrityVersion !== '1') reasons.push('merge_decision_integrity_version_invalid');
   if (integrity.finalDecisionRequired !== true || integrity.ownerDecisionRequired !== true || integrity.sameHeadRemoteRequired !== true) reasons.push('merge_decision_requires_final_owner_same_head_remote');
   if (integrity.githubApprovalReviewSubmitted === true || integrity.selfApproval === true) reasons.push('owner_brief_cannot_self_approve_or_submit_approval_review');
+  if (closure.summaryVersion !== '1.2.3') reasons.push('final_decision_closure_summary_version_invalid');
+  if (!CLOSURE_REASONS.has(closure.singleClosureReason)) reasons.push('final_decision_closure_summary_reason_invalid');
+  if (closure.closureStatus === 'inconsistent') reasons.push('final_decision_closure_summary_inconsistent');
+  if (closure.ownerDecisionCreatesAuthority === true || closure.reviewerCreatesAuthority === true) reasons.push('final_decision_closure_summary_cannot_create_authority');
   const delegated = brief.delegatedContinuation || {};
   if (delegated.enabled === true) {
     if (delegated.autoContinueAllowed === true && delegated.technicalAcceptance !== true) reasons.push('delegated_auto_continue_requires_technical_acceptance');

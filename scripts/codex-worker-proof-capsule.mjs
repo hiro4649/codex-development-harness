@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.1
+// CODEX_QUALITY_HARNESS_FILE v1.2.3
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -50,6 +50,10 @@ const ROOT_CAUSE_SIGNATURES = new Set([
 ]);
 const ROOT_CAUSE_STATUSES = new Set(['known', 'unknown', 'disputed']);
 const BOUNDARY_CHANGE_CLASSES = new Set(['metadata_only', 'harness_change', 'workflow_change', 'product_code_change', 'runtime_change', 'restricted_asset_high_risk', 'unknown']);
+const REVIEWER_ROLES = new Set(['none', 'scope_security', 'test_correctness', 'false_positive', 'adversarial', 'verifier']);
+const INDEPENDENCE_STATUSES = new Set(['pass', 'warn', 'blocked']);
+const REVIEW_LOOP_STATUSES = new Set(['pass', 'warn', 'blocked']);
+const REVIEW_RISK_PROFILES = new Set(['docs_only', 'metadata_light', 'harness_source', 'product', 'runtime', 'security', 'restricted_asset']);
 
 function list(values = [], limit = 50) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
@@ -151,6 +155,61 @@ function defaultClaimLint(input = {}) {
   };
 }
 
+function defaultReviewerIndependenceProof(input = {}) {
+  const sameWorkerReview = input.sameWorkerReview === true;
+  const reviewerSawRawLogs = input.reviewerSawRawLogs === true;
+  const reviewerCanApproveOwnerDecision = input.reviewerCanApproveOwnerDecision === true;
+  const reviewerCanSubmitGitHubApprovalReview = input.reviewerCanSubmitGitHubApprovalReview === true;
+  const reviewerCanClaimReadiness = input.reviewerCanClaimReadiness === true;
+  const blocked = sameWorkerReview && input.treatedAsIndependent === true
+    || reviewerSawRawLogs
+    || reviewerCanApproveOwnerDecision
+    || reviewerCanSubmitGitHubApprovalReview
+    || reviewerCanClaimReadiness;
+  const warn = !blocked && input.sameScratchpadAccess !== false && input.independentReviewUsed === true;
+  return {
+    proofVersion: '1.2.3',
+    independentReviewUsed: input.independentReviewUsed === true,
+    sameWorkerReview,
+    treatedAsIndependent: input.treatedAsIndependent === true,
+    sameScratchpadAccess: input.sameScratchpadAccess === true ? true : (input.sameScratchpadAccess === false ? false : 'unknown'),
+    boundedContextPacketUsed: input.boundedContextPacketUsed !== false,
+    reviewerSawFullConversation: input.reviewerSawFullConversation === true,
+    reviewerSawRawLogs,
+    reviewerRole: REVIEWER_ROLES.has(input.reviewerRole) ? input.reviewerRole : 'none',
+    reviewerFindingHasPrimaryClass: input.reviewerFindingHasPrimaryClass !== false,
+    reviewerCanApproveOwnerDecision,
+    reviewerCanSubmitGitHubApprovalReview,
+    reviewerCanClaimReadiness,
+    independenceStatus: blocked ? 'blocked' : (warn ? 'warn' : 'pass'),
+  };
+}
+
+function defaultReviewLoopVerification(input = {}) {
+  const riskProfile = REVIEW_RISK_PROFILES.has(input.reviewRiskProfile) ? input.reviewRiskProfile : 'harness_source';
+  const reviewerCount = Math.max(0, Number(input.reviewerCount || 0));
+  const negativeFindingsCount = Math.max(0, Number(input.negativeFindingsCount || 0));
+  const negativeRequired = reviewerCount > 0 && ['harness_source', 'product', 'runtime', 'security', 'restricted_asset'].includes(riskProfile);
+  const blocked = input.sameRootCauseRepeated === true || input.sameFindingRepeated === true || (negativeRequired && negativeFindingsCount === 0);
+  const warn = !blocked && reviewerCount > 0 && riskProfile === 'metadata_light' && negativeFindingsCount === 0;
+  return {
+    verificationVersion: '1.2.3',
+    reviewRiskProfile: riskProfile,
+    loopCount: Math.max(0, Number(input.loopCount || 0)),
+    reviewerCount,
+    findingsCount: Math.max(0, Number(input.findingsCount || 0)),
+    acceptedFindingsCount: Math.max(0, Number(input.acceptedFindingsCount || 0)),
+    rejectedFindingsCount: Math.max(0, Number(input.rejectedFindingsCount || 0)),
+    negativeFindingsCount,
+    reviewerDisagreement: input.reviewerDisagreement === true,
+    sameRootCauseRepeated: input.sameRootCauseRepeated === true,
+    sameFindingRepeated: input.sameFindingRepeated === true,
+    adversarialReviewUsed: input.adversarialReviewUsed === true,
+    loopSaturation: input.loopSaturation === true || blocked,
+    reviewLoopStatus: blocked ? 'blocked' : (warn ? 'warn' : 'pass'),
+  };
+}
+
 export function buildWorkerProofCapsule(input = {}) {
   const changedFiles = list(input.changedFiles, 50);
   const findings = list(input.specialistFindings || input.findings, 8);
@@ -239,6 +298,8 @@ export function buildWorkerProofCapsule(input = {}) {
     reviewerCalibration: defaultReviewerCalibration(input.reviewerCalibration || input),
     boundaryDiffClassification: defaultBoundaryDiffClassification(input.boundaryDiffClassification || input),
     claimLint: defaultClaimLint(input.claimLint || input),
+    reviewerIndependenceProof: defaultReviewerIndependenceProof(input.reviewerIndependenceProof || input),
+    reviewLoopVerification: defaultReviewLoopVerification(input.reviewLoopVerification || input),
     deEscalationReady: input.deEscalationReady === true,
     reviewConsensus: input.reviewConsensus || 'not_required_with_reason',
     sameFailureRepeated: input.sameFailureRepeated === true,
@@ -300,6 +361,8 @@ export function validateWorkerProofCapsule(capsule = {}) {
   const highTierOutcome = capsule.highTierPlanOutcome || {};
   const boundary = capsule.boundaryDiffClassification || {};
   const claimLint = capsule.claimLint || {};
+  const reviewerIndependence = capsule.reviewerIndependenceProof || {};
+  const reviewLoop = capsule.reviewLoopVerification || {};
   if (!ROOT_CAUSE_STATUSES.has(rootCause.status)) reasons.push('root_cause_status_invalid');
   if (!ROOT_CAUSE_SIGNATURES.has(rootCause.signature)) reasons.push('root_cause_signature_invalid');
   if (Number(rootCause.sameRootCauseRepeatCount || 0) >= 2 && rootCause.newEvidenceAppeared !== true) reasons.push('same_root_cause_repeat_requires_stop_or_new_evidence');
@@ -313,6 +376,25 @@ export function validateWorkerProofCapsule(capsule = {}) {
   for (const key of ['unsafeClaimDetected', 'runtimeReadinessClaimed', 'productionReadinessClaimed', 'legalComplianceClaimed', 'youtubePolicyClaimed', 'deployClaimed', 'mergeReadyClaimed']) {
     if (claimLint[key] === true) reasons.push(`claim_lint_forbidden_${key}`);
   }
+  if (reviewerIndependence.proofVersion !== '1.2.3') reasons.push('reviewer_independence_proof_version_invalid');
+  if (!INDEPENDENCE_STATUSES.has(reviewerIndependence.independenceStatus)) reasons.push('reviewer_independence_status_invalid');
+  if (!REVIEWER_ROLES.has(reviewerIndependence.reviewerRole)) reasons.push('reviewer_role_invalid');
+  if (reviewerIndependence.sameWorkerReview === true && reviewerIndependence.treatedAsIndependent === true) reasons.push('same_worker_review_cannot_count_as_independent');
+  if (reviewerIndependence.reviewerSawRawLogs === true) reasons.push('reviewer_raw_logs_forbidden');
+  if (reviewerIndependence.reviewerCanApproveOwnerDecision === true) reasons.push('reviewer_cannot_approve_owner_decision');
+  if (reviewerIndependence.reviewerCanSubmitGitHubApprovalReview === true) reasons.push('reviewer_cannot_submit_github_approval_review');
+  if (reviewerIndependence.reviewerCanClaimReadiness === true) reasons.push('reviewer_cannot_claim_readiness');
+  if (reviewerIndependence.independentReviewUsed === true && reviewerIndependence.reviewerFindingHasPrimaryClass !== true) reasons.push('reviewer_finding_requires_primary_class');
+  if (reviewerIndependence.independenceStatus === 'blocked') reasons.push('reviewer_independence_blocked');
+  if (reviewLoop.verificationVersion !== '1.2.3') reasons.push('review_loop_verification_version_invalid');
+  if (!REVIEW_LOOP_STATUSES.has(reviewLoop.reviewLoopStatus)) reasons.push('review_loop_status_invalid');
+  if (!REVIEW_RISK_PROFILES.has(reviewLoop.reviewRiskProfile)) reasons.push('review_risk_profile_invalid');
+  if (reviewLoop.sameRootCauseRepeated === true) reasons.push('review_loop_same_root_cause_repeated');
+  if (reviewLoop.sameFindingRepeated === true) reasons.push('review_loop_same_finding_repeated');
+  if (Number(reviewLoop.reviewerCount || 0) > 0
+    && ['harness_source', 'product', 'runtime', 'security', 'restricted_asset'].includes(reviewLoop.reviewRiskProfile)
+    && Number(reviewLoop.negativeFindingsCount || 0) === 0) reasons.push('review_loop_negative_finding_required_by_risk');
+  if (reviewLoop.reviewLoopStatus === 'blocked') reasons.push('review_loop_blocked');
   if (capsule.rawLogsRead === true) reasons.push('raw_logs_forbidden_in_worker_proof');
   return reasons.length ? fail(reasons) : pass({ changedFilesListedCount: capsule.changedFilesListedCount || 0 });
 }
