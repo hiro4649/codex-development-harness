@@ -1,18 +1,19 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.1",
-  "schemaVersion": "1.2.1",
-  "sourceHarnessVersion": "1.2.1",
-  "harnessVersion": "1.2.1",
-  "activeHarnessVersion": "1.2.1",
-  "targetHarnessVersion": "1.2.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.2",
+  "schemaVersion": "1.2.2",
+  "sourceHarnessVersion": "1.2.2",
+  "harnessVersion": "1.2.2",
+  "activeHarnessVersion": "1.2.2",
+  "targetHarnessVersion": "1.2.2",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v117_to_v118",
-  "activeSelfTestSuite": "v121",
-  "activeSelfTestStatusKey": "v121SelfTestStatus",
+  "upgradePath": "direct_v121_to_v122",
+  "activeSelfTestSuite": "v122",
+  "activeSelfTestStatusKey": "v122SelfTestStatus",
   "legacySelfTests": {
-    "v121": "blocking_current",
+    "v122": "blocking_current",
+    "v121": "blocking_compatibility",
     "v120": "blocking_compatibility",
     "v119": "blocking_compatibility",
     "v118": "blocking_compatibility",
@@ -29,7 +30,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Adaptive Routing Metrics and Evidence Calibration Guard",
+  "theme": "Context-Aware Skill Routing and Read Budget Discipline",
   "requiredStatuses": [
     "orchestrationModeStatus",
     "permissionGrantStatus",
@@ -437,5 +438,12 @@
     "precisionBenchmarkParityV2Status": [
       "precisionBenchmarkParityStatus"
     ]
+  },
+  "contextRouting": {
+    "version": "1.2.2",
+    "field": "orchestrationCapsule.skillContextRouting",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "subtitle": "Read Less, Preserve Authority"
   }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.1
+// CODEX_QUALITY_HARNESS_FILE v1.2.2
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -71,7 +71,7 @@ export function buildOwnerDecisionBrief(input = {}) {
     ownerDecisionBriefVersion: '1',
     decisionReady: input.decisionReady === true,
     itemUrl: input.itemUrl || null,
-    whatChanges: input.whatChanges || 'source_harness_v121_calibration_guard_body_only',
+    whatChanges: input.whatChanges || 'source_harness_v122_context_skill_routing_body_only',
     whoBenefits: input.whoBenefits || 'maintainer_and_worker_context_reduction',
     whyOwnerDecisionNeededNow: input.whyOwnerDecisionNeededNow || 'owner_merge_instruction_not_provided',
     proofCompleted: bounded(input.proofCompleted, 8),

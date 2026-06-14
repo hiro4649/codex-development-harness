@@ -1,18 +1,18 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.2.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.2.2 -->
 # Codex Development Harness
 
-Version: v1.2.1
-Name: Adaptive Routing Metrics and Evidence Calibration Guard
+Version: v1.2.2
+Name: Context-Aware Skill Routing and Read Budget Discipline
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. The current authority is `AGENTS.md`, `docs/process/CODEX_V121_SPEC.md`, and the active manifest files under `docs/process/`.
+This repository contains reusable Codex quality gates, policies, and safe evidence tooling. The current authority is `AGENTS.md`, `docs/process/CODEX_V122_SPEC.md`, and the active manifest files under `docs/process/`.
 
-v1.2.1 keeps v1.1.8 Final Decision as final authority, v1.1.9 as the
-orchestration/proof layer, and v1.2.0 adaptive routing/review pool behavior.
-It adds internal calibration fields for evidence freshness, routing metrics,
-target score baselines, root-cause loop guards, boundary diff classification,
-claim lint, owner burden, and merge decision integrity inside the existing
-three v1.1.9 P0 artifacts only. It does not add target rollout, new P0
-artifacts, new top-level operator statuses, scheduler behavior,
+v1.2.2 keeps v1.1.8 Final Decision as final authority, v1.1.9 as the
+orchestration/proof layer, v1.2.0 adaptive routing/review pool behavior, and
+v1.2.1 calibration guard behavior. It adds `skillContextRouting` inside the
+existing orchestration capsule only, so Skill and markdown reads follow the
+same bounded routing philosophy as model tiers. Its rule is: read less,
+preserve authority. It does not add target rollout, new P0 artifacts, new
+top-level operator statuses, new Skills, scheduler behavior,
 release/deploy/wallet/RPC authority, readiness authority, legal/YouTube policy
 compliance authority, or GitHub approval review authority.
 
