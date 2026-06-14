@@ -61,6 +61,7 @@ const compatibilityCases = [
   ['v123_preserves_v119_orchestration', () => buildOrchestrationCapsule().authorityBoundary.reviewPoolConsensusCreatesMergePermission === false],
   ['v123_preserves_v122_skill_context_routing', () => validateSkillContextRouting(buildOrchestrationCapsule().skillContextRouting).status === 'pass'],
   ['v123_no_new_skill_daemon', () => !fs.existsSync('scripts/codex-skill-daemon.mjs')],
+  ['operator_visible_statuses_max_8', () => V123_OPERATOR_STATUS_KEYS.length === 8],
 ];
 
 const closureCases = [
@@ -95,11 +96,26 @@ const closureCases = [
     mergeAllowed: true,
     singleClosureReason: 'merge_allowed',
   }))],
+  ['merge_consideration_block_requires_single_reason', () => failed(validateFinalDecisionClosure({
+    ...buildOrchestrationCapsule().finalDecisionClosure,
+    phase: 'merge_consideration',
+    terminalAction: 'create_pr_only',
+    targetQualityStatus: 'pending',
+    blockingReasonsCount: 0,
+    sameHeadRemoteGate: 'pending',
+    ownerOrDelegatedMergeScope: 'missing',
+    mergeAllowed: false,
+    singleClosureReason: 'none',
+  }))],
 ];
 
 const workspaceAndPolicyCases = [
   ['workspace_identity_default_passes', () => passed(validateWorkspaceIdentityGate(buildOrchestrationCapsule().workspaceIdentityGate))],
   ['workspace_identity_blocks_wrong_repo', () => failed(validateWorkspaceIdentityGate(buildOrchestrationCapsule({ workspaceIdentityGate: { wrongRepo: true } }).workspaceIdentityGate))],
+  ['workspace_identity_read_only_wrong_repo_warns_not_blocks', () => {
+    const gate = buildOrchestrationCapsule({ workspaceIdentityGate: { wrongRepo: true, readOnlyAudit: true } }).workspaceIdentityGate;
+    return gate.workspaceIdentityStatus === 'warn' && passed(validateWorkspaceIdentityGate(gate));
+  }],
   ['workspace_identity_blocks_unresolvable_remote_for_mutation', () => failed(validateWorkspaceIdentityGate(buildOrchestrationCapsule({ workspaceIdentityGate: { mutationTask: true, repoResolvableOnGitHub: false } }).workspaceIdentityGate))],
   ['active_policy_index_required', () => passed(validateActivePolicyIndex(buildOrchestrationCapsule().activePolicyIndex))],
   ['active_policy_index_keeps_required_reads_small', () => buildOrchestrationCapsule().activePolicyIndex.requiredReads.length <= 3],
@@ -120,6 +136,12 @@ const contextAndSkillCases = [
   ['observed_pr_history_without_pointer_blocks', () => failed(validateContextReadLedger(buildOrchestrationCapsule({
     contextReadLedger: { observedToolReads: [{ sourceType: 'prHistory', pathOrRef: 'PR history', readReason: 'not_recorded' }] },
   }).contextReadLedger))],
+  ['unobserved_declared_context_warns_not_blocks', () => {
+    const ledger = buildOrchestrationCapsule({
+      contextReadLedger: { unobservedDeclaredUse: ['repo-quickcheck'] },
+    }).contextReadLedger;
+    return ledger.contextLedgerStatus === 'warn' && passed(validateContextReadLedger(ledger));
+  }],
   ['skill_contract_v2_required_for_selected_skill', () => failed(validateSkillContractRegistry(buildOrchestrationCapsule({
     skillContractRegistry: { selectedSkillIds: ['repo-quickcheck'], contracts: [] },
   }).skillContractRegistry))],
@@ -128,6 +150,13 @@ const contextAndSkillCases = [
   }).skillContractRegistry))],
   ['skill_contract_blocks_missing_when_not_to_use', () => failed(validateSkillContractRegistry(buildOrchestrationCapsule({
     skillContractRegistry: { selectedSkillIds: ['repo-quickcheck'], contracts: [{ ...validSkillContract, when_not_to_use: [] }] },
+  }).skillContractRegistry))],
+  ['skill_contract_blocks_forbidden_repo_profile', () => failed(validateSkillContractRegistry(buildOrchestrationCapsule({
+    skillContractRegistry: {
+      currentRepoProfile: 'token_only_restricted',
+      selectedSkillIds: ['repo-quickcheck'],
+      contracts: [validSkillContract],
+    },
   }).skillContractRegistry))],
   ['skill_effectiveness_unknown_warns_on_target', () => buildOrchestrationCapsule({
     skillEffectivenessLedger: { skillUseRecords: [{ skillId: 'repo-quickcheck', contribution: 'unknown', decisionImpact: 'unknown' }] },
@@ -145,12 +174,27 @@ const escalationAndReviewCases = [
   ['escalation_effective_when_new_finding_or_validation_improved', () => passed(validateEscalationEffectivenessLedger(buildOrchestrationCapsule({
     escalationEffectivenessLedger: { escalatedAgentRole: 'highest_reasoning_reviewer', escalationReason: 'root_cause_unclear', beforeEscalationBlocker: 'unclear_root_cause', newFindingProduced: true },
   }).escalationEffectivenessLedger))],
+  ['escalation_neutral_when_no_new_finding_below_high_tier', () => {
+    const ledger = buildOrchestrationCapsule({
+      escalationEffectivenessLedger: { escalatedAgentRole: 'specialist_reviewer', escalationReason: 'reviewer_cannot_classify', beforeEscalationBlocker: 'reviewer_disagreement' },
+    }).escalationEffectivenessLedger;
+    return ledger.effectivenessStatus === 'neutral' && passed(validateEscalationEffectivenessLedger(ledger));
+  }],
   ['escalation_stops_when_no_new_information_after_high_tier', () => failed(validateEscalationEffectivenessLedger(buildOrchestrationCapsule({
     escalationEffectivenessLedger: { escalatedAgentRole: 'highest_reasoning_reviewer', escalationReason: 'root_cause_unclear', beforeEscalationBlocker: 'unclear_root_cause' },
+  }).escalationEffectivenessLedger))],
+  ['escalation_stops_same_root_cause_after_high_tier', () => failed(validateEscalationEffectivenessLedger(buildOrchestrationCapsule({
+    escalationEffectivenessLedger: { escalatedAgentRole: 'highest_reasoning_reviewer', escalationReason: 'same_primary_class_repeated', beforeEscalationBlocker: 'repeated_failure', sameRootCauseRepeatCount: 2 },
   }).escalationEffectivenessLedger))],
   ['reviewer_independence_blocks_same_worker_independent_review', () => failed(validateWorkerProofCapsule(buildWorkerProofCapsule({
     reviewerIndependenceProof: { independentReviewUsed: true, sameWorkerReview: true, treatedAsIndependent: true, reviewerRole: 'scope_security' },
   })))],
+  ['reviewer_independence_same_scratchpad_unknown_warns', () => {
+    const capsule = buildWorkerProofCapsule({
+      reviewerIndependenceProof: { independentReviewUsed: true, reviewerRole: 'scope_security' },
+    });
+    return capsule.reviewerIndependenceProof.independenceStatus === 'warn' && passed(validateWorkerProofCapsule(capsule));
+  }],
   ['reviewer_independence_blocks_raw_logs', () => failed(validateWorkerProofCapsule(buildWorkerProofCapsule({
     reviewerIndependenceProof: { independentReviewUsed: true, reviewerSawRawLogs: true, reviewerRole: 'scope_security' },
   })))],

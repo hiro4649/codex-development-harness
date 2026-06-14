@@ -472,18 +472,19 @@ function defaultFinalDecisionClosure(input = {}) {
 
 function defaultWorkspaceIdentityGate(input = {}) {
   const mutationTask = input.mutationTask === true;
+  const readOnlyAudit = input.readOnlyAudit === true || input.taskMode === 'read_only_audit';
   const worktreeClean = input.worktreeClean !== false;
   const repoResolvableOnGitHub = input.repoResolvableOnGitHub !== false;
   const wrongRepo = input.wrongRepo === true;
   const frozenBranchUsed = input.frozenBranchUsed === true;
   const localOnlyState = input.localOnlyState === true;
   const dirtyAllowed = input.dirtyWorktreePreservationScope === true;
-  const blocked = wrongRepo
+  const blocked = (wrongRepo && !readOnlyAudit)
     || frozenBranchUsed
     || (mutationTask && repoResolvableOnGitHub === false)
     || (mutationTask && localOnlyState)
     || (mutationTask && worktreeClean === false && !dirtyAllowed);
-  const warn = !blocked && (repoResolvableOnGitHub === false || worktreeClean === false || localOnlyState);
+  const warn = !blocked && (wrongRepo || repoResolvableOnGitHub === false || worktreeClean === false || localOnlyState);
   return {
     workspaceIdentityVersion: '1.2.3',
     expectedRepo: input.expectedRepo || input.repo || 'hiro4649/codex-development-harness',
@@ -494,6 +495,7 @@ function defaultWorkspaceIdentityGate(input = {}) {
     agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.3',
     manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.3',
     mutationTask,
+    readOnlyAudit,
     worktreeClean,
     repoResolvableOnGitHub,
     frozenBranchUsed,
@@ -537,6 +539,8 @@ function defaultContextReadLedger(input = {}) {
     || (item.sourceType === 'legacySpec' && !['compatibility_failure', 'authority_conflict'].includes(item.readReason))
     || (item.sourceType === 'prHistory' && !['safe_artifact_pointer', 'owner_requested'].includes(item.readReason)));
   const blocked = hardObserved || observedButUndeclaredUse.some((item) => ['rawLog', 'legacySpec', 'prHistory', 'fullHistory', 'forbiddenSkill'].includes(item));
+  const softObserved = (Array.isArray(input.unobservedDeclaredUse) && input.unobservedDeclaredUse.length > 0)
+    || observedButUndeclaredUse.some((item) => !['rawLog', 'legacySpec', 'prHistory', 'fullHistory', 'forbiddenSkill'].includes(item));
   return {
     ledgerVersion: '1.2.3',
     observedToolReads,
@@ -547,7 +551,7 @@ function defaultContextReadLedger(input = {}) {
     },
     unobservedDeclaredUse: truncateList(input.unobservedDeclaredUse || [], 20),
     observedButUndeclaredUse,
-    contextLedgerStatus: blocked ? 'blocked' : (input.contextLedgerStatus || 'pass'),
+    contextLedgerStatus: blocked ? 'blocked' : (softObserved ? 'warn' : (input.contextLedgerStatus || 'pass')),
     safeNextAction: input.contextLedgerSafeNextAction || input.safeNextAction || 'one_action',
   };
 }
@@ -574,6 +578,7 @@ function normalizeSkillContracts(values = []) {
 function defaultSkillContractRegistry(input = {}) {
   return {
     registryVersion: '1.2.3',
+    currentRepoProfile: input.currentRepoProfile || input.repoProfile || 'source_harness',
     selectedSkillIds: truncateList(input.selectedSkillIds || input.selectedSkills || [], 8),
     contracts: normalizeSkillContracts(input.contracts || []),
     selectedSkillContractRequired: input.selectedSkillContractRequired !== false,
@@ -615,17 +620,20 @@ function defaultSkillEffectivenessLedger(input = {}) {
 
 function defaultEscalationEffectivenessLedger(input = {}) {
   const highTierUsed = input.highTierUsed === true || input.escalatedAgentRole === 'highest_reasoning_reviewer';
+  const escalatedAgentRole = ESCALATED_AGENT_ROLES.has(input.escalatedAgentRole) ? input.escalatedAgentRole : (highTierUsed ? 'highest_reasoning_reviewer' : 'none');
+  const escalationUsed = escalatedAgentRole !== 'none' || (input.escalationReason && input.escalationReason !== 'none');
   const newFindingProduced = input.newFindingProduced === true;
   const repairPlanChanged = input.repairPlanChanged === true;
   const validationImproved = input.validationImproved === true;
   const sameRootCauseResolved = input.sameRootCauseResolved === true;
   const effective = newFindingProduced || repairPlanChanged || validationImproved || sameRootCauseResolved;
   const noSignalAfterHighTier = highTierUsed && !effective;
+  const sameRootCauseRepeatCount = Math.max(0, Number(input.sameRootCauseRepeatCount || 0));
   return {
     ledgerVersion: '1.2.3',
     beforeEscalationBlocker: TYPED_BLOCKERS.has(input.beforeEscalationBlocker) ? input.beforeEscalationBlocker : (TYPED_BLOCKERS.has(input.typedBlocker) ? input.typedBlocker : 'none'),
     escalationReason: ESCALATION_REASONS.has(input.escalationReason) ? input.escalationReason : 'none',
-    escalatedAgentRole: ESCALATED_AGENT_ROLES.has(input.escalatedAgentRole) ? input.escalatedAgentRole : (highTierUsed ? 'highest_reasoning_reviewer' : 'none'),
+    escalatedAgentRole,
     inputContextPacket: {
       fullConversationUsed: input.inputContextPacket?.fullConversationUsed === true,
       rawLogsUsed: input.inputContextPacket?.rawLogsUsed === true,
@@ -637,8 +645,9 @@ function defaultEscalationEffectivenessLedger(input = {}) {
     repairPlanChanged,
     validationImproved,
     sameRootCauseResolved,
+    sameRootCauseRepeatCount,
     deEscalationResult: input.deEscalationResult || (highTierUsed ? 'stopped' : 'returned_to_low_cost_worker'),
-    effectivenessStatus: noSignalAfterHighTier ? 'neutral' : (highTierUsed ? (effective ? 'effective' : 'unknown') : 'not_used'),
+    effectivenessStatus: noSignalAfterHighTier ? 'neutral' : (escalationUsed ? (effective ? 'effective' : 'neutral') : 'not_used'),
     safeNextAction: noSignalAfterHighTier ? 'stop_escalation_no_new_information' : (input.escalationEffectivenessSafeNextAction || input.safeNextAction || 'one_action'),
   };
 }
@@ -993,6 +1002,9 @@ export function validateFinalDecisionClosure(closure = {}) {
   if (closure.terminalAction === 'merge_current_pr' && closure.mergeAllowed !== true) reasons.push('merge_current_pr_requires_merge_allowed_true');
   if (closure.closureStatus === 'inconsistent') reasons.push('decision_closure_inconsistent');
   if (closure.phase === 'create_pr_only' && closure.singleClosureReason !== 'phase_create_pr_only') reasons.push('create_pr_only_requires_phase_reason');
+  if (closure.phase === 'merge_consideration' && closure.mergeAllowed !== true && closure.singleClosureReason === 'none') reasons.push('merge_block_requires_single_closure_reason');
+  if (closure.phase === 'merge_consideration' && closure.mergeAllowed !== true && closure.sameHeadRemoteGate !== 'pass' && closure.singleClosureReason !== 'remote_gate_missing') reasons.push('remote_gate_block_requires_remote_gate_reason');
+  if (closure.phase === 'merge_consideration' && closure.mergeAllowed !== true && closure.ownerOrDelegatedMergeScope === 'missing' && !['owner_merge_decision_missing', 'delegated_scope_missing'].includes(closure.singleClosureReason)) reasons.push('merge_scope_block_requires_owner_or_delegated_reason');
   return reasons.length ? fail(reasons) : pass({ phase: closure.phase, singleClosureReason: closure.singleClosureReason });
 }
 
@@ -1001,7 +1013,7 @@ export function validateWorkspaceIdentityGate(gate = {}) {
   if (gate.workspaceIdentityVersion !== '1.2.3') reasons.push('workspace_identity_version_invalid');
   if (gate.agentsMarker !== 'CODEX_QUALITY_HARNESS_FILE v1.2.3') reasons.push('workspace_identity_agents_marker_invalid');
   if (gate.manifestActiveHarnessVersion !== '1.2.3') reasons.push('workspace_identity_manifest_version_invalid');
-  if (gate.wrongRepo === true) reasons.push('wrong_workspace_blocked');
+  if (gate.wrongRepo === true && gate.readOnlyAudit !== true) reasons.push('wrong_workspace_blocked');
   if (gate.frozenBranchUsed === true) reasons.push('frozen_branch_blocked');
   if (gate.mutationTask === true && gate.repoResolvableOnGitHub !== true) reasons.push('unresolvable_remote_for_mutation');
   if (gate.mutationTask === true && gate.localOnlyState === true) reasons.push('local_only_state_for_pr_creation');
@@ -1048,6 +1060,7 @@ export function validateSkillContractRegistry(registry = {}) {
   const reasons = [];
   if (registry.registryVersion !== '1.2.3') reasons.push('skill_contract_registry_version_invalid');
   const selected = new Set(registry.selectedSkillIds || []);
+  const currentRepoProfile = registry.currentRepoProfile || 'source_harness';
   const contracts = new Map((registry.contracts || []).map((contract) => [contract.skillId, contract]));
   if (registry.selectedSkillContractRequired !== false) {
     for (const skillId of selected) {
@@ -1068,6 +1081,8 @@ export function validateSkillContractRegistry(registry = {}) {
     if (contract.raw_logs_forbidden !== true) reasons.push('skill_contract_raw_logs_forbidden_required');
     if (contract.owner_decision_boundary !== true) reasons.push('skill_contract_owner_boundary_required');
     if (!contract.output_contract) reasons.push('skill_contract_output_contract_missing');
+    if (selected.has(contract.skillId) && Array.isArray(contract.forbidden_repo_profiles) && contract.forbidden_repo_profiles.includes(currentRepoProfile)) reasons.push('skill_contract_forbidden_repo_profile');
+    if (selected.has(contract.skillId) && Array.isArray(contract.allowed_repo_profiles) && contract.allowed_repo_profiles.length > 0 && !contract.allowed_repo_profiles.includes(currentRepoProfile)) reasons.push('skill_contract_repo_profile_not_allowed');
   }
   return reasons.length ? fail(reasons) : pass({ selectedSkillCount: selected.size, contractCount: registry.contracts?.length || 0 });
 }
@@ -1099,6 +1114,7 @@ export function validateEscalationEffectivenessLedger(ledger = {}) {
   const highTierUsed = ledger.escalatedAgentRole === 'highest_reasoning_reviewer';
   const noSignal = ledger.newFindingProduced !== true && ledger.repairPlanChanged !== true && ledger.validationImproved !== true && ledger.sameRootCauseResolved !== true;
   if (highTierUsed && noSignal) reasons.push('escalation_no_new_information');
+  if (highTierUsed && Number(ledger.sameRootCauseRepeatCount || 0) >= 2 && noSignal) reasons.push('same_root_cause_after_high_tier_requires_new_signal_or_stop');
   return reasons.length ? fail(reasons) : pass({ escalatedAgentRole: ledger.escalatedAgentRole, effectivenessStatus: ledger.effectivenessStatus });
 }
 

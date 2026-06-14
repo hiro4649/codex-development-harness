@@ -178,6 +178,31 @@ In target repos before rollout, v1.2.3 fields may be absent. After rollout,
 missing observation fields are warnings unless the target profile declares them
 hard.
 
+Target rollout must keep a hard/warn split so v1.2.3 does not become a heavy
+audit framework by accident.
+
+Target hard failures:
+
+- raw logs read
+- wrong workspace during mutation or PR creation
+- self approval
+- GitHub approval review submitted by an agent
+- wallet/RPC/deploy access
+- readiness, production, legal, or YouTube policy claim
+- wrong profile Skill selected
+- Final Decision closure inconsistency
+
+Target warnings:
+
+- skill effectiveness unknown
+- review effectiveness unknown
+- artifact reuse unavailable
+- unobserved declared context
+- sameScratchpadAccess unknown
+
+Read-only audits may warn on workspace uncertainty when no mutation, PR creation,
+merge, release, deploy, wallet/RPC, or secret action is attempted.
+
 ## Self-Test Requirements
 
 `scripts/codex-v123-self-test.mjs` must prove:
@@ -194,11 +219,16 @@ hard.
 - active policy index stays bounded
 - raw logs and full history reads fail
 - legacy spec overread fails
+- unobserved declared context warns instead of blocking
 - selected skill without contract fails
+- selected skill blocked by forbidden repo profile fails
 - unknown skill impact fails for Source hard mode
 - harmful skill recommendation fails
+- non-high-tier escalation with no new signal is neutral
 - high tier with no new signal fails
+- repeated same root cause after high tier fails unless a new signal appears
 - same-worker independent review fails
+- sameScratchpadAccess unknown warns instead of blocking
 - review loop repeated finding fails
 - owner brief cannot create authority
 
