@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.3
+// CODEX_QUALITY_HARNESS_FILE v1.2.4
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -14,6 +14,8 @@ const DELEGATED_CONTINUATION_ACTIONS = new Set(['commit', 'push', 'createPr', 'r
 const NON_DELEGABLE_ACTIONS = new Set(['release', 'publish', 'secretAccess', 'walletRpcDeployAccess', 'deploy', 'fundedTransaction', 'governanceTransaction', 'bscScanVerification']);
 const RECOMMENDATIONS = new Set(['merge', 'repair', 'preserve', 'stop', 'owner_merge_decision_only_after_same_head_remote_pass']);
 const CLOSURE_REASONS = new Set(['phase_create_pr_only', 'remote_gate_missing', 'owner_merge_decision_missing', 'delegated_scope_missing', 'decision_closure_inconsistent', 'merge_allowed', 'preserve_only', 'none']);
+const OWNER_AUTHORITY_STATES = new Set(['not_required_for_current_scope', 'required', 'already_delegated_current_only']);
+const SAFE_LEARNING_SOURCES = new Set(['safe_artifacts_only', 'owner_approved_summary']);
 
 function escalationSummary(input = {}) {
   return {
@@ -81,13 +83,64 @@ function finalDecisionClosureSummary(input = {}) {
   };
 }
 
+function finalDecisionClosureAdapter(input = {}) {
+  return {
+    adapterVersion: '1.2.4',
+    finalAuthority: input.finalAuthority || 'v1.1.8_final_decision_kernel',
+    ownerAuthorityState: OWNER_AUTHORITY_STATES.has(input.ownerAuthorityState) ? input.ownerAuthorityState : 'required',
+    createsFinalAuthority: false,
+    ownerAuthorityCreatedByAI: false,
+    ownerOnlyAuthorityBypassed: false,
+    explainsContradiction: input.explainsContradiction !== false,
+    singleClosureReasonRequired: true,
+    safeNextAction: input.adapterSafeNextAction || input.safeNextAction || 'owner_merge_decision_only',
+  };
+}
+
+function ownerBurdenReducer(input = {}) {
+  return {
+    reducerVersion: '1.2.4',
+    exactChoicesMax: Math.min(Number(input.exactChoicesMax || 3), 3),
+    oneSafeNextAction: input.oneSafeNextAction !== false,
+    ownerQuestionCompression: input.ownerQuestionCompression || 'max_three_exact_choices',
+    ownerOnlyBoundaryPreserved: input.ownerOnlyBoundaryPreserved !== false,
+    technicalAgentsDecideNonOwnerScopeOnly: true,
+    safeNextAction: input.reducerSafeNextAction || input.safeNextAction || 'owner_merge_decision_only',
+  };
+}
+
+function safeSessionLearningProposal(input = {}) {
+  return {
+    proposalVersion: '1.2.4',
+    enabled: input.enabled === true,
+    source: SAFE_LEARNING_SOURCES.has(input.source) ? input.source : 'safe_artifacts_only',
+    rawLogsRead: false,
+    rawTranscriptMining: false,
+    autoApplyAllowed: false,
+    ownerApprovalRequired: true,
+    proposalOnly: true,
+    safeNextAction: input.learningSafeNextAction || input.safeNextAction || 'owner_review_required_before_apply',
+  };
+}
+
+function repoSpecificVisualProofSurface(input = {}) {
+  return {
+    surfaceVersion: '1.2.4',
+    enabled: input.enabled === true,
+    repoSpecificOnly: true,
+    privateImageRedactionRequired: input.enabled === true ? input.privateImageRedactionRequired !== false : true,
+    requiredForGenericHarness: false,
+    safeNextAction: input.visualProofSafeNextAction || input.safeNextAction || 'not_required_unless_repo_profile_requires',
+  };
+}
+
 export function buildOwnerDecisionBrief(input = {}) {
   return {
     ownerDecisionBriefVersion: '1',
     decisionReady: input.decisionReady === true,
     itemUrl: input.itemUrl || null,
-    whatChanges: input.whatChanges || 'source_harness_v123_observed_skill_evidence_decision_closure_body_only',
-    whoBenefits: input.whoBenefits || 'maintainer_worker_context_reduction_and_decision_closure',
+    whatChanges: input.whatChanges || 'source_harness_v124_goal_scoped_delegated_autonomy_evidence_semantics_body_only',
+    whoBenefits: input.whoBenefits || 'maintainer_owner_burden_reduction_and_safer_long_running_agent_loops',
     whyOwnerDecisionNeededNow: input.whyOwnerDecisionNeededNow || 'owner_merge_instruction_not_provided',
     proofCompleted: bounded(input.proofCompleted, 8),
     proofMissing: bounded(input.proofMissing || ['same_head_remote_quality_gate'], 8),
@@ -100,6 +153,10 @@ export function buildOwnerDecisionBrief(input = {}) {
     decisionCompressionMetrics: decisionCompressionMetrics(input.decisionCompressionMetrics || input),
     mergeDecisionIntegrity: mergeDecisionIntegrity(input.mergeDecisionIntegrity || input),
     finalDecisionClosureSummary: finalDecisionClosureSummary(input.finalDecisionClosureSummary || input),
+    finalDecisionClosureAdapter: finalDecisionClosureAdapter(input.finalDecisionClosureAdapter || input),
+    ownerBurdenReducer: ownerBurdenReducer(input.ownerBurdenReducer || input),
+    safeSessionLearningProposal: safeSessionLearningProposal(input.safeSessionLearningProposal || input),
+    repoSpecificVisualProofSurface: repoSpecificVisualProofSurface(input.repoSpecificVisualProofSurface || input),
     ownerOnlyDecision: true,
     nextImplementableSlice: {
       available: input.nextImplementableSliceAvailable === true,
@@ -136,6 +193,10 @@ export function validateOwnerDecisionBrief(brief = {}) {
   const compression = brief.decisionCompressionMetrics || {};
   const integrity = brief.mergeDecisionIntegrity || {};
   const closure = brief.finalDecisionClosureSummary || {};
+  const adapter = brief.finalDecisionClosureAdapter || {};
+  const reducer = brief.ownerBurdenReducer || {};
+  const learning = brief.safeSessionLearningProposal || {};
+  const visual = brief.repoSpecificVisualProofSurface || {};
   if (burden.metricsVersion !== '1') reasons.push('owner_burden_metrics_version_invalid');
   if (Number(burden.ownerQuestionCount || 0) > 3) reasons.push('owner_question_count_should_stay_bounded');
   if (Number(burden.remainingOwnerOnlyChoicesCount || 0) > 3) reasons.push('owner_only_choice_count_max_three');
@@ -150,6 +211,22 @@ export function validateOwnerDecisionBrief(brief = {}) {
   if (!CLOSURE_REASONS.has(closure.singleClosureReason)) reasons.push('final_decision_closure_summary_reason_invalid');
   if (closure.closureStatus === 'inconsistent') reasons.push('final_decision_closure_summary_inconsistent');
   if (closure.ownerDecisionCreatesAuthority === true || closure.reviewerCreatesAuthority === true) reasons.push('final_decision_closure_summary_cannot_create_authority');
+  if (adapter.adapterVersion !== '1.2.4') reasons.push('final_decision_closure_adapter_version_invalid');
+  if (adapter.finalAuthority !== 'v1.1.8_final_decision_kernel') reasons.push('final_decision_closure_adapter_authority_changed');
+  if (!OWNER_AUTHORITY_STATES.has(adapter.ownerAuthorityState)) reasons.push('final_decision_closure_adapter_owner_authority_state_invalid');
+  if (adapter.createsFinalAuthority === true || adapter.ownerAuthorityCreatedByAI === true || adapter.ownerOnlyAuthorityBypassed === true) reasons.push('final_decision_closure_adapter_cannot_create_authority');
+  if (adapter.singleClosureReasonRequired !== true || adapter.explainsContradiction !== true) reasons.push('final_decision_closure_adapter_requires_single_reason');
+  if (reducer.reducerVersion !== '1.2.4') reasons.push('owner_burden_reducer_version_invalid');
+  if (Number(reducer.exactChoicesMax || 0) > 3) reasons.push('owner_burden_reducer_max_three_choices');
+  if (reducer.oneSafeNextAction !== true) reasons.push('owner_burden_reducer_requires_one_safe_next_action');
+  if (reducer.ownerOnlyBoundaryPreserved !== true || reducer.technicalAgentsDecideNonOwnerScopeOnly !== true) reasons.push('owner_burden_reducer_owner_boundary_required');
+  if (learning.proposalVersion !== '1.2.4') reasons.push('safe_session_learning_version_invalid');
+  if (!SAFE_LEARNING_SOURCES.has(learning.source)) reasons.push('safe_session_learning_source_invalid');
+  if (learning.rawLogsRead === true || learning.rawTranscriptMining === true) reasons.push('safe_session_learning_forbids_raw_logs_or_transcript_mining');
+  if (learning.autoApplyAllowed === true || learning.ownerApprovalRequired !== true || learning.proposalOnly !== true) reasons.push('safe_session_learning_must_be_proposal_only');
+  if (visual.surfaceVersion !== '1.2.4') reasons.push('repo_visual_proof_surface_version_invalid');
+  if (visual.enabled === true && visual.privateImageRedactionRequired !== true) reasons.push('repo_visual_proof_requires_redaction');
+  if (visual.requiredForGenericHarness === true || visual.repoSpecificOnly !== true) reasons.push('repo_visual_proof_surface_must_be_repo_specific_optional');
   const delegated = brief.delegatedContinuation || {};
   if (delegated.enabled === true) {
     if (delegated.autoContinueAllowed === true && delegated.technicalAcceptance !== true) reasons.push('delegated_auto_continue_requires_technical_acceptance');

@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.3",
-  "harnessVersion": "1.2.3",
-  "sourceHarnessVersion": "1.2.3",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.4",
+  "harnessVersion": "1.2.4",
+  "sourceHarnessVersion": "1.2.4",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.2.3",
+  "schemaVersion": "1.2.4",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -87,8 +87,10 @@
     "docs/process/CODEX_V122_SPEC.md",
     "scripts/codex-v122-self-test.mjs",
     "docs/process/CODEX_V123_SPEC.md",
+    "docs/process/CODEX_V124_SPEC.md",
     "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
-    "scripts/codex-v123-self-test.mjs"
+    "scripts/codex-v123-self-test.mjs",
+    "scripts/codex-v124-self-test.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -908,14 +910,16 @@
     "codex-v120-self-test.mjs",
     "codex-v121-self-test.mjs",
     "codex-v122-self-test.mjs",
-    "codex-v123-self-test.mjs"
+    "codex-v123-self-test.mjs",
+    "codex-v124-self-test.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.2.3",
-  "activeSelfTestSuite": "v123",
-  "activeSelfTestStatusKey": "v123SelfTestStatus",
+  "activeHarnessVersion": "1.2.4",
+  "activeSelfTestSuite": "v124",
+  "activeSelfTestStatusKey": "v124SelfTestStatus",
   "legacySelfTestSuites": {
-    "v123": "blocking_current",
+    "v124": "blocking_current",
+    "v123": "blocking_compatibility",
     "v122": "blocking_compatibility",
     "v121": "blocking_compatibility",
     "v120": "blocking_compatibility",
@@ -1325,9 +1329,9 @@
     "vgcBscScanVerificationBoundaryStatus",
     "vgcMainnetReadinessBoundaryStatus"
   ],
-  "targetHarnessVersion": "1.2.3",
+  "targetHarnessVersion": "1.2.4",
   "evidenceSchemaVersion": 6,
-  "theme": "Observed Skill Evidence and Decision Closure",
+  "theme": "Goal-Scoped Delegated Autonomy and Evidence Semantics",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",
@@ -1587,7 +1591,8 @@
     ]
   },
   "legacySelfTests": {
-    "v123": "blocking_current",
+    "v124": "blocking_current",
+    "v123": "blocking_compatibility",
     "v122": "blocking_compatibility",
     "v121": "blocking_compatibility",
     "v120": "blocking_compatibility",
@@ -1601,14 +1606,14 @@
     "v080_v112": "target_shadow_legacy_count_only"
   },
   "contextRouting": {
-    "version": "1.2.3",
+    "version": "1.2.4",
     "field": "orchestrationCapsule.skillContextRouting",
     "newP0Artifact": false,
     "newTopLevelStatus": false,
     "subtitle": "Read Less, Preserve Authority"
   },
   "observedSkillDecisionClosure": {
-    "version": "1.2.3",
+    "version": "1.2.4",
     "activePolicyIndex": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
     "fields": [
       "orchestrationCapsule.finalDecisionClosure",
@@ -1626,5 +1631,27 @@
     "newTopLevelStatus": false,
     "newSkill": false,
     "targetRollout": "not_started"
+  },
+  "goalScopedDelegatedAutonomy": {
+    "version": "1.2.4",
+    "fields": [
+      "orchestrationCapsule.goalContract",
+      "orchestrationCapsule.delegationBoundary",
+      "orchestrationCapsule.evidenceSemanticsKernel",
+      "orchestrationCapsule.targetHarnessFootprintPolicy",
+      "workerProofCapsule.boundedExpertLoop",
+      "workerProofCapsule.expertRoleLedger",
+      "workerProofCapsule.safeFailureDigest",
+      "ownerDecisionBrief.finalDecisionClosureAdapter",
+      "ownerDecisionBrief.ownerBurdenReducer",
+      "ownerDecisionBrief.safeSessionLearningProposal",
+      "ownerDecisionBrief.repoSpecificVisualProofSurface"
+    ],
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "targetRollout": "not_started",
+    "subtitle": "AI agents may decide technical next actions only inside non-owner scope."
   }
 }

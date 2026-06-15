@@ -34,7 +34,7 @@ const compatibilityCases = [
 ];
 
 const routingCases = [
-  ['skill_context_routing_exists_inside_orchestration_capsule', () => ['1.2.2', '1.2.3'].includes(buildOrchestrationCapsule().skillContextRouting.schemaVersion)],
+  ['skill_context_routing_exists_inside_orchestration_capsule', () => ['1.2.2', '1.2.3', '1.2.4'].includes(buildOrchestrationCapsule().skillContextRouting.schemaVersion)],
   ['active_authority_tuple_required', () => validateSkillContextRouting(buildOrchestrationCapsule().skillContextRouting).status === 'pass'],
   ['active_authority_tuple_blocks_stale_marker', () => failed(validateSkillContextRouting({
     ...buildOrchestrationCapsule().skillContextRouting,
@@ -100,7 +100,7 @@ const routingCases = [
   ['context_source_type_separates_user_text_from_file_read', () => buildOrchestrationCapsule().skillContextRouting.contextSourceType.userProvidedText === 'not_counted_as_file_read'],
   ['read_less_preserve_authority_first_reads', () => {
     const firstReads = buildOrchestrationCapsule().skillContextRouting.requiredFirstReads;
-    return firstReads.includes('AGENTS.md') && firstReads.includes('docs/process/CODEX_HARNESS_MANIFEST.json') && (firstReads.includes('docs/process/CODEX_V122_SPEC.md') || firstReads.includes('docs/process/CODEX_V123_SPEC.md'));
+    return firstReads.includes('AGENTS.md') && firstReads.includes('docs/process/CODEX_HARNESS_MANIFEST.json') && (firstReads.includes('docs/process/CODEX_V122_SPEC.md') || firstReads.includes('docs/process/CODEX_V123_SPEC.md') || firstReads.includes('docs/process/CODEX_V124_SPEC.md'));
   }],
   ['readme_deferred_by_default', () => buildOrchestrationCapsule().skillContextRouting.deferredReads.includes('README.md')],
   ['safe_artifact_pointer_preferred', () => buildOrchestrationCapsule().skillContextRouting.contextSourceType.safeArtifact === 'preferred'],
