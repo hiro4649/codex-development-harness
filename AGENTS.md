@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.3
+CODEX_QUALITY_HARNESS_FILE v1.2.4
 
 ## Prime Directive
 
@@ -148,6 +148,19 @@ Skills, target rollout, product/package/runtime/workflow changes, raw-log
 access, full history reads without scope, wallet/RPC/deploy access, self
 approval, GitHub approval review, readiness claims, legal compliance claims,
 or YouTube policy compliance claims.
+For v1.2.4 Goal-Scoped Delegated Autonomy and Evidence Semantics, use
+`docs/process/CODEX_V124_SPEC.md` and
+`docs/process/CODEX_ACTIVE_POLICY_INDEX.json`. v1.2.4 adds only internal
+Goal Contract, Delegation Boundary, Evidence Semantics, Bounded Expert Loop,
+Safe Failure/Owner Burden, and Target Footprint fields inside the existing
+v1.1.9 P0 artifacts. v1.2.4 is a Final Decision Closure Adapter, not a new
+Final Decision authority. Expert agents may evaluate technical risk and one
+safe next action only inside delegated scope; they must not create owner
+authority, merge/release/deploy, access wallet/RPC/secrets, submit GitHub
+approval review, claim readiness, or widen product/runtime/package scope.
+Skeptic review is abnormal-condition only. Safe session learning is
+proposal-only, safe-artifact-only, owner-approval-required, and never auto
+applied. Visual proof is repo-specific optional, not global P0.
 
 ## Plan-First Rule
 

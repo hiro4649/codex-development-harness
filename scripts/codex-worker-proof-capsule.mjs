@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.3
+// CODEX_QUALITY_HARNESS_FILE v1.2.4
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -54,6 +54,10 @@ const REVIEWER_ROLES = new Set(['none', 'scope_security', 'test_correctness', 'f
 const INDEPENDENCE_STATUSES = new Set(['pass', 'warn', 'blocked']);
 const REVIEW_LOOP_STATUSES = new Set(['pass', 'warn', 'blocked']);
 const REVIEW_RISK_PROFILES = new Set(['docs_only', 'metadata_light', 'harness_source', 'product', 'runtime', 'security', 'restricted_asset']);
+const EXPERT_ROLES = new Set(['planner', 'scope_security', 'test_verifier', 'evidence_verifier', 'skeptic', 'inventory', 'value_pressure', 'arbiter']);
+const LOOP_EXIT_REASONS = new Set(['goal_met', 'owner_boundary', 'no_new_evidence', 'same_root_cause_repeated', 'budget_exceeded', 'validation_regressed', 'none']);
+const SKEPTIC_TRIGGERS = new Set(['none', 'repeated_failure', 'evidence_contradiction', 'scope_boundary', 'security_sensitive_ambiguity', 'restricted_asset_ambiguity', 'runtime_readiness_boundary']);
+const REPAIR_SCOPES = new Set(['none', 'harness_only', 'docs_only', 'product_requires_owner_scope', 'stop_only']);
 
 function list(values = [], limit = 50) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
@@ -210,6 +214,104 @@ function defaultReviewLoopVerification(input = {}) {
   };
 }
 
+function defaultBoundedExpertLoop(input = {}) {
+  const loopCycleCount = Math.max(0, Number(input.loopCycleCount || 0));
+  const repairIterationCount = Math.max(0, Number(input.repairIterationCount || input.repairIterations || 0));
+  const sameRootCauseRepeatCount = Math.max(0, Number(input.sameRootCauseRepeatCount || 0));
+  const highTierUseCount = Math.max(0, Number(input.highTierUseCount || (input.highestTierUsed === true ? 1 : 0)));
+  const maxLoopCycles = Math.min(Math.max(1, Number(input.maxLoopCycles || 4)), 4);
+  const maxRepairIterations = Math.min(Math.max(1, Number(input.maxRepairIterations || 3)), 3);
+  const maxSameRootCauseRepeats = Math.min(Math.max(1, Number(input.maxSameRootCauseRepeats || 2)), 2);
+  const maxHighTierUses = Math.min(Math.max(0, Number(input.maxHighTierUses || 1)), 1);
+  const newEvidenceAvailable = input.newEvidenceAvailable === true;
+  const validationDeltaAvailable = input.validationDeltaAvailable === true;
+  const loopContinuationRequested = input.loopContinuationRequested === true;
+  const saturated = loopCycleCount >= maxLoopCycles
+    || repairIterationCount >= maxRepairIterations
+    || sameRootCauseRepeatCount >= maxSameRootCauseRepeats
+    || highTierUseCount > maxHighTierUses;
+  const lacksSignal = loopContinuationRequested && !newEvidenceAvailable && !validationDeltaAvailable;
+  const loopContinuationAllowed = input.loopContinuationAllowed === true && !saturated && !lacksSignal;
+  return {
+    loopVersion: '1.2.4',
+    loopCycleCount,
+    maxLoopCycles,
+    repairIterationCount,
+    maxRepairIterations,
+    sameRootCauseRepeatCount,
+    maxSameRootCauseRepeats,
+    highTierUseCount,
+    maxHighTierUses,
+    continueRequiresNewEvidence: true,
+    continueRequiresValidationDelta: true,
+    newEvidenceAvailable,
+    validationDeltaAvailable,
+    loopContinuationRequested,
+    loopContinuationAllowed,
+    loopExitReason: LOOP_EXIT_REASONS.has(input.loopExitReason) ? input.loopExitReason : (saturated ? 'budget_exceeded' : (lacksSignal ? 'no_new_evidence' : 'none')),
+    loopStatus: saturated || lacksSignal ? 'blocked' : (input.loopStatus || 'pass'),
+    safeNextAction: input.boundedLoopSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function normalizeExpertRoles(values = []) {
+  const defaultRoles = [
+    { roleId: 'planner', active: true },
+    { roleId: 'test_verifier', active: true },
+    { roleId: 'arbiter', active: true },
+  ];
+  const source = Array.isArray(values) && values.length ? values : defaultRoles;
+  return source.slice(0, 8).map((role) => ({
+    roleId: EXPERT_ROLES.has(role?.roleId) ? role.roleId : 'planner',
+    active: role?.active !== false,
+    abnormalTrigger: SKEPTIC_TRIGGERS.has(role?.abnormalTrigger) ? role.abnormalTrigger : 'none',
+    inputContextPacket: role?.inputContextPacket || 'safe_artifacts_only',
+    independentChecklist: role?.independentChecklist !== false,
+    canAuthorizeOwnerDecision: role?.canAuthorizeOwnerDecision === true,
+    canMerge: role?.canMerge === true,
+    canRelease: role?.canRelease === true,
+    canModifyProductCode: role?.canModifyProductCode === true,
+    canModifyPackageOrRuntime: role?.canModifyPackageOrRuntime === true,
+    canClaimReadiness: role?.canClaimReadiness === true,
+    outputKind: role?.outputKind || 'technical_finding_or_safe_next_action',
+  }));
+}
+
+function defaultExpertRoleLedger(input = {}) {
+  const roles = normalizeExpertRoles(input.roles);
+  const activeRoleCount = roles.filter((role) => role.active).length;
+  return {
+    ledgerVersion: '1.2.4',
+    roles,
+    activeRoleCount,
+    maxActiveRoles: Math.min(Math.max(1, Number(input.maxActiveRoles || 5)), 5),
+    skepticAbnormalOnly: true,
+    inventoryAdvisoryOnly: true,
+    valuePressureAdvisoryOnly: true,
+    expertCannotCreateOwnerAuthority: true,
+    expertCannotSubmitGithubApprovalReview: true,
+    roleLedgerStatus: input.roleLedgerStatus || 'pass',
+    safeNextAction: input.expertRoleSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultSafeFailureDigest(input = {}) {
+  return {
+    digestVersion: '1.2.4',
+    primaryClass: input.primaryClass || input.typedBlocker || 'none',
+    onePrimaryClass: input.onePrimaryClass !== false,
+    safeNextAction: input.failureDigestSafeNextAction || input.safeNextAction || 'one_action',
+    repairScope: REPAIR_SCOPES.has(input.repairScope) ? input.repairScope : 'harness_only',
+    failureDigestUsesSafeArtifacts: input.failureDigestUsesSafeArtifacts !== false,
+    rawLogsRead: false,
+    rawDiffRead: false,
+    productRepairAllowed: input.productRepairAllowed === true,
+    packageRuntimeRepairAllowed: input.packageRuntimeRepairAllowed === true,
+    ownerOnlyEscalationRequired: input.ownerOnlyEscalationRequired === true,
+    maxDigestLines: Math.min(Math.max(1, Number(input.maxDigestLines || 12)), 12),
+  };
+}
+
 export function buildWorkerProofCapsule(input = {}) {
   const changedFiles = list(input.changedFiles, 50);
   const findings = list(input.specialistFindings || input.findings, 8);
@@ -300,6 +402,9 @@ export function buildWorkerProofCapsule(input = {}) {
     claimLint: defaultClaimLint(input.claimLint || input),
     reviewerIndependenceProof: defaultReviewerIndependenceProof(input.reviewerIndependenceProof || input),
     reviewLoopVerification: defaultReviewLoopVerification(input.reviewLoopVerification || input),
+    boundedExpertLoop: defaultBoundedExpertLoop(input.boundedExpertLoop || input),
+    expertRoleLedger: defaultExpertRoleLedger(input.expertRoleLedger || input),
+    safeFailureDigest: defaultSafeFailureDigest(input.safeFailureDigest || input),
     deEscalationReady: input.deEscalationReady === true,
     reviewConsensus: input.reviewConsensus || 'not_required_with_reason',
     sameFailureRepeated: input.sameFailureRepeated === true,
@@ -363,6 +468,9 @@ export function validateWorkerProofCapsule(capsule = {}) {
   const claimLint = capsule.claimLint || {};
   const reviewerIndependence = capsule.reviewerIndependenceProof || {};
   const reviewLoop = capsule.reviewLoopVerification || {};
+  const boundedLoop = capsule.boundedExpertLoop || {};
+  const expertLedger = capsule.expertRoleLedger || {};
+  const failureDigest = capsule.safeFailureDigest || {};
   if (!ROOT_CAUSE_STATUSES.has(rootCause.status)) reasons.push('root_cause_status_invalid');
   if (!ROOT_CAUSE_SIGNATURES.has(rootCause.signature)) reasons.push('root_cause_signature_invalid');
   if (Number(rootCause.sameRootCauseRepeatCount || 0) >= 2 && rootCause.newEvidenceAppeared !== true) reasons.push('same_root_cause_repeat_requires_stop_or_new_evidence');
@@ -395,6 +503,42 @@ export function validateWorkerProofCapsule(capsule = {}) {
     && ['harness_source', 'product', 'runtime', 'security', 'restricted_asset'].includes(reviewLoop.reviewRiskProfile)
     && Number(reviewLoop.negativeFindingsCount || 0) === 0) reasons.push('review_loop_negative_finding_required_by_risk');
   if (reviewLoop.reviewLoopStatus === 'blocked') reasons.push('review_loop_blocked');
+  if (boundedLoop.loopVersion !== '1.2.4') reasons.push('bounded_expert_loop_version_invalid');
+  if (Number(boundedLoop.maxLoopCycles || 0) > 4) reasons.push('bounded_expert_loop_cycle_cap_exceeded');
+  if (Number(boundedLoop.maxRepairIterations || 0) > 3) reasons.push('bounded_expert_loop_repair_cap_exceeded');
+  if (Number(boundedLoop.maxSameRootCauseRepeats || 0) > 2) reasons.push('bounded_expert_loop_root_cause_cap_exceeded');
+  if (Number(boundedLoop.maxHighTierUses || 0) > 1) reasons.push('bounded_expert_loop_high_tier_cap_exceeded');
+  if (boundedLoop.continueRequiresNewEvidence !== true) reasons.push('bounded_expert_loop_requires_new_evidence');
+  if (boundedLoop.continueRequiresValidationDelta !== true) reasons.push('bounded_expert_loop_requires_validation_delta');
+  if (!LOOP_EXIT_REASONS.has(boundedLoop.loopExitReason)) reasons.push('bounded_expert_loop_exit_reason_invalid');
+  if (boundedLoop.loopContinuationAllowed === true && boundedLoop.newEvidenceAvailable !== true && boundedLoop.validationDeltaAvailable !== true) reasons.push('bounded_expert_loop_continue_requires_signal');
+  if (boundedLoop.loopContinuationAllowed === true && Number(boundedLoop.loopCycleCount || 0) >= Number(boundedLoop.maxLoopCycles || 0)) reasons.push('bounded_expert_loop_continue_after_cycle_cap');
+  if (boundedLoop.loopContinuationAllowed === true && Number(boundedLoop.repairIterationCount || 0) >= Number(boundedLoop.maxRepairIterations || 0)) reasons.push('bounded_expert_loop_continue_after_repair_cap');
+  if (boundedLoop.loopContinuationAllowed === true && Number(boundedLoop.sameRootCauseRepeatCount || 0) >= Number(boundedLoop.maxSameRootCauseRepeats || 0)) reasons.push('bounded_expert_loop_continue_after_root_cause_cap');
+  if (boundedLoop.loopStatus === 'blocked') reasons.push('bounded_expert_loop_blocked');
+  if (expertLedger.ledgerVersion !== '1.2.4') reasons.push('expert_role_ledger_version_invalid');
+  if (Number(expertLedger.activeRoleCount || 0) > Number(expertLedger.maxActiveRoles || 0) || Number(expertLedger.maxActiveRoles || 0) > 5) reasons.push('expert_role_ledger_active_role_cap_exceeded');
+  if (expertLedger.skepticAbnormalOnly !== true) reasons.push('skeptic_must_be_abnormal_only');
+  if (expertLedger.inventoryAdvisoryOnly !== true) reasons.push('inventory_must_be_advisory_only');
+  if (expertLedger.valuePressureAdvisoryOnly !== true) reasons.push('value_pressure_must_be_advisory_only');
+  if (expertLedger.expertCannotCreateOwnerAuthority !== true) reasons.push('expert_cannot_create_owner_authority');
+  if (expertLedger.expertCannotSubmitGithubApprovalReview !== true) reasons.push('expert_cannot_submit_github_approval_review');
+  for (const role of expertLedger.roles || []) {
+    if (!EXPERT_ROLES.has(role.roleId)) reasons.push('expert_role_invalid');
+    if (role.active === true && role.inputContextPacket !== 'safe_artifacts_only') reasons.push('expert_role_requires_safe_artifacts_only');
+    if (role.roleId === 'skeptic' && role.active === true && role.abnormalTrigger === 'none') reasons.push('skeptic_agent_requires_abnormal_trigger');
+    if (['inventory', 'value_pressure'].includes(role.roleId) && (role.canModifyProductCode === true || role.canModifyPackageOrRuntime === true || role.canMerge === true || role.canClaimReadiness === true)) reasons.push(`${role.roleId}_cannot_authorize_scope_expansion`);
+    if (role.canAuthorizeOwnerDecision === true || role.canMerge === true || role.canRelease === true || role.canClaimReadiness === true) reasons.push('expert_role_forbidden_authority');
+  }
+  if (expertLedger.roleLedgerStatus === 'blocked') reasons.push('expert_role_ledger_blocked');
+  if (failureDigest.digestVersion !== '1.2.4') reasons.push('safe_failure_digest_version_invalid');
+  if (failureDigest.onePrimaryClass !== true) reasons.push('safe_failure_digest_requires_one_primary_class');
+  if (failureDigest.failureDigestUsesSafeArtifacts !== true) reasons.push('safe_failure_digest_requires_safe_artifacts');
+  if (failureDigest.rawLogsRead === true || failureDigest.rawDiffRead === true) reasons.push('safe_failure_digest_forbids_raw_logs_or_raw_diff');
+  if (!REPAIR_SCOPES.has(failureDigest.repairScope)) reasons.push('safe_failure_digest_repair_scope_invalid');
+  if (failureDigest.productRepairAllowed === true || failureDigest.packageRuntimeRepairAllowed === true) reasons.push('safe_failure_digest_forbids_product_package_runtime_repair');
+  if (failureDigest.repairScope === 'product_requires_owner_scope' && failureDigest.ownerOnlyEscalationRequired !== true) reasons.push('product_repair_scope_requires_owner_escalation');
+  if (Number(failureDigest.maxDigestLines || 0) > 12) reasons.push('safe_failure_digest_too_long');
   if (capsule.rawLogsRead === true) reasons.push('raw_logs_forbidden_in_worker_proof');
   return reasons.length ? fail(reasons) : pass({ changedFilesListedCount: capsule.changedFilesListedCount || 0 });
 }
