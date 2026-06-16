@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.4",
-  "harnessVersion": "1.2.4",
-  "sourceHarnessVersion": "1.2.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.5",
+  "harnessVersion": "1.2.5",
+  "sourceHarnessVersion": "1.2.5",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.2.4",
+  "schemaVersion": "1.2.5",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -90,7 +90,9 @@
     "docs/process/CODEX_V124_SPEC.md",
     "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
     "scripts/codex-v123-self-test.mjs",
-    "scripts/codex-v124-self-test.mjs"
+    "scripts/codex-v124-self-test.mjs",
+    "docs/process/CODEX_V125_SPEC.md",
+    "scripts/codex-v125-self-test.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -545,7 +547,8 @@
     "docs/process/CODEX_ORCHESTRATION_GOVERNANCE_V1_0_8.json",
     "docs/process/CODEX_HARNESS_V1_1_1_TOKEN_HARD_CAP_CONTEXT_CAPSULE_FAILURE_CLOSURE_POLICY.md",
     "docs/process/CODEX_V111_SPEC.md",
-    "docs/process/CODEX_STATUS_TAXONOMY_V1_1_1.json"
+    "docs/process/CODEX_STATUS_TAXONOMY_V1_1_1.json",
+    "docs/process/CODEX_V125_SPEC.md"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -911,14 +914,16 @@
     "codex-v121-self-test.mjs",
     "codex-v122-self-test.mjs",
     "codex-v123-self-test.mjs",
-    "codex-v124-self-test.mjs"
+    "codex-v124-self-test.mjs",
+    "codex-v125-self-test.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.2.4",
-  "activeSelfTestSuite": "v124",
-  "activeSelfTestStatusKey": "v124SelfTestStatus",
+  "activeHarnessVersion": "1.2.5",
+  "activeSelfTestSuite": "v125",
+  "activeSelfTestStatusKey": "v125SelfTestStatus",
   "legacySelfTestSuites": {
-    "v124": "blocking_current",
+    "v125": "blocking_current",
+    "v124": "blocking_compatibility",
     "v123": "blocking_compatibility",
     "v122": "blocking_compatibility",
     "v121": "blocking_compatibility",
@@ -1329,9 +1334,9 @@
     "vgcBscScanVerificationBoundaryStatus",
     "vgcMainnetReadinessBoundaryStatus"
   ],
-  "targetHarnessVersion": "1.2.4",
+  "targetHarnessVersion": "1.2.5",
   "evidenceSchemaVersion": 6,
-  "theme": "Goal-Scoped Delegated Autonomy and Evidence Semantics",
+  "theme": "Goal-Sharded Worktree Fleet and Evidence Lane Closure",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",
@@ -1591,7 +1596,8 @@
     ]
   },
   "legacySelfTests": {
-    "v124": "blocking_current",
+    "v125": "blocking_current",
+    "v124": "blocking_compatibility",
     "v123": "blocking_compatibility",
     "v122": "blocking_compatibility",
     "v121": "blocking_compatibility",
@@ -1653,5 +1659,38 @@
     "newSkill": false,
     "targetRollout": "not_started",
     "subtitle": "AI agents may decide technical next actions only inside non-owner scope."
+  },
+  "goalShardedWorktreeFleet": {
+    "version": "1.2.5",
+    "name": "Goal-Sharded Worktree Fleet and Evidence Lane Closure",
+    "p0InternalBlocks": [
+      "Goal Shard and Progress Evidence",
+      "Worktree Fleet and Shard Merge Queue",
+      "Evidence Lane and QG Lane Semantics",
+      "Typed Monitor Inbox and Cost-Aware Fanout Guard",
+      "Skill / Review / Product Value Yield"
+    ],
+    "fields": [
+      "orchestrationCapsule.goalShardAndProgressEvidence",
+      "orchestrationCapsule.evidenceLaneAndQGLaneSemantics",
+      "orchestrationCapsule.typedMonitorInboxAndFanoutGuard",
+      "orchestrationCapsule.skillReviewProductValueYield",
+      "workerProofCapsule.worktreeFleetContract",
+      "workerProofCapsule.shardMergeQueue",
+      "ownerDecisionBrief.productValueDeltaSummary",
+      "ownerDecisionBrief.safeMemoryLedger"
+    ],
+    "p1OptionalSurfaces": [
+      "Execution Ladder",
+      "Safe Batch Tool Plan",
+      "Safe Memory Ledger",
+      "Repo-specific Visual Proof Surface"
+    ],
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "targetRollout": "not_started",
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "subtitle": "v1.2.5 is a control plane, not an authority expansion."
   }
 }

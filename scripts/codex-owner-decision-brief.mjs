@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.4
+// CODEX_QUALITY_HARNESS_FILE v1.2.5
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ const RECOMMENDATIONS = new Set(['merge', 'repair', 'preserve', 'stop', 'owner_m
 const CLOSURE_REASONS = new Set(['phase_create_pr_only', 'remote_gate_missing', 'owner_merge_decision_missing', 'delegated_scope_missing', 'decision_closure_inconsistent', 'merge_allowed', 'preserve_only', 'none']);
 const OWNER_AUTHORITY_STATES = new Set(['not_required_for_current_scope', 'required', 'already_delegated_current_only']);
 const SAFE_LEARNING_SOURCES = new Set(['safe_artifacts_only', 'owner_approved_summary']);
+const PRODUCT_VALUE_DELTAS = new Set(['none', 'evidence_only', 'developer_velocity', 'admin_workflow', 'user_visible_runtime', 'p0_vertical_slice']);
 
 function escalationSummary(input = {}) {
   return {
@@ -134,6 +135,34 @@ function repoSpecificVisualProofSurface(input = {}) {
   };
 }
 
+function productValueDeltaSummary(input = {}) {
+  return {
+    summaryVersion: '1.2.5',
+    delta: PRODUCT_VALUE_DELTAS.has(input.delta) ? input.delta : 'evidence_only',
+    advisoryPressureOnly: input.advisoryPressureOnly !== false,
+    authorizesProductCodeChange: input.authorizesProductCodeChange === true,
+    authorizesPackageOrLockfileChange: input.authorizesPackageOrLockfileChange === true,
+    authorizesRuntimeReadiness: input.authorizesRuntimeReadiness === true,
+    overridesOwnerScope: input.overridesOwnerScope === true,
+    nextProductSliceRecommendation: input.nextProductSliceRecommendation || 'owner_brief_only',
+    stopBecauseHarnessOnlyWouldOvergrow: input.stopBecauseHarnessOnlyWouldOvergrow === true,
+  };
+}
+
+function safeMemoryLedger(input = {}) {
+  return {
+    ledgerVersion: '1.2.5',
+    source: SAFE_LEARNING_SOURCES.has(input.source) ? input.source : 'safe_artifacts_only',
+    rawLogsRead: input.rawLogsRead === true,
+    rawTranscriptRead: input.rawTranscriptRead === true,
+    lessonId: input.lessonId || 'not_recorded',
+    oneLineSummary: input.oneLineSummary || 'not_recorded',
+    autoApplyAllowed: input.autoApplyAllowed === true,
+    ownerApprovalRequired: true,
+    proposalOnly: true,
+  };
+}
+
 export function buildOwnerDecisionBrief(input = {}) {
   return {
     ownerDecisionBriefVersion: '1',
@@ -157,6 +186,8 @@ export function buildOwnerDecisionBrief(input = {}) {
     ownerBurdenReducer: ownerBurdenReducer(input.ownerBurdenReducer || input),
     safeSessionLearningProposal: safeSessionLearningProposal(input.safeSessionLearningProposal || input),
     repoSpecificVisualProofSurface: repoSpecificVisualProofSurface(input.repoSpecificVisualProofSurface || input),
+    productValueDeltaSummary: productValueDeltaSummary(input.productValueDeltaSummary || input.productValueDelta || input),
+    safeMemoryLedger: safeMemoryLedger(input.safeMemoryLedger || input),
     ownerOnlyDecision: true,
     nextImplementableSlice: {
       available: input.nextImplementableSliceAvailable === true,
@@ -197,6 +228,8 @@ export function validateOwnerDecisionBrief(brief = {}) {
   const reducer = brief.ownerBurdenReducer || {};
   const learning = brief.safeSessionLearningProposal || {};
   const visual = brief.repoSpecificVisualProofSurface || {};
+  const value = brief.productValueDeltaSummary || {};
+  const memory = brief.safeMemoryLedger || {};
   if (burden.metricsVersion !== '1') reasons.push('owner_burden_metrics_version_invalid');
   if (Number(burden.ownerQuestionCount || 0) > 3) reasons.push('owner_question_count_should_stay_bounded');
   if (Number(burden.remainingOwnerOnlyChoicesCount || 0) > 3) reasons.push('owner_only_choice_count_max_three');
@@ -227,6 +260,14 @@ export function validateOwnerDecisionBrief(brief = {}) {
   if (visual.surfaceVersion !== '1.2.4') reasons.push('repo_visual_proof_surface_version_invalid');
   if (visual.enabled === true && visual.privateImageRedactionRequired !== true) reasons.push('repo_visual_proof_requires_redaction');
   if (visual.requiredForGenericHarness === true || visual.repoSpecificOnly !== true) reasons.push('repo_visual_proof_surface_must_be_repo_specific_optional');
+  if (value.summaryVersion !== '1.2.5') reasons.push('product_value_delta_summary_version_invalid');
+  if (!PRODUCT_VALUE_DELTAS.has(value.delta)) reasons.push('product_value_delta_invalid');
+  if (value.advisoryPressureOnly !== true) reasons.push('product_value_delta_advisory_only_required');
+  if (value.authorizesProductCodeChange === true || value.authorizesPackageOrLockfileChange === true || value.authorizesRuntimeReadiness === true || value.overridesOwnerScope === true) reasons.push('product_value_delta_cannot_authorize_scope_expansion');
+  if (memory.ledgerVersion !== '1.2.5') reasons.push('safe_memory_ledger_version_invalid');
+  if (!SAFE_LEARNING_SOURCES.has(memory.source)) reasons.push('safe_memory_source_invalid');
+  if (memory.rawLogsRead === true || memory.rawTranscriptRead === true) reasons.push('safe_memory_forbids_raw_logs_or_transcripts');
+  if (memory.autoApplyAllowed === true || memory.ownerApprovalRequired !== true || memory.proposalOnly !== true) reasons.push('safe_memory_must_be_proposal_only');
   const delegated = brief.delegatedContinuation || {};
   if (delegated.enabled === true) {
     if (delegated.autoContinueAllowed === true && delegated.technicalAcceptance !== true) reasons.push('delegated_auto_continue_requires_technical_acceptance');

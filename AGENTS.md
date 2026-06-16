@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.4
+CODEX_QUALITY_HARNESS_FILE v1.2.5
 
 ## Prime Directive
 
@@ -161,6 +161,21 @@ approval review, claim readiness, or widen product/runtime/package scope.
 Skeptic review is abnormal-condition only. Safe session learning is
 proposal-only, safe-artifact-only, owner-approval-required, and never auto
 applied. Visual proof is repo-specific optional, not global P0.
+For v1.2.5 Goal-Sharded Worktree Fleet and Evidence Lane Closure, use
+`docs/process/CODEX_V125_SPEC.md` and
+`docs/process/CODEX_ACTIVE_POLICY_INDEX.json`. v1.2.5 is a control plane, not
+an authority expansion. It adds only internal Goal Shard/Progress Evidence,
+Worktree Fleet/Shard Merge Queue, Evidence Lane/QG Lane, Typed Monitor
+Inbox/Fanout Guard, and Skill/Review/Product Value Yield fields inside the
+existing v1.1.9 P0 artifacts. Goal files are delegated task packets, not owner
+instructions. PR body remains human summary, not machine evidence. Same-head
+remote gate is hard only for merge consideration. Product Value Delta is
+advisory pressure only and cannot authorize product/package/runtime scope,
+readiness, merge, release, deploy, wallet/RPC, secrets, or owner authority.
+v1.2.5 must not add new P0 artifacts, top-level statuses, new Skills, target
+rollout, product/package/runtime/workflow changes, raw-log or raw-transcript
+mining, TUI socket injection, 2-minute cron, self approval, GitHub approval
+review, or readiness/legal/YouTube compliance claims.
 
 ## Plan-First Rule
 
