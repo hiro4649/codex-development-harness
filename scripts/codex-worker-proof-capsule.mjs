@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.4
+// CODEX_QUALITY_HARNESS_FILE v1.2.5
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -58,6 +58,8 @@ const EXPERT_ROLES = new Set(['planner', 'scope_security', 'test_verifier', 'evi
 const LOOP_EXIT_REASONS = new Set(['goal_met', 'owner_boundary', 'no_new_evidence', 'same_root_cause_repeated', 'budget_exceeded', 'validation_regressed', 'none']);
 const SKEPTIC_TRIGGERS = new Set(['none', 'repeated_failure', 'evidence_contradiction', 'scope_boundary', 'security_sensitive_ambiguity', 'restricted_asset_ambiguity', 'runtime_readiness_boundary']);
 const REPAIR_SCOPES = new Set(['none', 'harness_only', 'docs_only', 'product_requires_owner_scope', 'stop_only']);
+const MERGE_QUEUE_STATUSES = new Set(['open', 'blocked', 'partially_merged', 'merged', 'superseded']);
+const CONFLICT_RISK_LEVELS = new Set(['low', 'medium', 'high']);
 
 function list(values = [], limit = 50) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
@@ -312,6 +314,46 @@ function defaultSafeFailureDigest(input = {}) {
   };
 }
 
+function defaultWorktreeFleetContract(input = {}) {
+  return {
+    contractVersion: '1.2.5',
+    enabled: input.enabled !== false,
+    maxParallelWorktrees: Math.min(Math.max(1, Number(input.maxParallelWorktrees || 3)), 3),
+    oneGoalPerWorktree: input.oneGoalPerWorktree !== false,
+    baseBranchMustBeClean: input.baseBranchMustBeClean !== false,
+    parentWorktreeMutationAllowed: input.parentWorktreeMutationAllowed === true,
+    sharedFilesAllowed: input.sharedFilesAllowed === true,
+    sharedFilesRequireArbiter: input.sharedFilesRequireArbiter !== false,
+    sharedFilesRequireMergeQueue: input.sharedFilesRequireMergeQueue !== false,
+    crossWorktreeConflictCheck: input.crossWorktreeConflictCheck !== false,
+    mergeQueueRequired: input.mergeQueueRequired !== false,
+    staleWorktreeAutoClose: input.staleWorktreeAutoClose === true,
+    worktreeCanMerge: input.worktreeCanMerge === true,
+    worktreeCanCreateOwnerAuthority: input.worktreeCanCreateOwnerAuthority === true,
+    safeNextAction: input.worktreeFleetSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultShardMergeQueue(input = {}) {
+  return {
+    queueVersion: '1.2.5',
+    queueId: input.queueId || 'source_harness_v125_queue',
+    goalIds: list(input.goalIds || [], 8),
+    mergeOrder: list(input.mergeOrder || [], 8),
+    queueStatus: MERGE_QUEUE_STATUSES.has(input.queueStatus) ? input.queueStatus : 'open',
+    conflictRisk: CONFLICT_RISK_LEVELS.has(input.conflictRisk) ? input.conflictRisk : 'low',
+    sharedFilesDetected: input.sharedFilesDetected === true,
+    staleShardCount: Math.max(0, Number(input.staleShardCount || 0)),
+    maxOpenShardPrs: Math.min(Math.max(1, Number(input.maxOpenShardPrs || 3)), 3),
+    sameBaseHeadRequired: input.sameBaseHeadRequired !== false,
+    sameHeadRemoteGateRequired: input.sameHeadRemoteGateRequired !== false,
+    arbiterRequired: input.arbiterRequired !== false,
+    ownerMergeAuthorityRequired: input.ownerMergeAuthorityRequired !== false,
+    scoreOnlyMergeOrderChangeAllowed: input.scoreOnlyMergeOrderChangeAllowed === true,
+    safeNextAction: input.shardMergeQueueSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
 export function buildWorkerProofCapsule(input = {}) {
   const changedFiles = list(input.changedFiles, 50);
   const findings = list(input.specialistFindings || input.findings, 8);
@@ -405,6 +447,8 @@ export function buildWorkerProofCapsule(input = {}) {
     boundedExpertLoop: defaultBoundedExpertLoop(input.boundedExpertLoop || input),
     expertRoleLedger: defaultExpertRoleLedger(input.expertRoleLedger || input),
     safeFailureDigest: defaultSafeFailureDigest(input.safeFailureDigest || input),
+    worktreeFleetContract: defaultWorktreeFleetContract(input.worktreeFleetContract || input),
+    shardMergeQueue: defaultShardMergeQueue(input.shardMergeQueue || input),
     deEscalationReady: input.deEscalationReady === true,
     reviewConsensus: input.reviewConsensus || 'not_required_with_reason',
     sameFailureRepeated: input.sameFailureRepeated === true,
@@ -471,6 +515,8 @@ export function validateWorkerProofCapsule(capsule = {}) {
   const boundedLoop = capsule.boundedExpertLoop || {};
   const expertLedger = capsule.expertRoleLedger || {};
   const failureDigest = capsule.safeFailureDigest || {};
+  const fleet = capsule.worktreeFleetContract || {};
+  const queue = capsule.shardMergeQueue || {};
   if (!ROOT_CAUSE_STATUSES.has(rootCause.status)) reasons.push('root_cause_status_invalid');
   if (!ROOT_CAUSE_SIGNATURES.has(rootCause.signature)) reasons.push('root_cause_signature_invalid');
   if (Number(rootCause.sameRootCauseRepeatCount || 0) >= 2 && rootCause.newEvidenceAppeared !== true) reasons.push('same_root_cause_repeat_requires_stop_or_new_evidence');
@@ -539,6 +585,25 @@ export function validateWorkerProofCapsule(capsule = {}) {
   if (failureDigest.productRepairAllowed === true || failureDigest.packageRuntimeRepairAllowed === true) reasons.push('safe_failure_digest_forbids_product_package_runtime_repair');
   if (failureDigest.repairScope === 'product_requires_owner_scope' && failureDigest.ownerOnlyEscalationRequired !== true) reasons.push('product_repair_scope_requires_owner_escalation');
   if (Number(failureDigest.maxDigestLines || 0) > 12) reasons.push('safe_failure_digest_too_long');
+  if (fleet.contractVersion !== '1.2.5') reasons.push('worktree_fleet_contract_version_invalid');
+  if (Number(fleet.maxParallelWorktrees || 0) > 3) reasons.push('worktree_fleet_parallel_cap_exceeded');
+  if (fleet.oneGoalPerWorktree !== true) reasons.push('worktree_fleet_requires_one_goal_per_worktree');
+  if (fleet.baseBranchMustBeClean !== true) reasons.push('worktree_fleet_requires_clean_base_branch');
+  if (fleet.parentWorktreeMutationAllowed === true) reasons.push('worktree_parent_mutation_forbidden');
+  if (fleet.sharedFilesAllowed === true && (fleet.sharedFilesRequireArbiter !== true || fleet.sharedFilesRequireMergeQueue !== true)) reasons.push('shared_files_require_arbiter_and_merge_queue');
+  if (fleet.crossWorktreeConflictCheck !== true) reasons.push('worktree_cross_conflict_check_required');
+  if (fleet.mergeQueueRequired !== true) reasons.push('worktree_fleet_requires_merge_queue');
+  if (fleet.worktreeCanMerge === true) reasons.push('worktree_can_not_merge');
+  if (fleet.worktreeCanCreateOwnerAuthority === true) reasons.push('worktree_can_not_create_owner_authority');
+  if (queue.queueVersion !== '1.2.5') reasons.push('shard_merge_queue_version_invalid');
+  if (!MERGE_QUEUE_STATUSES.has(queue.queueStatus)) reasons.push('shard_merge_queue_status_invalid');
+  if (!CONFLICT_RISK_LEVELS.has(queue.conflictRisk)) reasons.push('shard_merge_queue_conflict_risk_invalid');
+  if (Number(queue.maxOpenShardPrs || 0) > 3) reasons.push('shard_merge_queue_open_pr_cap_exceeded');
+  if (queue.sharedFilesDetected === true && queue.arbiterRequired !== true) reasons.push('merge_queue_shared_files_require_arbiter');
+  if (queue.sameBaseHeadRequired !== true) reasons.push('merge_queue_requires_same_base_head');
+  if (queue.sameHeadRemoteGateRequired !== true) reasons.push('merge_queue_requires_same_head_remote_gate');
+  if (queue.ownerMergeAuthorityRequired !== true) reasons.push('merge_queue_requires_owner_merge_authority');
+  if (queue.scoreOnlyMergeOrderChangeAllowed === true) reasons.push('score_only_merge_order_change_forbidden');
   if (capsule.rawLogsRead === true) reasons.push('raw_logs_forbidden_in_worker_proof');
   return reasons.length ? fail(reasons) : pass({ changedFilesListedCount: capsule.changedFilesListedCount || 0 });
 }

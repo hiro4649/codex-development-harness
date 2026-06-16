@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.4
+// CODEX_QUALITY_HARNESS_FILE v1.2.5
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +33,8 @@ export const V123_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V123_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 export const V124_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V124_P0_ARTIFACTS = V119_P0_ARTIFACTS;
+export const V125_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
+export const V125_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 
 const MODEL_TIERS = new Set(['low_cost_worker', 'standard_worker', 'specialist_reviewer', 'highest_reasoning_reviewer']);
 const TYPED_BLOCKERS = new Set([
@@ -92,6 +94,17 @@ const LOOP_EXIT_REASONS = new Set(['goal_met', 'owner_boundary', 'no_new_evidenc
 const EVIDENCE_PHASES = new Set(['pre_pr', 'post_pr_current_head', 'post_merge']);
 const PASS_MEANINGS = new Set(['local_validation_only', 'same_head_remote_validation', 'merge_policy_only', 'runtime_evidence', 'owner_authority', 'none']);
 const REPAIR_SCOPES = new Set(['none', 'harness_only', 'docs_only', 'product_requires_owner_scope', 'stop_only']);
+const GOAL_SHARD_PHASES = new Set(['plan', 'implement', 'verify', 'repair', 'finalize']);
+const GOAL_SHARD_ROLES = new Set(['planner', 'implementer', 'verifier', 'arbiter']);
+const GOAL_VALIDATION_TIERS = new Set(['static_check', 'typed_script', 'local_gate', 'remote_gate']);
+const QG_LANES = new Set(['local_pre_pr', 'pushed_pr_waiting_qg', 'same_head_remote_qg', 'post_merge_sentinel']);
+const QG_TERMINAL_PHASES = new Set(['create_pr_only', 'remote_validation', 'merge_consideration', 'post_merge_verify']);
+const TYPED_MONITOR_ROLES = new Set(['monitor', 'planner', 'reviewer', 'verifier', 'arbiter', 'owner', 'automation']);
+const TYPED_MONITOR_TARGETS = new Set(['builder', 'reviewer', 'verifier', 'arbiter', 'owner_brief']);
+const TYPED_MONITOR_MESSAGES = new Set(['task_delta', 'blocker_report', 'review_finding', 'evidence_pointer', 'stop_signal', 'merge_queue_update']);
+const TYPED_MONITOR_AUTHORITY = new Set(['advisory', 'delegated_scope', 'owner_only']);
+const FANOUT_ROI_STATUSES = new Set(['positive', 'neutral', 'negative', 'unknown']);
+const PRODUCT_VALUE_DELTAS = new Set(['none', 'evidence_only', 'developer_velocity', 'admin_workflow', 'user_visible_runtime', 'p0_vertical_slice']);
 const CONTEXT_LEDGER_STATUSES = new Set(['pass', 'warn', 'blocked']);
 const OBSERVED_CONTEXT_SOURCE_TYPES = new Set(['agentsMd', 'manifest', 'activeSpec', 'skill', 'readme', 'legacySpec', 'prHistory', 'safeArtifact', 'githubMetadata', 'rawLog', 'fullHistory']);
 const OBSERVED_READ_REASONS = new Set(['active_authority', 'task_profile_required', 'safe_artifact_pointer', 'compatibility_failure', 'authority_conflict', 'owner_requested', 'not_recorded']);
@@ -355,10 +368,10 @@ function normalizeContextSources(input = {}) {
 
 function defaultActiveAuthorityTuple(input = {}) {
   return {
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.4',
-    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.4',
-    activeSelfTestSuite: input.activeSelfTestSuite || 'v124',
-    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V124_SPEC.md',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.5',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.5',
+    activeSelfTestSuite: input.activeSelfTestSuite || 'v125',
+    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V125_SPEC.md',
     finalAuthorityPointer: input.finalAuthorityPointer || 'v1.1.8_final_decision_kernel',
     sourceOnlyRelease: input.sourceOnlyRelease !== false,
   };
@@ -392,13 +405,13 @@ function defaultSkillContextRouting(input = {}) {
         ? 'blocked'
         : 'pass';
   return {
-    schemaVersion: input.schemaVersion || '1.2.4',
+    schemaVersion: input.schemaVersion || '1.2.5',
     taskProfile,
     selectedSkills,
     rejectedSkills: truncateList(input.rejectedSkills || [], 10),
     mdFilesRead,
     mdFilesRejected: truncateList(input.mdFilesRejected || [], 20),
-    requiredFirstReads: truncateList(input.requiredFirstReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V124_SPEC.md'], 8),
+    requiredFirstReads: truncateList(input.requiredFirstReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V125_SPEC.md'], 8),
     deferredReads: truncateList(input.deferredReads || ['README.md', 'legacy_specs', 'pr_history_docs'], 12),
     forbiddenReads: truncateList(input.forbiddenReads || ['raw_logs', 'full_history_without_scope'], 12),
     contextSourceType: normalizeContextSources(input.contextSourceType || {}),
@@ -500,7 +513,7 @@ function defaultWorkspaceIdentityGate(input = {}) {
     defaultBranch: input.defaultBranch || 'main',
     currentBranch: input.currentBranch || input.branch || 'unknown',
     headSha: input.headSha || null,
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.4',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.5',
     manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.4',
     mutationTask,
     readOnlyAudit,
@@ -517,10 +530,10 @@ function defaultWorkspaceIdentityGate(input = {}) {
 
 function defaultActivePolicyIndex(input = {}) {
   return {
-    schemaVersion: '1.2.4',
+    schemaVersion: '1.2.5',
     indexPath: input.indexPath || 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
     taskProfile: TASK_PROFILES.has(input.taskProfile) ? input.taskProfile : 'routine',
-    requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V124_SPEC.md'], 8),
+    requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V125_SPEC.md'], 8),
     allowedConditionalReads: truncateList(input.allowedConditionalReads || [], 8),
     forbiddenByDefault: truncateList(input.forbiddenByDefault || ['README.md', 'legacy_specs', 'pr_history_docs'], 8),
     selectedSkillsMax: Math.max(0, Number(input.selectedSkillsMax || 2)),
@@ -827,6 +840,163 @@ function defaultTargetHarnessFootprintPolicy(input = {}) {
   };
 }
 
+function defaultGoalShardAndProgressEvidence(input = {}) {
+  const goalShard = input.goalShard || input;
+  const progress = input.progressEvidence || input.goalProgressEvidence || {};
+  const phase = GOAL_SHARD_PHASES.has(goalShard.phase) ? goalShard.phase : 'implement';
+  const assignedRole = GOAL_SHARD_ROLES.has(goalShard.assignedRole) ? goalShard.assignedRole : 'implementer';
+  const validationTier = GOAL_VALIDATION_TIERS.has(goalShard.validationTier) ? goalShard.validationTier : 'local_gate';
+  return {
+    controlPlaneVersion: '1.2.5',
+    isControlPlaneNotAuthorityExpansion: true,
+    maxGoalShards: Math.min(Math.max(1, Number(input.maxGoalShards || 8)), 8),
+    goalShard: {
+      goalId: goalShard.goalId || 'source_harness_v125_body',
+      parentGoalId: goalShard.parentGoalId || null,
+      objective: goalShard.objective || 'add Source HARNESS v1.2.5 body only',
+      phase,
+      assignedRole,
+      baseHead: goalShard.baseHead || null,
+      expiresWhenHeadChanges: goalShard.expiresWhenHeadChanges !== false,
+      allowedFiles: truncateList(goalShard.allowedFiles || [], 50),
+      forbiddenFiles: truncateList(goalShard.forbiddenFiles || [], 50),
+      requiredEvidence: truncateList(goalShard.requiredEvidence || ['v125_self_test', 'source_local_quality_gate'], 12),
+      validationTier,
+      ownerAuthorityCreatedByShard: goalShard.ownerAuthorityCreatedByShard === true,
+      staleWhen: truncateList(goalShard.staleWhen || ['baseHead_changed', 'allowedFiles_overlap_without_arbiter', 'parentGoal_superseded', 'validationTier_no_longer_valid'], 8),
+      duplicateGoalDetectionRequired: goalShard.duplicateGoalDetectionRequired !== false,
+      completionCompactsToSafeSummary: goalShard.completionCompactsToSafeSummary !== false,
+    },
+    progressEvidence: {
+      reportedProgress: progress.reportedProgress || 'not_started',
+      toolEvidencePointers: truncateList(progress.toolEvidencePointers || [], 12),
+      verifiedSteps: truncateList(progress.verifiedSteps || [], 12),
+      unverifiedClaims: truncateList(progress.unverifiedClaims || [], 12),
+      skippedSteps: truncateList(progress.skippedSteps || [], 12),
+      failedChecks: truncateList(progress.failedChecks || [], 12),
+      progressReportStatus: progress.progressReportStatus || 'blocked',
+    },
+    safeNextAction: input.goalShardSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultEvidenceLaneAndQGLane(input = {}) {
+  const lanes = input.evidenceLaneAndQGLane || input;
+  const qg = lanes.qgLaneSemantics || {};
+  const lane = QG_LANES.has(qg.currentLane) ? qg.currentLane : 'local_pre_pr';
+  const terminalPhase = QG_TERMINAL_PHASES.has(qg.terminalPhase) ? qg.terminalPhase : 'create_pr_only';
+  const sameHeadRequired = terminalPhase === 'merge_consideration'
+    ? qg.sameHeadRemoteGateRequired !== false
+    : qg.sameHeadRemoteGateRequired === true;
+  return {
+    controlPlaneVersion: '1.2.5',
+    committedEvidenceLane: {
+      present: lanes.committedEvidenceLane?.present !== false,
+      purpose: lanes.committedEvidenceLane?.purpose || 'historical_or_pre_pr_evidence',
+      currentHeadMergeEvidence: lanes.committedEvidenceLane?.currentHeadMergeEvidence === true,
+      boundByRemoteCurrentHeadLane: lanes.committedEvidenceLane?.boundByRemoteCurrentHeadLane === true,
+    },
+    remoteCurrentHeadLane: {
+      status: lanes.remoteCurrentHeadLane?.status || 'not_required',
+      sameHead: lanes.remoteCurrentHeadLane?.sameHead === true,
+      headSha: lanes.remoteCurrentHeadLane?.headSha || null,
+    },
+    ownerIntentLane: {
+      explicitOwnerIntentRequired: true,
+      ownerAuthorityCreatedByAI: lanes.ownerIntentLane?.ownerAuthorityCreatedByAI === true,
+      source: lanes.ownerIntentLane?.source || 'none',
+    },
+    humanSummaryLane: {
+      prBodyIsHumanSummaryOnly: lanes.humanSummaryLane?.prBodyIsHumanSummaryOnly !== false,
+      prBodyIsMachineEvidence: lanes.humanSummaryLane?.prBodyIsMachineEvidence === true,
+    },
+    qgLaneSemantics: {
+      currentLane: lane,
+      terminalPhase,
+      remoteEvidenceMissingIsNormal: lane === 'local_pre_pr',
+      pendingIsFailure: qg.pendingIsFailure === true,
+      sameHeadRemoteGateRequired: sameHeadRequired,
+      sameHeadHardOnlyForMergeConsideration: qg.sameHeadHardOnlyForMergeConsideration !== false,
+      postMergeRequiresMarkerManifestDriftCheck: qg.postMergeRequiresMarkerManifestDriftCheck !== false,
+    },
+    safeNextAction: input.evidenceLaneSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultTypedMonitorInboxAndFanoutGuard(input = {}) {
+  const inbox = input.typedMonitorInbox || {};
+  const fanout = input.fanoutRoiLedger || input.costAwareFanoutGuard || {};
+  const messageType = TYPED_MONITOR_MESSAGES.has(inbox.messageType) ? inbox.messageType : 'evidence_pointer';
+  const newSignal = fanout.newFindingProduced === true || fanout.repairPlanChanged === true || fanout.validationImproved === true || fanout.sameRootCauseResolved === true;
+  return {
+    controlPlaneVersion: '1.2.5',
+    typedMonitorInbox: {
+      messageId: inbox.messageId || 'not_required',
+      fromRole: TYPED_MONITOR_ROLES.has(inbox.fromRole) ? inbox.fromRole : 'monitor',
+      toRole: TYPED_MONITOR_TARGETS.has(inbox.toRole) ? inbox.toRole : 'owner_brief',
+      messageType,
+      authorityLevel: TYPED_MONITOR_AUTHORITY.has(inbox.authorityLevel) ? inbox.authorityLevel : 'advisory',
+      rawPromptInjection: inbox.rawPromptInjection === true,
+      references: truncateList(inbox.references || ['safe_artifact_pointer'], 8),
+      ownerAuthorityCreatedByMessage: inbox.ownerAuthorityCreatedByMessage === true,
+      mutationAuthorizedByMessage: inbox.mutationAuthorizedByMessage === true,
+    },
+    fanoutRoiLedger: {
+      agentCount: Math.min(Math.max(1, Number(fanout.agentCount || 1)), 3),
+      highestTierUsed: fanout.highestTierUsed === true,
+      escalationReason: ESCALATION_REASONS.has(fanout.escalationReason) ? fanout.escalationReason : 'none',
+      newFindingProduced: fanout.newFindingProduced === true,
+      repairPlanChanged: fanout.repairPlanChanged === true,
+      validationImproved: fanout.validationImproved === true,
+      sameRootCauseResolved: fanout.sameRootCauseResolved === true,
+      tokenCostClass: TOKEN_SAVINGS_CLASSES.has(fanout.tokenCostClass) ? fanout.tokenCostClass : 'unknown',
+      roiStatus: FANOUT_ROI_STATUSES.has(fanout.roiStatus) ? fanout.roiStatus : (newSignal ? 'positive' : 'neutral'),
+      nextFanoutAllowed: fanout.nextFanoutAllowed === true,
+    },
+    safeNextAction: input.monitorFanoutSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
+function defaultSkillReviewProductValueYield(input = {}) {
+  const payload = input.skillReviewProductValueYield || input;
+  const skill = payload.skillEffectiveness || {};
+  const review = payload.reviewYield || {};
+  const product = payload.productValueDelta || {};
+  const targetInitialRollout = payload.targetInitialRollout === true;
+  return {
+    controlPlaneVersion: '1.2.5',
+    sourceHard: payload.sourceHard === true,
+    targetInitialRollout,
+    skillEffectiveness: {
+      status: skill.status || (targetInitialRollout ? 'warn' : 'pass'),
+      wrongProfileSkill: skill.wrongProfileSkill === true,
+      harmDetected: skill.harmDetected === true,
+      effectivenessUnknown: skill.effectivenessUnknown === true,
+    },
+    reviewYield: {
+      status: review.status || (targetInitialRollout ? 'warn' : 'pass'),
+      newFindingCount: Math.max(0, Number(review.newFindingCount || 0)),
+      acceptedFindingCount: Math.max(0, Number(review.acceptedFindingCount || 0)),
+      duplicateFindingCount: Math.max(0, Number(review.duplicateFindingCount || 0)),
+      falsePositiveCount: Math.max(0, Number(review.falsePositiveCount || 0)),
+      changedDecisionBecauseOfReview: review.changedDecisionBecauseOfReview === true,
+      checkedFailureModes: truncateList(review.checkedFailureModes || [], 12),
+      reviewCostWorthIt: review.reviewCostWorthIt || 'unknown',
+    },
+    productValueDelta: {
+      delta: PRODUCT_VALUE_DELTAS.has(product.delta) ? product.delta : 'evidence_only',
+      advisoryPressureOnly: product.advisoryPressureOnly !== false,
+      authorizesProductCodeChange: product.authorizesProductCodeChange === true,
+      authorizesPackageOrLockfileChange: product.authorizesPackageOrLockfileChange === true,
+      authorizesRuntimeReadiness: product.authorizesRuntimeReadiness === true,
+      overridesOwnerScope: product.overridesOwnerScope === true,
+      evidenceOnlyRepetitionCount: Math.max(0, Number(product.evidenceOnlyRepetitionCount || 0)),
+      nextProductSliceRecommendation: product.nextProductSliceRecommendation || 'owner_brief_only',
+    },
+    safeNextAction: input.yieldSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
 export function buildOrchestrationCapsule(input = {}) {
   const permissionGrant = {
     triage: input.triage === true,
@@ -873,7 +1043,7 @@ export function buildOrchestrationCapsule(input = {}) {
     itemUrl: input.itemUrl || null,
     allowedFiles: truncateList(input.allowedFiles, 50),
     forbiddenFiles: truncateList(input.forbiddenFiles, 50),
-    forbiddenScopeProfile: input.forbiddenScopeProfile || 'SOURCE_HARNESS_BODY_ONLY_V124',
+    forbiddenScopeProfile: input.forbiddenScopeProfile || 'SOURCE_HARNESS_BODY_ONLY_V125',
     acceptanceCriteria: truncateList(input.acceptanceCriteria, 8),
     nonGoals: truncateList(input.nonGoals, 8),
     stopBoundary: truncateList(input.stopBoundary, 8),
@@ -888,7 +1058,7 @@ export function buildOrchestrationCapsule(input = {}) {
   });
   return {
     orchestrationVersion: '1',
-    activeHarnessVersion: input.activeHarnessVersion || '1.2.4',
+    activeHarnessVersion: input.activeHarnessVersion || '1.2.5',
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,
@@ -926,10 +1096,14 @@ export function buildOrchestrationCapsule(input = {}) {
     delegationBoundary: defaultDelegationBoundary(input.delegationBoundary || input),
     evidenceSemanticsKernel: defaultEvidenceSemanticsKernel(input.evidenceSemanticsKernel || input),
     targetHarnessFootprintPolicy: defaultTargetHarnessFootprintPolicy(input.targetHarnessFootprintPolicy || input),
+    goalShardAndProgressEvidence: defaultGoalShardAndProgressEvidence(input.goalShardAndProgressEvidence || input),
+    evidenceLaneAndQGLaneSemantics: defaultEvidenceLaneAndQGLane(input.evidenceLaneAndQGLaneSemantics || input),
+    typedMonitorInboxAndFanoutGuard: defaultTypedMonitorInboxAndFanoutGuard(input.typedMonitorInboxAndFanoutGuard || input),
+    skillReviewProductValueYield: defaultSkillReviewProductValueYield(input.skillReviewProductValueYield || input),
     authorityBoundary: {
       conflictPrecedence: [
-        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_v1.2.2_v1.2.3_and_v1.2.4',
-        'v1.1.9_orchestration_over_v1.2.0_routing_v1.2.1_calibration_v1.2.2_context_routing_v1.2.3_observed_evidence_and_v1.2.4_delegated_autonomy',
+        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_v1.2.2_v1.2.3_v1.2.4_and_v1.2.5',
+        'v1.1.9_orchestration_over_v1.2.0_routing_v1.2.1_calibration_v1.2.2_context_routing_v1.2.3_observed_evidence_v1.2.4_delegated_autonomy_and_v1.2.5_control_plane',
         'owner_only_boundary_over_reviewer_output',
       ],
       highTierReviewCreatesOwnerApproval: false,
@@ -1190,7 +1364,7 @@ export function validateFinalDecisionClosure(closure = {}) {
 export function validateWorkspaceIdentityGate(gate = {}) {
   const reasons = [];
   if (!['1.2.3', '1.2.4'].includes(gate.workspaceIdentityVersion)) reasons.push('workspace_identity_version_invalid');
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
   if (!['1.2.3', '1.2.4'].includes(gate.manifestActiveHarnessVersion)) reasons.push('workspace_identity_manifest_version_invalid');
   if (gate.wrongRepo === true && gate.readOnlyAudit !== true) reasons.push('wrong_workspace_blocked');
   if (gate.frozenBranchUsed === true) reasons.push('frozen_branch_blocked');
@@ -1203,12 +1377,12 @@ export function validateWorkspaceIdentityGate(gate = {}) {
 
 export function validateActivePolicyIndex(index = {}) {
   const reasons = [];
-  if (!['1.2.3', '1.2.4'].includes(index.schemaVersion)) reasons.push('active_policy_index_schema_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5'].includes(index.schemaVersion)) reasons.push('active_policy_index_schema_invalid');
   if (index.indexPath !== 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json') reasons.push('active_policy_index_path_invalid');
   for (const item of ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json']) {
     if (!Array.isArray(index.requiredReads) || !index.requiredReads.includes(item)) reasons.push(`active_policy_index_missing_${item}`);
   }
-  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
+  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
   if (Array.isArray(index.requiredReads) && index.requiredReads.some((item) => ['README.md', 'legacy_specs', 'pr_history_docs'].includes(item))) reasons.push('active_policy_index_required_reads_too_broad');
   if (Number(index.selectedSkillsMax || 0) > 3) reasons.push('active_policy_index_skill_budget_too_high');
   if (Number(index.mdFilesReadMax || 0) > 6) reasons.push('active_policy_index_md_budget_too_high');
@@ -1387,6 +1561,90 @@ export function validateTargetHarnessFootprintPolicy(policy = {}) {
   return reasons.length ? fail(reasons) : pass({ agentsMaxLines: policy.agentsMaxLines });
 }
 
+export function validateGoalShardAndProgressEvidence(control = {}) {
+  const reasons = [];
+  const shard = control.goalShard || {};
+  const progress = control.progressEvidence || {};
+  if (control.controlPlaneVersion !== '1.2.5') reasons.push('goal_shard_control_version_invalid');
+  if (control.isControlPlaneNotAuthorityExpansion !== true) reasons.push('v125_must_be_control_plane_not_authority_expansion');
+  if (Number(control.maxGoalShards || 0) > 8) reasons.push('goal_shard_cap_exceeded');
+  if (!shard.goalId || !shard.objective) reasons.push('goal_shard_identity_required');
+  if (!GOAL_SHARD_PHASES.has(shard.phase)) reasons.push('goal_shard_phase_invalid');
+  if (!GOAL_SHARD_ROLES.has(shard.assignedRole)) reasons.push('goal_shard_role_invalid');
+  if (!GOAL_VALIDATION_TIERS.has(shard.validationTier)) reasons.push('goal_shard_validation_tier_invalid');
+  if (shard.expiresWhenHeadChanges !== true) reasons.push('goal_shard_expires_when_head_changes_required');
+  if (shard.ownerAuthorityCreatedByShard === true) reasons.push('goal_shard_cannot_create_owner_authority');
+  if (shard.duplicateGoalDetectionRequired !== true) reasons.push('goal_shard_duplicate_detection_required');
+  if (shard.completionCompactsToSafeSummary !== true) reasons.push('goal_shard_completion_must_compact_to_safe_summary');
+  for (const required of ['baseHead_changed', 'allowedFiles_overlap_without_arbiter', 'parentGoal_superseded', 'validationTier_no_longer_valid']) {
+    if (!Array.isArray(shard.staleWhen) || !shard.staleWhen.includes(required)) reasons.push(`goal_shard_stale_when_missing_${required}`);
+  }
+  if (progress.progressReportStatus === 'pass' && (!Array.isArray(progress.toolEvidencePointers) || progress.toolEvidencePointers.length === 0)) reasons.push('progress_pass_requires_tool_evidence');
+  if (Array.isArray(progress.unverifiedClaims) && progress.unverifiedClaims.length > 0 && progress.progressReportStatus === 'pass') reasons.push('progress_pass_forbids_unverified_claims');
+  return reasons.length ? fail(reasons) : pass({ goalId: shard.goalId, validationTier: shard.validationTier });
+}
+
+export function validateEvidenceLaneAndQGLane(control = {}) {
+  const reasons = [];
+  const committed = control.committedEvidenceLane || {};
+  const remote = control.remoteCurrentHeadLane || {};
+  const owner = control.ownerIntentLane || {};
+  const human = control.humanSummaryLane || {};
+  const qg = control.qgLaneSemantics || {};
+  if (control.controlPlaneVersion !== '1.2.5') reasons.push('evidence_lane_control_version_invalid');
+  if (committed.currentHeadMergeEvidence === true && committed.boundByRemoteCurrentHeadLane !== true) reasons.push('committed_lane_not_current_head_merge_evidence');
+  if (remote.sameHead === true && !remote.headSha) reasons.push('remote_current_head_lane_requires_head_sha_when_same_head');
+  if (owner.ownerAuthorityCreatedByAI === true) reasons.push('owner_intent_lane_cannot_be_ai_created');
+  if (human.prBodyIsHumanSummaryOnly !== true || human.prBodyIsMachineEvidence === true) reasons.push('pr_body_must_remain_human_summary_only');
+  if (!QG_LANES.has(qg.currentLane)) reasons.push('qg_lane_invalid');
+  if (!QG_TERMINAL_PHASES.has(qg.terminalPhase)) reasons.push('qg_terminal_phase_invalid');
+  if (qg.currentLane === 'local_pre_pr' && qg.remoteEvidenceMissingIsNormal !== true) reasons.push('local_pre_pr_remote_missing_is_normal');
+  if (qg.pendingIsFailure === true) reasons.push('qg_pending_must_not_be_failure');
+  if (qg.sameHeadRemoteGateRequired === true && qg.terminalPhase !== 'merge_consideration') reasons.push('same_head_remote_gate_hard_only_for_merge_consideration');
+  if (qg.sameHeadHardOnlyForMergeConsideration !== true) reasons.push('same_head_hard_phase_boundary_required');
+  if (qg.terminalPhase === 'post_merge_verify' && qg.postMergeRequiresMarkerManifestDriftCheck !== true) reasons.push('post_merge_requires_marker_manifest_drift_check');
+  return reasons.length ? fail(reasons) : pass({ currentLane: qg.currentLane, terminalPhase: qg.terminalPhase });
+}
+
+export function validateTypedMonitorInboxAndFanoutGuard(control = {}) {
+  const reasons = [];
+  const inbox = control.typedMonitorInbox || {};
+  const fanout = control.fanoutRoiLedger || {};
+  const newSignal = fanout.newFindingProduced === true || fanout.repairPlanChanged === true || fanout.validationImproved === true || fanout.sameRootCauseResolved === true;
+  if (control.controlPlaneVersion !== '1.2.5') reasons.push('typed_monitor_control_version_invalid');
+  if (!TYPED_MONITOR_ROLES.has(inbox.fromRole)) reasons.push('typed_monitor_from_role_invalid');
+  if (!TYPED_MONITOR_TARGETS.has(inbox.toRole)) reasons.push('typed_monitor_to_role_invalid');
+  if (!TYPED_MONITOR_MESSAGES.has(inbox.messageType)) reasons.push('typed_monitor_message_type_invalid');
+  if (!TYPED_MONITOR_AUTHORITY.has(inbox.authorityLevel)) reasons.push('typed_monitor_authority_invalid');
+  if (inbox.rawPromptInjection === true) reasons.push('typed_monitor_blocks_raw_prompt_injection');
+  if (inbox.ownerAuthorityCreatedByMessage === true) reasons.push('typed_monitor_message_cannot_create_owner_authority');
+  if (inbox.mutationAuthorizedByMessage === true) reasons.push('typed_monitor_message_cannot_authorize_mutation');
+  if (Number(fanout.agentCount || 0) > 3) reasons.push('fanout_agent_cap_exceeded');
+  if (!FANOUT_ROI_STATUSES.has(fanout.roiStatus)) reasons.push('fanout_roi_status_invalid');
+  if (fanout.highestTierUsed === true && !newSignal && fanout.nextFanoutAllowed === true) reasons.push('fanout_stops_when_high_tier_produces_no_new_information');
+  if (fanout.nextFanoutAllowed === true && !newSignal) reasons.push('fanout_requires_new_signal');
+  return reasons.length ? fail(reasons) : pass({ messageType: inbox.messageType, roiStatus: fanout.roiStatus });
+}
+
+export function validateSkillReviewProductValueYield(control = {}) {
+  const reasons = [];
+  const skill = control.skillEffectiveness || {};
+  const review = control.reviewYield || {};
+  const product = control.productValueDelta || {};
+  if (control.controlPlaneVersion !== '1.2.5') reasons.push('yield_control_version_invalid');
+  if (skill.wrongProfileSkill === true) reasons.push('skill_yield_wrong_profile_hard_fail');
+  if (skill.harmDetected === true) reasons.push('skill_yield_harm_detected');
+  if (control.sourceHard === true && skill.effectivenessUnknown === true) reasons.push('skill_effectiveness_unknown_source_hard');
+  if (control.sourceHard === true && review.reviewCostWorthIt === 'unknown') reasons.push('review_yield_unknown_source_hard');
+  if (product.advisoryPressureOnly !== true) reasons.push('product_value_delta_must_be_advisory_only');
+  if (product.authorizesProductCodeChange === true) reasons.push('product_value_delta_cannot_authorize_product_code');
+  if (product.authorizesPackageOrLockfileChange === true) reasons.push('product_value_delta_cannot_authorize_package_or_lockfile');
+  if (product.authorizesRuntimeReadiness === true) reasons.push('product_value_delta_cannot_authorize_runtime_readiness');
+  if (product.overridesOwnerScope === true) reasons.push('product_value_delta_cannot_override_owner_scope');
+  if (product.delta === 'evidence_only' && Number(product.evidenceOnlyRepetitionCount || 0) >= 2 && !product.nextProductSliceRecommendation) reasons.push('evidence_only_repetition_requires_owner_brief_recommendation');
+  return reasons.length ? fail(reasons) : pass({ productValueDelta: product.delta, targetInitialRollout: control.targetInitialRollout === true });
+}
+
 export function validateSkillContextRouting(routing = {}) {
   const reasons = [];
   const taskProfile = TASK_PROFILES.has(routing.taskProfile) ? routing.taskProfile : 'routine';
@@ -1399,7 +1657,7 @@ export function validateSkillContextRouting(routing = {}) {
   const effectiveMdFilesReadMax = Math.min(mdFilesReadMax, budget.mdFilesReadMax);
   const authority = routing.activeAuthorityTuple || {};
   const blockers = new Set(routing.blockerClasses || []);
-  if (!['1.2.2', '1.2.3', '1.2.4'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
+  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
   if (!TASK_PROFILES.has(routing.taskProfile)) reasons.push('task_profile_invalid');
   if (selectedSkillsMax > budget.selectedSkillsMax) reasons.push('selected_skills_max_cannot_override_task_profile_budget');
   if (mdFilesReadMax > budget.mdFilesReadMax) reasons.push('md_files_read_max_cannot_override_task_profile_budget');
@@ -1421,10 +1679,10 @@ export function validateSkillContextRouting(routing = {}) {
   if (!READ_BUDGET_STATUS.has(routing.readBudgetStatus)) reasons.push('read_budget_status_invalid');
   if (routing.readBudgetStatus === 'blocked') reasons.push('read_budget_blocked');
   for (const blocker of blockers) if (HARD_CONTEXT_BLOCKERS.has(blocker)) reasons.push(blocker);
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
-  if (!['1.2.2', '1.2.3', '1.2.4'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
-  if (!['v122', 'v123', 'v124'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
-  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
+  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
+  if (!['v122', 'v123', 'v124', 'v125'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
+  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
   if (authority.finalAuthorityPointer !== 'v1.1.8_final_decision_kernel') reasons.push('active_authority_final_decision_pointer_missing');
   if (routing.ownerProvidedContext?.countedAsFileRead === true) reasons.push('owner_provided_context_not_file_read');
   return reasons.length ? fail(reasons) : pass({ taskProfile, selectedSkills: selectedSkills.length, mdFilesRead: mdFilesRead.length, readBudgetStatus: routing.readBudgetStatus });
@@ -1457,6 +1715,10 @@ export function validateOrchestrationCapsule(capsule = {}) {
     delegationBoundaryInternalStatus: validateDelegationBoundary(capsule.delegationBoundary || {}),
     evidenceSemanticsInternalStatus: validateEvidenceSemanticsKernel(capsule.evidenceSemanticsKernel || {}),
     targetHarnessFootprintInternalStatus: validateTargetHarnessFootprintPolicy(capsule.targetHarnessFootprintPolicy || {}),
+    goalShardProgressInternalStatus: validateGoalShardAndProgressEvidence(capsule.goalShardAndProgressEvidence || {}),
+    evidenceLaneQGInternalStatus: validateEvidenceLaneAndQGLane(capsule.evidenceLaneAndQGLaneSemantics || {}),
+    typedMonitorFanoutInternalStatus: validateTypedMonitorInboxAndFanoutGuard(capsule.typedMonitorInboxAndFanoutGuard || {}),
+    skillReviewProductValueInternalStatus: validateSkillReviewProductValueYield(capsule.skillReviewProductValueYield || {}),
   };
 }
 

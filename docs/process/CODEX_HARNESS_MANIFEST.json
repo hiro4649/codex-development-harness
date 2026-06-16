@@ -1,18 +1,19 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.4",
-  "schemaVersion": "1.2.4",
-  "sourceHarnessVersion": "1.2.4",
-  "harnessVersion": "1.2.4",
-  "activeHarnessVersion": "1.2.4",
-  "targetHarnessVersion": "1.2.4",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.5",
+  "schemaVersion": "1.2.5",
+  "sourceHarnessVersion": "1.2.5",
+  "harnessVersion": "1.2.5",
+  "activeHarnessVersion": "1.2.5",
+  "targetHarnessVersion": "1.2.5",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v123_to_v124",
-  "activeSelfTestSuite": "v124",
-  "activeSelfTestStatusKey": "v124SelfTestStatus",
+  "upgradePath": "direct_v124_to_v125",
+  "activeSelfTestSuite": "v125",
+  "activeSelfTestStatusKey": "v125SelfTestStatus",
   "legacySelfTests": {
-    "v124": "blocking_current",
+    "v125": "blocking_current",
+    "v124": "blocking_compatibility",
     "v123": "blocking_compatibility",
     "v122": "blocking_compatibility",
     "v121": "blocking_compatibility",
@@ -32,7 +33,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Goal-Scoped Delegated Autonomy and Evidence Semantics",
+  "theme": "Goal-Sharded Worktree Fleet and Evidence Lane Closure",
   "requiredStatuses": [
     "orchestrationModeStatus",
     "permissionGrantStatus",
@@ -491,5 +492,38 @@
     "targetRollout": "not_started",
     "finalAuthority": "v1.1.8_final_decision_kernel",
     "subtitle": "Delegate technical evaluation inside the goal scope; never create owner authority."
+  },
+  "goalShardedWorktreeFleet": {
+    "version": "1.2.5",
+    "name": "Goal-Sharded Worktree Fleet and Evidence Lane Closure",
+    "p0InternalBlocks": [
+      "Goal Shard and Progress Evidence",
+      "Worktree Fleet and Shard Merge Queue",
+      "Evidence Lane and QG Lane Semantics",
+      "Typed Monitor Inbox and Cost-Aware Fanout Guard",
+      "Skill / Review / Product Value Yield"
+    ],
+    "fields": [
+      "orchestrationCapsule.goalShardAndProgressEvidence",
+      "orchestrationCapsule.evidenceLaneAndQGLaneSemantics",
+      "orchestrationCapsule.typedMonitorInboxAndFanoutGuard",
+      "orchestrationCapsule.skillReviewProductValueYield",
+      "workerProofCapsule.worktreeFleetContract",
+      "workerProofCapsule.shardMergeQueue",
+      "ownerDecisionBrief.productValueDeltaSummary",
+      "ownerDecisionBrief.safeMemoryLedger"
+    ],
+    "p1OptionalSurfaces": [
+      "Execution Ladder",
+      "Safe Batch Tool Plan",
+      "Safe Memory Ledger",
+      "Repo-specific Visual Proof Surface"
+    ],
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "targetRollout": "not_started",
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "subtitle": "v1.2.5 is a control plane, not an authority expansion."
   }
 }
