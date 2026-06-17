@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.5
+CODEX_QUALITY_HARNESS_FILE v1.2.6
 
 ## Prime Directive
 
@@ -176,6 +176,21 @@ v1.2.5 must not add new P0 artifacts, top-level statuses, new Skills, target
 rollout, product/package/runtime/workflow changes, raw-log or raw-transcript
 mining, TUI socket injection, 2-minute cron, self approval, GitHub approval
 review, or readiness/legal/YouTube compliance claims.
+For v1.2.6 Observed-State Bridge-Safe Loop Runtime with Context-Slim Skill and
+Validation Routing, use `docs/process/CODEX_V126_SPEC.md` and
+`docs/process/CODEX_ACTIVE_POLICY_INDEX.json`. v1.2.6 adds only internal
+Observed Workspace/Owner Receipt/Capability Boundary, Spec-First
+Checker/Builder Loop, Evidence Lane State Machine/Safe Failure Capsule,
+Context/Skill/Validation Budget Router, and Skill/Review/Product Value
+Effectiveness fields inside the existing v1.1.9 P0 artifacts. It moves the
+harness from self-reported loop state toward bounded observed Git/worktree/PR
+state, structured owner/delegated process receipts, short repair loops, and
+safe failure handoff. v1.2.6 must not add new P0 artifacts, top-level statuses,
+new Skills, target rollout, product/package/runtime/workflow changes, raw-log
+or raw-transcript mining, bridge/tunnel default-on behavior, AI owner authority,
+AI-only merge, self approval, GitHub approval review, deploy/wallet/RPC/secret
+automation, same-head remote gate bypass, or readiness/legal/YouTube compliance
+claims.
 
 ## Plan-First Rule
 

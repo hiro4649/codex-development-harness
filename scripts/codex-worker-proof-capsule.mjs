@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.5
+// CODEX_QUALITY_HARNESS_FILE v1.2.6
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -60,6 +60,7 @@ const SKEPTIC_TRIGGERS = new Set(['none', 'repeated_failure', 'evidence_contradi
 const REPAIR_SCOPES = new Set(['none', 'harness_only', 'docs_only', 'product_requires_owner_scope', 'stop_only']);
 const MERGE_QUEUE_STATUSES = new Set(['open', 'blocked', 'partially_merged', 'merged', 'superseded']);
 const CONFLICT_RISK_LEVELS = new Set(['low', 'medium', 'high']);
+const V126_OBSERVED_PR_STATES = new Set(['none', 'open', 'merged', 'closed', 'unknown']);
 
 function list(values = [], limit = 50) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
@@ -354,6 +355,29 @@ function defaultShardMergeQueue(input = {}) {
   };
 }
 
+function defaultObservedGitWorktreePrState(input = {}) {
+  const observed = input.observedGitWorktreePrState || input;
+  return {
+    stateVersion: '1.2.6',
+    currentBranch: observed.currentBranch || input.branch || 'unknown',
+    headSha: observed.headSha || input.headSha || null,
+    baseHeadSha: observed.baseHeadSha || null,
+    originMainHeadSha: observed.originMainHeadSha || null,
+    mergeBaseSha: observed.mergeBaseSha || null,
+    changedFiles: list(observed.changedFiles || input.changedFiles || [], 50),
+    allowedFiles: list(observed.allowedFiles || input.allowedFiles || [], 50),
+    forbiddenFiles: list(observed.forbiddenFiles || input.forbiddenFiles || [], 50),
+    changedFilesWithinAllowed: observed.changedFilesWithinAllowed !== false,
+    forbiddenFilesTouched: observed.forbiddenFilesTouched === true,
+    openShardPrCount: Math.max(0, Number(observed.openShardPrCount || 0)),
+    sameFileTouchedByMultipleShardPrs: observed.sameFileTouchedByMultipleShardPrs === true,
+    staleBranchDetected: observed.staleBranchDetected === true,
+    duplicateObjectiveHashDetected: observed.duplicateObjectiveHashDetected === true,
+    observedPrState: V126_OBSERVED_PR_STATES.has(observed.observedPrState) ? observed.observedPrState : 'none',
+    safeNextAction: observed.observedStateSafeNextAction || input.safeNextAction || 'one_action',
+  };
+}
+
 export function buildWorkerProofCapsule(input = {}) {
   const changedFiles = list(input.changedFiles, 50);
   const findings = list(input.specialistFindings || input.findings, 8);
@@ -449,6 +473,7 @@ export function buildWorkerProofCapsule(input = {}) {
     safeFailureDigest: defaultSafeFailureDigest(input.safeFailureDigest || input),
     worktreeFleetContract: defaultWorktreeFleetContract(input.worktreeFleetContract || input),
     shardMergeQueue: defaultShardMergeQueue(input.shardMergeQueue || input),
+    observedGitWorktreePrState: defaultObservedGitWorktreePrState(input.observedGitWorktreePrState || input),
     deEscalationReady: input.deEscalationReady === true,
     reviewConsensus: input.reviewConsensus || 'not_required_with_reason',
     sameFailureRepeated: input.sameFailureRepeated === true,
@@ -517,6 +542,7 @@ export function validateWorkerProofCapsule(capsule = {}) {
   const failureDigest = capsule.safeFailureDigest || {};
   const fleet = capsule.worktreeFleetContract || {};
   const queue = capsule.shardMergeQueue || {};
+  const observed = capsule.observedGitWorktreePrState || {};
   if (!ROOT_CAUSE_STATUSES.has(rootCause.status)) reasons.push('root_cause_status_invalid');
   if (!ROOT_CAUSE_SIGNATURES.has(rootCause.signature)) reasons.push('root_cause_signature_invalid');
   if (Number(rootCause.sameRootCauseRepeatCount || 0) >= 2 && rootCause.newEvidenceAppeared !== true) reasons.push('same_root_cause_repeat_requires_stop_or_new_evidence');
@@ -604,6 +630,14 @@ export function validateWorkerProofCapsule(capsule = {}) {
   if (queue.sameHeadRemoteGateRequired !== true) reasons.push('merge_queue_requires_same_head_remote_gate');
   if (queue.ownerMergeAuthorityRequired !== true) reasons.push('merge_queue_requires_owner_merge_authority');
   if (queue.scoreOnlyMergeOrderChangeAllowed === true) reasons.push('score_only_merge_order_change_forbidden');
+  if (observed.stateVersion !== '1.2.6') reasons.push('observed_git_worktree_pr_state_version_invalid');
+  if (observed.changedFilesWithinAllowed !== true) reasons.push('observed_changed_files_must_be_within_allowed_files');
+  if (observed.forbiddenFilesTouched === true) reasons.push('observed_forbidden_files_touched');
+  if (Number(observed.openShardPrCount || 0) > Number(queue.maxOpenShardPrs || 3)) reasons.push('observed_open_shard_pr_cap_exceeded');
+  if (observed.sameFileTouchedByMultipleShardPrs === true && queue.arbiterRequired !== true) reasons.push('observed_shared_file_overlap_requires_arbiter');
+  if (observed.staleBranchDetected === true) reasons.push('observed_stale_branch_blocks_merge_queue');
+  if (observed.duplicateObjectiveHashDetected === true) reasons.push('observed_duplicate_objective_hash_blocks_loop');
+  if (!V126_OBSERVED_PR_STATES.has(observed.observedPrState)) reasons.push('observed_pr_state_invalid');
   if (capsule.rawLogsRead === true) reasons.push('raw_logs_forbidden_in_worker_proof');
   return reasons.length ? fail(reasons) : pass({ changedFilesListedCount: capsule.changedFilesListedCount || 0 });
 }

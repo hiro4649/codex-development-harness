@@ -1,18 +1,19 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.5",
-  "schemaVersion": "1.2.5",
-  "sourceHarnessVersion": "1.2.5",
-  "harnessVersion": "1.2.5",
-  "activeHarnessVersion": "1.2.5",
-  "targetHarnessVersion": "1.2.5",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.6",
+  "schemaVersion": "1.2.6",
+  "sourceHarnessVersion": "1.2.6",
+  "harnessVersion": "1.2.6",
+  "activeHarnessVersion": "1.2.6",
+  "targetHarnessVersion": "1.2.6",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v124_to_v125",
-  "activeSelfTestSuite": "v125",
-  "activeSelfTestStatusKey": "v125SelfTestStatus",
+  "upgradePath": "direct_v125_to_v126",
+  "activeSelfTestSuite": "v126",
+  "activeSelfTestStatusKey": "v126SelfTestStatus",
   "legacySelfTests": {
-    "v125": "blocking_current",
+    "v126": "blocking_current",
+    "v125": "blocking_compatibility",
     "v124": "blocking_compatibility",
     "v123": "blocking_compatibility",
     "v122": "blocking_compatibility",
@@ -33,7 +34,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Goal-Sharded Worktree Fleet and Evidence Lane Closure",
+  "theme": "Observed-State Bridge-Safe Loop Runtime with Context-Slim Skill and Validation Routing",
   "requiredStatuses": [
     "orchestrationModeStatus",
     "permissionGrantStatus",
@@ -525,5 +526,40 @@
     "targetRollout": "not_started",
     "finalAuthority": "v1.1.8_final_decision_kernel",
     "subtitle": "v1.2.5 is a control plane, not an authority expansion."
+  },
+  "observedStateMinimalLoopRuntime": {
+    "version": "1.2.6",
+    "name": "Observed-State Bridge-Safe Loop Runtime with Context-Slim Skill and Validation Routing",
+    "p0InternalBlocks": [
+      "Observed Workspace, Owner Receipt, and Capability Boundary",
+      "Spec-First Checker/Builder Loop and Stop Circuit",
+      "Evidence Lane State Machine and Safe Failure Capsule",
+      "Context / Skill / Validation Budget Router",
+      "Skill / Review / Product Value Effectiveness"
+    ],
+    "fields": [
+      "orchestrationCapsule.observedWorkspaceOwnerReceiptAndCapability",
+      "orchestrationCapsule.specFirstCheckerBuilderLoopAndStopCircuit",
+      "orchestrationCapsule.evidenceLaneStateMachineAndSafeFailureCapsule",
+      "orchestrationCapsule.contextSkillValidationBudgetRouter",
+      "orchestrationCapsule.skillReviewProductValueEffectiveness",
+      "workerProofCapsule.observedGitWorktreePrState",
+      "ownerDecisionBrief.ownerDecisionReceipt",
+      "ownerDecisionBrief.ownerDelegatedProcessReceipt"
+    ],
+    "p1OptionalSurfaces": [
+      "Knowledge Map Capsule",
+      "Bridge Handoff Extended Mode",
+      "Operator Output Discipline",
+      "Repo-specific Visual Proof",
+      "Safe Session Learning Proposal",
+      "Architecture Entropy Watch"
+    ],
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "targetRollout": "not_started",
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "subtitle": "Self-reporting becomes observed state; long autonomy uses short safe loops."
   }
 }
