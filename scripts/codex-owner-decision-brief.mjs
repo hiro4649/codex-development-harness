@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.5
+// CODEX_QUALITY_HARNESS_FILE v1.2.6
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,9 @@ const CLOSURE_REASONS = new Set(['phase_create_pr_only', 'remote_gate_missing', 
 const OWNER_AUTHORITY_STATES = new Set(['not_required_for_current_scope', 'required', 'already_delegated_current_only']);
 const SAFE_LEARNING_SOURCES = new Set(['safe_artifacts_only', 'owner_approved_summary']);
 const PRODUCT_VALUE_DELTAS = new Set(['none', 'evidence_only', 'developer_velocity', 'admin_workflow', 'user_visible_runtime', 'p0_vertical_slice']);
+const V126_OWNER_ACTIONS = new Set(['none', 'merge_current_pr', 'create_pr_only', 'rerun_ci', 'stop']);
+const V126_OWNER_SCOPES = new Set(['none', 'source_harness_body', 'harness_only', 'product_repair', 'token_only_metadata', 'docs_only', 'metadata_light']);
+const V126_FORBIDDEN_ACTIONS = new Set(['release', 'deploy', 'walletRpcDeployAccess', 'secretAccess', 'readinessClaim', 'githubApprovalReview']);
 
 function escalationSummary(input = {}) {
   return {
@@ -163,6 +166,42 @@ function safeMemoryLedger(input = {}) {
   };
 }
 
+function ownerDecisionReceipt(input = {}) {
+  const receipt = input.ownerDecisionReceipt || input;
+  return {
+    receiptVersion: '1.2.6',
+    present: receipt.present === true,
+    receiptId: receipt.receiptId || 'not_present',
+    prNumber: receipt.prNumber || null,
+    headSha: receipt.headSha || null,
+    allowedAction: V126_OWNER_ACTIONS.has(receipt.allowedAction) ? receipt.allowedAction : 'none',
+    scope: V126_OWNER_SCOPES.has(receipt.scope) ? receipt.scope : 'none',
+    instructionTextHash: receipt.instructionTextHash || null,
+    expiresOnHeadChange: receipt.expiresOnHeadChange !== false,
+    forbiddenAuthorizations: bounded(receipt.forbiddenAuthorizations || [...V126_FORBIDDEN_ACTIONS], 12),
+    ownerAuthorityCreatedByAI: receipt.ownerAuthorityCreatedByAI === true,
+    githubApprovalReviewSubmitted: receipt.githubApprovalReviewSubmitted === true,
+    productionReadinessClaimed: receipt.productionReadinessClaimed === true,
+    runtimeReadinessClaimed: receipt.runtimeReadinessClaimed === true,
+  };
+}
+
+function ownerDelegatedProcessReceipt(input = {}) {
+  const receipt = input.ownerDelegatedProcessReceipt || input;
+  return {
+    receiptVersion: '1.2.6',
+    present: receipt.present === true,
+    delegateRole: receipt.delegateRole || 'technical_agents',
+    scope: V126_OWNER_SCOPES.has(receipt.scope) ? receipt.scope : 'none',
+    allowedActions: bounded(receipt.allowedActions || [], 8),
+    blockedActions: bounded(receipt.blockedActions || [...V126_FORBIDDEN_ACTIONS], 12),
+    autoContinueAllowed: receipt.autoContinueAllowed === true,
+    expiresOnHeadChange: receipt.expiresOnHeadChange !== false,
+    ownerAuthorityCreatedByAI: receipt.ownerAuthorityCreatedByAI === true,
+    safeNextAction: receipt.safeNextAction || 'continue_within_delegated_scope_or_stop',
+  };
+}
+
 export function buildOwnerDecisionBrief(input = {}) {
   return {
     ownerDecisionBriefVersion: '1',
@@ -188,6 +227,8 @@ export function buildOwnerDecisionBrief(input = {}) {
     repoSpecificVisualProofSurface: repoSpecificVisualProofSurface(input.repoSpecificVisualProofSurface || input),
     productValueDeltaSummary: productValueDeltaSummary(input.productValueDeltaSummary || input.productValueDelta || input),
     safeMemoryLedger: safeMemoryLedger(input.safeMemoryLedger || input),
+    ownerDecisionReceipt: ownerDecisionReceipt(input.ownerDecisionReceipt || {}),
+    ownerDelegatedProcessReceipt: ownerDelegatedProcessReceipt(input.ownerDelegatedProcessReceipt || {}),
     ownerOnlyDecision: true,
     nextImplementableSlice: {
       available: input.nextImplementableSliceAvailable === true,
@@ -230,6 +271,8 @@ export function validateOwnerDecisionBrief(brief = {}) {
   const visual = brief.repoSpecificVisualProofSurface || {};
   const value = brief.productValueDeltaSummary || {};
   const memory = brief.safeMemoryLedger || {};
+  const ownerReceipt = brief.ownerDecisionReceipt || {};
+  const delegatedReceipt = brief.ownerDelegatedProcessReceipt || {};
   if (burden.metricsVersion !== '1') reasons.push('owner_burden_metrics_version_invalid');
   if (Number(burden.ownerQuestionCount || 0) > 3) reasons.push('owner_question_count_should_stay_bounded');
   if (Number(burden.remainingOwnerOnlyChoicesCount || 0) > 3) reasons.push('owner_only_choice_count_max_three');
@@ -268,6 +311,22 @@ export function validateOwnerDecisionBrief(brief = {}) {
   if (!SAFE_LEARNING_SOURCES.has(memory.source)) reasons.push('safe_memory_source_invalid');
   if (memory.rawLogsRead === true || memory.rawTranscriptRead === true) reasons.push('safe_memory_forbids_raw_logs_or_transcripts');
   if (memory.autoApplyAllowed === true || memory.ownerApprovalRequired !== true || memory.proposalOnly !== true) reasons.push('safe_memory_must_be_proposal_only');
+  if (ownerReceipt.receiptVersion !== '1.2.6') reasons.push('owner_decision_receipt_version_invalid');
+  if (!V126_OWNER_ACTIONS.has(ownerReceipt.allowedAction)) reasons.push('owner_decision_receipt_action_invalid');
+  if (!V126_OWNER_SCOPES.has(ownerReceipt.scope)) reasons.push('owner_decision_receipt_scope_invalid');
+  if (ownerReceipt.ownerAuthorityCreatedByAI === true) reasons.push('owner_decision_receipt_cannot_be_ai_created');
+  if (ownerReceipt.githubApprovalReviewSubmitted === true) reasons.push('owner_decision_receipt_cannot_submit_github_approval_review');
+  if (ownerReceipt.productionReadinessClaimed === true || ownerReceipt.runtimeReadinessClaimed === true) reasons.push('owner_decision_receipt_cannot_claim_readiness');
+  if (ownerReceipt.allowedAction === 'merge_current_pr' && (ownerReceipt.present !== true || !ownerReceipt.headSha || ownerReceipt.expiresOnHeadChange !== true)) reasons.push('merge_receipt_requires_present_head_and_expiry');
+  for (const required of V126_FORBIDDEN_ACTIONS) {
+    if (!Array.isArray(ownerReceipt.forbiddenAuthorizations) || !ownerReceipt.forbiddenAuthorizations.includes(required)) reasons.push(`owner_decision_receipt_missing_forbidden_${required}`);
+  }
+  if (delegatedReceipt.receiptVersion !== '1.2.6') reasons.push('owner_delegated_process_receipt_version_invalid');
+  if (delegatedReceipt.ownerAuthorityCreatedByAI === true) reasons.push('owner_delegated_process_receipt_cannot_be_ai_created');
+  if (delegatedReceipt.autoContinueAllowed === true && delegatedReceipt.present !== true) reasons.push('delegated_process_auto_continue_requires_receipt');
+  for (const action of delegatedReceipt.allowedActions || []) {
+    if (V126_FORBIDDEN_ACTIONS.has(action)) reasons.push(`delegated_process_receipt_forbidden_${action}`);
+  }
   const delegated = brief.delegatedContinuation || {};
   if (delegated.enabled === true) {
     if (delegated.autoContinueAllowed === true && delegated.technicalAcceptance !== true) reasons.push('delegated_auto_continue_requires_technical_acceptance');

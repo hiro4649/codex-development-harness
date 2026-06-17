@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.5
+// CODEX_QUALITY_HARNESS_FILE v1.2.6
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,8 @@ export const V124_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V124_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 export const V125_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V125_P0_ARTIFACTS = V119_P0_ARTIFACTS;
+export const V126_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
+export const V126_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 
 const MODEL_TIERS = new Set(['low_cost_worker', 'standard_worker', 'specialist_reviewer', 'highest_reasoning_reviewer']);
 const TYPED_BLOCKERS = new Set([
@@ -105,6 +107,14 @@ const TYPED_MONITOR_MESSAGES = new Set(['task_delta', 'blocker_report', 'review_
 const TYPED_MONITOR_AUTHORITY = new Set(['advisory', 'delegated_scope', 'owner_only']);
 const FANOUT_ROI_STATUSES = new Set(['positive', 'neutral', 'negative', 'unknown']);
 const PRODUCT_VALUE_DELTAS = new Set(['none', 'evidence_only', 'developer_velocity', 'admin_workflow', 'user_visible_runtime', 'p0_vertical_slice']);
+const V126_OWNER_ACTIONS = new Set(['none', 'merge_current_pr', 'create_pr_only', 'rerun_ci', 'stop']);
+const V126_OWNER_SCOPES = new Set(['none', 'source_harness_body', 'harness_only', 'product_repair', 'token_only_metadata', 'docs_only', 'metadata_light']);
+const V126_FORBIDDEN_AUTHORIZATIONS = ['release', 'deploy', 'wallet_rpc', 'secret_access', 'readiness_claim', 'github_approval_review'];
+const V126_LOOP_EXIT_REASONS = new Set(['not_started', 'all_green', 'same_failure_repeated', 'regression_detected', 'cycle_budget_exceeded', 'owner_boundary', 'scope_boundary']);
+const V126_LANE_STATES = new Set(['local_pre_pr', 'pushed_pr_waiting_qg', 'same_head_remote_qg', 'merge_consideration', 'post_merge_sentinel']);
+const V126_REMOTE_STATUSES = new Set(['missing', 'pending', 'pass', 'fail', 'not_required']);
+const V126_VALIDATION_TIERS = new Set(['static_check', 'typed_script', 'focused_test', 'local_gate', 'remote_gate', 'full_ci']);
+const V126_SKILL_NET_VALUES = new Set(['positive', 'neutral', 'negative', 'unknown']);
 const CONTEXT_LEDGER_STATUSES = new Set(['pass', 'warn', 'blocked']);
 const OBSERVED_CONTEXT_SOURCE_TYPES = new Set(['agentsMd', 'manifest', 'activeSpec', 'skill', 'readme', 'legacySpec', 'prHistory', 'safeArtifact', 'githubMetadata', 'rawLog', 'fullHistory']);
 const OBSERVED_READ_REASONS = new Set(['active_authority', 'task_profile_required', 'safe_artifact_pointer', 'compatibility_failure', 'authority_conflict', 'owner_requested', 'not_recorded']);
@@ -368,10 +378,10 @@ function normalizeContextSources(input = {}) {
 
 function defaultActiveAuthorityTuple(input = {}) {
   return {
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.5',
-    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.5',
-    activeSelfTestSuite: input.activeSelfTestSuite || 'v125',
-    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V125_SPEC.md',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.6',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.6',
+    activeSelfTestSuite: input.activeSelfTestSuite || 'v126',
+    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V126_SPEC.md',
     finalAuthorityPointer: input.finalAuthorityPointer || 'v1.1.8_final_decision_kernel',
     sourceOnlyRelease: input.sourceOnlyRelease !== false,
   };
@@ -405,13 +415,13 @@ function defaultSkillContextRouting(input = {}) {
         ? 'blocked'
         : 'pass';
   return {
-    schemaVersion: input.schemaVersion || '1.2.5',
+    schemaVersion: input.schemaVersion || '1.2.6',
     taskProfile,
     selectedSkills,
     rejectedSkills: truncateList(input.rejectedSkills || [], 10),
     mdFilesRead,
     mdFilesRejected: truncateList(input.mdFilesRejected || [], 20),
-    requiredFirstReads: truncateList(input.requiredFirstReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V125_SPEC.md'], 8),
+    requiredFirstReads: truncateList(input.requiredFirstReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V126_SPEC.md'], 8),
     deferredReads: truncateList(input.deferredReads || ['README.md', 'legacy_specs', 'pr_history_docs'], 12),
     forbiddenReads: truncateList(input.forbiddenReads || ['raw_logs', 'full_history_without_scope'], 12),
     contextSourceType: normalizeContextSources(input.contextSourceType || {}),
@@ -507,14 +517,14 @@ function defaultWorkspaceIdentityGate(input = {}) {
     || (mutationTask && worktreeClean === false && !dirtyAllowed);
   const warn = !blocked && (wrongRepo || repoResolvableOnGitHub === false || worktreeClean === false || localOnlyState);
   return {
-    workspaceIdentityVersion: '1.2.4',
+    workspaceIdentityVersion: '1.2.6',
     expectedRepo: input.expectedRepo || input.repo || 'hiro4649/codex-development-harness',
     actualRemoteUrl: input.actualRemoteUrl || 'safe_url_or_hash',
     defaultBranch: input.defaultBranch || 'main',
     currentBranch: input.currentBranch || input.branch || 'unknown',
     headSha: input.headSha || null,
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.5',
-    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.4',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.6',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.6',
     mutationTask,
     readOnlyAudit,
     worktreeClean,
@@ -530,10 +540,10 @@ function defaultWorkspaceIdentityGate(input = {}) {
 
 function defaultActivePolicyIndex(input = {}) {
   return {
-    schemaVersion: '1.2.5',
+    schemaVersion: '1.2.6',
     indexPath: input.indexPath || 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
     taskProfile: TASK_PROFILES.has(input.taskProfile) ? input.taskProfile : 'routine',
-    requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V125_SPEC.md'], 8),
+    requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V126_SPEC.md'], 8),
     allowedConditionalReads: truncateList(input.allowedConditionalReads || [], 8),
     forbiddenByDefault: truncateList(input.forbiddenByDefault || ['README.md', 'legacy_specs', 'pr_history_docs'], 8),
     selectedSkillsMax: Math.max(0, Number(input.selectedSkillsMax || 2)),
@@ -997,6 +1007,192 @@ function defaultSkillReviewProductValueYield(input = {}) {
   };
 }
 
+function defaultObservedWorkspaceOwnerReceiptAndCapability(input = {}) {
+  const payload = input.observedWorkspaceOwnerReceiptAndCapability || input;
+  const workspace = payload.observedWorkspaceState || {};
+  const owner = payload.ownerDecisionReceipt || {};
+  const delegated = payload.ownerDelegatedProcessReceipt || {};
+  const capability = payload.capabilityBoundary || {};
+  return {
+    runtimeVersion: '1.2.6',
+    observedWorkspaceState: {
+      expectedRepo: workspace.expectedRepo || payload.repo || 'hiro4649/codex-development-harness',
+      actualRemote: workspace.actualRemote || 'safe_remote_id',
+      defaultBranch: workspace.defaultBranch || 'main',
+      currentBranch: workspace.currentBranch || payload.branch || 'unknown',
+      headSha: workspace.headSha || payload.headSha || null,
+      originHeadSha: workspace.originHeadSha || null,
+      worktreeClean: workspace.worktreeClean !== false,
+      wrongCwdDetected: workspace.wrongCwdDetected === true,
+      staleCloneDetected: workspace.staleCloneDetected === true,
+      frozenBranchUsed: workspace.frozenBranchUsed === true,
+      mutationAllowedHere: workspace.mutationAllowedHere !== false,
+    },
+    ownerDecisionReceipt: {
+      present: owner.present === true,
+      receiptId: owner.receiptId || 'not_present',
+      prNumber: owner.prNumber || null,
+      headSha: owner.headSha || null,
+      allowedAction: V126_OWNER_ACTIONS.has(owner.allowedAction) ? owner.allowedAction : 'create_pr_only',
+      scope: V126_OWNER_SCOPES.has(owner.scope) ? owner.scope : 'source_harness_body',
+      instructionTextHash: owner.instructionTextHash || null,
+      expiresOnHeadChange: owner.expiresOnHeadChange !== false,
+      forbiddenAuthorizations: truncateList(owner.forbiddenAuthorizations || V126_FORBIDDEN_AUTHORIZATIONS, 12),
+      ownerAuthorityCreatedByAI: owner.ownerAuthorityCreatedByAI === true,
+    },
+    ownerDelegatedProcessReceipt: {
+      present: delegated.present === true,
+      delegateRole: delegated.delegateRole || 'technical_agents',
+      scope: V126_OWNER_SCOPES.has(delegated.scope) ? delegated.scope : 'none',
+      allowedActions: truncateList(delegated.allowedActions || [], 8),
+      blockedActions: truncateList(delegated.blockedActions || V126_FORBIDDEN_AUTHORIZATIONS, 12),
+      autoContinueAllowed: delegated.autoContinueAllowed === true,
+      expiresOnHeadChange: delegated.expiresOnHeadChange !== false,
+      ownerAuthorityCreatedByAI: delegated.ownerAuthorityCreatedByAI === true,
+    },
+    capabilityBoundary: {
+      bridgeDefaultEnabled: capability.bridgeDefaultEnabled === true,
+      readOnlyFirst: capability.readOnlyFirst !== false,
+      writeRequiresOwnerScope: capability.writeRequiresOwnerScope !== false,
+      workspaceOnlyWrite: capability.workspaceOnlyWrite !== false,
+      secretPathBlocked: capability.secretPathBlocked !== false,
+      rawLogsForbidden: capability.rawLogsForbidden !== false,
+      rawTranscriptMiningForbidden: capability.rawTranscriptMiningForbidden !== false,
+      walletRpcDeployForbidden: capability.walletRpcDeployForbidden !== false,
+      bridgeTranscriptMachineEvidence: capability.bridgeTranscriptMachineEvidence === true,
+      ownerAuthorityCreatedByBridge: capability.ownerAuthorityCreatedByBridge === true,
+      executionDigestRequired: capability.executionDigestRequired !== false,
+    },
+    safeNextAction: payload.observedStateSafeNextAction || payload.safeNextAction || 'one_action',
+  };
+}
+
+function defaultSpecFirstCheckerBuilderLoopAndStopCircuit(input = {}) {
+  const payload = input.specFirstCheckerBuilderLoopAndStopCircuit || input;
+  return {
+    runtimeVersion: '1.2.6',
+    specFirstRequired: payload.specFirstRequired !== false,
+    builderCanEdit: payload.builderCanEdit !== false,
+    checkerCanEdit: payload.checkerCanEdit === true,
+    checkerOutputRequiredForSuccess: payload.checkerOutputRequiredForSuccess !== false,
+    sameAgentCannotSatisfyIndependentCheck: payload.sameAgentCannotSatisfyIndependentCheck !== false,
+    maxCycles: Math.min(Math.max(1, Number(payload.maxCycles || 5)), 5),
+    currentCycle: Math.max(0, Number(payload.currentCycle || 0)),
+    sameFailureRepeatLimit: Math.min(Math.max(1, Number(payload.sameFailureRepeatLimit || 2)), 2),
+    sameFailureRepeatCount: Math.max(0, Number(payload.sameFailureRepeatCount || 0)),
+    regressionStops: payload.regressionStops !== false,
+    regressionDetected: payload.regressionDetected === true,
+    testWeakeningStops: payload.testWeakeningStops !== false,
+    testWeakeningDetected: payload.testWeakeningDetected === true,
+    ownerBoundaryStops: payload.ownerBoundaryStops !== false,
+    loopContinuationAllowed: payload.loopContinuationAllowed === true,
+    loopExitReason: V126_LOOP_EXIT_REASONS.has(payload.loopExitReason) ? payload.loopExitReason : 'not_started',
+    safeNextAction: payload.loopSafeNextAction || payload.safeNextAction || 'one_action',
+  };
+}
+
+function defaultEvidenceLaneStateMachineAndSafeFailureCapsule(input = {}) {
+  const payload = input.evidenceLaneStateMachineAndSafeFailureCapsule || input;
+  const lane = payload.evidenceLaneStateMachine || {};
+  const failure = payload.safeFailureCapsule || {};
+  return {
+    runtimeVersion: '1.2.6',
+    evidenceLaneStateMachine: {
+      currentState: V126_LANE_STATES.has(lane.currentState) ? lane.currentState : 'local_pre_pr',
+      remoteStatus: V126_REMOTE_STATUSES.has(lane.remoteStatus) ? lane.remoteStatus : 'missing',
+      sameHead: lane.sameHead === true,
+      headSha: lane.headSha || null,
+      ownerReceiptRequiredForMerge: lane.ownerReceiptRequiredForMerge !== false,
+      sameHeadRemoteRequiredForMerge: lane.sameHeadRemoteRequiredForMerge !== false,
+      finalDecisionClosureRequired: lane.finalDecisionClosureRequired !== false,
+      mergeConsiderationAllowed: lane.mergeConsiderationAllowed === true,
+      prBodyMachineEvidence: lane.prBodyMachineEvidence === true,
+    },
+    safeFailureCapsule: {
+      failureFingerprint: failure.failureFingerprint || 'none',
+      sameFailureAsPreviousCycle: failure.sameFailureAsPreviousCycle === true,
+      check: failure.check || 'none',
+      safeFile: failure.safeFile || null,
+      safeLine: failure.safeLine || null,
+      safeReason: failure.safeReason || 'none',
+      rawLogIncluded: failure.rawLogIncluded === true,
+      rawTranscriptIncluded: failure.rawTranscriptIncluded === true,
+      rawDiffIncluded: failure.rawDiffIncluded === true,
+      builderInstruction: failure.builderInstruction || 'fix_root_cause_only',
+      scopeExpansionAllowed: failure.scopeExpansionAllowed === true,
+      onePrimaryClass: failure.onePrimaryClass !== false,
+    },
+    safeNextAction: payload.failureLaneSafeNextAction || payload.safeNextAction || 'one_action',
+  };
+}
+
+function defaultContextSkillValidationBudgetRouter(input = {}) {
+  const payload = input.contextSkillValidationBudgetRouter || input;
+  const selectedSkills = truncateList(payload.selectedSkills || [], 5);
+  const mdFilesRead = truncateList(payload.mdFilesRead || [], 10);
+  return {
+    runtimeVersion: '1.2.6',
+    taskProfile: payload.taskProfile || 'routine',
+    impactedAreas: truncateList(payload.impactedAreas || [], 12),
+    selectedSkills,
+    rejectedSkills: truncateList(payload.rejectedSkills || [], 12),
+    mdFilesRead,
+    mdFilesDeferred: truncateList(payload.mdFilesDeferred || ['README.md', 'legacy_specs', 'pr_history_docs'], 12),
+    maxSkillCount: Math.min(Math.max(0, Number(payload.maxSkillCount || 2)), 2),
+    maxMdFilesRead: Math.min(Math.max(0, Number(payload.maxMdFilesRead || 3)), 3),
+    selectedValidationTier: V126_VALIDATION_TIERS.has(payload.selectedValidationTier) ? payload.selectedValidationTier : 'static_check',
+    whyThisTier: payload.whyThisTier || 'task_profile_and_changed_files',
+    sameHeadRemoteGateCannotBeSkippedForMerge: payload.sameHeadRemoteGateCannotBeSkippedForMerge !== false,
+    contextReductionMustNotReduceEvidence: payload.contextReductionMustNotReduceEvidence !== false,
+    skillRoutingMustNotReduceVerification: payload.skillRoutingMustNotReduceVerification !== false,
+    knowledgePointerCannotOverrideChangedFiles: payload.knowledgePointerCannotOverrideChangedFiles !== false,
+    validationRouterCannotSkipSameHeadRemoteForMerge: payload.validationRouterCannotSkipSameHeadRemoteForMerge !== false,
+    safeNextAction: payload.routerSafeNextAction || payload.safeNextAction || 'one_action',
+  };
+}
+
+function defaultSkillReviewProductValueEffectiveness(input = {}) {
+  const payload = input.skillReviewProductValueEffectiveness || input;
+  const skill = payload.skillEffectiveness || {};
+  const review = payload.reviewEffectiveness || {};
+  const product = payload.productValueReturnGate || {};
+  return {
+    runtimeVersion: '1.2.6',
+    skillEffectiveness: {
+      skillId: skill.skillId || 'not_selected',
+      selected: skill.selected === true,
+      usedCorrectly: skill.usedCorrectly !== false,
+      newEvidenceProduced: skill.newEvidenceProduced === true,
+      failureAvoided: skill.failureAvoided === true,
+      diffReduced: skill.diffReduced === true,
+      validationAdded: skill.validationAdded === true,
+      wrongSkillCost: Math.max(0, Number(skill.wrongSkillCost || 0)),
+      wrongProfileSkill: skill.wrongProfileSkill === true,
+      harmfulSkill: skill.harmfulSkill === true,
+      netValue: V126_SKILL_NET_VALUES.has(skill.netValue) ? skill.netValue : 'unknown',
+    },
+    reviewEffectiveness: {
+      newFindingCount: Math.max(0, Number(review.newFindingCount || 0)),
+      acceptedFindingCount: Math.max(0, Number(review.acceptedFindingCount || 0)),
+      duplicateFindingCount: Math.max(0, Number(review.duplicateFindingCount || 0)),
+      falsePositiveCount: Math.max(0, Number(review.falsePositiveCount || 0)),
+      assumptionDiffPresent: review.assumptionDiffPresent === true,
+      decisionChangedByReview: review.decisionChangedByReview === true,
+      negativeFindingRequiredWhenHighRisk: review.negativeFindingRequiredWhenHighRisk === true,
+      noNewSignalRepeatCount: Math.max(0, Number(review.noNewSignalRepeatCount || 0)),
+      fanoutContinuationAllowed: review.fanoutContinuationAllowed === true,
+    },
+    productValueReturnGate: {
+      recentHarnessOnlyCount: Math.max(0, Number(product.recentHarnessOnlyCount || 0)),
+      evidenceOnlyRepeated: product.evidenceOnlyRepeated === true,
+      nextProductSliceRecommended: product.nextProductSliceRecommended === true,
+      productScopeAuthorized: product.productScopeAuthorized === true,
+      safeNextAction: product.safeNextAction || 'owner_scope_or_stop',
+    },
+    safeNextAction: payload.effectivenessSafeNextAction || payload.safeNextAction || 'one_action',
+  };
+}
+
 export function buildOrchestrationCapsule(input = {}) {
   const permissionGrant = {
     triage: input.triage === true,
@@ -1058,7 +1254,7 @@ export function buildOrchestrationCapsule(input = {}) {
   });
   return {
     orchestrationVersion: '1',
-    activeHarnessVersion: input.activeHarnessVersion || '1.2.5',
+    activeHarnessVersion: input.activeHarnessVersion || '1.2.6',
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,
@@ -1100,10 +1296,15 @@ export function buildOrchestrationCapsule(input = {}) {
     evidenceLaneAndQGLaneSemantics: defaultEvidenceLaneAndQGLane(input.evidenceLaneAndQGLaneSemantics || input),
     typedMonitorInboxAndFanoutGuard: defaultTypedMonitorInboxAndFanoutGuard(input.typedMonitorInboxAndFanoutGuard || input),
     skillReviewProductValueYield: defaultSkillReviewProductValueYield(input.skillReviewProductValueYield || input),
+    observedWorkspaceOwnerReceiptAndCapability: defaultObservedWorkspaceOwnerReceiptAndCapability(input.observedWorkspaceOwnerReceiptAndCapability || input),
+    specFirstCheckerBuilderLoopAndStopCircuit: defaultSpecFirstCheckerBuilderLoopAndStopCircuit(input.specFirstCheckerBuilderLoopAndStopCircuit || input),
+    evidenceLaneStateMachineAndSafeFailureCapsule: defaultEvidenceLaneStateMachineAndSafeFailureCapsule(input.evidenceLaneStateMachineAndSafeFailureCapsule || input),
+    contextSkillValidationBudgetRouter: defaultContextSkillValidationBudgetRouter(input.contextSkillValidationBudgetRouter || input),
+    skillReviewProductValueEffectiveness: defaultSkillReviewProductValueEffectiveness(input.skillReviewProductValueEffectiveness || input),
     authorityBoundary: {
       conflictPrecedence: [
-        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_v1.2.2_v1.2.3_v1.2.4_and_v1.2.5',
-        'v1.1.9_orchestration_over_v1.2.0_routing_v1.2.1_calibration_v1.2.2_context_routing_v1.2.3_observed_evidence_v1.2.4_delegated_autonomy_and_v1.2.5_control_plane',
+        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_v1.2.2_v1.2.3_v1.2.4_v1.2.5_and_v1.2.6',
+        'v1.1.9_orchestration_over_v1.2.0_routing_v1.2.1_calibration_v1.2.2_context_routing_v1.2.3_observed_evidence_v1.2.4_delegated_autonomy_v1.2.5_control_plane_and_v1.2.6_observed_state_loop',
         'owner_only_boundary_over_reviewer_output',
       ],
       highTierReviewCreatesOwnerApproval: false,
@@ -1363,9 +1564,9 @@ export function validateFinalDecisionClosure(closure = {}) {
 
 export function validateWorkspaceIdentityGate(gate = {}) {
   const reasons = [];
-  if (!['1.2.3', '1.2.4'].includes(gate.workspaceIdentityVersion)) reasons.push('workspace_identity_version_invalid');
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
-  if (!['1.2.3', '1.2.4'].includes(gate.manifestActiveHarnessVersion)) reasons.push('workspace_identity_manifest_version_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6'].includes(gate.workspaceIdentityVersion)) reasons.push('workspace_identity_version_invalid');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6'].includes(gate.manifestActiveHarnessVersion)) reasons.push('workspace_identity_manifest_version_invalid');
   if (gate.wrongRepo === true && gate.readOnlyAudit !== true) reasons.push('wrong_workspace_blocked');
   if (gate.frozenBranchUsed === true) reasons.push('frozen_branch_blocked');
   if (gate.mutationTask === true && gate.repoResolvableOnGitHub !== true) reasons.push('unresolvable_remote_for_mutation');
@@ -1377,12 +1578,12 @@ export function validateWorkspaceIdentityGate(gate = {}) {
 
 export function validateActivePolicyIndex(index = {}) {
   const reasons = [];
-  if (!['1.2.3', '1.2.4', '1.2.5'].includes(index.schemaVersion)) reasons.push('active_policy_index_schema_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6'].includes(index.schemaVersion)) reasons.push('active_policy_index_schema_invalid');
   if (index.indexPath !== 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json') reasons.push('active_policy_index_path_invalid');
   for (const item of ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json']) {
     if (!Array.isArray(index.requiredReads) || !index.requiredReads.includes(item)) reasons.push(`active_policy_index_missing_${item}`);
   }
-  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
+  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
   if (Array.isArray(index.requiredReads) && index.requiredReads.some((item) => ['README.md', 'legacy_specs', 'pr_history_docs'].includes(item))) reasons.push('active_policy_index_required_reads_too_broad');
   if (Number(index.selectedSkillsMax || 0) > 3) reasons.push('active_policy_index_skill_budget_too_high');
   if (Number(index.mdFilesReadMax || 0) > 6) reasons.push('active_policy_index_md_budget_too_high');
@@ -1645,6 +1846,122 @@ export function validateSkillReviewProductValueYield(control = {}) {
   return reasons.length ? fail(reasons) : pass({ productValueDelta: product.delta, targetInitialRollout: control.targetInitialRollout === true });
 }
 
+export function validateObservedWorkspaceOwnerReceiptAndCapability(control = {}) {
+  const reasons = [];
+  const workspace = control.observedWorkspaceState || {};
+  const owner = control.ownerDecisionReceipt || {};
+  const delegated = control.ownerDelegatedProcessReceipt || {};
+  const capability = control.capabilityBoundary || {};
+  if (control.runtimeVersion !== '1.2.6') reasons.push('observed_state_runtime_version_invalid');
+  if (workspace.wrongCwdDetected === true) reasons.push('wrong_cwd_blocks_v126_loop');
+  if (workspace.staleCloneDetected === true) reasons.push('stale_clone_blocks_v126_loop');
+  if (workspace.frozenBranchUsed === true) reasons.push('frozen_branch_blocks_v126_loop');
+  if (workspace.worktreeClean !== true) reasons.push('observed_workspace_requires_clean_worktree');
+  if (workspace.mutationAllowedHere !== true) reasons.push('observed_workspace_mutation_not_allowed');
+  if (!V126_OWNER_ACTIONS.has(owner.allowedAction)) reasons.push('owner_receipt_action_invalid');
+  if (!V126_OWNER_SCOPES.has(owner.scope)) reasons.push('owner_receipt_scope_invalid');
+  if (owner.ownerAuthorityCreatedByAI === true) reasons.push('owner_receipt_cannot_be_created_by_ai');
+  if (owner.allowedAction === 'merge_current_pr') {
+    if (owner.present !== true) reasons.push('merge_action_requires_owner_decision_receipt');
+    if (!owner.headSha) reasons.push('merge_receipt_requires_head_sha');
+    if (owner.expiresOnHeadChange !== true) reasons.push('merge_receipt_must_expire_on_head_change');
+  }
+  for (const required of V126_FORBIDDEN_AUTHORIZATIONS) {
+    if (!Array.isArray(owner.forbiddenAuthorizations) || !owner.forbiddenAuthorizations.includes(required)) reasons.push(`owner_receipt_missing_forbidden_${required}`);
+  }
+  if (delegated.ownerAuthorityCreatedByAI === true) reasons.push('delegated_process_receipt_cannot_be_created_by_ai');
+  for (const action of delegated.allowedActions || []) {
+    if (['release', 'deploy', 'wallet_rpc', 'secret_access', 'readiness_claim', 'github_approval_review'].includes(action)) reasons.push(`delegated_process_forbidden_${action}`);
+  }
+  if (delegated.autoContinueAllowed === true && delegated.present !== true) reasons.push('delegated_auto_continue_requires_receipt');
+  if (capability.bridgeDefaultEnabled === true) reasons.push('bridge_must_not_be_default_on');
+  if (capability.workspaceOnlyWrite !== true) reasons.push('bridge_write_must_be_workspace_only');
+  if (capability.secretPathBlocked !== true) reasons.push('capability_boundary_secret_path_required');
+  if (capability.rawLogsForbidden !== true || capability.rawTranscriptMiningForbidden !== true) reasons.push('capability_boundary_forbids_raw_logs_and_transcripts');
+  if (capability.walletRpcDeployForbidden !== true) reasons.push('capability_boundary_wallet_rpc_deploy_forbidden');
+  if (capability.bridgeTranscriptMachineEvidence === true) reasons.push('bridge_transcript_cannot_be_machine_evidence');
+  if (capability.ownerAuthorityCreatedByBridge === true) reasons.push('bridge_cannot_create_owner_authority');
+  if (capability.executionDigestRequired !== true) reasons.push('bridge_requires_safe_execution_digest');
+  return reasons.length ? fail(reasons) : pass({ currentBranch: workspace.currentBranch, ownerAction: owner.allowedAction });
+}
+
+export function validateSpecFirstCheckerBuilderLoopAndStopCircuit(control = {}) {
+  const reasons = [];
+  if (control.runtimeVersion !== '1.2.6') reasons.push('checker_builder_loop_runtime_version_invalid');
+  if (control.specFirstRequired !== true) reasons.push('spec_first_required');
+  if (control.builderCanEdit !== true) reasons.push('builder_must_be_explicit_edit_role');
+  if (control.checkerCanEdit === true) reasons.push('checker_must_be_read_only');
+  if (control.checkerOutputRequiredForSuccess !== true) reasons.push('checker_output_required_for_success');
+  if (control.sameAgentCannotSatisfyIndependentCheck !== true) reasons.push('same_agent_cannot_satisfy_independent_check');
+  if (Number(control.maxCycles || 0) > 5) reasons.push('loop_cycle_cap_exceeded');
+  if (Number(control.sameFailureRepeatLimit || 0) > 2) reasons.push('same_failure_repeat_cap_exceeded');
+  if (control.regressionStops !== true) reasons.push('regression_stop_required');
+  if (control.testWeakeningStops !== true) reasons.push('test_weakening_stop_required');
+  if (control.regressionDetected === true) reasons.push('loop_stops_on_regression');
+  if (control.testWeakeningDetected === true) reasons.push('loop_stops_on_test_weakening');
+  if (!V126_LOOP_EXIT_REASONS.has(control.loopExitReason)) reasons.push('loop_exit_reason_invalid');
+  if (control.loopContinuationAllowed === true && Number(control.currentCycle || 0) >= Number(control.maxCycles || 0)) reasons.push('loop_continue_after_cycle_cap');
+  if (control.loopContinuationAllowed === true && Number(control.sameFailureRepeatCount || 0) >= Number(control.sameFailureRepeatLimit || 0)) reasons.push('loop_continue_after_same_failure_repeat_cap');
+  return reasons.length ? fail(reasons) : pass({ loopExitReason: control.loopExitReason });
+}
+
+export function validateEvidenceLaneStateMachineAndSafeFailureCapsule(control = {}) {
+  const reasons = [];
+  const lane = control.evidenceLaneStateMachine || {};
+  const failure = control.safeFailureCapsule || {};
+  if (control.runtimeVersion !== '1.2.6') reasons.push('evidence_lane_state_machine_version_invalid');
+  if (!V126_LANE_STATES.has(lane.currentState)) reasons.push('v126_lane_state_invalid');
+  if (!V126_REMOTE_STATUSES.has(lane.remoteStatus)) reasons.push('v126_remote_status_invalid');
+  if (lane.prBodyMachineEvidence === true) reasons.push('pr_body_cannot_be_machine_evidence_v126');
+  if (lane.currentState === 'local_pre_pr' && lane.remoteStatus !== 'missing') reasons.push('local_pre_pr_remote_status_should_be_missing');
+  if (lane.currentState === 'pushed_pr_waiting_qg' && !['pending', 'missing'].includes(lane.remoteStatus)) reasons.push('waiting_qg_allows_only_pending_or_missing');
+  if (lane.currentState === 'same_head_remote_qg' && lane.remoteStatus === 'pass' && lane.sameHead !== true) reasons.push('same_head_remote_pass_requires_same_head');
+  if (lane.currentState === 'merge_consideration') {
+    if (lane.remoteStatus !== 'pass' || lane.sameHead !== true) reasons.push('merge_consideration_requires_same_head_remote_pass');
+    if (lane.ownerReceiptRequiredForMerge !== true) reasons.push('merge_consideration_requires_owner_receipt_boundary');
+    if (lane.sameHeadRemoteRequiredForMerge !== true) reasons.push('merge_consideration_cannot_skip_same_head_remote');
+    if (lane.finalDecisionClosureRequired !== true) reasons.push('merge_consideration_requires_final_decision_closure');
+  }
+  if (failure.rawLogIncluded === true || failure.rawTranscriptIncluded === true || failure.rawDiffIncluded === true) reasons.push('safe_failure_capsule_forbids_raw_inputs');
+  if (failure.scopeExpansionAllowed === true) reasons.push('safe_failure_capsule_cannot_expand_scope');
+  if (failure.onePrimaryClass !== true) reasons.push('safe_failure_capsule_requires_one_primary_class');
+  if (failure.builderInstruction !== 'fix_root_cause_only') reasons.push('safe_failure_capsule_requires_root_cause_only_instruction');
+  return reasons.length ? fail(reasons) : pass({ currentState: lane.currentState, remoteStatus: lane.remoteStatus });
+}
+
+export function validateContextSkillValidationBudgetRouter(control = {}) {
+  const reasons = [];
+  if (control.runtimeVersion !== '1.2.6') reasons.push('context_skill_validation_router_version_invalid');
+  if (Number(control.maxSkillCount || 0) > 2) reasons.push('v126_skill_count_cap_exceeded');
+  if (Number(control.maxMdFilesRead || 0) > 3) reasons.push('v126_md_file_read_cap_exceeded');
+  if ((control.selectedSkills || []).length > Number(control.maxSkillCount || 0)) reasons.push('selected_skills_over_v126_budget');
+  if ((control.mdFilesRead || []).length > Number(control.maxMdFilesRead || 0)) reasons.push('md_files_read_over_v126_budget');
+  if (!V126_VALIDATION_TIERS.has(control.selectedValidationTier)) reasons.push('validation_tier_invalid_v126');
+  if (control.sameHeadRemoteGateCannotBeSkippedForMerge !== true) reasons.push('same_head_remote_gate_cannot_be_skipped_for_merge');
+  if (control.contextReductionMustNotReduceEvidence !== true) reasons.push('context_reduction_must_not_reduce_evidence');
+  if (control.skillRoutingMustNotReduceVerification !== true) reasons.push('skill_routing_must_not_reduce_verification');
+  if (control.knowledgePointerCannotOverrideChangedFiles !== true) reasons.push('knowledge_pointer_cannot_override_changed_files');
+  if (control.validationRouterCannotSkipSameHeadRemoteForMerge !== true) reasons.push('validation_router_cannot_skip_same_head_remote_for_merge');
+  return reasons.length ? fail(reasons) : pass({ selectedValidationTier: control.selectedValidationTier });
+}
+
+export function validateSkillReviewProductValueEffectiveness(control = {}) {
+  const reasons = [];
+  const skill = control.skillEffectiveness || {};
+  const review = control.reviewEffectiveness || {};
+  const product = control.productValueReturnGate || {};
+  if (control.runtimeVersion !== '1.2.6') reasons.push('skill_review_product_value_effectiveness_version_invalid');
+  if (skill.wrongProfileSkill === true) reasons.push('v126_wrong_profile_skill_hard_fail');
+  if (skill.harmfulSkill === true) reasons.push('v126_harmful_skill_hard_fail');
+  if (!V126_SKILL_NET_VALUES.has(skill.netValue)) reasons.push('skill_net_value_invalid');
+  if (skill.netValue === 'negative' && skill.wrongSkillCost === 0) reasons.push('negative_skill_value_requires_wrong_skill_cost');
+  if (review.fanoutContinuationAllowed === true && Number(review.noNewSignalRepeatCount || 0) >= 2) reasons.push('fanout_stops_after_two_no_new_signal_cycles');
+  if (review.negativeFindingRequiredWhenHighRisk === true && review.assumptionDiffPresent !== true && Number(review.newFindingCount || 0) === 0) reasons.push('high_risk_review_requires_assumption_diff_or_new_finding');
+  if (product.productScopeAuthorized === true) reasons.push('product_value_return_gate_cannot_authorize_product_scope');
+  if (product.evidenceOnlyRepeated === true && Number(product.recentHarnessOnlyCount || 0) >= 3 && product.nextProductSliceRecommended !== true) reasons.push('repeated_harness_only_requires_next_product_slice_recommendation');
+  return reasons.length ? fail(reasons) : pass({ skillNetValue: skill.netValue, recentHarnessOnlyCount: product.recentHarnessOnlyCount });
+}
+
 export function validateSkillContextRouting(routing = {}) {
   const reasons = [];
   const taskProfile = TASK_PROFILES.has(routing.taskProfile) ? routing.taskProfile : 'routine';
@@ -1657,7 +1974,7 @@ export function validateSkillContextRouting(routing = {}) {
   const effectiveMdFilesReadMax = Math.min(mdFilesReadMax, budget.mdFilesReadMax);
   const authority = routing.activeAuthorityTuple || {};
   const blockers = new Set(routing.blockerClasses || []);
-  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
+  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
   if (!TASK_PROFILES.has(routing.taskProfile)) reasons.push('task_profile_invalid');
   if (selectedSkillsMax > budget.selectedSkillsMax) reasons.push('selected_skills_max_cannot_override_task_profile_budget');
   if (mdFilesReadMax > budget.mdFilesReadMax) reasons.push('md_files_read_max_cannot_override_task_profile_budget');
@@ -1679,10 +1996,10 @@ export function validateSkillContextRouting(routing = {}) {
   if (!READ_BUDGET_STATUS.has(routing.readBudgetStatus)) reasons.push('read_budget_status_invalid');
   if (routing.readBudgetStatus === 'blocked') reasons.push('read_budget_blocked');
   for (const blocker of blockers) if (HARD_CONTEXT_BLOCKERS.has(blocker)) reasons.push(blocker);
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
-  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
-  if (!['v122', 'v123', 'v124', 'v125'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
-  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
+  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
+  if (!['v122', 'v123', 'v124', 'v125', 'v126'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
+  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
   if (authority.finalAuthorityPointer !== 'v1.1.8_final_decision_kernel') reasons.push('active_authority_final_decision_pointer_missing');
   if (routing.ownerProvidedContext?.countedAsFileRead === true) reasons.push('owner_provided_context_not_file_read');
   return reasons.length ? fail(reasons) : pass({ taskProfile, selectedSkills: selectedSkills.length, mdFilesRead: mdFilesRead.length, readBudgetStatus: routing.readBudgetStatus });
@@ -1719,6 +2036,11 @@ export function validateOrchestrationCapsule(capsule = {}) {
     evidenceLaneQGInternalStatus: validateEvidenceLaneAndQGLane(capsule.evidenceLaneAndQGLaneSemantics || {}),
     typedMonitorFanoutInternalStatus: validateTypedMonitorInboxAndFanoutGuard(capsule.typedMonitorInboxAndFanoutGuard || {}),
     skillReviewProductValueInternalStatus: validateSkillReviewProductValueYield(capsule.skillReviewProductValueYield || {}),
+    observedWorkspaceOwnerReceiptCapabilityInternalStatus: validateObservedWorkspaceOwnerReceiptAndCapability(capsule.observedWorkspaceOwnerReceiptAndCapability || {}),
+    checkerBuilderLoopStopCircuitInternalStatus: validateSpecFirstCheckerBuilderLoopAndStopCircuit(capsule.specFirstCheckerBuilderLoopAndStopCircuit || {}),
+    evidenceLaneStateMachineSafeFailureInternalStatus: validateEvidenceLaneStateMachineAndSafeFailureCapsule(capsule.evidenceLaneStateMachineAndSafeFailureCapsule || {}),
+    contextSkillValidationBudgetRouterInternalStatus: validateContextSkillValidationBudgetRouter(capsule.contextSkillValidationBudgetRouter || {}),
+    skillReviewProductValueEffectivenessInternalStatus: validateSkillReviewProductValueEffectiveness(capsule.skillReviewProductValueEffectiveness || {}),
   };
 }
 

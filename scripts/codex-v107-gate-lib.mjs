@@ -270,9 +270,10 @@ export function buildTypedStatusSchemaReport(input = {}) {
 export function buildCentralHarnessVersionRegistryReport(input = {}) {
   const registry = input.registry || buildHarnessVersionRegistry();
   const reasons = [];
-  const compatibleCurrent = registry.currentVersion === '1.0.7' || registry.currentVersion === '1.0.8' || registry.currentVersion === '1.0.9' || registry.currentVersion === '1.1.0' || registry.currentVersion === '1.1.1' || registry.currentVersion === '1.1.2' || registry.currentVersion === '1.1.3';
-  const compatiblePrevious = registry.previousVersion === '1.0.6' || registry.previousVersion === '1.0.7' || registry.previousVersion === '1.0.8' || registry.previousVersion === '1.0.9' || registry.previousVersion === '1.1.0' || registry.previousVersion === '1.1.1' || registry.previousVersion === '1.1.2';
-  const compatibleSelfTest = registry.activeSelfTestStatusKey === 'v107SelfTestStatus' || registry.activeSelfTestStatusKey === 'v108SelfTestStatus' || registry.activeSelfTestStatusKey === 'v109SelfTestStatus' || registry.activeSelfTestStatusKey === 'v110SelfTestStatus' || registry.activeSelfTestStatusKey === 'v111SelfTestStatus' || registry.activeSelfTestStatusKey === 'v112SelfTestStatus' || registry.activeSelfTestStatusKey === 'v113SelfTestStatus';
+  const known = new Set(Array.isArray(registry.knownVersions) ? registry.knownVersions : []);
+  const compatibleCurrent = known.has(registry.currentVersion) && registry.currentVersion !== '1.0.3' && registry.currentVersion !== '1.0.4' && registry.currentVersion !== '1.0.5' && registry.currentVersion !== '1.0.6';
+  const compatiblePrevious = known.has(registry.previousVersion) || registry.previousVersion === '1.0.6';
+  const compatibleSelfTest = /^v\d+SelfTestStatus$/.test(String(registry.activeSelfTestStatusKey || ''));
   if (!compatibleCurrent) reasons.push('current_version_not_v107_or_later');
   if (!compatiblePrevious) reasons.push('previous_version_not_v106_or_v107');
   if (!compatibleSelfTest) reasons.push('active_self_test_not_v107_compatible');
