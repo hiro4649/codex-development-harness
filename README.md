@@ -1,24 +1,63 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.2.2 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.2.6 -->
 # Codex Development Harness
 
-Version: v1.2.2
-Name: Context-Aware Skill Routing and Read Budget Discipline
+Version: v1.2.6
+Name: Observed-State Bridge-Safe Loop Runtime with Context-Slim Skill and Validation Routing
 
-This repository contains reusable Codex quality gates, policies, and safe evidence tooling. The current authority is `AGENTS.md`, `docs/process/CODEX_V122_SPEC.md`, and the active manifest files under `docs/process/`.
+Codex Development Harness is an AI PR safety gate. It helps decide whether an
+AI-authored change can be trusted, what evidence supports that decision, who is
+allowed to approve it, and where the work must stop.
 
-v1.2.2 keeps v1.1.8 Final Decision as final authority, v1.1.9 as the
-orchestration/proof layer, v1.2.0 adaptive routing/review pool behavior, and
-v1.2.1 calibration guard behavior. It adds `skillContextRouting` inside the
-existing orchestration capsule only, so Skill and markdown reads follow the
-same bounded routing philosophy as model tiers. Its rule is: read less,
-preserve authority. It does not add target rollout, new P0 artifacts, new
-top-level operator statuses, new Skills, scheduler behavior,
-release/deploy/wallet/RPC authority, readiness authority, legal/YouTube policy
-compliance authority, or GitHub approval review authority.
+Current authority is:
 
-Harness `skillProfiles` are machine-readable harness/profile identifiers. They are not OpenAI Codex Skills and should not be renamed in this pass.
+- `AGENTS.md`
+- `docs/process/CODEX_HARNESS_MANIFEST.json`
+- `CODEX_SOURCE_HARNESS_MANIFEST.json`
+- `docs/process/CODEX_V126_SPEC.md`
+- `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 
-Historical v1.0.x material below is preserved as migration history, not as the current operating version.
+v1.2.6 keeps v1.1.8 Final Decision as final authority and preserves v1.1.9
+orchestration/proof artifacts plus v1.2.0-v1.2.5 compatibility. It adds only
+internal observed-workspace, owner-receipt, bridge-safe checker/builder loop,
+safe-failure handoff, context-slim skill routing, validation budget, and
+effectiveness semantics inside existing harness surfaces.
+
+It does not add target rollout authority, new P0 artifacts, new top-level
+operator statuses, new Skills, scheduler authority, release/deploy/wallet/RPC
+authority, readiness authority, legal/YouTube policy compliance authority, or
+GitHub approval review authority.
+
+## Quickstart
+
+Node.js 20 or newer is expected. The source harness local gate is:
+
+~~~bash
+CODEX_HARNESS_SOURCE_REPO=1 CODEX_HARNESS_MODE=core CODEX_REQUIRE_NPM=1 CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs
+~~~
+
+Target repository installs use target mode:
+
+~~~bash
+CODEX_HARNESS_MODE=target CODEX_PROFILE_COMPAT_MODE=off CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs
+~~~
+
+The operator-facing result should compress to one verdict, one primary blocker,
+and one safe next action. Raw logs, secrets, hidden reasoning, self-approval,
+GitHub approval review, deploy, wallet/RPC access, readiness claims, legal
+claims, and YouTube policy compliance claims are outside this harness authority.
+
+## Product Position
+
+Flue runs agents. This harness verifies AI-authored changes. The intended
+product surface is an AI PR safety gate: same-head evidence, safe artifacts,
+owner receipt, checker/builder separation, policy profiles, and bounded failure
+handoff before a PR is treated as merge-ready.
+
+Harness `skillProfiles` are machine-readable harness/profile identifiers. They
+are not OpenAI Codex Skills and should not be renamed in this pass.
+
+Historical material below is preserved as migration history, not as the current
+operating version.
 
 v1.0.3 preserves v1.0.2 clean-main, fixture isolation, product PR recovery, external blocked separation, handover snapshot, protected state, and workflow resume.
 
