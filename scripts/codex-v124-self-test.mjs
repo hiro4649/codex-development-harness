@@ -39,7 +39,7 @@ const compatibilityCases = [
   ['v124_preserves_v118_final_decision', () => buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
   ['v124_preserves_v119_orchestration_artifacts', () => V124_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
   ['v124_no_new_skill_daemon_or_visual_daemon', () => !fs.existsSync('scripts/codex-skill-daemon.mjs') && !fs.existsSync('scripts/codex-visual-proof-daemon.mjs')],
-  ['v124_active_authority_tuple_is_current_or_successor', () => ['v124', 'v125', 'v126'].includes(buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple.activeSelfTestSuite)],
+  ['v124_active_authority_tuple_is_current_or_successor', () => ['v124', 'v125', 'v126', 'v127'].includes(buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple.activeSelfTestSuite)],
 ];
 
 const goalAndDelegationCases = [

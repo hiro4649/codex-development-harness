@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.6
+CODEX_QUALITY_HARNESS_FILE v1.2.7
 
 ## Prime Directive
 
@@ -188,6 +188,24 @@ state, structured owner/delegated process receipts, short repair loops, and
 safe failure handoff. v1.2.6 must not add new P0 artifacts, top-level statuses,
 new Skills, target rollout, product/package/runtime/workflow changes, raw-log
 or raw-transcript mining, bridge/tunnel default-on behavior, AI owner authority,
+AI-only merge, self approval, GitHub approval review, deploy/wallet/RPC/secret
+automation, same-head remote gate bypass, or readiness/legal/YouTube compliance
+claims.
+For v1.2.7 Receipt-Carried Continuation and Evidence Compression, use
+`docs/process/CODEX_V127_SPEC.md` and
+`docs/process/CODEX_ACTIVE_POLICY_INDEX.json`. v1.2.7 adds only internal Typed
+Owner Process Receipt/Continuation Kernel, Decision Evidence Envelope/Same-Head
+Binder, Validation DAG/Evidence Reuse, Context/Output/Owner-Interrupt Token
+Budget, and Blocker Closure/Product Value Pressure fields inside the existing
+v1.1.9 P0 artifacts. When the owner explicitly instructs Source HARNESS
+development and GitHub publication, commit, push, and PR creation are
+continuation actions inside that process receipt and must not trigger avoidable
+owner stops. Merge, product/package/runtime/workflow scope, release/deploy,
+wallet/RPC/secrets, funded or governance transactions, BscScan verification,
+readiness claims, GitHub approval review, and self approval remain separate
+boundaries. v1.2.7 must not add new P0 artifacts, top-level statuses, new
+Skills, target rollout, product/package/runtime/workflow changes, raw-log or
+raw-transcript mining, bridge/tunnel default-on behavior, AI owner authority,
 AI-only merge, self approval, GitHub approval review, deploy/wallet/RPC/secret
 automation, same-head remote gate bypass, or readiness/legal/YouTube compliance
 claims.

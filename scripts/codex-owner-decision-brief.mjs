@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.6
+// CODEX_QUALITY_HARNESS_FILE v1.2.7
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -20,6 +20,9 @@ const PRODUCT_VALUE_DELTAS = new Set(['none', 'evidence_only', 'developer_veloci
 const V126_OWNER_ACTIONS = new Set(['none', 'merge_current_pr', 'create_pr_only', 'rerun_ci', 'stop']);
 const V126_OWNER_SCOPES = new Set(['none', 'source_harness_body', 'harness_only', 'product_repair', 'token_only_metadata', 'docs_only', 'metadata_light']);
 const V126_FORBIDDEN_ACTIONS = new Set(['release', 'deploy', 'walletRpcDeployAccess', 'secretAccess', 'readinessClaim', 'githubApprovalReview']);
+const V127_OWNER_INTENTS = new Set(['none', 'harness_source_develop_and_publish', 'harness_target_rollout_complete', 'merge_specific_current_pr', 'product_development_only', 'runtime_operation', 'release_or_deploy']);
+const V127_PROCESS_ACTIONS = new Set(['edit', 'check', 'commit', 'push', 'create_pr', 'rerun_ci', 'fix_ci']);
+const V127_CONTINUATION_STATES = new Set(['continue', 'justified_owner_boundary', 'blocked', 'clarify_once']);
 
 function escalationSummary(input = {}) {
   return {
@@ -202,6 +205,60 @@ function ownerDelegatedProcessReceipt(input = {}) {
   };
 }
 
+function typedOwnerProcessReceipt(input = {}) {
+  const receipt = input.typedOwnerProcessReceipt || input;
+  return {
+    receiptVersion: '1.2.7',
+    present: receipt.present !== false,
+    normalizedOwnerIntent: V127_OWNER_INTENTS.has(receipt.normalizedOwnerIntent) ? receipt.normalizedOwnerIntent : 'harness_source_develop_and_publish',
+    allowedActions: bounded(receipt.allowedActions || ['edit', 'check', 'commit', 'push', 'create_pr'], 8),
+    scopeDigest: receipt.scopeDigest || 'source_harness_v127_body_only',
+    survivesInScopeCommitHeadChanges: receipt.survivesInScopeCommitHeadChanges !== false,
+    expiresOnScopeDelta: receipt.expiresOnScopeDelta !== false,
+    ownerAuthorityCreatedByAI: receipt.ownerAuthorityCreatedByAI === true,
+    safeNextAction: receipt.safeNextAction || 'continue_commit_push_create_pr',
+  };
+}
+
+function continuationDecision(input = {}) {
+  const decision = input.continuationDecision || input;
+  return {
+    decisionVersion: '1.2.7',
+    state: V127_CONTINUATION_STATES.has(decision.state) ? decision.state : 'continue',
+    avoidableOwnerStopDetected: decision.avoidableOwnerStopDetected === true,
+    receiptValid: decision.receiptValid !== false,
+    scopeDeltaDetected: decision.scopeDeltaDetected === true,
+    oneSafeNextAction: decision.oneSafeNextAction || 'continue_commit_push_create_pr',
+  };
+}
+
+function decisionEvidenceBrief(input = {}) {
+  const evidence = input.decisionEvidenceBrief || input;
+  return {
+    evidenceVersion: '1.2.7',
+    lane: evidence.lane || 'local_pre_pr',
+    sameHead: evidence.sameHead !== false,
+    localGate: evidence.localGate || 'pass',
+    remoteGate: evidence.remoteGate || 'missing',
+    ownerReceiptBinding: evidence.ownerReceiptBinding || 'valid',
+    prBodyMachineEvidence: evidence.prBodyMachineEvidence === true,
+    oneBlockingReason: evidence.oneBlockingReason || null,
+  };
+}
+
+function tokenEconomyBrief(input = {}) {
+  const metrics = input.tokenEconomyBrief || input;
+  return {
+    metricsVersion: '1.2.7',
+    authorityMarkdownReads: Math.max(0, Number(metrics.authorityMarkdownReads || 2)),
+    safeArtifactReads: Math.max(0, Number(metrics.safeArtifactReads || 3)),
+    selectedSkills: Math.max(0, Number(metrics.selectedSkills || 1)),
+    ownerInterruptCount: Math.max(0, Number(metrics.ownerInterruptCount || 0)),
+    repeatedSafetyTextCount: Math.max(0, Number(metrics.repeatedSafetyTextCount || 0)),
+    finalReportLineBudget: Math.min(Math.max(1, Number(metrics.finalReportLineBudget || 12)), 20),
+  };
+}
+
 export function buildOwnerDecisionBrief(input = {}) {
   return {
     ownerDecisionBriefVersion: '1',
@@ -229,6 +286,10 @@ export function buildOwnerDecisionBrief(input = {}) {
     safeMemoryLedger: safeMemoryLedger(input.safeMemoryLedger || input),
     ownerDecisionReceipt: ownerDecisionReceipt(input.ownerDecisionReceipt || {}),
     ownerDelegatedProcessReceipt: ownerDelegatedProcessReceipt(input.ownerDelegatedProcessReceipt || {}),
+    typedOwnerProcessReceipt: typedOwnerProcessReceipt(input.typedOwnerProcessReceipt || input),
+    continuationDecision: continuationDecision(input.continuationDecision || input),
+    decisionEvidenceBrief: decisionEvidenceBrief(input.decisionEvidenceBrief || input),
+    tokenEconomyBrief: tokenEconomyBrief(input.tokenEconomyBrief || input),
     ownerOnlyDecision: true,
     nextImplementableSlice: {
       available: input.nextImplementableSliceAvailable === true,
@@ -273,6 +334,10 @@ export function validateOwnerDecisionBrief(brief = {}) {
   const memory = brief.safeMemoryLedger || {};
   const ownerReceipt = brief.ownerDecisionReceipt || {};
   const delegatedReceipt = brief.ownerDelegatedProcessReceipt || {};
+  const typedProcess = brief.typedOwnerProcessReceipt || {};
+  const continuation = brief.continuationDecision || {};
+  const decisionEvidence = brief.decisionEvidenceBrief || {};
+  const tokenEconomy = brief.tokenEconomyBrief || {};
   if (burden.metricsVersion !== '1') reasons.push('owner_burden_metrics_version_invalid');
   if (Number(burden.ownerQuestionCount || 0) > 3) reasons.push('owner_question_count_should_stay_bounded');
   if (Number(burden.remainingOwnerOnlyChoicesCount || 0) > 3) reasons.push('owner_only_choice_count_max_three');
@@ -327,6 +392,28 @@ export function validateOwnerDecisionBrief(brief = {}) {
   for (const action of delegatedReceipt.allowedActions || []) {
     if (V126_FORBIDDEN_ACTIONS.has(action)) reasons.push(`delegated_process_receipt_forbidden_${action}`);
   }
+  if (typedProcess.receiptVersion !== '1.2.7') reasons.push('typed_owner_process_receipt_version_invalid');
+  if (!V127_OWNER_INTENTS.has(typedProcess.normalizedOwnerIntent)) reasons.push('typed_owner_process_intent_invalid');
+  if (typedProcess.present !== true) reasons.push('typed_owner_process_receipt_required');
+  if (typedProcess.survivesInScopeCommitHeadChanges !== true) reasons.push('typed_owner_process_must_survive_in_scope_commit_head_changes');
+  if (typedProcess.expiresOnScopeDelta !== true) reasons.push('typed_owner_process_must_expire_on_scope_delta');
+  if (typedProcess.ownerAuthorityCreatedByAI === true) reasons.push('typed_owner_process_cannot_be_ai_created');
+  for (const action of typedProcess.allowedActions || []) {
+    if (!V127_PROCESS_ACTIONS.has(action)) reasons.push(`typed_owner_process_action_invalid_${action}`);
+  }
+  if (typedProcess.normalizedOwnerIntent === 'harness_source_develop_and_publish') {
+    for (const action of ['commit', 'push', 'create_pr']) if (!typedProcess.allowedActions?.includes(action)) reasons.push(`typed_owner_process_missing_${action}`);
+  }
+  if (continuation.decisionVersion !== '1.2.7') reasons.push('continuation_decision_version_invalid');
+  if (!V127_CONTINUATION_STATES.has(continuation.state)) reasons.push('continuation_decision_state_invalid');
+  if (continuation.state === 'continue' && continuation.receiptValid !== true) reasons.push('continuation_continue_requires_valid_receipt');
+  if (continuation.state === 'continue' && continuation.scopeDeltaDetected === true) reasons.push('continuation_continue_forbidden_after_scope_delta');
+  if (continuation.state === 'continue' && continuation.avoidableOwnerStopDetected === true) reasons.push('avoidable_owner_stop_detected');
+  if (decisionEvidence.evidenceVersion !== '1.2.7') reasons.push('decision_evidence_brief_version_invalid');
+  if (decisionEvidence.prBodyMachineEvidence === true) reasons.push('decision_evidence_brief_pr_body_display_only');
+  if (tokenEconomy.metricsVersion !== '1.2.7') reasons.push('token_economy_brief_version_invalid');
+  if (Number(tokenEconomy.ownerInterruptCount || 0) > 0) reasons.push('token_economy_owner_interrupt_not_zero');
+  if (Number(tokenEconomy.repeatedSafetyTextCount || 0) > 1) reasons.push('token_economy_repeated_safety_text_not_suppressed');
   const delegated = brief.delegatedContinuation || {};
   if (delegated.enabled === true) {
     if (delegated.autoContinueAllowed === true && delegated.technicalAcceptance !== true) reasons.push('delegated_auto_continue_requires_technical_acceptance');

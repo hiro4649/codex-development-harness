@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.6",
-  "schemaVersion": "1.2.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.7",
+  "schemaVersion": "1.2.7",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
   "purpose": "Bound md and skill reads by task profile while preserving active authority.",
@@ -15,7 +15,7 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V126_SPEC.md"
+        "docs/process/CODEX_V127_SPEC.md"
       ],
       "deferredReads": [
         "README.md",
@@ -32,7 +32,7 @@
         "docs/process/CODEX_HARNESS_MANIFEST.json"
       ],
       "deferredReads": [
-        "docs/process/CODEX_V126_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -45,7 +45,7 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V126_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "owner_rollout_instruction"
       ],
       "deferredReads": [
@@ -61,7 +61,7 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V126_SPEC.md"
+        "docs/process/CODEX_V127_SPEC.md"
       ],
       "deferredReads": [
         "README.md",
@@ -77,7 +77,7 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V126_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "failing_legacy_spec_only"
       ],
       "deferredReads": [
@@ -94,7 +94,7 @@
   "requiredReads": [
     "AGENTS.md",
     "docs/process/CODEX_HARNESS_MANIFEST.json",
-    "docs/process/CODEX_V126_SPEC.md"
+    "docs/process/CODEX_V127_SPEC.md"
   ],
   "deferredReads": [
     "README.md",
@@ -106,5 +106,48 @@
   "newP0Artifact": false,
   "newTopLevelStatus": false,
   "newSkill": false,
-  "safeSummaryOnly": true
+  "safeSummaryOnly": true,
+  "receiptCarriedContinuationAndEvidenceCompression": {
+    "version": "1.2.7",
+    "name": "Receipt-Carried Continuation and Evidence Compression",
+    "sourceOnlyRelease": true,
+    "targetRollout": "not_started",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "p0InternalBlocks": [
+      "Typed Owner Process Receipt and Continuation Kernel",
+      "Decision Evidence Envelope and Same-Head Binder",
+      "Validation DAG and Content-Addressed Evidence Reuse",
+      "Context / Output / Owner-Interrupt Token Budget",
+      "Blocker Closure and Product Value Pressure"
+    ],
+    "processReceipt": {
+      "survivesInScopeCommitHeadChanges": true,
+      "expiresOnScopeDelta": true,
+      "commitPushCreatePrContinueInsideReceipt": true,
+      "mergeRequiresSeparateReceipt": true
+    },
+    "decisionEvidence": {
+      "prBodyMachineEvidence": false,
+      "sameHeadBinderRequiredForMerge": true
+    },
+    "tokenEconomy": {
+      "ownerInterruptCountTarget": 0,
+      "repeatedSafetyTextSuppressed": true,
+      "deltaOnlyFinalSummary": true
+    },
+    "safety": {
+      "rawLogsRead": false,
+      "eightSessionUsed": false,
+      "selfApproval": false,
+      "githubApprovalReview": false,
+      "runtimeReadinessClaimed": false,
+      "productionReadinessClaimed": false,
+      "legalComplianceClaimed": false,
+      "youtubePolicyComplianceClaimed": false,
+      "walletRpcDeployAccess": false
+    }
+  }
 }
