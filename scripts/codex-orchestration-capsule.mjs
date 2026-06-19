@@ -126,6 +126,7 @@ const V127_ALLOWED_NEXT_ACTIONS = new Set(['continue_commit_push_create_pr', 'wa
 const V127_REMOTE_STATUSES = new Set(['missing', 'pending', 'pass', 'fail', 'not_required']);
 const V127_BLOCKER_RECOVERIES = new Set(['none', 'refresh_current_head_evidence_only', 'rerun_same_head_remote_gate', 'repair_harness_only', 'owner_boundary_stop', 'reduce_context_and_retry', 'stop_required_check_failure']);
 const V127_SKILL_ROI = new Set(['positive', 'neutral', 'negative', 'mandatory_safety']);
+const V127_PLACEHOLDER_VALUES = new Set(['', 'unknown', 'required', 'none', 'null']);
 const CONTEXT_LEDGER_STATUSES = new Set(['pass', 'warn', 'blocked']);
 const OBSERVED_CONTEXT_SOURCE_TYPES = new Set(['agentsMd', 'manifest', 'activeSpec', 'skill', 'readme', 'legacySpec', 'prHistory', 'safeArtifact', 'githubMetadata', 'rawLog', 'fullHistory']);
 const OBSERVED_READ_REASONS = new Set(['active_authority', 'task_profile_required', 'safe_artifact_pointer', 'compatibility_failure', 'authority_conflict', 'owner_requested', 'not_recorded']);
@@ -1211,12 +1212,25 @@ function defaultTypedOwnerProcessReceiptAndContinuationKernel(input = {}) {
   const product = payload.ownerProductScopeReceipt || {};
   const dangerous = payload.ownerDangerousCapabilityReceipt || {};
   const continuation = payload.continuationDecision || {};
+  const receiptProvenancePresent = Boolean(process.receiptId && process.taskId && (process.ownerInstructionHash || process.sourceInstructionRef));
+  const processPresent = process.present === true;
+  const inferredReceiptValid = processPresent && receiptProvenancePresent && process.expiresOnScopeDelta !== false && continuation.scopeDeltaDetected !== true;
+  const continuationState = V127_CONTINUATION_STATES.has(continuation.state)
+    ? continuation.state
+    : inferredReceiptValid
+      ? 'continue'
+      : 'justified_owner_boundary';
   return {
     runtimeVersion: '1.2.7',
-    normalizedOwnerIntent: V127_OWNER_INTENTS.has(payload.normalizedOwnerIntent) ? payload.normalizedOwnerIntent : 'harness_source_develop_and_publish',
+    normalizedOwnerIntent: V127_OWNER_INTENTS.has(payload.normalizedOwnerIntent) ? payload.normalizedOwnerIntent : (processPresent ? 'harness_source_develop_and_publish' : 'none'),
     ownerProcessReceipt: {
-      present: process.present !== false,
-      allowedActions: truncateList(process.allowedActions || ['edit', 'check', 'commit', 'push', 'create_pr'], 8),
+      present: processPresent,
+      receiptId: process.receiptId || null,
+      taskId: process.taskId || null,
+      ownerInstructionHash: process.ownerInstructionHash || null,
+      sourceInstructionRef: process.sourceInstructionRef || null,
+      receiptProvenancePresent,
+      allowedActions: truncateList(process.allowedActions || [], 8),
       survivesInScopeCommitHeadChanges: process.survivesInScopeCommitHeadChanges !== false,
       expiresOnScopeDelta: process.expiresOnScopeDelta !== false,
       scopeDigest: process.scopeDigest || 'source_harness_v127_body_only',
@@ -1253,20 +1267,27 @@ function defaultTypedOwnerProcessReceiptAndContinuationKernel(input = {}) {
       readinessClaimAllowed: dangerous.readinessClaimAllowed === true,
     },
     continuationDecision: {
-      state: V127_CONTINUATION_STATES.has(continuation.state) ? continuation.state : 'continue',
+      state: continuationState,
       avoidableOwnerStopDetected: continuation.avoidableOwnerStopDetected === true,
-      receiptValid: continuation.receiptValid !== false,
+      receiptValid: continuation.receiptValid === false ? false : inferredReceiptValid,
       scopeDeltaDetected: continuation.scopeDeltaDetected === true,
-      oneSafeNextAction: continuation.oneSafeNextAction || 'continue_commit_push_create_pr',
+      oneSafeNextAction: continuation.oneSafeNextAction || (inferredReceiptValid ? 'continue_commit_push_create_pr' : 'owner_boundary_stop'),
     },
-    safeNextAction: payload.safeNextAction || 'continue_within_owner_process_receipt',
+    safeNextAction: payload.safeNextAction || (inferredReceiptValid ? 'continue_within_owner_process_receipt' : 'owner_boundary_stop'),
   };
 }
 
 function defaultDecisionEvidenceEnvelopeAndSameHeadBinder(input = {}) {
   const payload = input.decisionEvidenceEnvelopeAndSameHeadBinder || input;
   const envelope = payload.decisionEvidenceEnvelope || {};
-  const sameHead = envelope.sameHead !== false;
+  const localHead = envelope.localHead || envelope.headSha || null;
+  const prHead = envelope.prHead || null;
+  const workflowHead = envelope.workflowHead || null;
+  const artifactHead = envelope.artifactHead || null;
+  const requiredHeads = [localHead, prHead, workflowHead, artifactHead];
+  const allHeadsPresent = requiredHeads.every(Boolean);
+  const allHeadsMatch = allHeadsPresent && requiredHeads.every((head) => head === localHead);
+  const sameHead = allHeadsMatch;
   return {
     runtimeVersion: '1.2.7',
     decisionEvidenceEnvelope: {
@@ -1274,10 +1295,10 @@ function defaultDecisionEvidenceEnvelopeAndSameHeadBinder(input = {}) {
       repo: envelope.repo || payload.repo || 'hiro4649/codex-development-harness',
       branch: envelope.branch || payload.branch || 'unknown',
       baseSha: envelope.baseSha || null,
-      localHead: envelope.localHead || envelope.headSha || null,
-      prHead: envelope.prHead || null,
-      workflowHead: envelope.workflowHead || null,
-      artifactHead: envelope.artifactHead || null,
+      localHead,
+      prHead,
+      workflowHead,
+      artifactHead,
       ownerReceiptBinding: envelope.ownerReceiptBinding || 'valid',
       sameHead,
       localGate: envelope.localGate || 'pass',
@@ -1289,6 +1310,9 @@ function defaultDecisionEvidenceEnvelopeAndSameHeadBinder(input = {}) {
     sameHeadBinder: {
       rejectsHeadMismatch: payload.rejectsHeadMismatch !== false,
       requiredForMerge: payload.requiredForMerge !== false,
+      allRequiredHeadsPresent: allHeadsPresent,
+      allRequiredHeadsMatch: allHeadsMatch,
+      sameHeadDerivedFromHashes: true,
       artifactHeadMustMatchWorkflowHead: payload.artifactHeadMustMatchWorkflowHead !== false,
       prBodyIsDisplayOnly: payload.prBodyIsDisplayOnly !== false,
     },
@@ -1299,19 +1323,22 @@ function defaultDecisionEvidenceEnvelopeAndSameHeadBinder(input = {}) {
 function defaultValidationDagAndContentAddressedReuse(input = {}) {
   const payload = input.validationDagAndContentAddressedReuse || input;
   const cache = payload.validationCacheKey || {};
+  const reuseStatus = payload.reuseStatus || 'not_used';
   return {
     runtimeVersion: '1.2.7',
     validationPlanVersion: 'v127',
+    reuseStatus,
     validationCacheKey: {
-      headSha: cache.headSha || payload.headSha || 'unknown',
+      headSha: cache.headSha || payload.headSha || 'not_reused_local_pre_pr_head',
       validationPlanVersion: cache.validationPlanVersion || 'v127',
-      scriptDigest: cache.scriptDigest || 'required',
+      scriptDigest: cache.scriptDigest || 'sha256:not_reused_validation_plan',
       lockfileDigest: cache.lockfileDigest || 'none',
-      runnerImage: cache.runnerImage || 'local',
-      nodeOrRuntimeVersion: cache.nodeOrRuntimeVersion || 'unknown',
+      runnerImage: cache.runnerImage || 'local_runner_not_reused',
+      nodeOrRuntimeVersion: cache.nodeOrRuntimeVersion || 'node_not_reused',
       taskProfile: TASK_PROFILES.has(cache.taskProfile) ? cache.taskProfile : 'harness_source_body',
       environmentClass: cache.environmentClass || 'local_or_ci',
     },
+    priorArtifactPointer: payload.priorArtifactPointer || null,
     invalidatesOn: truncateList(payload.invalidatesOn || ['validation_script', 'workflow', 'lockfile', 'runtime', 'runner', 'task_profile', 'changed_category', 'required_check_policy'], 12),
     reusedValidationResults: Math.max(0, Number(payload.reusedValidationResults || 0)),
     newValidationExecutions: Math.max(0, Number(payload.newValidationExecutions || 1)),
@@ -1334,10 +1361,15 @@ function defaultContextOutputOwnerInterruptTokenBudget(input = {}) {
       repeatedSafetyTextCount: Math.max(0, Number(payload.repeatedSafetyTextCount || 0)),
       reusedValidationResults: Math.max(0, Number(payload.reusedValidationResults || 0)),
       newValidationExecutions: Math.max(0, Number(payload.newValidationExecutions || 1)),
+      observed: payload.observed !== false,
+      routineArtifactBytes: Math.max(0, Number(payload.routineArtifactBytes || 0)),
     },
     outputBudget: {
-      finalReportLineBudget: Math.min(Math.max(1, Number(payload.finalReportLineBudget || 12)), 20),
+      finalReportLineBudget: Math.min(Math.max(1, Number(payload.finalReportLineBudget || 8)), 20),
       progressUpdateLineBudget: Math.min(Math.max(1, Number(payload.progressUpdateLineBudget || 2)), 4),
+      safeArtifactReadsMax: Math.min(Math.max(1, Number(payload.safeArtifactReadsMax || 3)), 3),
+      selectedSkillsMax: Math.min(Math.max(0, Number(payload.selectedSkillsMax || 1)), 1),
+      routineArtifactBytesMax: Math.max(1, Number(payload.routineArtifactBytesMax || 4096)),
       repeatedSafetyTextSuppressed: payload.repeatedSafetyTextSuppressed !== false,
     },
     safeNextAction: payload.safeNextAction || 'emit_delta_only_safe_summary',
@@ -1379,15 +1411,20 @@ function defaultBlockerClosureAndProductValuePressure(input = {}) {
 }
 
 export function buildOrchestrationCapsule(input = {}) {
+  const v127ProcessInput = (input.typedOwnerProcessReceiptAndContinuationKernel || input).ownerProcessReceipt || {};
+  const v127ProcessHasProvenance = Boolean(v127ProcessInput.receiptId && v127ProcessInput.taskId && (v127ProcessInput.ownerInstructionHash || v127ProcessInput.sourceInstructionRef));
+  const v127ProcessReceiptValid = v127ProcessInput.present === true && v127ProcessHasProvenance && v127ProcessInput.expiresOnScopeDelta !== false;
+  const v127AllowedActions = new Set(Array.isArray(v127ProcessInput.allowedActions) ? v127ProcessInput.allowedActions : []);
+  const v127Allows = (action) => v127ProcessReceiptValid && v127AllowedActions.has(action);
   const permissionGrant = {
     triage: input.triage === true,
     monitor: input.monitor === true,
     implement: input.implement === true,
-    commit: input.commit === true,
-    push: input.push === true,
-    createPr: input.createPr === true,
-    rerunCi: input.rerunCi === true,
-    fixCi: input.fixCi === true,
+    commit: input.commit === true || v127Allows('commit'),
+    push: input.push === true || v127Allows('push'),
+    createPr: input.createPr === true || v127Allows('create_pr'),
+    rerunCi: input.rerunCi === true || v127Allows('rerun_ci'),
+    fixCi: input.fixCi === true || v127Allows('fix_ci'),
     merge: input.merge === true,
     closeIssue: input.closeIssue === true,
     release: input.release === true,
@@ -1395,8 +1432,8 @@ export function buildOrchestrationCapsule(input = {}) {
     externalToolUse: input.externalToolUse === true,
     secretAccess: input.secretAccess === true,
     walletRpcDeployAccess: input.walletRpcDeployAccess === true,
-    permissionEvidenceSource: input.permissionEvidenceSource || 'none',
-    mutationPermissionAuthority: input.mutationPermissionAuthority || 'none',
+    permissionEvidenceSource: input.permissionEvidenceSource || (v127ProcessReceiptValid ? 'owner_process_receipt' : 'none'),
+    mutationPermissionAuthority: input.mutationPermissionAuthority || (v127ProcessReceiptValid ? 'owner_explicit_only' : 'none'),
     mergePermissionAuthority: input.mergePermissionAuthority || 'none',
     releasePermissionAuthority: input.releasePermissionAuthority || 'none',
     walletRpcDeployPermissionAuthority: input.walletRpcDeployPermissionAuthority || 'none',
@@ -2162,12 +2199,13 @@ export function validateTypedOwnerProcessReceiptAndContinuationKernel(control = 
   if (control.runtimeVersion !== '1.2.7') reasons.push('typed_owner_process_receipt_version_invalid');
   if (!V127_OWNER_INTENTS.has(control.normalizedOwnerIntent)) reasons.push('normalized_owner_intent_invalid');
   for (const action of process.allowedActions || []) if (!V127_RECEIPT_ACTIONS.has(action)) reasons.push(`owner_process_action_invalid_${action}`);
-  if (process.present !== true) reasons.push('owner_process_receipt_required_for_development_publish_scope');
   if (process.survivesInScopeCommitHeadChanges !== true) reasons.push('process_receipt_must_survive_in_scope_commit_head_changes');
   if (process.expiresOnScopeDelta !== true) reasons.push('process_receipt_must_expire_on_scope_delta');
   if (!process.scopeDigest) reasons.push('process_receipt_requires_scope_digest');
   if (process.ownerAuthorityCreatedByAI === true) reasons.push('process_receipt_cannot_be_ai_created');
-  if (control.normalizedOwnerIntent === 'harness_source_develop_and_publish') {
+  if (process.present === true && process.receiptProvenancePresent !== true) reasons.push('owner_process_receipt_requires_provenance');
+  if (process.present === true && (!process.receiptId || !process.taskId || (!process.ownerInstructionHash && !process.sourceInstructionRef))) reasons.push('owner_process_receipt_missing_receipt_task_or_instruction_ref');
+  if (control.normalizedOwnerIntent === 'harness_source_develop_and_publish' && process.present === true) {
     for (const action of ['commit', 'push', 'create_pr']) {
       if (!process.allowedActions?.includes(action)) reasons.push(`develop_publish_missing_${action}`);
     }
@@ -2188,6 +2226,8 @@ export function validateTypedOwnerProcessReceiptAndContinuationKernel(control = 
     }
   }
   if (!V127_CONTINUATION_STATES.has(continuation.state)) reasons.push('continuation_state_invalid');
+  if (continuation.state === 'continue' && process.present !== true) reasons.push('continue_requires_owner_process_receipt');
+  if (continuation.state === 'continue' && process.receiptProvenancePresent !== true) reasons.push('continue_requires_owner_receipt_provenance');
   if (continuation.state === 'continue' && continuation.receiptValid !== true) reasons.push('continue_requires_valid_receipt');
   if (continuation.state === 'continue' && continuation.scopeDeltaDetected === true) reasons.push('continue_forbidden_after_scope_delta');
   if (continuation.state === 'continue' && continuation.avoidableOwnerStopDetected === true) reasons.push('avoidable_owner_stop_detected');
@@ -2206,13 +2246,17 @@ export function validateDecisionEvidenceEnvelopeAndSameHeadBinder(control = {}) 
   if (envelope.prBodyMachineEvidence === true) reasons.push('decision_evidence_pr_body_is_display_only');
   if (binder.prBodyIsDisplayOnly !== true) reasons.push('same_head_binder_pr_body_display_only_required');
   if (binder.rejectsHeadMismatch !== true) reasons.push('same_head_binder_must_reject_head_mismatch');
+  if (binder.sameHeadDerivedFromHashes !== true) reasons.push('same_head_must_be_derived_from_hashes');
+  if (envelope.sameHead === true && (binder.allRequiredHeadsPresent !== true || binder.allRequiredHeadsMatch !== true)) reasons.push('same_head_true_requires_non_null_matching_heads');
   if (envelope.lane === 'merge_boundary') {
     if (envelope.sameHead !== true) reasons.push('merge_boundary_requires_same_head');
+    if (binder.allRequiredHeadsPresent !== true) reasons.push('merge_boundary_requires_all_required_heads');
+    if (binder.allRequiredHeadsMatch !== true) reasons.push('merge_boundary_requires_matching_required_heads');
     if (envelope.remoteGate !== 'pass') reasons.push('merge_boundary_requires_remote_pass');
     if (envelope.ownerReceiptBinding !== 'valid') reasons.push('merge_boundary_requires_owner_receipt_binding');
     if (envelope.allowedNextAction !== 'merge_current_pr') reasons.push('merge_boundary_next_action_must_be_merge_current_pr');
   }
-  if (envelope.sameHead === false && !envelope.oneBlockingReason) reasons.push('head_mismatch_requires_one_blocking_reason');
+  if (['same_head_remote_qg', 'merge_boundary'].includes(envelope.lane) && envelope.sameHead === false && !envelope.oneBlockingReason) reasons.push('head_mismatch_requires_one_blocking_reason');
   if (envelope.lane === 'blocked_recovery' && !envelope.oneBlockingReason) reasons.push('blocked_recovery_requires_one_blocking_reason');
   return reasons.length ? fail(reasons) : pass({ lane: envelope.lane, allowedNextAction: envelope.allowedNextAction });
 }
@@ -2224,10 +2268,13 @@ export function validateValidationDagAndContentAddressedReuse(control = {}) {
   if (control.validationPlanVersion !== 'v127') reasons.push('validation_plan_version_invalid');
   for (const required of ['headSha', 'validationPlanVersion', 'scriptDigest', 'lockfileDigest', 'runnerImage', 'nodeOrRuntimeVersion', 'taskProfile', 'environmentClass']) {
     if (!cache[required]) reasons.push(`validation_cache_key_missing_${required}`);
+    if (V127_PLACEHOLDER_VALUES.has(String(cache[required] || '').toLowerCase()) && !['lockfileDigest'].includes(required)) reasons.push(`validation_cache_key_placeholder_${required}`);
   }
   for (const required of ['validation_script', 'workflow', 'lockfile', 'runtime', 'runner', 'task_profile', 'changed_category', 'required_check_policy']) {
     if (!control.invalidatesOn?.includes(required)) reasons.push(`validation_cache_missing_invalidator_${required}`);
   }
+  if (control.reuseStatus === 'hit' && !control.priorArtifactPointer) reasons.push('validation_cache_hit_requires_prior_artifact_pointer');
+  if (control.reuseStatus === 'hit' && Object.entries(cache).some(([key, value]) => key !== 'lockfileDigest' && V127_PLACEHOLDER_VALUES.has(String(value || '').toLowerCase()))) reasons.push('validation_cache_hit_forbids_placeholder_key');
   if (control.nightlyFullGateReplacesPremergeRequiredChecks === true) reasons.push('nightly_full_gate_cannot_replace_premerge_required_checks');
   return reasons.length ? fail(reasons) : pass({ reusedValidationResults: control.reusedValidationResults, newValidationExecutions: control.newValidationExecutions });
 }
@@ -2237,6 +2284,11 @@ export function validateContextOutputOwnerInterruptTokenBudget(control = {}) {
   const metrics = control.tokenEconomyMetrics || {};
   const output = control.outputBudget || {};
   if (control.runtimeVersion !== '1.2.7') reasons.push('token_budget_version_invalid');
+  if (metrics.observed !== true) reasons.push('token_metrics_must_be_observed');
+  if (Number(metrics.authorityMarkdownReads || 0) > 2) reasons.push('authority_markdown_reads_over_budget');
+  if (Number(metrics.safeArtifactReads || 0) > Number(output.safeArtifactReadsMax || 0)) reasons.push('safe_artifact_reads_over_budget');
+  if (Number(metrics.selectedSkills || 0) > Number(output.selectedSkillsMax || 0)) reasons.push('selected_skills_over_v127_budget');
+  if (Number(metrics.routineArtifactBytes || 0) > Number(output.routineArtifactBytesMax || 0)) reasons.push('routine_artifact_bytes_over_budget');
   if (Number(metrics.ownerInterruptCount || 0) > 0) reasons.push('owner_interrupt_count_should_be_zero_under_valid_process_receipt');
   if (Number(metrics.repeatedSafetyTextCount || 0) > 1) reasons.push('repeated_safety_text_not_suppressed');
   if (Number(metrics.extraReads || 0) > 2) reasons.push('extra_reads_over_budget');
@@ -2244,6 +2296,27 @@ export function validateContextOutputOwnerInterruptTokenBudget(control = {}) {
   if (Number(output.finalReportLineBudget || 0) > 20) reasons.push('final_report_line_budget_too_large');
   if (output.repeatedSafetyTextSuppressed !== true) reasons.push('repeated_safety_text_suppression_required');
   return reasons.length ? fail(reasons) : pass({ ownerInterruptCount: metrics.ownerInterruptCount, operatorOutputLines: metrics.operatorOutputLines });
+}
+
+export function validateV127PermissionGrantReceiptCoherence(capsule = {}) {
+  const reasons = [];
+  const grant = capsule.permissionGrant || {};
+  const kernel = capsule.typedOwnerProcessReceiptAndContinuationKernel || {};
+  const process = kernel.ownerProcessReceipt || {};
+  const continuation = kernel.continuationDecision || {};
+  const allowed = new Set(process.allowedActions || []);
+  const validProcessReceipt = process.present === true && process.receiptProvenancePresent === true && continuation.receiptValid === true && continuation.scopeDeltaDetected !== true;
+  if (grant.permissionEvidenceSource === 'owner_process_receipt' && validProcessReceipt !== true) reasons.push('owner_process_permission_source_requires_valid_receipt');
+  if (validProcessReceipt === true) {
+    if (grant.permissionEvidenceSource !== 'owner_process_receipt') reasons.push('valid_process_receipt_requires_permission_source');
+    if (grant.mutationPermissionAuthority !== 'owner_explicit_only') reasons.push('valid_process_receipt_requires_owner_explicit_mutation_authority');
+    const actionMap = { commit: 'commit', push: 'push', create_pr: 'createPr', rerun_ci: 'rerunCi', fix_ci: 'fixCi' };
+    for (const [receiptAction, grantKey] of Object.entries(actionMap)) {
+      if (allowed.has(receiptAction) && grant[grantKey] !== true) reasons.push(`permission_grant_missing_${grantKey}_from_receipt`);
+      if (!allowed.has(receiptAction) && grant[grantKey] === true && grant.permissionEvidenceSource === 'owner_process_receipt') reasons.push(`permission_grant_overstates_${grantKey}`);
+    }
+  }
+  return reasons.length ? fail(reasons) : pass({ permissionEvidenceSource: grant.permissionEvidenceSource || 'none' });
 }
 
 export function validateBlockerClosureAndProductValuePressure(control = {}) {
@@ -2347,6 +2420,7 @@ export function validateOrchestrationCapsule(capsule = {}) {
     decisionEvidenceEnvelopeSameHeadInternalStatus: validateDecisionEvidenceEnvelopeAndSameHeadBinder(capsule.decisionEvidenceEnvelopeAndSameHeadBinder || {}),
     validationDagEvidenceReuseInternalStatus: validateValidationDagAndContentAddressedReuse(capsule.validationDagAndContentAddressedReuse || {}),
     tokenEconomyOwnerInterruptInternalStatus: validateContextOutputOwnerInterruptTokenBudget(capsule.contextOutputOwnerInterruptTokenBudget || {}),
+    v127PermissionGrantReceiptCoherenceInternalStatus: validateV127PermissionGrantReceiptCoherence(capsule),
     blockerClosureProductValueInternalStatus: validateBlockerClosureAndProductValuePressure(capsule.blockerClosureAndProductValuePressure || {}),
   };
 }

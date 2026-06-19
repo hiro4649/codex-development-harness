@@ -43,7 +43,7 @@ owner-only or dangerous-capability boundaries.
 
 ## Theme
 
-Evidence Lane Compression and Receipt-Strict Merge Boundary.
+Receipt-Carried Continuation and Evidence Compression.
 
 The harness should:
 
@@ -61,6 +61,11 @@ v1.2.7 adds only internal fields inside the existing v1.1.9 artifacts.
 ### 1. Typed Owner Process Receipt and Continuation Kernel
 
 Owner intent must be normalized into typed receipts, not a single boolean.
+
+An `ownerProcessReceipt` is valid only when it carries owner provenance:
+`receiptId`, `taskId`, and either `ownerInstructionHash` or
+`sourceInstructionRef`. Missing provenance cannot default to valid and cannot
+authorize commit, push, PR creation, CI rerun, or CI repair.
 
 Receipt classes:
 
@@ -132,6 +137,11 @@ Machine decision evidence is a small envelope, not the PR body.
 }
 ```
 
+`sameHead` must be derived from non-null matching `localHead`, `prHead`,
+`workflowHead`, and `artifactHead`. A default `sameHead: true`, a null head, or
+a mismatch is a blocker for `same_head_remote_qg` and `merge_boundary`. The PR
+body is display-only; machine judgment uses the safe envelope.
+
 Lanes are:
 
 - `local_pre_pr`
@@ -161,6 +171,10 @@ Validation reuse is allowed only when this key matches:
 Cache invalidates on validation script, workflow, lockfile, runtime, runner,
 task profile, changed category, or required check policy changes.
 
+Placeholder cache values such as `unknown`, `required`, empty strings, or
+missing run pointers are not reusable evidence. A cache hit requires a prior
+safe artifact pointer and a complete content-addressed key.
+
 Nightly/full gates can supplement evidence but cannot replace pre-merge
 required checks.
 
@@ -180,13 +194,18 @@ harness should not ask the owner to confirm commit, push, or PR creation.
     "ownerInterruptCount": 0,
     "repeatedSafetyTextCount": 0,
     "reusedValidationResults": 6,
-    "newValidationExecutions": 3
+    "newValidationExecutions": 3,
+    "observed": true,
+    "routineArtifactBytes": 4096
   }
 }
 ```
 
 Routine progress output should be delta-only. Repeated safety text should be
-profile-ID compressed.
+profile-ID compressed. Routine token metrics must be observed rather than
+self-filled defaults. The default final report budget is 8 lines, selected
+skills max is 1, safe artifact reads max is 3, and routine artifact bytes are
+bounded by the task profile.
 
 ### 5. Blocker Closure and Product Value Pressure
 

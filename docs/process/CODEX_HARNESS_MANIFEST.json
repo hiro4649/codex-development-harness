@@ -35,7 +35,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Observed-State Bridge-Safe Loop Runtime with Context-Slim Skill and Validation Routing",
+  "theme": "Receipt-Carried Continuation and Evidence Compression",
   "requiredStatuses": [
     "orchestrationModeStatus",
     "permissionGrantStatus",

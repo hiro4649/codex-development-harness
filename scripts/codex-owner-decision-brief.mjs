@@ -10,6 +10,10 @@ function bounded(values = [], limit = 8) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
 }
 
+function boundedLatest(values = [], limit = 8) {
+  return Array.isArray(values) ? values.slice(Math.max(0, values.length - limit)).map(String) : [];
+}
+
 const DELEGATED_CONTINUATION_ACTIONS = new Set(['commit', 'push', 'createPr', 'rerunCi', 'fixCi', 'merge']);
 const NON_DELEGABLE_ACTIONS = new Set(['release', 'publish', 'secretAccess', 'walletRpcDeployAccess', 'deploy', 'fundedTransaction', 'governanceTransaction', 'bscScanVerification']);
 const RECOMMENDATIONS = new Set(['merge', 'repair', 'preserve', 'stop', 'owner_merge_decision_only_after_same_head_remote_pass']);
@@ -207,40 +211,70 @@ function ownerDelegatedProcessReceipt(input = {}) {
 
 function typedOwnerProcessReceipt(input = {}) {
   const receipt = input.typedOwnerProcessReceipt || input;
+  const present = receipt.present === true;
+  const receiptProvenancePresent = Boolean(receipt.receiptId && receipt.taskId && (receipt.ownerInstructionHash || receipt.sourceInstructionRef));
+  const receiptValid = present && receiptProvenancePresent && receipt.expiresOnScopeDelta !== false;
   return {
     receiptVersion: '1.2.7',
-    present: receipt.present !== false,
-    normalizedOwnerIntent: V127_OWNER_INTENTS.has(receipt.normalizedOwnerIntent) ? receipt.normalizedOwnerIntent : 'harness_source_develop_and_publish',
-    allowedActions: bounded(receipt.allowedActions || ['edit', 'check', 'commit', 'push', 'create_pr'], 8),
+    present,
+    receiptId: receipt.receiptId || null,
+    taskId: receipt.taskId || null,
+    ownerInstructionHash: receipt.ownerInstructionHash || null,
+    sourceInstructionRef: receipt.sourceInstructionRef || null,
+    receiptProvenancePresent,
+    normalizedOwnerIntent: V127_OWNER_INTENTS.has(receipt.normalizedOwnerIntent) ? receipt.normalizedOwnerIntent : (present ? 'harness_source_develop_and_publish' : 'none'),
+    allowedActions: bounded(receipt.allowedActions || [], 8),
     scopeDigest: receipt.scopeDigest || 'source_harness_v127_body_only',
     survivesInScopeCommitHeadChanges: receipt.survivesInScopeCommitHeadChanges !== false,
     expiresOnScopeDelta: receipt.expiresOnScopeDelta !== false,
     ownerAuthorityCreatedByAI: receipt.ownerAuthorityCreatedByAI === true,
-    safeNextAction: receipt.safeNextAction || 'continue_commit_push_create_pr',
+    safeNextAction: receipt.safeNextAction || (receiptValid ? 'continue_commit_push_create_pr' : 'owner_boundary_stop'),
   };
 }
 
-function continuationDecision(input = {}) {
+function continuationDecision(input = {}, typedReceipt = {}) {
   const decision = input.continuationDecision || input;
+  const receiptValid = typedReceipt.present === true
+    && typedReceipt.receiptProvenancePresent === true
+    && typedReceipt.expiresOnScopeDelta !== false
+    && decision.scopeDeltaDetected !== true;
+  const state = V127_CONTINUATION_STATES.has(decision.state)
+    ? decision.state
+    : receiptValid
+      ? 'continue'
+      : 'justified_owner_boundary';
   return {
     decisionVersion: '1.2.7',
-    state: V127_CONTINUATION_STATES.has(decision.state) ? decision.state : 'continue',
+    state,
     avoidableOwnerStopDetected: decision.avoidableOwnerStopDetected === true,
-    receiptValid: decision.receiptValid !== false,
+    receiptValid: decision.receiptValid === false ? false : receiptValid,
     scopeDeltaDetected: decision.scopeDeltaDetected === true,
-    oneSafeNextAction: decision.oneSafeNextAction || 'continue_commit_push_create_pr',
+    oneSafeNextAction: decision.oneSafeNextAction || (receiptValid ? 'continue_commit_push_create_pr' : 'owner_boundary_stop'),
   };
 }
 
 function decisionEvidenceBrief(input = {}) {
   const evidence = input.decisionEvidenceBrief || input;
+  const localHead = evidence.localHead || evidence.headSha || null;
+  const prHead = evidence.prHead || null;
+  const workflowHead = evidence.workflowHead || null;
+  const artifactHead = evidence.artifactHead || null;
+  const allRequiredHeadsPresent = [localHead, prHead, workflowHead, artifactHead].every(Boolean);
+  const allRequiredHeadsMatch = allRequiredHeadsPresent && [prHead, workflowHead, artifactHead].every((head) => head === localHead);
   return {
     evidenceVersion: '1.2.7',
     lane: evidence.lane || 'local_pre_pr',
-    sameHead: evidence.sameHead !== false,
+    localHead,
+    prHead,
+    workflowHead,
+    artifactHead,
+    sameHead: allRequiredHeadsMatch,
+    allRequiredHeadsPresent,
+    allRequiredHeadsMatch,
+    sameHeadDerivedFromHashes: true,
     localGate: evidence.localGate || 'pass',
     remoteGate: evidence.remoteGate || 'missing',
-    ownerReceiptBinding: evidence.ownerReceiptBinding || 'valid',
+    ownerReceiptBinding: evidence.ownerReceiptBinding || 'not_required',
     prBodyMachineEvidence: evidence.prBodyMachineEvidence === true,
     oneBlockingReason: evidence.oneBlockingReason || null,
   };
@@ -255,19 +289,27 @@ function tokenEconomyBrief(input = {}) {
     selectedSkills: Math.max(0, Number(metrics.selectedSkills || 1)),
     ownerInterruptCount: Math.max(0, Number(metrics.ownerInterruptCount || 0)),
     repeatedSafetyTextCount: Math.max(0, Number(metrics.repeatedSafetyTextCount || 0)),
-    finalReportLineBudget: Math.min(Math.max(1, Number(metrics.finalReportLineBudget || 12)), 20),
+    finalReportLineBudget: Math.min(Math.max(1, Number(metrics.finalReportLineBudget || 8)), 20),
+    observed: metrics.observed !== false,
+    routineArtifactBytes: Math.max(0, Number(metrics.routineArtifactBytes || 0)),
+    safeArtifactReadsMax: Math.min(Math.max(1, Number(metrics.safeArtifactReadsMax || 3)), 3),
+    selectedSkillsMax: Math.min(Math.max(0, Number(metrics.selectedSkillsMax || 1)), 1),
+    routineArtifactBytesMax: Math.max(1, Number(metrics.routineArtifactBytesMax || 4096)),
   };
 }
 
 export function buildOwnerDecisionBrief(input = {}) {
+  const typedProcessReceipt = typedOwnerProcessReceipt(input.typedOwnerProcessReceipt || input);
+  const continuation = continuationDecision(input.continuationDecision || input, typedProcessReceipt);
+  const defaultProofCompleted = ['v127_self_test', 'v126_self_test', 'local_quality_gate_pending_or_pass'];
   return {
     ownerDecisionBriefVersion: '1',
     decisionReady: input.decisionReady === true,
     itemUrl: input.itemUrl || null,
-    whatChanges: input.whatChanges || 'source_harness_v124_goal_scoped_delegated_autonomy_evidence_semantics_body_only',
+    whatChanges: input.whatChanges || 'source_harness_v127_receipt_carried_continuation_evidence_compression_body_only',
     whoBenefits: input.whoBenefits || 'maintainer_owner_burden_reduction_and_safer_long_running_agent_loops',
     whyOwnerDecisionNeededNow: input.whyOwnerDecisionNeededNow || 'owner_merge_instruction_not_provided',
-    proofCompleted: bounded(input.proofCompleted, 8),
+    proofCompleted: boundedLatest(input.proofCompleted || defaultProofCompleted, 8),
     proofMissing: bounded(input.proofMissing || ['same_head_remote_quality_gate'], 8),
     residualRisks: bounded(input.residualRisks || ['owner_merge_instruction_required'], 3),
     recommendation: input.recommendation || 'owner_merge_decision_only_after_same_head_remote_pass',
@@ -286,8 +328,8 @@ export function buildOwnerDecisionBrief(input = {}) {
     safeMemoryLedger: safeMemoryLedger(input.safeMemoryLedger || input),
     ownerDecisionReceipt: ownerDecisionReceipt(input.ownerDecisionReceipt || {}),
     ownerDelegatedProcessReceipt: ownerDelegatedProcessReceipt(input.ownerDelegatedProcessReceipt || {}),
-    typedOwnerProcessReceipt: typedOwnerProcessReceipt(input.typedOwnerProcessReceipt || input),
-    continuationDecision: continuationDecision(input.continuationDecision || input),
+    typedOwnerProcessReceipt: typedProcessReceipt,
+    continuationDecision: continuation,
     decisionEvidenceBrief: decisionEvidenceBrief(input.decisionEvidenceBrief || input),
     tokenEconomyBrief: tokenEconomyBrief(input.tokenEconomyBrief || input),
     ownerOnlyDecision: true,
@@ -394,26 +436,43 @@ export function validateOwnerDecisionBrief(brief = {}) {
   }
   if (typedProcess.receiptVersion !== '1.2.7') reasons.push('typed_owner_process_receipt_version_invalid');
   if (!V127_OWNER_INTENTS.has(typedProcess.normalizedOwnerIntent)) reasons.push('typed_owner_process_intent_invalid');
-  if (typedProcess.present !== true) reasons.push('typed_owner_process_receipt_required');
   if (typedProcess.survivesInScopeCommitHeadChanges !== true) reasons.push('typed_owner_process_must_survive_in_scope_commit_head_changes');
   if (typedProcess.expiresOnScopeDelta !== true) reasons.push('typed_owner_process_must_expire_on_scope_delta');
   if (typedProcess.ownerAuthorityCreatedByAI === true) reasons.push('typed_owner_process_cannot_be_ai_created');
+  if (typedProcess.present === true && typedProcess.receiptProvenancePresent !== true) reasons.push('typed_owner_process_receipt_requires_provenance');
+  if (typedProcess.present === true && (!typedProcess.receiptId || !typedProcess.taskId || (!typedProcess.ownerInstructionHash && !typedProcess.sourceInstructionRef))) reasons.push('typed_owner_process_missing_receipt_task_or_instruction_ref');
   for (const action of typedProcess.allowedActions || []) {
     if (!V127_PROCESS_ACTIONS.has(action)) reasons.push(`typed_owner_process_action_invalid_${action}`);
   }
-  if (typedProcess.normalizedOwnerIntent === 'harness_source_develop_and_publish') {
+  if (typedProcess.normalizedOwnerIntent === 'harness_source_develop_and_publish' && typedProcess.present === true) {
     for (const action of ['commit', 'push', 'create_pr']) if (!typedProcess.allowedActions?.includes(action)) reasons.push(`typed_owner_process_missing_${action}`);
   }
   if (continuation.decisionVersion !== '1.2.7') reasons.push('continuation_decision_version_invalid');
   if (!V127_CONTINUATION_STATES.has(continuation.state)) reasons.push('continuation_decision_state_invalid');
+  if (continuation.state === 'continue' && typedProcess.present !== true) reasons.push('continuation_continue_requires_process_receipt');
+  if (continuation.state === 'continue' && typedProcess.receiptProvenancePresent !== true) reasons.push('continuation_continue_requires_receipt_provenance');
   if (continuation.state === 'continue' && continuation.receiptValid !== true) reasons.push('continuation_continue_requires_valid_receipt');
   if (continuation.state === 'continue' && continuation.scopeDeltaDetected === true) reasons.push('continuation_continue_forbidden_after_scope_delta');
   if (continuation.state === 'continue' && continuation.avoidableOwnerStopDetected === true) reasons.push('avoidable_owner_stop_detected');
   if (decisionEvidence.evidenceVersion !== '1.2.7') reasons.push('decision_evidence_brief_version_invalid');
   if (decisionEvidence.prBodyMachineEvidence === true) reasons.push('decision_evidence_brief_pr_body_display_only');
+  if (decisionEvidence.sameHeadDerivedFromHashes !== true) reasons.push('decision_evidence_same_head_must_be_derived_from_hashes');
+  if (decisionEvidence.sameHead === true && (decisionEvidence.allRequiredHeadsPresent !== true || decisionEvidence.allRequiredHeadsMatch !== true)) reasons.push('decision_evidence_same_head_true_requires_non_null_matching_heads');
+  if (decisionEvidence.lane === 'merge_boundary') {
+    if (decisionEvidence.sameHead !== true) reasons.push('decision_evidence_merge_boundary_requires_same_head');
+    if (decisionEvidence.remoteGate !== 'pass') reasons.push('decision_evidence_merge_boundary_requires_remote_pass');
+    if (decisionEvidence.ownerReceiptBinding !== 'valid') reasons.push('decision_evidence_merge_boundary_requires_owner_receipt');
+  }
+  if (['same_head_remote_qg', 'merge_boundary'].includes(decisionEvidence.lane) && decisionEvidence.sameHead === false && !decisionEvidence.oneBlockingReason) reasons.push('decision_evidence_head_mismatch_requires_one_reason');
   if (tokenEconomy.metricsVersion !== '1.2.7') reasons.push('token_economy_brief_version_invalid');
+  if (tokenEconomy.observed !== true) reasons.push('token_economy_metrics_must_be_observed');
+  if (Number(tokenEconomy.authorityMarkdownReads || 0) > 2) reasons.push('token_economy_authority_markdown_reads_over_budget');
+  if (Number(tokenEconomy.safeArtifactReads || 0) > Number(tokenEconomy.safeArtifactReadsMax || 0)) reasons.push('token_economy_safe_artifact_reads_over_budget');
+  if (Number(tokenEconomy.selectedSkills || 0) > Number(tokenEconomy.selectedSkillsMax || 0)) reasons.push('token_economy_selected_skills_over_budget');
+  if (Number(tokenEconomy.routineArtifactBytes || 0) > Number(tokenEconomy.routineArtifactBytesMax || 0)) reasons.push('token_economy_routine_artifact_bytes_over_budget');
   if (Number(tokenEconomy.ownerInterruptCount || 0) > 0) reasons.push('token_economy_owner_interrupt_not_zero');
   if (Number(tokenEconomy.repeatedSafetyTextCount || 0) > 1) reasons.push('token_economy_repeated_safety_text_not_suppressed');
+  if (Number(tokenEconomy.finalReportLineBudget || 0) > 8) reasons.push('token_economy_final_report_budget_over_v127_default');
   const delegated = brief.delegatedContinuation || {};
   if (delegated.enabled === true) {
     if (delegated.autoContinueAllowed === true && delegated.technicalAcceptance !== true) reasons.push('delegated_auto_continue_requires_technical_acceptance');

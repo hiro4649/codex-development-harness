@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // CODEX_QUALITY_HARNESS_FILE v1.2.7
 
+import fs from 'node:fs';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import {
   V127_OPERATOR_STATUS_KEYS,
@@ -11,6 +12,7 @@ import {
   validateDecisionEvidenceEnvelopeAndSameHeadBinder,
   validateOrchestrationCapsule,
   validateTypedOwnerProcessReceiptAndContinuationKernel,
+  validateV127PermissionGrantReceiptCoherence,
   validateValidationDagAndContentAddressedReuse,
 } from './codex-orchestration-capsule.mjs';
 import { buildWorkerProofCapsule, validateWorkerProofCapsule } from './codex-worker-proof-capsule.mjs';
@@ -32,6 +34,34 @@ function failed(status) {
   return status?.status === 'fail';
 }
 
+const VALID_PROCESS_RECEIPT = {
+  present: true,
+  receiptId: 'receipt-v127-source-body',
+  taskId: 'task-v127-source-body',
+  ownerInstructionHash: 'sha256:owner-instruction-v127',
+  allowedActions: ['edit', 'check', 'commit', 'push', 'create_pr'],
+};
+
+const SAME_HEAD_ENVELOPE = {
+  lane: 'same_head_remote_qg',
+  localHead: 'abc123',
+  prHead: 'abc123',
+  workflowHead: 'abc123',
+  artifactHead: 'abc123',
+  remoteGate: 'pass',
+  allowedNextAction: 'owner_merge_decision_only',
+};
+
+function manifestThemeMatchesActiveVersion() {
+  const manifests = [
+    JSON.parse(fs.readFileSync('CODEX_SOURCE_HARNESS_MANIFEST.json', 'utf8')),
+    JSON.parse(fs.readFileSync('docs/process/CODEX_HARNESS_MANIFEST.json', 'utf8')),
+  ];
+  return manifests.every((manifest) => manifest.activeHarnessVersion === '1.2.7'
+    && manifest.activeSelfTestSuite === 'v127'
+    && manifest.theme === 'Receipt-Carried Continuation and Evidence Compression');
+}
+
 const cases = [
   ['v127_self_test_must_pass', () => true],
   ['v127_adds_no_new_p0_artifact', () => V127_P0_ARTIFACTS.length === 3 && V127_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -44,7 +74,17 @@ const cases = [
       && tuple.activeSelfTestSuite === 'v127'
       && tuple.activeSpecPath === 'docs/process/CODEX_V127_SPEC.md';
   }],
-  ['process_receipt_survives_in_scope_commit_head_changes', () => passed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule().typedOwnerProcessReceiptAndContinuationKernel))],
+  ['process_receipt_survives_in_scope_commit_head_changes', () => passed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
+    typedOwnerProcessReceiptAndContinuationKernel: {
+      ownerProcessReceipt: VALID_PROCESS_RECEIPT,
+    },
+  }).typedOwnerProcessReceiptAndContinuationKernel))],
+  ['receipt_without_owner_provenance_fails', () => failed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
+    typedOwnerProcessReceiptAndContinuationKernel: {
+      ownerProcessReceipt: { present: true, allowedActions: ['edit', 'check', 'commit', 'push', 'create_pr'] },
+      continuationDecision: { state: 'continue' },
+    },
+  }).typedOwnerProcessReceiptAndContinuationKernel))],
   ['exact_head_merge_receipt_expires_on_head_change', () => failed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
     typedOwnerProcessReceiptAndContinuationKernel: {
       ownerConditionalMergeReceipt: { present: true, scope: 'exact_head', headSha: null },
@@ -56,10 +96,16 @@ const cases = [
     },
   }).decisionEvidenceEnvelopeAndSameHeadBinder))],
   ['scope_delta_invalidates_receipt', () => failed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
-    typedOwnerProcessReceiptAndContinuationKernel: { continuationDecision: { state: 'continue', receiptValid: true, scopeDeltaDetected: true } },
+    typedOwnerProcessReceiptAndContinuationKernel: {
+      ownerProcessReceipt: VALID_PROCESS_RECEIPT,
+      continuationDecision: { state: 'continue', receiptValid: true, scopeDeltaDetected: true },
+    },
   }).typedOwnerProcessReceiptAndContinuationKernel))],
   ['out_of_scope_file_invalidates_continuation', () => failed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
-    typedOwnerProcessReceiptAndContinuationKernel: { ownerProcessReceipt: { expiresOnScopeDelta: false } },
+    typedOwnerProcessReceiptAndContinuationKernel: {
+      ownerProcessReceipt: { ...VALID_PROCESS_RECEIPT, expiresOnScopeDelta: false },
+      continuationDecision: { state: 'continue' },
+    },
   }).typedOwnerProcessReceiptAndContinuationKernel))],
   ['install_rollout_does_not_authorize_runtime_operation', () => failed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
     typedOwnerProcessReceiptAndContinuationKernel: {
@@ -73,7 +119,10 @@ const cases = [
     },
   }).decisionEvidenceEnvelopeAndSameHeadBinder))],
   ['avoidable_owner_stop_is_detected', () => failed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
-    typedOwnerProcessReceiptAndContinuationKernel: { continuationDecision: { state: 'continue', avoidableOwnerStopDetected: true, receiptValid: true } },
+    typedOwnerProcessReceiptAndContinuationKernel: {
+      ownerProcessReceipt: VALID_PROCESS_RECEIPT,
+      continuationDecision: { state: 'continue', avoidableOwnerStopDetected: true, receiptValid: true },
+    },
   }).typedOwnerProcessReceiptAndContinuationKernel))],
   ['justified_owner_boundary_is_not_penalized', () => passed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
     typedOwnerProcessReceiptAndContinuationKernel: { continuationDecision: { state: 'justified_owner_boundary', avoidableOwnerStopDetected: false, receiptValid: false } },
@@ -82,10 +131,28 @@ const cases = [
     typedOwnerProcessReceiptAndContinuationKernel: { continuationDecision: { state: 'clarify_once', receiptValid: false } },
   }).typedOwnerProcessReceiptAndContinuationKernel))],
   ['decision_evidence_envelope_rejects_head_mismatch', () => failed(validateDecisionEvidenceEnvelopeAndSameHeadBinder(buildOrchestrationCapsule({
-    decisionEvidenceEnvelopeAndSameHeadBinder: { decisionEvidenceEnvelope: { sameHead: false, oneBlockingReason: null } },
+    decisionEvidenceEnvelopeAndSameHeadBinder: { decisionEvidenceEnvelope: { lane: 'same_head_remote_qg', localHead: 'abc123', prHead: 'def456', workflowHead: 'abc123', artifactHead: 'abc123', oneBlockingReason: null } },
+  }).decisionEvidenceEnvelopeAndSameHeadBinder))],
+  ['same_head_true_with_null_heads_fails', () => failed(validateDecisionEvidenceEnvelopeAndSameHeadBinder({
+    runtimeVersion: '1.2.7',
+    decisionEvidenceEnvelope: { lane: 'same_head_remote_qg', sameHead: true, remoteGate: 'pass', allowedNextAction: 'owner_merge_decision_only', prBodyMachineEvidence: false },
+    sameHeadBinder: { rejectsHeadMismatch: true, prBodyIsDisplayOnly: true, sameHeadDerivedFromHashes: true, allRequiredHeadsPresent: false, allRequiredHeadsMatch: false },
+  }))],
+  ['same_head_hash_mismatch_fails', () => failed(validateDecisionEvidenceEnvelopeAndSameHeadBinder({
+    runtimeVersion: '1.2.7',
+    decisionEvidenceEnvelope: { lane: 'same_head_remote_qg', sameHead: true, remoteGate: 'pass', allowedNextAction: 'owner_merge_decision_only', prBodyMachineEvidence: false },
+    sameHeadBinder: { rejectsHeadMismatch: true, prBodyIsDisplayOnly: true, sameHeadDerivedFromHashes: true, allRequiredHeadsPresent: true, allRequiredHeadsMatch: false },
+  }))],
+  ['remote_run_emits_remote_lane', () => passed(validateDecisionEvidenceEnvelopeAndSameHeadBinder(buildOrchestrationCapsule({
+    decisionEvidenceEnvelopeAndSameHeadBinder: { decisionEvidenceEnvelope: SAME_HEAD_ENVELOPE },
   }).decisionEvidenceEnvelopeAndSameHeadBinder))],
   ['ci_cache_invalidates_on_script_lockfile_or_runner_change', () => failed(validateValidationDagAndContentAddressedReuse(buildOrchestrationCapsule({
     validationDagAndContentAddressedReuse: { invalidatesOn: ['validation_script'] },
+  }).validationDagAndContentAddressedReuse))],
+  ['validation_cache_placeholder_fails', () => failed(validateValidationDagAndContentAddressedReuse(buildOrchestrationCapsule({
+    validationDagAndContentAddressedReuse: {
+      validationCacheKey: { headSha: 'unknown', scriptDigest: 'required', runnerImage: 'unknown', nodeOrRuntimeVersion: 'unknown' },
+    },
   }).validationDagAndContentAddressedReuse))],
   ['nightly_full_gate_does_not_replace_premerge_required_checks', () => failed(validateValidationDagAndContentAddressedReuse(buildOrchestrationCapsule({
     validationDagAndContentAddressedReuse: { nightlyFullGateReplacesPremergeRequiredChecks: true },
@@ -103,11 +170,24 @@ const cases = [
   ['repeated_safety_text_suppressed', () => failed(validateContextOutputOwnerInterruptTokenBudget(buildOrchestrationCapsule({
     contextOutputOwnerInterruptTokenBudget: { repeatedSafetyTextSuppressed: false },
   }).contextOutputOwnerInterruptTokenBudget))],
+  ['token_metrics_must_be_observed', () => failed(validateContextOutputOwnerInterruptTokenBudget(buildOrchestrationCapsule({
+    contextOutputOwnerInterruptTokenBudget: { observed: false },
+  }).contextOutputOwnerInterruptTokenBudget))],
+  ['permission_grant_receipt_contradiction_fails', () => failed(validateV127PermissionGrantReceiptCoherence(buildOrchestrationCapsule({
+    typedOwnerProcessReceiptAndContinuationKernel: {
+      ownerProcessReceipt: { ...VALID_PROCESS_RECEIPT, allowedActions: ['edit', 'check', 'commit'] },
+    },
+    permissionEvidenceSource: 'owner_process_receipt',
+    mutationPermissionAuthority: 'owner_explicit_only',
+    createPr: true,
+  })))],
+  ['manifest_theme_matches_active_version', () => manifestThemeMatchesActiveVersion()],
   ['owner_brief_default_v127_receipts_pass', () => passed(validateOwnerDecisionBrief(buildOwnerDecisionBrief()))],
   ['owner_brief_does_not_stop_for_commit_push_pr_when_process_receipt_valid', () => passed(validateOwnerDecisionBrief(buildOwnerDecisionBrief({
-    typedOwnerProcessReceipt: { normalizedOwnerIntent: 'harness_source_develop_and_publish', allowedActions: ['edit', 'check', 'commit', 'push', 'create_pr'] },
-    continuationDecision: { state: 'continue', receiptValid: true, oneSafeNextAction: 'continue_commit_push_create_pr' },
+    typedOwnerProcessReceipt: { ...VALID_PROCESS_RECEIPT, normalizedOwnerIntent: 'harness_source_develop_and_publish' },
+    continuationDecision: { state: 'continue', oneSafeNextAction: 'continue_commit_push_create_pr' },
   })))],
+  ['owner_brief_contains_current_self_test', () => buildOwnerDecisionBrief().proofCompleted.includes('v127_self_test')],
   ['worker_proof_v127_marker_compatibility_pass', () => passed(validateWorkerProofCapsule(buildWorkerProofCapsule()))],
   ['orchestration_capsule_validates_all_v127_internal_blocks', () => Object.values(validateOrchestrationCapsule(buildOrchestrationCapsule())).every((item) => item.status === 'pass')],
 ].map(([name, fn]) => test(name, fn));

@@ -1343,7 +1343,7 @@
   ],
   "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
-  "theme": "Goal-Sharded Worktree Fleet and Evidence Lane Closure",
+  "theme": "Receipt-Carried Continuation and Evidence Compression",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",

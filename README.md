@@ -28,6 +28,8 @@ authority, readiness authority, legal/YouTube policy compliance authority, or
 GitHub approval review authority. When an owner explicitly instructs Source
 HARNESS development and GitHub publication, scoped commit, push, and PR
 creation are continuation actions and should not create avoidable owner stops.
+That continuation requires receipt provenance (`receiptId`, `taskId`, and
+`ownerInstructionHash` or `sourceInstructionRef`) and does not authorize merge.
 
 ## Quickstart
 

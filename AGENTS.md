@@ -200,7 +200,9 @@ Budget, and Blocker Closure/Product Value Pressure fields inside the existing
 v1.1.9 P0 artifacts. When the owner explicitly instructs Source HARNESS
 development and GitHub publication, commit, push, and PR creation are
 continuation actions inside that process receipt and must not trigger avoidable
-owner stops. Merge, product/package/runtime/workflow scope, release/deploy,
+owner stops. That process receipt must carry owner provenance (`receiptId`,
+`taskId`, and `ownerInstructionHash` or `sourceInstructionRef`); missing
+provenance is not valid authority. Merge, product/package/runtime/workflow scope, release/deploy,
 wallet/RPC/secrets, funded or governance transactions, BscScan verification,
 readiness claims, GitHub approval review, and self approval remain separate
 boundaries. v1.2.7 must not add new P0 artifacts, top-level statuses, new
