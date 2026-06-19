@@ -1,8 +1,8 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.2.6 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.2.7 -->
 # Codex Development Harness
 
-Version: v1.2.6
-Name: Observed-State Bridge-Safe Loop Runtime with Context-Slim Skill and Validation Routing
+Version: v1.2.7
+Name: Receipt-Carried Continuation and Evidence Compression
 
 Codex Development Harness is an AI PR safety gate. It helps decide whether an
 AI-authored change can be trusted, what evidence supports that decision, who is
@@ -13,19 +13,23 @@ Current authority is:
 - `AGENTS.md`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
-- `docs/process/CODEX_V126_SPEC.md`
+- `docs/process/CODEX_V127_SPEC.md`
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 
-v1.2.6 keeps v1.1.8 Final Decision as final authority and preserves v1.1.9
-orchestration/proof artifacts plus v1.2.0-v1.2.5 compatibility. It adds only
-internal observed-workspace, owner-receipt, bridge-safe checker/builder loop,
-safe-failure handoff, context-slim skill routing, validation budget, and
-effectiveness semantics inside existing harness surfaces.
+v1.2.7 keeps v1.1.8 Final Decision as final authority and preserves v1.1.9
+orchestration/proof artifacts plus v1.2.0-v1.2.6 compatibility. It adds only
+internal typed owner process receipts, continuation decisions, decision
+evidence envelopes, validation evidence reuse, token economy, and blocker
+closure semantics inside existing harness surfaces.
 
 It does not add target rollout authority, new P0 artifacts, new top-level
 operator statuses, new Skills, scheduler authority, release/deploy/wallet/RPC
 authority, readiness authority, legal/YouTube policy compliance authority, or
-GitHub approval review authority.
+GitHub approval review authority. When an owner explicitly instructs Source
+HARNESS development and GitHub publication, scoped commit, push, and PR
+creation are continuation actions and should not create avoidable owner stops.
+That continuation requires receipt provenance (`receiptId`, `taskId`, and
+`ownerInstructionHash` or `sourceInstructionRef`) and does not authorize merge.
 
 ## Quickstart
 

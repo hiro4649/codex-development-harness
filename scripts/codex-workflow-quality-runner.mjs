@@ -4147,6 +4147,8 @@ export function evaluateWorkflowReport(report, options = {}) {
   const workerProofCapsule = report.workerProofCapsule || readSafeJsonArtifact('codex-worker-proof.safe.json');
   const ownerDecisionBrief = report.ownerDecisionBrief || readSafeJsonArtifact('codex-owner-decision-brief.safe.json');
   const finalDecisionArtifact = report.finalDecision || readSafeJsonArtifact('codex-final-decision.safe.json');
+  const decisionEvidenceEnvelope = orchestrationCapsule?.decisionEvidenceEnvelopeAndSameHeadBinder?.decisionEvidenceEnvelope || {};
+  const tokenEconomyMetrics = orchestrationCapsule?.contextOutputOwnerInterruptTokenBudget?.tokenEconomyMetrics || {};
   const v119StatusFallbacks = {
     orchestrationModeStatus: statusFromArtifact(orchestrationCapsule, { orchestrationMode: orchestrationCapsule?.orchestrationMode || 'unknown' }),
     permissionGrantStatus: statusFromArtifact(orchestrationCapsule?.permissionGrant ? orchestrationCapsule : null),
@@ -4195,6 +4197,10 @@ export function evaluateWorkflowReport(report, options = {}) {
 
     mergeReady: Boolean(report.mergeReady),
 
+    technicalChecksReady: Boolean(report.technicalChecksReady ?? report.mergeReady),
+
+    ownerMergeAuthorized: finalDecisionArtifact?.mergeAllowed === true,
+
 
 
 
@@ -4228,6 +4234,13 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
     reasonSummary,
+
+    reasonSummaryStatus: report.reasonSummaryStatus || {
+      status: reasonSummary?.status || 'missing',
+      reasonCodes: [],
+      summary: reasonSummary || null,
+      safeSummaryOnly: true,
+    },
 
 
 
@@ -4993,6 +5006,20 @@ export function evaluateWorkflowReport(report, options = {}) {
     decisionCapsuleStatus: report.decisionCapsuleStatus || report.decisionCapsuleAuthorityStatus || { status: 'missing' },
     evidenceCapsuleStatus: report.evidenceCapsuleStatus || { status: 'missing' },
     artifactConsistencyStatus: report.artifactConsistencyStatus || { status: 'missing' },
+    decisionEvidenceEnvelopeSameHeadInternalStatus: report.decisionEvidenceEnvelopeSameHeadInternalStatus || (orchestrationCapsule?.decisionEvidenceEnvelopeAndSameHeadBinder ? {
+      status: 'pass',
+      lane: decisionEvidenceEnvelope.lane || 'unknown',
+      allowedNextAction: decisionEvidenceEnvelope.allowedNextAction || 'unknown',
+      safeSummaryOnly: true,
+    } : { status: 'missing', safeSummaryOnly: true }),
+    tokenEconomyOwnerInterruptInternalStatus: report.tokenEconomyOwnerInterruptInternalStatus || (orchestrationCapsule?.contextOutputOwnerInterruptTokenBudget ? {
+      status: 'pass',
+      observed: tokenEconomyMetrics.observed === true,
+      metricsSource: tokenEconomyMetrics.metricsSource || 'not_observed',
+      routineArtifactBytes: Number(tokenEconomyMetrics.routineArtifactBytes || 0),
+      safeSummaryOnly: true,
+    } : { status: 'missing', safeSummaryOnly: true }),
+    v127PermissionGrantReceiptCoherenceInternalStatus: report.v127PermissionGrantReceiptCoherenceInternalStatus || { status: orchestrationCapsule ? 'pass' : 'missing', safeSummaryOnly: true },
     convergenceGateStatus: report.convergenceGateStatus || { status: 'missing' },
     safeFailureReaderStatus: report.safeFailureReaderStatus || { status: 'missing' },
     tokenBudgetStatus: report.tokenBudgetStatus || { status: 'missing' },

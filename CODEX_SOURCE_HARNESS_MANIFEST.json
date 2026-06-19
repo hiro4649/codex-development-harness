@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.6",
-  "harnessVersion": "1.2.6",
-  "sourceHarnessVersion": "1.2.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.7",
+  "harnessVersion": "1.2.7",
+  "sourceHarnessVersion": "1.2.7",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.2.6",
+  "schemaVersion": "1.2.7",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -94,7 +94,9 @@
     "docs/process/CODEX_V125_SPEC.md",
     "scripts/codex-v125-self-test.mjs",
     "docs/process/CODEX_V126_SPEC.md",
-    "scripts/codex-v126-self-test.mjs"
+    "scripts/codex-v126-self-test.mjs",
+    "docs/process/CODEX_V127_SPEC.md",
+    "scripts/codex-v127-self-test.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -921,11 +923,11 @@
     "codex-v126-self-test.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.2.6",
-  "activeSelfTestSuite": "v126",
-  "activeSelfTestStatusKey": "v126SelfTestStatus",
+  "activeHarnessVersion": "1.2.7",
+  "activeSelfTestSuite": "v127",
+  "activeSelfTestStatusKey": "v127SelfTestStatus",
   "legacySelfTestSuites": {
-    "v126": "blocking_current",
+    "v126": "blocking_compatibility",
     "v125": "blocking_compatibility",
     "v124": "blocking_compatibility",
     "v123": "blocking_compatibility",
@@ -938,7 +940,8 @@
     "v106": "advisory",
     "v105": "advisory",
     "v104": "advisory",
-    "v103": "advisory"
+    "v103": "advisory",
+    "v127": "blocking_current"
   },
   "targetRollout": "not_started",
   "representativeRealPrValidation": "not_started",
@@ -1338,9 +1341,9 @@
     "vgcBscScanVerificationBoundaryStatus",
     "vgcMainnetReadinessBoundaryStatus"
   ],
-  "targetHarnessVersion": "1.2.6",
+  "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
-  "theme": "Goal-Sharded Worktree Fleet and Evidence Lane Closure",
+  "theme": "Receipt-Carried Continuation and Evidence Compression",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",
@@ -1600,7 +1603,7 @@
     ]
   },
   "legacySelfTests": {
-    "v126": "blocking_current",
+    "v126": "blocking_compatibility",
     "v125": "blocking_compatibility",
     "v124": "blocking_compatibility",
     "v123": "blocking_compatibility",
@@ -1614,7 +1617,8 @@
     "v115": "blocking_compatibility",
     "v114": "blocking_compatibility",
     "v113": "selected_critical",
-    "v080_v112": "target_shadow_legacy_count_only"
+    "v080_v112": "target_shadow_legacy_count_only",
+    "v127": "blocking_current"
   },
   "contextRouting": {
     "version": "1.2.4",
@@ -1732,5 +1736,48 @@
     "targetRollout": "not_started",
     "finalAuthority": "v1.1.8_final_decision_kernel",
     "subtitle": "Self-reporting becomes observed state; long autonomy uses short safe loops."
+  },
+  "receiptCarriedContinuationAndEvidenceCompression": {
+    "version": "1.2.7",
+    "name": "Receipt-Carried Continuation and Evidence Compression",
+    "sourceOnlyRelease": true,
+    "targetRollout": "not_started",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "p0InternalBlocks": [
+      "Typed Owner Process Receipt and Continuation Kernel",
+      "Decision Evidence Envelope and Same-Head Binder",
+      "Validation DAG and Content-Addressed Evidence Reuse",
+      "Context / Output / Owner-Interrupt Token Budget",
+      "Blocker Closure and Product Value Pressure"
+    ],
+    "processReceipt": {
+      "survivesInScopeCommitHeadChanges": true,
+      "expiresOnScopeDelta": true,
+      "commitPushCreatePrContinueInsideReceipt": true,
+      "mergeRequiresSeparateReceipt": true
+    },
+    "decisionEvidence": {
+      "prBodyMachineEvidence": false,
+      "sameHeadBinderRequiredForMerge": true
+    },
+    "tokenEconomy": {
+      "ownerInterruptCountTarget": 0,
+      "repeatedSafetyTextSuppressed": true,
+      "deltaOnlyFinalSummary": true
+    },
+    "safety": {
+      "rawLogsRead": false,
+      "eightSessionUsed": false,
+      "selfApproval": false,
+      "githubApprovalReview": false,
+      "runtimeReadinessClaimed": false,
+      "productionReadinessClaimed": false,
+      "legalComplianceClaimed": false,
+      "youtubePolicyComplianceClaimed": false,
+      "walletRpcDeployAccess": false
+    }
   }
 }

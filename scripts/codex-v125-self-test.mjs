@@ -39,7 +39,7 @@ const compatibilityCases = [
   ['v125_preserves_v118_final_decision', () => buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
   ['v125_preserves_v119_orchestration_artifacts', () => V125_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
   ['v125_no_tui_or_cron_daemon', () => !fs.existsSync('scripts/codex-tui-socket-injector.mjs') && !fs.existsSync('scripts/codex-two-minute-cron-daemon.mjs')],
-  ['v125_active_authority_tuple_preserves_current_or_v125', () => ['v125', 'v126'].includes(buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple.activeSelfTestSuite)],
+  ['v125_active_authority_tuple_preserves_current_or_v125', () => ['v125', 'v126', 'v127'].includes(buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple.activeSelfTestSuite)],
 ];
 
 const goalShardCases = [

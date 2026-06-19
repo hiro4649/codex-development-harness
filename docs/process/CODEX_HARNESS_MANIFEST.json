@@ -1,18 +1,18 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.6",
-  "schemaVersion": "1.2.6",
-  "sourceHarnessVersion": "1.2.6",
-  "harnessVersion": "1.2.6",
-  "activeHarnessVersion": "1.2.6",
-  "targetHarnessVersion": "1.2.6",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.7",
+  "schemaVersion": "1.2.7",
+  "sourceHarnessVersion": "1.2.7",
+  "harnessVersion": "1.2.7",
+  "activeHarnessVersion": "1.2.7",
+  "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v125_to_v126",
-  "activeSelfTestSuite": "v126",
-  "activeSelfTestStatusKey": "v126SelfTestStatus",
+  "upgradePath": "direct_v126_to_v127",
+  "activeSelfTestSuite": "v127",
+  "activeSelfTestStatusKey": "v127SelfTestStatus",
   "legacySelfTests": {
-    "v126": "blocking_current",
+    "v126": "blocking_compatibility",
     "v125": "blocking_compatibility",
     "v124": "blocking_compatibility",
     "v123": "blocking_compatibility",
@@ -26,7 +26,8 @@
     "v115": "blocking_compatibility",
     "v114": "blocking_compatibility",
     "v113": "selected_critical",
-    "v080_v112": "target_shadow_legacy_count_only"
+    "v080_v112": "target_shadow_legacy_count_only",
+    "v127": "blocking_current"
   },
   "sourceOnlyRelease": true,
   "targetRollout": "not_started",
@@ -34,7 +35,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Observed-State Bridge-Safe Loop Runtime with Context-Slim Skill and Validation Routing",
+  "theme": "Receipt-Carried Continuation and Evidence Compression",
   "requiredStatuses": [
     "orchestrationModeStatus",
     "permissionGrantStatus",
@@ -561,5 +562,48 @@
     "targetRollout": "not_started",
     "finalAuthority": "v1.1.8_final_decision_kernel",
     "subtitle": "Self-reporting becomes observed state; long autonomy uses short safe loops."
+  },
+  "receiptCarriedContinuationAndEvidenceCompression": {
+    "version": "1.2.7",
+    "name": "Receipt-Carried Continuation and Evidence Compression",
+    "sourceOnlyRelease": true,
+    "targetRollout": "not_started",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "p0InternalBlocks": [
+      "Typed Owner Process Receipt and Continuation Kernel",
+      "Decision Evidence Envelope and Same-Head Binder",
+      "Validation DAG and Content-Addressed Evidence Reuse",
+      "Context / Output / Owner-Interrupt Token Budget",
+      "Blocker Closure and Product Value Pressure"
+    ],
+    "processReceipt": {
+      "survivesInScopeCommitHeadChanges": true,
+      "expiresOnScopeDelta": true,
+      "commitPushCreatePrContinueInsideReceipt": true,
+      "mergeRequiresSeparateReceipt": true
+    },
+    "decisionEvidence": {
+      "prBodyMachineEvidence": false,
+      "sameHeadBinderRequiredForMerge": true
+    },
+    "tokenEconomy": {
+      "ownerInterruptCountTarget": 0,
+      "repeatedSafetyTextSuppressed": true,
+      "deltaOnlyFinalSummary": true
+    },
+    "safety": {
+      "rawLogsRead": false,
+      "eightSessionUsed": false,
+      "selfApproval": false,
+      "githubApprovalReview": false,
+      "runtimeReadinessClaimed": false,
+      "productionReadinessClaimed": false,
+      "legalComplianceClaimed": false,
+      "youtubePolicyComplianceClaimed": false,
+      "walletRpcDeployAccess": false
+    }
   }
 }
