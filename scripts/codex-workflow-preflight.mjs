@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.0.7
+// CODEX_QUALITY_HARNESS_FILE v1.2.7
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
@@ -14,8 +14,17 @@ import { classifyChange, changedFiles } from './codex-change-classification-gate
 
 function mode(env = process.env) {
   if (env.CODEX_HARNESS_MODE === 'target') return 'target';
-  if (env.CODEX_HARNESS_SOURCE_REPO === '1' || fs.existsSync('CODEX_SOURCE_HARNESS_MANIFEST.json')) return 'source';
-  if (fs.existsSync('docs/process/CODEX_HARNESS_MANIFEST.json')) return 'target';
+  if (env.CODEX_HARNESS_SOURCE_REPO === '1') return 'source';
+  if (env.CODEX_HARNESS_MODE === 'core' || env.CODEX_HARNESS_MODE === 'source') return 'source';
+  if (fs.existsSync('docs/process/CODEX_HARNESS_MANIFEST.json')) {
+    try {
+      const manifest = JSON.parse(fs.readFileSync('docs/process/CODEX_HARNESS_MANIFEST.json', 'utf8'));
+      if (manifest.targetRepoMode === true) return 'target';
+      if (manifest.sourceOnlyRelease === true) return 'source';
+    } catch {
+      return 'target';
+    }
+  }
   return env.CODEX_HARNESS_MODE || 'legacy';
 }
 

@@ -4008,6 +4008,29 @@ export function evaluateWorkflowReport(report, options = {}) {
 
   const failures = [];
 
+  const machineBlockingStatuses = [
+    ['report.status', report.status],
+    ['qualityScoreStatus', report.qualityScoreStatus?.status],
+    ['targetQualityScoreStatus', report.targetQualityScoreStatus?.status],
+    ['safeArtifactValidation', report.safeArtifactValidation?.status],
+    ['safeArtifactValidationStatus', report.safeArtifactValidationStatus?.status],
+    ['reasonSummary', report.reasonSummary?.status],
+  ];
+  for (const [key, status] of machineBlockingStatuses) {
+    if (status === 'fail') failures.push(`${key}=fail`);
+  }
+  const blockingReasons = [
+    ...(Array.isArray(report.blockingReasons) ? report.blockingReasons : []),
+    ...(Array.isArray(report.reasonSummary?.blockingReasons) ? report.reasonSummary.blockingReasons : []),
+  ];
+  const ownerOnlyMergeBoundary = report.technicalChecksReady === true
+    && report.ownerMergeAuthorized === false
+    && report.finalDecision?.safeNextAction === 'owner_merge_decision_only'
+    && blockingReasons.every((reason) => String(reason) === 'owner_merge_instruction');
+  if (blockingReasons.length && !ownerOnlyMergeBoundary) {
+    failures.push(`blockingReasons=${blockingReasons.length}`);
+  }
+
 
 
 

@@ -80,6 +80,13 @@ const PROFILE_TEMPLATE_VERSION = '0.7.0';
 
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
+function mergeCompatReports(report, reports = {}) {
+  const { marker, harnessVersion, ...statuses } = reports;
+  Object.assign(report, statuses);
+  report.marker = MARKER;
+  report.harnessVersion = HARNESS_VERSION;
+}
+
 export function buildPreExitDecisionArtifacts(input = {}) {
   const primaryClass = input.primaryClass || 'safe_detail_unavailable';
   const reasonCodes = [...new Set((input.reasonCodes || [primaryClass]).filter(Boolean).map(String))].slice(0, 3);
@@ -3063,7 +3070,7 @@ function runV101Gates(report, gateEnv, beforeSnapshot = null) {
     originMainSha: gateEnv.CODEX_ORIGIN_MAIN_SHA || after.head,
     aheadBehind: gateEnv.CODEX_AHEAD_BEHIND || 'source_core',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v101SelfTestStatus = reports.v101SelfTestStatus?.status === 'fail' ? reports.v101SelfTestStatus : selfTestStatus;
 }
 
@@ -3076,7 +3083,7 @@ function runV102Gates(report, gateEnv) {
   const reports = v102Gates.buildDefaultV102Reports({
     safeNextAction: gateEnv.CODEX_SAFE_NEXT_ACTION || 'verify_source_pr_remote_gate',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v102SelfTestStatus = reports.v102SelfTestStatus?.status === 'fail' ? reports.v102SelfTestStatus : selfTestStatus;
 }
 
@@ -3089,7 +3096,7 @@ function runV103Gates(report, gateEnv) {
   const reports = v103Gates.buildDefaultV103Reports({
     safeNextAction: gateEnv.CODEX_SAFE_NEXT_ACTION || 'verify_source_pr_remote_gate',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v103SelfTestStatus = reports.v103SelfTestStatus?.status === 'fail' ? reports.v103SelfTestStatus : selfTestStatus;
 }
 
@@ -3102,7 +3109,7 @@ function runV104Gates(report, gateEnv) {
   const reports = v104Gates.buildDefaultV104Reports({
     safeNextAction: gateEnv.CODEX_SAFE_NEXT_ACTION || 'verify_source_pr_remote_gate',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v104SelfTestStatus = reports.v104SelfTestStatus?.status === 'fail' ? reports.v104SelfTestStatus : selfTestStatus;
 }
 
@@ -3115,7 +3122,7 @@ function runV105Gates(report, gateEnv) {
   const reports = v105Gates.buildDefaultV105Reports({
     safeNextAction: gateEnv.CODEX_SAFE_NEXT_ACTION || 'verify_source_pr_remote_gate',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v105SelfTestStatus = reports.v105SelfTestStatus?.status === 'fail' ? reports.v105SelfTestStatus : selfTestStatus;
 }
 
@@ -3128,7 +3135,7 @@ function runV106Gates(report, gateEnv) {
   const reports = v106Gates.buildDefaultV106Reports({
     safeNextAction: gateEnv.CODEX_SAFE_NEXT_ACTION || 'verify_source_pr_remote_gate',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v106SelfTestStatus = reports.v106SelfTestStatus?.status === 'fail' ? reports.v106SelfTestStatus : selfTestStatus;
 }
 
@@ -3141,7 +3148,7 @@ function runV107Gates(report, gateEnv) {
   const reports = v107Gates.buildDefaultV107Reports({
     safeNextAction: gateEnv.CODEX_SAFE_NEXT_ACTION || 'verify_source_pr_remote_gate',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v107SelfTestStatus = reports.v107SelfTestStatus?.status === 'fail' ? reports.v107SelfTestStatus : selfTestStatus;
 }
 
@@ -3156,7 +3163,7 @@ function runV108Gates(report, gateEnv) {
   const reports = v108Gates.buildDefaultV108Reports({
     safeNextAction: gateEnv.CODEX_SAFE_NEXT_ACTION || 'verify_source_pr_remote_gate',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v108SelfTestStatus = reports.v108SelfTestStatus?.status === 'fail' ? reports.v108SelfTestStatus : selfTestStatus;
 }
 
@@ -3167,7 +3174,7 @@ function runV109Gates(report, gateEnv) {
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v109-self-test.mjs', 'v109SelfTestStatus', 'CODEX_V109_SELF_TEST_REPORT', gateEnv);
   const reports = buildDefaultV109Statuses();
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v109SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v109SelfTestStatus,
     ...selfTestStatus,
@@ -3182,7 +3189,7 @@ function runV110Gates(report, gateEnv) {
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v110-self-test.mjs', 'v110SelfTestStatus', 'CODEX_V110_SELF_TEST_REPORT', gateEnv);
   const reports = buildDefaultV110Statuses();
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v110SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v110SelfTestStatus,
     ...selfTestStatus,
@@ -3197,7 +3204,7 @@ function runV111Gates(report, gateEnv) {
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v111-self-test.mjs', 'v111SelfTestStatus', 'CODEX_V111_SELF_TEST_REPORT', gateEnv);
   const reports = buildDefaultV111Statuses();
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v111SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v111SelfTestStatus,
     ...selfTestStatus,
@@ -3212,7 +3219,7 @@ function runV112Gates(report, gateEnv) {
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v112-self-test.mjs', 'v112SelfTestStatus', 'CODEX_V112_SELF_TEST_REPORT', gateEnv);
   const reports = buildV112Report();
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v112SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v112SelfTestStatus,
     ...selfTestStatus,
@@ -3227,7 +3234,7 @@ function runV113Gates(report, gateEnv) {
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v113-self-test.mjs', 'v113SelfTestStatus', 'CODEX_V113_SELF_TEST_REPORT', gateEnv);
   const reports = buildV113Report();
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v113SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v113SelfTestStatus,
     ...selfTestStatus,
@@ -3243,7 +3250,7 @@ function runV114Gates(report, gateEnv) {
     : runGateScript('scripts/codex-v114-self-test.mjs', 'v114SelfTestStatus', 'CODEX_V114_SELF_TEST_REPORT', gateEnv);
   const reports = buildV114Report();
   if (process.env.CODEX_WRITE_LOOP_ARTIFACTS === '1') writeLoopArtifacts(reports);
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v114SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v114SelfTestStatus,
     ...selfTestStatus,
@@ -3264,7 +3271,7 @@ function runV115Gates(report, gateEnv) {
     skillProfile: 'HARNESS_ROLLOUT_ONLY',
     permissionProfile: 'harness_rollout',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v115SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v115SelfTestStatus,
     ...selfTestStatus,
@@ -3288,7 +3295,7 @@ function runV116Gates(report, gateEnv) {
     repairType: 'external_confirmation_required',
     taskMode: 'harness_implementation',
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v116SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v116SelfTestStatus,
     ...selfTestStatus,
@@ -3313,7 +3320,7 @@ function runV117Gates(report, gateEnv) {
     },
     tokenBudget: { operatorVisibleStatuses: V117_STATUS_KEYS.length, safeArtifactReads: 2 },
   });
-  Object.assign(report, reports);
+  mergeCompatReports(report, reports);
   report.v117SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...reports.v117SelfTestStatus,
     ...selfTestStatus,
@@ -3748,10 +3755,13 @@ function buildFinalDecisionPointerStatus(report = {}) {
 }
 
 function runV119Gates(report, gateEnv) {
+  const context = buildV127RemoteEvidenceContext(process.env);
   const selfTestStatus = process.env.CODEX_SKIP_V119_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v119-self-test.mjs', 'v119SelfTestStatus', 'CODEX_V119_SELF_TEST_REPORT', gateEnv);
   const orchestration = buildOrchestrationReport({
+    repo: context.repo,
+    headSha: context.head === 'unknown' ? null : context.head,
     branch: process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || 'unknown',
     pullFfOnlyStatus: process.env.CODEX_PULL_FF_ONLY_STATUS || 'not_required_with_reason',
     worktreeCleanBefore: process.env.CODEX_WORKTREE_CLEAN_BEFORE === 'false' ? false : true,
@@ -3765,6 +3775,8 @@ function runV119Gates(report, gateEnv) {
     requiredProof: ['v119_self_test', 'v120_self_test', 'v121_self_test', 'v122_self_test', 'v123_self_test', 'v124_self_test', 'v125_self_test', 'v126_self_test', 'v127_self_test', 'source_local_quality_gate'],
   });
   const workerProof = buildWorkerProofReport({
+    repo: context.repo,
+    headSha: context.head === 'unknown' ? null : context.head,
     proofReason: 'harness_metadata',
     focusedTests: 'pass',
     fullTests: 'not_required_with_reason',
@@ -4040,7 +4052,15 @@ function validateSourceHarness() {
 
 
 
-  const manifest = safeJsonRead(SOURCE_MANIFEST, failures, 'sourceManifest.parse') || {};
+  const targetMode = process.env.CODEX_HARNESS_MODE === 'target';
+  const activeManifestPath = targetMode ? SOURCE_VERSION_MANIFEST : SOURCE_MANIFEST;
+  const manifest = safeJsonRead(activeManifestPath, failures, targetMode ? 'targetManifest.parse' : 'sourceManifest.parse') || {};
+  if (targetMode && fs.existsSync(SOURCE_MANIFEST)) {
+    failures.push({
+      id: 'target.straySourceManifest',
+      message: 'target mode must not depend on CODEX_SOURCE_HARNESS_MANIFEST.json',
+    });
+  }
   const versionManifest = safeJsonRead(SOURCE_VERSION_MANIFEST, failures, 'sourceVersionManifest.parse') || manifest;
 
 
@@ -12833,6 +12853,10 @@ async function main() {
   const manifestForAutoMode = fs.existsSync(path.join('docs', 'process', 'CODEX_HARNESS_MANIFEST.json'))
     ? readJsonFile(path.join('docs', 'process', 'CODEX_HARNESS_MANIFEST.json'))
     : {};
+
+  if (!process.env.CODEX_HARNESS_SOURCE_REPO && !process.env.CODEX_HARNESS_MODE && manifestForAutoMode?.targetRepoMode === true) {
+    process.env.CODEX_HARNESS_MODE = 'target';
+  }
 
   if (!process.env.CODEX_HARNESS_SOURCE_REPO && !process.env.CODEX_HARNESS_MODE && manifestForAutoMode?.sourceOnlyRelease === true) {
     process.env.CODEX_HARNESS_SOURCE_REPO = '1';
