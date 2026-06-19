@@ -27,12 +27,20 @@ export function buildEvidenceCapsule(input = {}) {
   const separateCiRequired = input.separateRequiredCiCheckExists === true;
   const headSha = input.headSha || input.head || process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'unknown';
   const qualityGateRunId = requiredValue(input.qualityGateRunId);
-  const artifactId = requiredValue(input.artifactId);
+  const artifactPointer = input.artifactPointer || input.artifactName || input.artifactId || '';
+  const artifactId = requiredValue(input.artifactId || artifactPointer);
+  const artifactName = input.artifactName || null;
+  const prHeadSha = input.prHeadSha || input.prHead || headSha;
+  const workflowHeadSha = input.workflowHeadSha || input.workflowHead || headSha;
+  const artifactHeadSha = input.artifactHeadSha || input.artifactHead || headSha;
   const ciRunId = separateCiRequired ? requiredValue(input.ciRunId) : notRequired('no_separate_required_ci_check');
   const remoteRequired = terminalAction === 'merge_current_pr';
   const fresh = headSha !== 'unknown' &&
     qualityGateRunId !== 'needs_run' &&
     artifactId !== 'needs_run' &&
+    prHeadSha === headSha &&
+    workflowHeadSha === headSha &&
+    artifactHeadSha === headSha &&
     (!separateCiRequired || ciRunId !== 'needs_run');
   return {
     evidenceCapsuleVersion: EVIDENCE_CAPSULE_VERSION,
@@ -54,6 +62,11 @@ export function buildEvidenceCapsule(input = {}) {
       headSha,
       qualityGateRunId,
       artifactId,
+      artifactName,
+      artifactPointer: artifactPointer || artifactId,
+      prHeadSha,
+      workflowHeadSha,
+      artifactHeadSha,
       ciRunId,
       remoteRequired,
       safeSummaryOnly: true,
@@ -69,6 +82,7 @@ export function buildEvidenceCapsule(input = {}) {
       headSha,
       qualityGateRunId,
       artifactId,
+      artifactPointer: artifactPointer || artifactId,
       ciRunId,
       safeSummaryOnly: true,
     },

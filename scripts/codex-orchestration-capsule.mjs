@@ -1361,8 +1361,11 @@ function defaultContextOutputOwnerInterruptTokenBudget(input = {}) {
       repeatedSafetyTextCount: Math.max(0, Number(payload.repeatedSafetyTextCount || 0)),
       reusedValidationResults: Math.max(0, Number(payload.reusedValidationResults || 0)),
       newValidationExecutions: Math.max(0, Number(payload.newValidationExecutions || 1)),
-      observed: payload.observed !== false,
+      observed: payload.observed === true,
+      metricsSource: payload.metricsSource || 'not_observed',
       routineArtifactBytes: Math.max(0, Number(payload.routineArtifactBytes || 0)),
+      safeArtifactBytes: Math.max(0, Number(payload.safeArtifactBytes || 0)),
+      outputLineCount: Math.max(0, Number(payload.outputLineCount || payload.operatorOutputLines || 0)),
     },
     outputBudget: {
       finalReportLineBudget: Math.min(Math.max(1, Number(payload.finalReportLineBudget || 8)), 20),
@@ -1370,6 +1373,7 @@ function defaultContextOutputOwnerInterruptTokenBudget(input = {}) {
       safeArtifactReadsMax: Math.min(Math.max(1, Number(payload.safeArtifactReadsMax || 3)), 3),
       selectedSkillsMax: Math.min(Math.max(0, Number(payload.selectedSkillsMax || 1)), 1),
       routineArtifactBytesMax: Math.max(1, Number(payload.routineArtifactBytesMax || 4096)),
+      requireObservedMetrics: payload.requireObservedMetrics === true,
       repeatedSafetyTextSuppressed: payload.repeatedSafetyTextSuppressed !== false,
     },
     safeNextAction: payload.safeNextAction || 'emit_delta_only_safe_summary',
@@ -2284,7 +2288,10 @@ export function validateContextOutputOwnerInterruptTokenBudget(control = {}) {
   const metrics = control.tokenEconomyMetrics || {};
   const output = control.outputBudget || {};
   if (control.runtimeVersion !== '1.2.7') reasons.push('token_budget_version_invalid');
-  if (metrics.observed !== true) reasons.push('token_metrics_must_be_observed');
+  if (output.requireObservedMetrics === true && metrics.observed !== true) reasons.push('token_metrics_must_be_observed');
+  if ((output.requireObservedMetrics === true || metrics.observed === true) && (!metrics.metricsSource || metrics.metricsSource === 'not_observed')) reasons.push('token_metrics_source_required');
+  if (metrics.observed === true && Number(metrics.safeArtifactBytes || 0) <= 0) reasons.push('safe_artifact_bytes_must_be_observed');
+  if (metrics.observed === true && Number(metrics.outputLineCount || 0) <= 0) reasons.push('output_line_count_must_be_observed');
   if (Number(metrics.authorityMarkdownReads || 0) > 2) reasons.push('authority_markdown_reads_over_budget');
   if (Number(metrics.safeArtifactReads || 0) > Number(output.safeArtifactReadsMax || 0)) reasons.push('safe_artifact_reads_over_budget');
   if (Number(metrics.selectedSkills || 0) > Number(output.selectedSkillsMax || 0)) reasons.push('selected_skills_over_v127_budget');

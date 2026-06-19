@@ -170,8 +170,15 @@ const cases = [
   ['repeated_safety_text_suppressed', () => failed(validateContextOutputOwnerInterruptTokenBudget(buildOrchestrationCapsule({
     contextOutputOwnerInterruptTokenBudget: { repeatedSafetyTextSuppressed: false },
   }).contextOutputOwnerInterruptTokenBudget))],
+  ['token_observed_default_is_false', () => buildOrchestrationCapsule().contextOutputOwnerInterruptTokenBudget.tokenEconomyMetrics.observed === false],
   ['token_metrics_must_be_observed', () => failed(validateContextOutputOwnerInterruptTokenBudget(buildOrchestrationCapsule({
-    contextOutputOwnerInterruptTokenBudget: { observed: false },
+    contextOutputOwnerInterruptTokenBudget: { observed: false, requireObservedMetrics: true },
+  }).contextOutputOwnerInterruptTokenBudget))],
+  ['token_observed_metrics_require_source_and_bytes', () => failed(validateContextOutputOwnerInterruptTokenBudget(buildOrchestrationCapsule({
+    contextOutputOwnerInterruptTokenBudget: { observed: true, requireObservedMetrics: true, metricsSource: 'not_observed', safeArtifactBytes: 0, outputLineCount: 0 },
+  }).contextOutputOwnerInterruptTokenBudget))],
+  ['token_observed_metrics_with_source_pass', () => passed(validateContextOutputOwnerInterruptTokenBudget(buildOrchestrationCapsule({
+    contextOutputOwnerInterruptTokenBudget: { observed: true, requireObservedMetrics: true, metricsSource: 'quality_gate_runtime_generated_artifact_sizes', routineArtifactBytes: 120, safeArtifactBytes: 1200, outputLineCount: 8 },
   }).contextOutputOwnerInterruptTokenBudget))],
   ['permission_grant_receipt_contradiction_fails', () => failed(validateV127PermissionGrantReceiptCoherence(buildOrchestrationCapsule({
     typedOwnerProcessReceiptAndContinuationKernel: {

@@ -142,6 +142,12 @@ Machine decision evidence is a small envelope, not the PR body.
 a mismatch is a blocker for `same_head_remote_qg` and `merge_boundary`. The PR
 body is display-only; machine judgment uses the safe envelope.
 
+During GitHub Actions pull-request runs, the remote gate must inject the PR
+head and `GITHUB_RUN_ID` into the safe artifacts. Because GitHub assigns the
+numeric artifact ID only after upload, the artifact itself records a stable
+artifact pointer of `runId + artifactName`; external metadata may later bind
+that pointer to the numeric artifact ID and digest.
+
 Lanes are:
 
 - `local_pre_pr`
@@ -196,6 +202,7 @@ harness should not ask the owner to confirm commit, push, or PR creation.
     "reusedValidationResults": 6,
     "newValidationExecutions": 3,
     "observed": true,
+    "metricsSource": "quality_gate_runtime_generated_artifact_sizes",
     "routineArtifactBytes": 4096
   }
 }
@@ -203,9 +210,11 @@ harness should not ask the owner to confirm commit, push, or PR creation.
 
 Routine progress output should be delta-only. Repeated safety text should be
 profile-ID compressed. Routine token metrics must be observed rather than
-self-filled defaults. The default final report budget is 8 lines, selected
-skills max is 1, safe artifact reads max is 3, and routine artifact bytes are
-bounded by the task profile.
+self-filled defaults. `observed` defaults to false unless the quality gate
+injects a `metricsSource`, output line count, safe artifact byte count, and
+routine artifact byte count. The default final report budget is 8 lines,
+selected skills max is 1, safe artifact reads max is 3, and routine artifact
+bytes are bounded by the task profile.
 
 ### 5. Blocker Closure and Product Value Pressure
 
