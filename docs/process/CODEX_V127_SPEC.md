@@ -148,6 +148,11 @@ numeric artifact ID only after upload, the artifact itself records a stable
 artifact pointer of `runId + artifactName`; external metadata may later bind
 that pointer to the numeric artifact ID and digest.
 
+`owner_merge_decision_only` is a valid next action for
+`same_head_remote_qg`: technical evidence is closed, but AI has not created
+merge authority. `merge_current_pr` remains valid only in `merge_boundary`
+with a current-head owner merge receipt.
+
 Lanes are:
 
 - `local_pre_pr`
@@ -160,6 +165,14 @@ Lanes are:
 Merge boundary requires valid owner merge receipt, same-head required checks
 pass, Final Decision mergeAllowed, unchanged scope digest, no forbidden delta,
 and no self approval.
+
+After remote closure, validation must be internally consistent. If any machine
+blocking reason remains, the gate must not emit `status=pass`,
+`qualityScore=100`, or owner-only finality. It must demote to one harness
+repair blocker and one safe next action. `mergeReady` is preserved as
+compatibility wording for technical checks; v1.2.7 also emits
+`technicalChecksReady` so technical pass is not confused with owner merge
+authority.
 
 ### 3. Validation DAG and Content-Addressed Evidence Reuse
 
@@ -203,6 +216,8 @@ harness should not ask the owner to confirm commit, push, or PR creation.
     "newValidationExecutions": 3,
     "observed": true,
     "metricsSource": "quality_gate_runtime_generated_artifact_sizes",
+    "countsSource": "declared_budget",
+    "observedCounts": false,
     "routineArtifactBytes": 4096
   }
 }
@@ -212,9 +227,11 @@ Routine progress output should be delta-only. Repeated safety text should be
 profile-ID compressed. Routine token metrics must be observed rather than
 self-filled defaults. `observed` defaults to false unless the quality gate
 injects a `metricsSource`, output line count, safe artifact byte count, and
-routine artifact byte count. The default final report budget is 8 lines,
-selected skills max is 1, safe artifact reads max is 3, and routine artifact
-bytes are bounded by the task profile.
+routine artifact byte count. Fixed read/output ceilings are declared budget
+values unless an execution trace explicitly marks `countsSource=observed_trace`;
+declared-budget counts must not claim `observedCounts=true`. The default final
+report budget is 8 lines, selected skills max is 1, safe artifact reads max is
+3, and routine artifact bytes are bounded by the task profile.
 
 ### 5. Blocker Closure and Product Value Pressure
 

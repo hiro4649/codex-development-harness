@@ -290,8 +290,17 @@ function tokenEconomyBrief(input = {}) {
     ownerInterruptCount: Math.max(0, Number(metrics.ownerInterruptCount || 0)),
     repeatedSafetyTextCount: Math.max(0, Number(metrics.repeatedSafetyTextCount || 0)),
     finalReportLineBudget: Math.min(Math.max(1, Number(metrics.finalReportLineBudget || 8)), 20),
-    observed: metrics.observed !== false,
-    metricsSource: metrics.metricsSource || (metrics.observed === false ? 'not_observed' : 'legacy_default'),
+    observed: metrics.observed === true,
+    requireObservedMetrics: metrics.requireObservedMetrics === true,
+    metricsSource: metrics.metricsSource || 'not_observed',
+    countsSource: metrics.countsSource || 'declared_budget',
+    observedCounts: metrics.observedCounts === true,
+    declaredBudget: {
+      authorityMarkdownReads: Math.max(0, Number(metrics.declaredBudget?.authorityMarkdownReads ?? metrics.authorityMarkdownReads ?? 2)),
+      safeArtifactReads: Math.max(0, Number(metrics.declaredBudget?.safeArtifactReads ?? metrics.safeArtifactReads ?? 3)),
+      selectedSkills: Math.max(0, Number(metrics.declaredBudget?.selectedSkills ?? metrics.selectedSkills ?? 1)),
+      operatorOutputLines: Math.max(0, Number(metrics.declaredBudget?.operatorOutputLines ?? metrics.operatorOutputLines ?? 8)),
+    },
     routineArtifactBytes: Math.max(0, Number(metrics.routineArtifactBytes || 0)),
     safeArtifactBytes: Math.max(0, Number(metrics.safeArtifactBytes || 0)),
     outputLineCount: Math.max(0, Number(metrics.outputLineCount || 0)),
@@ -468,7 +477,11 @@ export function validateOwnerDecisionBrief(brief = {}) {
   }
   if (['same_head_remote_qg', 'merge_boundary'].includes(decisionEvidence.lane) && decisionEvidence.sameHead === false && !decisionEvidence.oneBlockingReason) reasons.push('decision_evidence_head_mismatch_requires_one_reason');
   if (tokenEconomy.metricsVersion !== '1.2.7') reasons.push('token_economy_brief_version_invalid');
-  if (tokenEconomy.observed !== true) reasons.push('token_economy_metrics_must_be_observed');
+  if (tokenEconomy.requireObservedMetrics === true && tokenEconomy.observed !== true) reasons.push('token_economy_metrics_must_be_observed');
+  if ((tokenEconomy.requireObservedMetrics === true || tokenEconomy.observed === true) && tokenEconomy.metricsSource === 'not_observed') reasons.push('token_economy_metrics_source_required');
+  if (tokenEconomy.observed === true && Number(tokenEconomy.routineArtifactBytes || 0) <= 0) reasons.push('token_economy_routine_artifact_bytes_must_be_observed');
+  if (tokenEconomy.observed === true && tokenEconomy.countsSource !== 'observed_trace' && tokenEconomy.countsSource !== 'declared_budget') reasons.push('token_economy_counts_source_invalid');
+  if (tokenEconomy.observed === true && tokenEconomy.countsSource === 'declared_budget' && tokenEconomy.observedCounts === true) reasons.push('token_economy_declared_budget_counts_cannot_be_observed');
   if (Number(tokenEconomy.authorityMarkdownReads || 0) > 2) reasons.push('token_economy_authority_markdown_reads_over_budget');
   if (Number(tokenEconomy.safeArtifactReads || 0) > Number(tokenEconomy.safeArtifactReadsMax || 0)) reasons.push('token_economy_safe_artifact_reads_over_budget');
   if (Number(tokenEconomy.selectedSkills || 0) > Number(tokenEconomy.selectedSkillsMax || 0)) reasons.push('token_economy_selected_skills_over_budget');

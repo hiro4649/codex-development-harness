@@ -143,9 +143,18 @@ const cases = [
     decisionEvidenceEnvelope: { lane: 'same_head_remote_qg', sameHead: true, remoteGate: 'pass', allowedNextAction: 'owner_merge_decision_only', prBodyMachineEvidence: false },
     sameHeadBinder: { rejectsHeadMismatch: true, prBodyIsDisplayOnly: true, sameHeadDerivedFromHashes: true, allRequiredHeadsPresent: true, allRequiredHeadsMatch: false },
   }))],
-  ['remote_run_emits_remote_lane', () => passed(validateDecisionEvidenceEnvelopeAndSameHeadBinder(buildOrchestrationCapsule({
-    decisionEvidenceEnvelopeAndSameHeadBinder: { decisionEvidenceEnvelope: SAME_HEAD_ENVELOPE },
-  }).decisionEvidenceEnvelopeAndSameHeadBinder))],
+  ['remote_run_emits_remote_lane', () => {
+    const control = buildOrchestrationCapsule({
+      decisionEvidenceEnvelopeAndSameHeadBinder: { decisionEvidenceEnvelope: SAME_HEAD_ENVELOPE },
+    }).decisionEvidenceEnvelopeAndSameHeadBinder;
+    return control.decisionEvidenceEnvelope.allowedNextAction === 'owner_merge_decision_only'
+      && passed(validateDecisionEvidenceEnvelopeAndSameHeadBinder(control));
+  }],
+  ['invalid_next_action_fails_without_builder_fallback', () => failed(validateDecisionEvidenceEnvelopeAndSameHeadBinder({
+    runtimeVersion: '1.2.7',
+    decisionEvidenceEnvelope: { ...SAME_HEAD_ENVELOPE, allowedNextAction: 'invalid_action', sameHead: true, prBodyMachineEvidence: false },
+    sameHeadBinder: { rejectsHeadMismatch: true, prBodyIsDisplayOnly: true, sameHeadDerivedFromHashes: true, allRequiredHeadsPresent: true, allRequiredHeadsMatch: true },
+  }))],
   ['ci_cache_invalidates_on_script_lockfile_or_runner_change', () => failed(validateValidationDagAndContentAddressedReuse(buildOrchestrationCapsule({
     validationDagAndContentAddressedReuse: { invalidatesOn: ['validation_script'] },
   }).validationDagAndContentAddressedReuse))],
@@ -178,7 +187,10 @@ const cases = [
     contextOutputOwnerInterruptTokenBudget: { observed: true, requireObservedMetrics: true, metricsSource: 'not_observed', safeArtifactBytes: 0, outputLineCount: 0 },
   }).contextOutputOwnerInterruptTokenBudget))],
   ['token_observed_metrics_with_source_pass', () => passed(validateContextOutputOwnerInterruptTokenBudget(buildOrchestrationCapsule({
-    contextOutputOwnerInterruptTokenBudget: { observed: true, requireObservedMetrics: true, metricsSource: 'quality_gate_runtime_generated_artifact_sizes', routineArtifactBytes: 120, safeArtifactBytes: 1200, outputLineCount: 8 },
+    contextOutputOwnerInterruptTokenBudget: { observed: true, requireObservedMetrics: true, metricsSource: 'quality_gate_runtime_generated_artifact_sizes', countsSource: 'declared_budget', observedCounts: false, routineArtifactBytes: 120, safeArtifactBytes: 1200, outputLineCount: 8 },
+  }).contextOutputOwnerInterruptTokenBudget))],
+  ['token_declared_counts_cannot_claim_observed', () => failed(validateContextOutputOwnerInterruptTokenBudget(buildOrchestrationCapsule({
+    contextOutputOwnerInterruptTokenBudget: { observed: true, requireObservedMetrics: true, metricsSource: 'quality_gate_runtime_generated_artifact_sizes', countsSource: 'declared_budget', observedCounts: true, routineArtifactBytes: 120, safeArtifactBytes: 1200, outputLineCount: 8 },
   }).contextOutputOwnerInterruptTokenBudget))],
   ['permission_grant_receipt_contradiction_fails', () => failed(validateV127PermissionGrantReceiptCoherence(buildOrchestrationCapsule({
     typedOwnerProcessReceiptAndContinuationKernel: {

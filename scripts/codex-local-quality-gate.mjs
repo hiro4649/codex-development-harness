@@ -307,10 +307,17 @@ function writeV117LoadBearingArtifacts(report = {}) {
     decisionCapsuleStatus: report.decisionCapsuleStatus,
     evidenceCapsuleStatus: report.evidenceCapsuleStatus,
     artifactConsistencyStatus: report.artifactConsistencyStatus,
+    reasonSummaryStatus: report.reasonSummaryStatus,
+    decisionEvidenceEnvelopeSameHeadInternalStatus: report.decisionEvidenceEnvelopeSameHeadInternalStatus,
+    tokenEconomyOwnerInterruptInternalStatus: report.tokenEconomyOwnerInterruptInternalStatus,
+    v127PermissionGrantReceiptCoherenceInternalStatus: report.v127PermissionGrantReceiptCoherenceInternalStatus,
     convergenceGateStatus: report.convergenceGateStatus,
     safeFailureReaderStatus: report.safeFailureReaderStatus,
     tokenBudgetStatus: report.tokenBudgetStatus,
     scopeBoundaryStatus: report.scopeBoundaryStatus,
+    mergeReady: report.mergeReady === true,
+    technicalChecksReady: report.technicalChecksReady === true,
+    ownerMergeAuthorized: report.ownerMergeAuthorized === true,
     ...Object.fromEntries(V119_STATUS_KEYS.map((key) => [key, report[key]])),
     orchestrationCapsule: {
       status: report.orchestrationCapsule ? 'present' : 'missing',
@@ -3407,11 +3414,17 @@ function buildV127RemoteEvidenceContext(env = process.env) {
 }
 
 function buildV127ObservedTokenMetrics(report = {}) {
-  const routineSummary = {
-    status: report.status || 'unknown',
-    qualityScore: report.qualityScoreStatus?.score ?? report.qualityScore ?? null,
-    safeNextAction: report.finalDecision?.safeNextAction || report.ownerDecisionBrief?.safeNextAction || 'owner_merge_decision_only',
+  const declaredBudget = {
+    authorityMarkdownReads: 2,
+    safeArtifactReads: 3,
+    selectedSkills: 1,
+    operatorOutputLines: 8,
   };
+  const routineArtifacts = [
+    report.finalDecision,
+    report.evidenceCapsule,
+    report.top3Blockers,
+  ].filter(Boolean);
   const safeArtifactBytes = [
     report.orchestrationCapsule,
     report.workerProofCapsule,
@@ -3421,11 +3434,11 @@ function buildV127ObservedTokenMetrics(report = {}) {
     report.qualityScoreStatus,
   ].reduce((sum, item) => sum + estimateJsonBytes(item), 0);
   return {
-    authorityMarkdownReads: 2,
-    safeArtifactReads: 3,
-    selectedSkills: 1,
+    authorityMarkdownReads: declaredBudget.authorityMarkdownReads,
+    safeArtifactReads: declaredBudget.safeArtifactReads,
+    selectedSkills: declaredBudget.selectedSkills,
     extraReads: 0,
-    operatorOutputLines: 8,
+    operatorOutputLines: declaredBudget.operatorOutputLines,
     outputLineCount: 8,
     ownerInterruptCount: 0,
     repeatedSafetyTextCount: 0,
@@ -3433,7 +3446,10 @@ function buildV127ObservedTokenMetrics(report = {}) {
     newValidationExecutions: 1,
     observed: true,
     metricsSource: 'quality_gate_runtime_generated_artifact_sizes',
-    routineArtifactBytes: estimateJsonBytes(routineSummary),
+    countsSource: 'declared_budget',
+    observedCounts: false,
+    declaredBudget,
+    routineArtifactBytes: routineArtifacts.reduce((sum, item) => sum + estimateJsonBytes(item), 0),
     safeArtifactBytes,
     finalReportLineBudget: 8,
     progressUpdateLineBudget: 2,
@@ -3444,6 +3460,101 @@ function buildV127ObservedTokenMetrics(report = {}) {
   };
 }
 
+function applyV127ObservedTokenMetrics(report = {}, observedBudgetMetrics = {}) {
+  if (!report.orchestrationCapsule?.contextOutputOwnerInterruptTokenBudget) return;
+  const contextBudgetKey = ['contextOutputOwnerInterrupt', 'TokenBudget'].join('');
+  report.orchestrationCapsule[contextBudgetKey] = {
+    ...report.orchestrationCapsule[contextBudgetKey],
+    tokenEconomyMetrics: {
+      ...(report.orchestrationCapsule[contextBudgetKey].tokenEconomyMetrics || {}),
+      ...observedBudgetMetrics,
+    },
+    outputBudget: {
+      ...(report.orchestrationCapsule[contextBudgetKey].outputBudget || {}),
+      finalReportLineBudget: 8,
+      safeArtifactReadsMax: 3,
+      selectedSkillsMax: 1,
+      routineArtifactBytesMax: 4096,
+      requireObservedMetrics: true,
+      repeatedSafetyTextSuppressed: true,
+    },
+  };
+}
+
+function pushUniqueFailure(failures = [], id, message) {
+  if (!id || failures.some((item) => item?.id === id)) return;
+  failures.push({ id, message: message || id });
+}
+
+function applyV127PostClosureConsistency(report = {}, outcome = {}) {
+  const failures = Array.isArray(outcome.failures) ? outcome.failures : [];
+  const warnings = Array.isArray(outcome.warnings) ? outcome.warnings : [];
+  delete report.reasonSummaryStatus;
+  const firstSummary = buildCompactReasonSummary(report);
+  const firstBlockingReasons = firstSummary.summary?.blockingReasons || [];
+  if (firstBlockingReasons.length > 0) {
+    pushUniqueFailure(
+      failures,
+      'v127PostClosure.blockingReasonsPresent',
+      `post-closure validation retained ${firstBlockingReasons[0]?.reasonCode || 'blocking_reason'}`,
+    );
+  }
+  report.safeArtifactValidation = { status: failures.length ? 'fail' : 'pass', safeSummaryOnly: true };
+  report.qualityScoreStatus = {
+    status: failures.length ? 'fail' : 'pass',
+    score: failures.length ? 70 : 100,
+    maxScoreRequiresAllPass: true,
+    reasonCodes: failures.length ? ['post_closure_validation_blocking_reasons_present'] : ['all_required_gates_passed'],
+    safeSummaryOnly: true,
+  };
+  report.qualityScore = report.qualityScoreStatus.score;
+  report.status = failures.length ? 'fail' : (warnings.length ? 'manual_confirmation_required' : 'pass');
+  report.technicalChecksReady = failures.length === 0 && warnings.length === 0;
+  report.mergeReady = report.technicalChecksReady;
+  report.ownerMergeAuthorized = report.finalDecision?.mergeAllowed === true;
+  if (failures.length) {
+    const topFailures = failures.slice(0, 3).map((item) => item.id || item.reasonCode || 'post_closure_validation_failed');
+    report.decisionCore = {
+      ...(report.decisionCore || {}),
+      decision: 'blocked',
+      primaryClass: topFailures[0],
+      secondaryReasonCodes: topFailures.slice(1, 3),
+      mergeAllowed: false,
+      repairAllowedInCurrentScope: true,
+      productRepairAllowed: false,
+      harnessRepairAllowed: true,
+      ownerConfirmationRequired: false,
+      safeNextAction: 'repair_harness_only',
+      evidenceSource: 'codex-minimal-blockers.safe.json',
+      traceId: report.traceId || report.decisionCore?.traceId || 'trace-v127-post-closure',
+      safeSummaryOnly: true,
+    };
+    report.top3Blockers = {
+      primary_blocker: topFailures[0],
+      secondary_blocker: topFailures[1] || 'none',
+      tertiary_blocker: topFailures[2] || 'none',
+      safe_next_action: 'repair_harness_only',
+      repair_scope_allowed: 'source_harness_repair',
+      merge_allowed: false,
+      reasonCodes: topFailures,
+      passStatusPrintedCount: 0,
+      safeSummaryOnly: true,
+    };
+    if (report.finalDecision) {
+      report.finalDecision.mergeAllowed = false;
+      report.finalDecision.safeNextAction = 'repair_harness_only';
+      report.finalDecisionStatus = validateFinalDecisionKernel(report.finalDecision);
+    }
+  }
+  const finalSummary = buildCompactReasonSummary(report);
+  report.reasonSummaryStatus = {
+    status: finalSummary.status,
+    reasonCodes: finalSummary.reasonCodes,
+    summary: finalSummary.summary,
+    safeSummaryOnly: true,
+  };
+}
+
 function applyV127RemoteEvidenceClosure(report = {}, outcome = {}, env = process.env) {
   const context = buildV127RemoteEvidenceContext(env);
   const gatePassed = outcome.failures?.length === 0 &&
@@ -3451,27 +3562,8 @@ function applyV127RemoteEvidenceClosure(report = {}, outcome = {}, env = process
     report.qualityScoreStatus?.status === 'pass' &&
     report.status === 'pass';
   const shouldCloseRemote = context.remotePr && gatePassed;
-  const observedBudgetMetrics = buildV127ObservedTokenMetrics(report);
-
-  if (report.orchestrationCapsule?.contextOutputOwnerInterruptTokenBudget) {
-    const contextBudgetKey = ['contextOutputOwnerInterrupt', 'TokenBudget'].join('');
-    report.orchestrationCapsule[contextBudgetKey] = {
-      ...report.orchestrationCapsule[contextBudgetKey],
-      tokenEconomyMetrics: {
-        ...(report.orchestrationCapsule[contextBudgetKey].tokenEconomyMetrics || {}),
-        ...observedBudgetMetrics,
-      },
-      outputBudget: {
-        ...(report.orchestrationCapsule[contextBudgetKey].outputBudget || {}),
-        finalReportLineBudget: 8,
-        safeArtifactReadsMax: 3,
-        selectedSkillsMax: 1,
-        routineArtifactBytesMax: 4096,
-        requireObservedMetrics: true,
-        repeatedSafetyTextSuppressed: true,
-      },
-    };
-  }
+  let observedBudgetMetrics = buildV127ObservedTokenMetrics(report);
+  applyV127ObservedTokenMetrics(report, observedBudgetMetrics);
 
   if (shouldCloseRemote && report.orchestrationCapsule?.decisionEvidenceEnvelopeAndSameHeadBinder) {
     report.orchestrationCapsule.decisionEvidenceEnvelopeAndSameHeadBinder = {
@@ -3548,6 +3640,14 @@ function applyV127RemoteEvidenceClosure(report = {}, outcome = {}, env = process
     if (report.top3Blockers) report.top3Blockers.safe_next_action = 'owner_merge_decision_only';
   }
 
+  observedBudgetMetrics = buildV127ObservedTokenMetrics(report);
+  applyV127ObservedTokenMetrics(report, observedBudgetMetrics);
+
+  if (report.orchestrationCapsule) {
+    const validation = validateOrchestrationCapsule(report.orchestrationCapsule);
+    Object.assign(report, validation);
+  }
+
   const ownerBrief = buildOwnerDecisionBriefReport({
     decisionReady: false,
     proofCompleted: ['local_quality_gate_safe_summary', 'same_head_remote_quality_gate', 'v120_self_test', 'v121_self_test', 'v122_self_test', 'v123_self_test', 'v124_self_test', 'v125_self_test', 'v126_self_test', 'v127_self_test'],
@@ -3568,6 +3668,7 @@ function applyV127RemoteEvidenceClosure(report = {}, outcome = {}, env = process
   });
   report.ownerDecisionBrief = ownerBrief.ownerDecisionBrief;
   report.ownerDecisionBriefStatus = ownerBrief.ownerDecisionBriefStatus;
+  applyV127PostClosureConsistency(report, outcome);
 }
 
 function runV118Gates(report, gateEnv) {

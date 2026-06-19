@@ -122,7 +122,7 @@ const V127_RECEIPT_ACTIONS = new Set(['edit', 'check', 'commit', 'push', 'create
 const V127_CONDITIONAL_MERGE_SCOPES = new Set(['none', 'exact_head', 'conditional_final_head']);
 const V127_CONTINUATION_STATES = new Set(['continue', 'justified_owner_boundary', 'blocked', 'clarify_once']);
 const V127_LANES = new Set(['local_pre_pr', 'pushed_pr_waiting_qg', 'same_head_remote_qg', 'merge_boundary', 'post_merge_sentinel', 'blocked_recovery']);
-const V127_ALLOWED_NEXT_ACTIONS = new Set(['continue_commit_push_create_pr', 'wait_for_remote_gate', 'merge_current_pr', 'refresh_evidence_only', 'repair_harness_only', 'owner_boundary_stop', 'post_merge_verify']);
+const V127_ALLOWED_NEXT_ACTIONS = new Set(['continue_commit_push_create_pr', 'wait_for_remote_gate', 'owner_merge_decision_only', 'merge_current_pr', 'refresh_evidence_only', 'repair_harness_only', 'owner_boundary_stop', 'post_merge_verify']);
 const V127_REMOTE_STATUSES = new Set(['missing', 'pending', 'pass', 'fail', 'not_required']);
 const V127_BLOCKER_RECOVERIES = new Set(['none', 'refresh_current_head_evidence_only', 'rerun_same_head_remote_gate', 'repair_harness_only', 'owner_boundary_stop', 'reduce_context_and_retry', 'stop_required_check_failure']);
 const V127_SKILL_ROI = new Set(['positive', 'neutral', 'negative', 'mandatory_safety']);
@@ -1363,6 +1363,14 @@ function defaultContextOutputOwnerInterruptTokenBudget(input = {}) {
       newValidationExecutions: Math.max(0, Number(payload.newValidationExecutions || 1)),
       observed: payload.observed === true,
       metricsSource: payload.metricsSource || 'not_observed',
+      countsSource: payload.countsSource || 'declared_budget',
+      observedCounts: payload.observedCounts === true,
+      declaredBudget: {
+        authorityMarkdownReads: Math.max(0, Number(payload.declaredBudget?.authorityMarkdownReads ?? payload.authorityMarkdownReads ?? 2)),
+        safeArtifactReads: Math.max(0, Number(payload.declaredBudget?.safeArtifactReads ?? payload.safeArtifactReads ?? 3)),
+        selectedSkills: Math.max(0, Number(payload.declaredBudget?.selectedSkills ?? payload.selectedSkills ?? 1)),
+        operatorOutputLines: Math.max(0, Number(payload.declaredBudget?.operatorOutputLines ?? payload.operatorOutputLines ?? 8)),
+      },
       routineArtifactBytes: Math.max(0, Number(payload.routineArtifactBytes || 0)),
       safeArtifactBytes: Math.max(0, Number(payload.safeArtifactBytes || 0)),
       outputLineCount: Math.max(0, Number(payload.outputLineCount || payload.operatorOutputLines || 0)),
@@ -2291,7 +2299,10 @@ export function validateContextOutputOwnerInterruptTokenBudget(control = {}) {
   if (output.requireObservedMetrics === true && metrics.observed !== true) reasons.push('token_metrics_must_be_observed');
   if ((output.requireObservedMetrics === true || metrics.observed === true) && (!metrics.metricsSource || metrics.metricsSource === 'not_observed')) reasons.push('token_metrics_source_required');
   if (metrics.observed === true && Number(metrics.safeArtifactBytes || 0) <= 0) reasons.push('safe_artifact_bytes_must_be_observed');
+  if (metrics.observed === true && Number(metrics.routineArtifactBytes || 0) <= 0) reasons.push('routine_artifact_bytes_must_be_observed');
   if (metrics.observed === true && Number(metrics.outputLineCount || 0) <= 0) reasons.push('output_line_count_must_be_observed');
+  if (metrics.observed === true && metrics.countsSource !== 'observed_trace' && metrics.countsSource !== 'declared_budget') reasons.push('token_counts_source_invalid');
+  if (metrics.observed === true && metrics.countsSource === 'declared_budget' && metrics.observedCounts === true) reasons.push('declared_budget_counts_cannot_be_observed');
   if (Number(metrics.authorityMarkdownReads || 0) > 2) reasons.push('authority_markdown_reads_over_budget');
   if (Number(metrics.safeArtifactReads || 0) > Number(output.safeArtifactReadsMax || 0)) reasons.push('safe_artifact_reads_over_budget');
   if (Number(metrics.selectedSkills || 0) > Number(output.selectedSkillsMax || 0)) reasons.push('selected_skills_over_v127_budget');
