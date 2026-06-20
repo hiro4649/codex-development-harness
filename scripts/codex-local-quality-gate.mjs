@@ -2763,10 +2763,14 @@ function runGateScript(script, field, envName, baseEnv = process.env) {
 
 
     const status = parsed[field]?.status || parsed.status || (result.status === 0 ? 'pass' : 'fail');
+    const failedCaseNames = Array.isArray(parsed.cases)
+      ? parsed.cases
+          .filter((item) => item?.status && item.status !== 'pass')
+          .slice(0, 10)
+          .map((item) => String(item.name || item.id || 'unnamed_case').slice(0, 120))
+      : [];
 
-
-
-    return { status, ...(parsed[field] || {}), script };
+    return { status, ...(parsed[field] || {}), ...(failedCaseNames.length ? { failedCaseNames } : {}), script };
 
 
 
