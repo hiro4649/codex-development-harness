@@ -694,11 +694,13 @@ function validationSourceClosureIncludesConsumers() {
     && paths.has('scripts/codex-v128-integrity-lib.mjs');
 }
 
-function validationSourceClosureDetectsUndeclaredImports() {
+function validationSourceClosureResolvesTransitiveImports() {
   const plan = buildV128ValidationExecutionPlan();
-  return plan.sourceClosure.declaredImportScanStatus === 'activation_blocker'
-    && plan.sourceClosure.undeclaredRelativeImportCount > 0
-    && Array.isArray(plan.sourceClosure.undeclaredRelativeImportSamples);
+  return plan.sourceClosure.declaredImportScanStatus === 'pass'
+    && plan.sourceClosure.undeclaredRelativeImportCount === 0
+    && plan.sourceClosure.unresolvedRelativeImportCount === 0
+    && plan.sourceClosure.transitiveRelativeImportCount > 0
+    && Array.isArray(plan.sourceClosure.relativeImportClosureFiles);
 }
 
 function validationDiagnosticManifestNeedsSanitizedDigest() {
@@ -895,7 +897,7 @@ const cases = [
   ['validation_workspace_unobserved_cannot_be_canonical', () => validationWorkspaceUnobservedCannotBeCanonical()],
   ['validation_runner_image_missing_prevents_reuse', () => validationRunnerImageMissingPreventsReuse()],
   ['validation_source_closure_includes_consumers', () => validationSourceClosureIncludesConsumers()],
-  ['validation_source_closure_detects_undeclared_imports', () => validationSourceClosureDetectsUndeclaredImports()],
+  ['validation_source_closure_resolves_transitive_imports', () => validationSourceClosureResolvesTransitiveImports()],
   ['validation_diagnostic_manifest_needs_sanitized_digest', () => validationDiagnosticManifestNeedsSanitizedDigest()],
   ['validation_finalizer_missing_upstream_node_fails', () => validationFinalizerMissingUpstreamNodeFails()],
   ['validation_finalizer_wrong_upstream_digest_fails', () => validationFinalizerWrongUpstreamDigestFails()],

@@ -248,10 +248,14 @@ declared validation entrypoint, aggregate finalizer, local quality-gate adapter,
 orchestration consumer, node implementations, schema, profile/spec, and
 canonicalizer surface. At minimum this includes the projection reader, managed
 context emitter, state matrix executor, and projection integrity library.
-Undeclared relative imports must be scanned and reported by the source closure.
-They are activation blockers, not shadow-candidate merge authority. A consumer
-or node implementation change that can alter node result construction invalidates
-the reuse key.
+The source-closure digest must include transitive relative imports reachable
+from that declared seed surface. Unresolved relative imports or closure
+truncation are activation blockers, not Shadow Candidate merge authority. A
+consumer, node implementation, or relative helper change that can alter node
+result construction invalidates the reuse key.
+
+The expanded source closure is cold diagnostic evidence. It must not enlarge the
+routine model-facing Projection read surface.
 
 Decision-stable fields, cache-stable fields, environment diagnostics, owner
 inputs, and forbidden values are separate classes. Environment diagnostics such

@@ -127,6 +127,7 @@
       "node.sourceResultDigest == node.resultDigest"
     ],
     "scriptDigestSource": "source_closure_manifest",
+    "scriptDigestTransitiveRelativeImports": true,
     "scriptDigestSourceClosureFiles": [
       "scripts/codex-v128-validation-execution-plan.mjs",
       "scripts/codex-v128-aggregate-finalizer.mjs",
@@ -141,7 +142,8 @@
     ],
     "decisionInputManifestTaxonomyScanRequired": true,
     "decisionInputManifestSanitizedDigestRequiredWhenDiagnosticPresent": true,
-    "undeclaredImportActivationBlocker": true
+    "unresolvedImportActivationBlocker": true,
+    "sourceClosureTruncationActivationBlocker": true
   },
   "stableDiagnosticTaxonomy": {
     "classes": ["decision_stable", "cache_stable", "environment_diagnostic", "owner_input", "forbidden"],

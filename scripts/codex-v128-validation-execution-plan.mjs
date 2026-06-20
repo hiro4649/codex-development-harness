@@ -68,33 +68,62 @@ function sourceClosureManifest(input = {}) {
   const files = Array.isArray(input.sourceClosureFiles) && input.sourceClosureFiles.length
     ? input.sourceClosureFiles
     : SOURCE_CLOSURE_FILES;
-  const declared = new Set(files.map((file) => file.replace(/\\/g, '/')));
-  const sourceFileReads = files.map(readFileDigest);
+  const seedFiles = files.map((file) => file.replace(/\\/g, '/'));
+  const seedSet = new Set(seedFiles);
   const importPattern = /(?:import\s+(?:[^'"]*?\s+from\s*)?|export\s+[^'"]*?\s+from\s*|import\s*\(\s*|require\(\s*)['"]([^'"]+)['"]/g;
-  const undeclared = [];
-  const resolveDeclaredPath = (fromPath, specifier) => {
+  const unresolved = [];
+  const edges = [];
+  const normalizePath = (filePath) => filePath.replace(/\\/g, '/');
+  const resolveRelativePath = (fromPath, specifier) => {
     if (!specifier.startsWith('.')) return null;
-    const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromPath.replace(/\\/g, '/')), specifier));
+    const base = path.posix.normalize(path.posix.join(path.posix.dirname(normalizePath(fromPath)), specifier));
     const candidates = [base, `${base}.mjs`, `${base}.js`, `${base}.json`, path.posix.join(base, 'index.mjs'), path.posix.join(base, 'index.js')];
-    return candidates.find((candidate) => declared.has(candidate)) || base;
+    return candidates.find((candidate) => fs.existsSync(candidate)) || null;
   };
-  for (const file of sourceFileReads) {
+  const byPath = new Map();
+  const queue = [...seedFiles];
+  const maxClosureFiles = Number(input.maxSourceClosureFiles || 256);
+  let truncated = false;
+  while (queue.length) {
+    const current = normalizePath(queue.shift());
+    if (byPath.has(current)) continue;
+    if (byPath.size >= maxClosureFiles) {
+      truncated = true;
+      break;
+    }
+    const file = readFileDigest(current);
+    byPath.set(current, file);
     importPattern.lastIndex = 0;
     let match;
     while ((match = importPattern.exec(file.text)) !== null) {
       const specifier = match[1];
-      const resolved = resolveDeclaredPath(file.path, specifier);
-      if (resolved && !declared.has(resolved)) {
-        undeclared.push({ from: file.path, specifier, resolved });
+      const resolved = resolveRelativePath(file.path, specifier);
+      if (!specifier.startsWith('.')) continue;
+      if (!resolved) {
+        unresolved.push({ from: file.path, specifier });
+        continue;
+      }
+      edges.push({ from: file.path, specifier, resolved });
+      if (!byPath.has(resolved)) {
+        queue.push(resolved);
       }
     }
   }
-  const sourceFiles = sourceFileReads.map(({ text, ...entry }) => entry);
+  const sourceFiles = [...byPath.values()]
+    .map(({ text, ...entry }) => entry)
+    .sort((a, b) => a.path.localeCompare(b.path));
+  const relativeImportClosureFiles = sourceFiles.filter((file) => !seedSet.has(file.path));
   return {
     sourceFiles,
-    declaredImportScanStatus: undeclared.length ? 'activation_blocker' : 'pass',
-    undeclaredRelativeImportCount: undeclared.length,
-    undeclaredRelativeImportSamples: undeclared.slice(0, 12),
+    seedSourceFileCount: seedFiles.length,
+    relativeImportClosureFiles,
+    relativeImportEdgeCount: edges.length,
+    transitiveRelativeImportCount: relativeImportClosureFiles.length,
+    declaredImportScanStatus: unresolved.length || truncated ? 'activation_blocker' : 'pass',
+    undeclaredRelativeImportCount: 0,
+    unresolvedRelativeImportCount: unresolved.length,
+    unresolvedRelativeImportSamples: unresolved.slice(0, 12),
+    sourceClosureTruncated: truncated,
     sourceClosureDigest: digestValue(sourceFiles),
   };
 }
@@ -478,7 +507,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (!/^sha256:[a-f0-9]{64}$/.test(String(graph.graphDigest || ''))) reasons.push('validation_graph_digest_invalid');
   if (!/^sha256:[a-f0-9]{64}$/.test(String(graph.topologicalOrderDigest || ''))) reasons.push('validation_graph_topological_digest_invalid');
   if (graph.status !== 'pass') reasons.push('validation_graph_invalid');
-  if (plan.candidateActivationState === 'source_activation' && plan.sourceClosure?.undeclaredRelativeImportCount > 0) reasons.push('source_closure_undeclared_import_activation_blocker');
+  if (plan.candidateActivationState === 'source_activation' && plan.sourceClosure?.declaredImportScanStatus !== 'pass') reasons.push('source_closure_import_scan_activation_blocker');
   if ((graph.duplicateNodeRefs || []).length > 0) reasons.push('graph_duplicate_node_ref');
   if ((graph.duplicateEdges || []).length > 0) reasons.push('graph_duplicate_edge');
   if (!Array.isArray(graph.nodes) || graph.nodes.length < 1 || graph.nodes.length > VALIDATION_NODES_MAX) reasons.push('validation_graph_node_count_invalid');
