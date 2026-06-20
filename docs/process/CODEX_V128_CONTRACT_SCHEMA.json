@@ -70,6 +70,36 @@
     "routineOwnerInterruptMax": 0,
     "repeatedSafetyTextMax": 0
   },
+  "validationExecution": {
+    "storage": "codex-orchestration-capsule.safe.json",
+    "newP0ArtifactAllowed": false,
+    "profileDagRequired": true,
+    "nodeExecutionMaxPerRun": 1,
+    "finalizerMode": "aggregate_only",
+    "downstreamCommandRespawnAllowed": false,
+    "downstreamReadsTypedResult": true,
+    "upstreamMissingReason": "upstream_evidence_missing",
+    "cacheKeyFields": [
+      "headSha",
+      "planDigest",
+      "scriptDigest",
+      "lockfileDigest",
+      "runnerImageDigest",
+      "runtimeVersion",
+      "taskProfile",
+      "environmentClass"
+    ],
+    "cacheKeyPlaceholderValuesForbidden": ["", "unknown", "required", "null", "undefined", "placeholder"],
+    "reuseDecisions": ["hit", "partial_hit", "miss"],
+    "reuseReportMustListSkippedNodes": true
+  },
+  "stableDiagnosticTaxonomy": {
+    "classes": ["decision_stable", "cache_stable", "environment_diagnostic", "owner_input", "forbidden"],
+    "environmentDiagnosticInDecisionDigestAllowed": false,
+    "rawLogAllowed": false,
+    "secretAllowed": false,
+    "localAbsolutePathRemoteArtifactAllowed": false
+  },
   "permission": {
     "projectionCreatesPermission": false,
     "permissionDerivedFromCurrentReceiptWhenHydrated": true,
@@ -91,6 +121,19 @@
       "previousCheckpointDigest"
     ],
     "networkFilesystemAutoResumeAllowed": false
+  },
+  "workspaceIdentity": {
+    "remoteSafeArtifactFields": [
+      "repositoryKey",
+      "remoteDigest",
+      "branch",
+      "headSha",
+      "activeHarnessVersion",
+      "worktreeIdentityDigest",
+      "canonicalityState"
+    ],
+    "canonicalityStates": ["canonical", "duplicate_candidate", "repo_mismatch", "harness_version_mismatch", "unknown"],
+    "rawWorkspacePathRemoteArtifactAllowed": false
   },
   "safeSummaryOnly": true
 }

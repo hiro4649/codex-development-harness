@@ -26,6 +26,10 @@ import {
   validateV128ProjectionIntegrity,
 } from './codex-v128-integrity-lib.mjs';
 import { readAndEvaluateV128StateMatrix } from './codex-v128-state-matrix.mjs';
+import {
+  buildV128ValidationExecutionPlan,
+  validateV128ValidationExecutionPlan,
+} from './codex-v128-validation-execution-plan.mjs';
 import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
 
 function test(name, fn) {
@@ -381,6 +385,48 @@ function projectionInputDigestTamperFails() {
   }).reasonCodes.includes('projection_input_digest_mismatch');
 }
 
+function validationExecutionPlanVerifies() {
+  return passed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'reused', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationExecutionDuplicateNodeFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    nodeResults: [
+      { nodeRef: 'compile', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'compile', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationExecutionRespawnFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    downstreamRespawnAllowed: true,
+  })));
+}
+
+function validationReusePlaceholderFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'unknown',
+    reuseDecision: 'hit',
+  })));
+}
+
+function validationExecutionRawWorkspacePathFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    rawWorkspacePathUploaded: true,
+  })));
+}
+
 const cases = [
   ['v128_self_test_must_pass', () => true],
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -422,6 +468,11 @@ const cases = [
   ['projection_integrity_binding_verifies_schema_head_and_source_digest', () => projectionIntegrityBindingVerifies()],
   ['projection_payload_digest_tamper_fails', () => projectionPayloadDigestTamperFails()],
   ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
+  ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
+  ['validation_execution_duplicate_node_fails', () => validationExecutionDuplicateNodeFails()],
+  ['validation_execution_downstream_respawn_fails', () => validationExecutionRespawnFails()],
+  ['validation_reuse_placeholder_cache_key_fails', () => validationReusePlaceholderFails()],
+  ['validation_execution_raw_workspace_path_fails', () => validationExecutionRawWorkspacePathFails()],
   ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
@@ -517,6 +568,7 @@ const fixtureGroups = [
   'replay_corpus_execution',
   'state_matrix_full_shadow_candidate_execution',
   'strict_json_and_canonical_digest_execution',
+  'validation_execution_plan_aggregate_finalizer',
   'active_v127_exit_isolation_negative',
 ];
 

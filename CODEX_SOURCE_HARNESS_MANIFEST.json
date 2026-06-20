@@ -1840,6 +1840,7 @@
       "projectionIntegrityBindingRequired": true,
       "projectionIntegrityChecks": ["schema", "head", "source_digest"],
       "stateMatrixExecutor": "scripts/codex-v128-state-matrix.mjs",
+      "validationExecutionPlan": "scripts/codex-v128-validation-execution-plan.mjs",
       "perTransitionManagedContextBytesMax": 4096,
       "managedContextBytesObserved": true,
       "managedContextObservationSource": "v128_managed_context_emitter",

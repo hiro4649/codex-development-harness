@@ -162,6 +162,47 @@ v127_common_safety_floor
   -> repo-specific delta
 ```
 
+Validation execution is represented inside the existing
+`codex-orchestration-capsule.safe.json`; v1.2.8 does not add a
+`token-validation-state.safe.json` or any other new P0 artifact. The execution
+contract is a profile DAG with an aggregate-only finalizer:
+
+```text
+validation node:
+  executed at most once per run
+
+downstream gate:
+  reads typed result
+  must not respawn the upstream command
+
+missing or stale upstream evidence:
+  upstream_evidence_missing
+  do not silently rerun outside the declared plan
+```
+
+Validation reuse must be content-addressed by at least:
+
+```text
+headSha
+planDigest
+scriptDigest
+lockfileDigest
+runnerImageDigest
+runtimeVersion
+taskProfile
+environmentClass
+```
+
+`unknown`, `required`, empty, null, undefined, or placeholder values make the
+reuse key invalid. Reuse reports must say both what was reused and what was not
+rerun.
+
+Decision-stable fields, cache-stable fields, environment diagnostics, owner
+inputs, and forbidden values are separate classes. Environment diagnostics such
+as runner/build metadata may be displayed or used for troubleshooting, but they
+must not enter the merge decision digest. Raw logs, secrets, and local absolute
+paths are forbidden in remote safe artifacts.
+
 ### 4. Resumable Loop and Permission Projection
 
 Projection cannot create permission. Permission view is derived from the
@@ -205,6 +246,11 @@ Checkpoint write requires per-worktree exclusive lock, current checkpoint
 reread, sequence/digest recheck, atomic replacement, previous checkpoint
 preservation, gitignore coverage, and upload prohibition. Network-filesystem
 automatic resume is forbidden.
+
+Workspace identity is part of the resume surface. It records repository key,
+remote digest, branch, head, active harness version, a worktree identity digest,
+and a canonicality state. Raw workspace paths stay local diagnostic only and
+must not be uploaded.
 
 ## Canonical JSON
 
