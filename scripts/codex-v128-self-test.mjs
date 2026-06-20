@@ -20,6 +20,7 @@ import {
   formatV128ProjectionReaderOutput,
   readV128RoutineProjectionSurfaceFromSafeSummaryText,
 } from './codex-v128-projection-reader.mjs';
+import { buildV128ManagedContextEmitter } from './codex-v128-managed-context-emitter.mjs';
 
 function test(name, fn) {
   try {
@@ -296,6 +297,18 @@ function boundedProjectionReaderCompactsOverBudgetFailure() {
     && formatted.output.includes('routine_projection_reader_stdout_over_budget');
 }
 
+function managedContextEmitterObservesBytes() {
+  const context = buildV128ManagedContextEmitter({ headSha: 'f'.repeat(40) });
+  return context.status === 'pass'
+    && context.managedContextMeasurementSource === 'v128_managed_context_emitter'
+    && context.managedContextBytes > 0
+    && context.managedContextBytes <= 4096
+    && context.sourceFiles.length >= 5
+    && context.instructionCapsule.llmSummaryUsed === false
+    && context.attestedView.projectionAuthority === 'non_authoritative'
+    && context.sourceActivationReady === false;
+}
+
 const cases = [
   ['v128_self_test_must_pass', () => true],
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -333,6 +346,7 @@ const cases = [
   ['bounded_projection_reader_extracts_projection_only', () => boundedProjectionReaderExecutes()],
   ['bounded_projection_reader_rejects_duplicate_keys', () => boundedProjectionReaderRejectsDuplicateKeys()],
   ['bounded_projection_reader_compacts_over_budget_failure', () => boundedProjectionReaderCompactsOverBudgetFailure()],
+  ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
   }).tokenMinimalReadCompatibilityRouter))],
@@ -421,6 +435,7 @@ const fixtureGroups = [
   'orthogonal_reason_model_matrix',
   'token_minimal_read_router_matrix',
   'bounded_projection_reader_execution',
+  'managed_context_emitter_execution',
   'resumable_loop_permission_projection_matrix',
   'reader_before_writer_migration_matrix',
   'replay_corpus_execution',

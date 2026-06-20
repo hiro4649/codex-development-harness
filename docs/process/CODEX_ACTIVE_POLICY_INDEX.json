@@ -190,7 +190,10 @@
       "boundedReaderSurfaceBytesMax": 1600,
       "boundedReaderStdoutBytesMax": 1600,
       "boundedReaderStrictJson": true,
-      "managedContextBytesObserved": false,
+      "managedContextEmitter": "scripts/codex-v128-managed-context-emitter.mjs",
+      "managedContextBytesObserved": true,
+      "managedContextObservationSource": "v128_managed_context_emitter",
+      "managedContextObservationScope": "source_shadow_candidate",
       "managedContextObservationRequiredForActivation": true
     },
     "preservationMatrix": "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
