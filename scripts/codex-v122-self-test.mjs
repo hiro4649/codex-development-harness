@@ -34,7 +34,7 @@ const compatibilityCases = [
 ];
 
 const routingCases = [
-  ['skill_context_routing_exists_inside_orchestration_capsule', () => ['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(buildOrchestrationCapsule().skillContextRouting.schemaVersion)],
+  ['skill_context_routing_exists_inside_orchestration_capsule', () => ['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(buildOrchestrationCapsule().skillContextRouting.schemaVersion)],
   ['active_authority_tuple_required', () => validateSkillContextRouting(buildOrchestrationCapsule().skillContextRouting).status === 'pass'],
   ['active_authority_tuple_blocks_stale_marker', () => failed(validateSkillContextRouting({
     ...buildOrchestrationCapsule().skillContextRouting,
@@ -44,7 +44,7 @@ const routingCases = [
   ['metadata_light_md_read_budget_is_two', () => buildOrchestrationCapsule({ taskProfile: 'metadata_light' }).skillContextRouting.mdFilesReadMax === 2],
   ['target_rollout_md_read_budget_is_four', () => buildOrchestrationCapsule({ taskProfile: 'target_rollout' }).skillContextRouting.mdFilesReadMax === 4],
   ['harness_source_body_md_read_budget_is_six', () => buildOrchestrationCapsule({ taskProfile: 'harness_source_body' }).skillContextRouting.mdFilesReadMax === 6],
-  ['selected_skills_default_max_two', () => buildOrchestrationCapsule().skillContextRouting.selectedSkillsMax === 2],
+  ['selected_skills_default_max_is_two_or_stricter_successor', () => [1, 2].includes(buildOrchestrationCapsule().skillContextRouting.selectedSkillsMax)],
   ['selected_skills_max_cannot_override_task_profile_budget', () => failed(validateSkillContextRouting({
     ...buildOrchestrationCapsule().skillContextRouting,
     selectedSkillsMax: 99,
@@ -100,7 +100,7 @@ const routingCases = [
   ['context_source_type_separates_user_text_from_file_read', () => buildOrchestrationCapsule().skillContextRouting.contextSourceType.userProvidedText === 'not_counted_as_file_read'],
   ['read_less_preserve_authority_first_reads', () => {
     const firstReads = buildOrchestrationCapsule().skillContextRouting.requiredFirstReads;
-    return firstReads.includes('AGENTS.md') && firstReads.includes('docs/process/CODEX_HARNESS_MANIFEST.json') && (firstReads.includes('docs/process/CODEX_V122_SPEC.md') || firstReads.includes('docs/process/CODEX_V123_SPEC.md') || firstReads.includes('docs/process/CODEX_V124_SPEC.md') || firstReads.includes('docs/process/CODEX_V125_SPEC.md') || firstReads.includes('docs/process/CODEX_V126_SPEC.md') || firstReads.includes('docs/process/CODEX_V127_SPEC.md'));
+    return firstReads.includes('AGENTS.md') && firstReads.includes('docs/process/CODEX_HARNESS_MANIFEST.json') && (firstReads.includes('docs/process/CODEX_V122_SPEC.md') || firstReads.includes('docs/process/CODEX_V123_SPEC.md') || firstReads.includes('docs/process/CODEX_V124_SPEC.md') || firstReads.includes('docs/process/CODEX_V125_SPEC.md') || firstReads.includes('docs/process/CODEX_V126_SPEC.md') || firstReads.includes('docs/process/CODEX_V127_SPEC.md') || firstReads.includes('docs/process/CODEX_V128_SPEC.md'));
   }],
   ['readme_deferred_by_default', () => buildOrchestrationCapsule().skillContextRouting.deferredReads.includes('README.md')],
   ['safe_artifact_pointer_preferred', () => buildOrchestrationCapsule().skillContextRouting.contextSourceType.safeArtifact === 'preferred'],

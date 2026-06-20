@@ -313,12 +313,12 @@ function tokenEconomyBrief(input = {}) {
 export function buildOwnerDecisionBrief(input = {}) {
   const typedProcessReceipt = typedOwnerProcessReceipt(input.typedOwnerProcessReceipt || input);
   const continuation = continuationDecision(input.continuationDecision || input, typedProcessReceipt);
-  const defaultProofCompleted = ['v127_self_test', 'v126_self_test', 'local_quality_gate_pending_or_pass'];
+  const defaultProofCompleted = ['v128_self_test', 'v127_self_test', 'local_quality_gate_pending_or_pass'];
   return {
     ownerDecisionBriefVersion: '1',
     decisionReady: input.decisionReady === true,
     itemUrl: input.itemUrl || null,
-    whatChanges: input.whatChanges || 'source_harness_v127_receipt_carried_continuation_evidence_compression_body_only',
+    whatChanges: input.whatChanges || 'source_harness_v128_deterministic_decision_projection_token_minimal_loop_closure_body_only',
     whoBenefits: input.whoBenefits || 'maintainer_owner_burden_reduction_and_safer_long_running_agent_loops',
     whyOwnerDecisionNeededNow: input.whyOwnerDecisionNeededNow || 'owner_merge_instruction_not_provided',
     proofCompleted: boundedLatest(input.proofCompleted || defaultProofCompleted, 8),

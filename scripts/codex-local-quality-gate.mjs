@@ -2,7 +2,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v1.2.7
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 
 
@@ -70,7 +70,7 @@ import { buildOwnerDecisionBriefReport } from './codex-owner-decision-brief.mjs'
 
 
 
-const HARNESS_VERSION = '1.2.7';
+const HARNESS_VERSION = '1.2.8';
 
 
 
@@ -218,7 +218,7 @@ function loadBearingArtifactPath(name) {
 }
 
 function usesV118FinalDecisionArtifacts() {
-  return HARNESS_VERSION === '1.1.8' || HARNESS_VERSION === '1.1.9' || HARNESS_VERSION === '1.2.0' || HARNESS_VERSION === '1.2.1' || HARNESS_VERSION === '1.2.2' || HARNESS_VERSION === '1.2.3' || HARNESS_VERSION === '1.2.4' || HARNESS_VERSION === '1.2.5' || HARNESS_VERSION === '1.2.6' || HARNESS_VERSION === '1.2.7';
+  return HARNESS_VERSION === '1.1.8' || HARNESS_VERSION === '1.1.9' || HARNESS_VERSION === '1.2.0' || HARNESS_VERSION === '1.2.1' || HARNESS_VERSION === '1.2.2' || HARNESS_VERSION === '1.2.3' || HARNESS_VERSION === '1.2.4' || HARNESS_VERSION === '1.2.5' || HARNESS_VERSION === '1.2.6' || HARNESS_VERSION === '1.2.7' || HARNESS_VERSION === '1.2.8';
 }
 
 function loadBearingArtifactNames() {
@@ -230,7 +230,7 @@ function loadBearingArtifactNames() {
     'codex-minimal-blockers.safe.json',
     'codex-quality-gate-safe-summary.json',
   ];
-  if (!['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(HARNESS_VERSION)) return HARNESS_VERSION === '1.1.8' ? v118Artifacts : LOAD_BEARING_ARTIFACTS;
+  if (!['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(HARNESS_VERSION)) return HARNESS_VERSION === '1.1.8' ? v118Artifacts : LOAD_BEARING_ARTIFACTS;
   return [
     'codex-orchestration-capsule.safe.json',
     'codex-worker-proof.safe.json',
@@ -310,6 +310,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     v125SelfTestStatus: report.v125SelfTestStatus,
     v126SelfTestStatus: report.v126SelfTestStatus,
     v127SelfTestStatus: report.v127SelfTestStatus,
+    v128SelfTestStatus: report.v128SelfTestStatus,
     finalDecisionStatus: report.finalDecisionStatus,
     decisionCapsuleStatus: report.decisionCapsuleStatus,
     evidenceCapsuleStatus: report.evidenceCapsuleStatus,
@@ -374,13 +375,13 @@ function writeV117LoadBearingArtifacts(report = {}) {
     if (usesV118FinalDecisionArtifacts() && report.evidenceCapsule) {
       fs.writeFileSync(loadBearingArtifactPath('codex-evidence-capsule.safe.json'), JSON.stringify(report.evidenceCapsule, null, 2));
     }
-    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(HARNESS_VERSION) && report.orchestrationCapsule) {
+    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(HARNESS_VERSION) && report.orchestrationCapsule) {
       fs.writeFileSync(loadBearingArtifactPath('codex-orchestration-capsule.safe.json'), JSON.stringify(report.orchestrationCapsule, null, 2));
     }
-    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(HARNESS_VERSION) && report.workerProofCapsule) {
+    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(HARNESS_VERSION) && report.workerProofCapsule) {
       fs.writeFileSync(loadBearingArtifactPath('codex-worker-proof.safe.json'), JSON.stringify(report.workerProofCapsule, null, 2));
     }
-    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(HARNESS_VERSION) && report.ownerDecisionBrief) {
+    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(HARNESS_VERSION) && report.ownerDecisionBrief) {
       fs.writeFileSync(loadBearingArtifactPath('codex-owner-decision-brief.safe.json'), JSON.stringify(report.ownerDecisionBrief, null, 2));
     }
     fs.writeFileSync(loadBearingArtifactPath('codex-decision-capsule.safe.json'), JSON.stringify(decisionCapsule, null, 2));
@@ -2185,6 +2186,9 @@ function expectedMarkerVersionForPath(file, profileVersions) {
 
 
   if (normalized.startsWith('profiles/')) return profileVersions;
+  if (HARNESS_VERSION === '1.2.8') {
+    return [HARNESS_VERSION, '1.2.7', '1.2.6', '1.2.5', '1.2.4', '1.2.3', '1.2.2', '1.2.1', '1.2.0', '1.1.9', '1.1.8', '1.1.7', '1.1.6', '1.1.5', '1.1.4', '1.1.3', '1.1.2', '1.1.1', '1.1.0', '1.0.9', '1.0.8', '1.0.7'];
+  }
   if (HARNESS_VERSION === '1.2.7') {
     return [HARNESS_VERSION, '1.2.6', '1.2.5', '1.2.4', '1.2.3', '1.2.2', '1.2.1', '1.2.0', '1.1.9', '1.1.8', '1.1.7', '1.1.6', '1.1.5', '1.1.4', '1.1.3', '1.1.2', '1.1.1', '1.1.0', '1.0.9', '1.0.8', '1.0.7'];
   }
@@ -3657,7 +3661,7 @@ function applyV127RemoteEvidenceClosure(report = {}, outcome = {}, env = process
 
   const ownerBrief = buildOwnerDecisionBriefReport({
     decisionReady: false,
-    proofCompleted: ['local_quality_gate_safe_summary', 'same_head_remote_quality_gate', 'v120_self_test', 'v121_self_test', 'v122_self_test', 'v123_self_test', 'v124_self_test', 'v125_self_test', 'v126_self_test', 'v127_self_test'],
+    proofCompleted: ['local_quality_gate_safe_summary', 'same_head_remote_quality_gate', 'v120_self_test', 'v121_self_test', 'v122_self_test', 'v123_self_test', 'v124_self_test', 'v125_self_test', 'v126_self_test', 'v127_self_test', 'v128_self_test'],
     proofMissing: shouldCloseRemote ? ['owner_merge_instruction'] : ['same_head_remote_quality_gate', 'owner_merge_instruction'],
     residualRisks: ['owner_merge_instruction_not_provided'],
     exactChoices: ['owner_merge_after_same_head_pass', 'request_narrow_repair', 'leave_pr_open'],
@@ -3767,12 +3771,12 @@ function runV119Gates(report, gateEnv) {
     worktreeCleanBefore: process.env.CODEX_WORKTREE_CLEAN_BEFORE === 'false' ? false : true,
     worktreeCleanAfter: process.env.CODEX_WORKTREE_CLEAN_AFTER === 'false' ? false : true,
     terminalAction: process.env.CODEX_TERMINAL_ACTION || 'create_pr_only',
-    allowedFiles: ['AGENTS.md', 'README.md', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', 'docs/process/CODEX_V127_SPEC.md', 'scripts/codex-v127-self-test.mjs', 'docs/process/CODEX_V126_SPEC.md', 'scripts/codex-v126-self-test.mjs', 'docs/process/CODEX_V125_SPEC.md', 'scripts/codex-v125-self-test.mjs', 'docs/process/CODEX_V124_SPEC.md', 'scripts/codex-v124-self-test.mjs', 'docs/process/CODEX_V123_SPEC.md', 'scripts/codex-v123-self-test.mjs', 'docs/process/CODEX_V122_SPEC.md', 'scripts/codex-v122-self-test.mjs', 'docs/process/CODEX_V121_SPEC.md', 'scripts/codex-v121-self-test.mjs', 'scripts/codex-v107-gate-lib.mjs', 'scripts/codex-orchestration-capsule.mjs', 'scripts/codex-worker-proof-capsule.mjs', 'scripts/codex-owner-decision-brief.mjs', 'scripts/codex-local-quality-gate.mjs', 'scripts/codex-harness-version.mjs'],
+    allowedFiles: ['AGENTS.md', 'README.md', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V128_CONTRACT_SCHEMA.json', 'docs/process/CODEX_V128_REASON_REGISTRY.json', 'docs/process/CODEX_V128_STATE_MATRIX.json', 'docs/process/CODEX_V128_PRESERVATION_MATRIX.json', 'docs/process/CODEX_V128_REPLAY_CORPUS.json', 'scripts/codex-v128-self-test.mjs', 'docs/process/CODEX_V127_SPEC.md', 'scripts/codex-v127-self-test.mjs', 'docs/process/CODEX_V126_SPEC.md', 'scripts/codex-v126-self-test.mjs', 'docs/process/CODEX_V125_SPEC.md', 'scripts/codex-v125-self-test.mjs', 'docs/process/CODEX_V124_SPEC.md', 'scripts/codex-v124-self-test.mjs', 'docs/process/CODEX_V123_SPEC.md', 'scripts/codex-v123-self-test.mjs', 'docs/process/CODEX_V122_SPEC.md', 'scripts/codex-v122-self-test.mjs', 'docs/process/CODEX_V121_SPEC.md', 'scripts/codex-v121-self-test.mjs', 'scripts/codex-v107-gate-lib.mjs', 'scripts/codex-orchestration-capsule.mjs', 'scripts/codex-worker-proof-capsule.mjs', 'scripts/codex-owner-decision-brief.mjs', 'scripts/codex-local-quality-gate.mjs', 'scripts/codex-harness-version.mjs'],
     forbiddenFiles: ['package.json', 'package-lock.json', 'pnpm-lock.yaml', '.github/workflows/quality-gate.yml'],
-    acceptanceCriteria: ['three_p0_artifacts_only', 'v118_final_decision_pointer', 'v119_compatibility_preserved', 'v120_compatibility_preserved', 'v121_compatibility_preserved', 'v122_compatibility_preserved', 'v123_compatibility_preserved', 'v124_compatibility_preserved', 'v125_compatibility_preserved', 'v126_compatibility_preserved', 'v127_self_test'],
+    acceptanceCriteria: ['three_p0_artifacts_only', 'v118_final_decision_pointer', 'v119_compatibility_preserved', 'v120_compatibility_preserved', 'v121_compatibility_preserved', 'v122_compatibility_preserved', 'v123_compatibility_preserved', 'v124_compatibility_preserved', 'v125_compatibility_preserved', 'v126_compatibility_preserved', 'v127_compatibility_preserved', 'v128_self_test'],
     nonGoals: ['target_rollout', 'product_code', 'workflow_engine'],
     stopBoundary: ['workflow_change_without_artifact_exposure_need', 'target_repo_change', 'raw_log_request'],
-    requiredProof: ['v119_self_test', 'v120_self_test', 'v121_self_test', 'v122_self_test', 'v123_self_test', 'v124_self_test', 'v125_self_test', 'v126_self_test', 'v127_self_test', 'source_local_quality_gate'],
+    requiredProof: ['v119_self_test', 'v120_self_test', 'v121_self_test', 'v122_self_test', 'v123_self_test', 'v124_self_test', 'v125_self_test', 'v126_self_test', 'v127_self_test', 'v128_self_test', 'source_local_quality_gate'],
   });
   const workerProof = buildWorkerProofReport({
     repo: context.repo,
@@ -3789,7 +3793,7 @@ function runV119Gates(report, gateEnv) {
   });
   const ownerBrief = buildOwnerDecisionBriefReport({
     decisionReady: false,
-    proofCompleted: ['local_quality_gate_safe_summary', 'v119_self_test', 'v120_self_test', 'v121_self_test', 'v122_self_test', 'v123_self_test', 'v124_self_test', 'v125_self_test', 'v126_self_test', 'v127_self_test'],
+    proofCompleted: ['local_quality_gate_safe_summary', 'v119_self_test', 'v120_self_test', 'v121_self_test', 'v122_self_test', 'v123_self_test', 'v124_self_test', 'v125_self_test', 'v126_self_test', 'v127_self_test', 'v128_self_test'],
     proofMissing: ['same_head_remote_quality_gate', 'owner_merge_instruction'],
     residualRisks: ['owner_merge_instruction_not_provided'],
     exactChoices: ['owner_merge_after_same_head_pass', 'request_narrow_repair', 'leave_pr_open'],
@@ -3928,6 +3932,20 @@ function runV127Gates(report, gateEnv) {
 
 function initializeV127Statuses(report) {
   if (!report.v127SelfTestStatus) report.v127SelfTestStatus = { status: 'not_run' };
+}
+
+function runV128Gates(report, gateEnv) {
+  const selfTestStatus = process.env.CODEX_SKIP_V128_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v128-self-test.mjs', 'v128SelfTestStatus', 'CODEX_V128_SELF_TEST_REPORT', gateEnv);
+  report.v128SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
+    ...selfTestStatus,
+    status: selfTestStatus.status || 'pass',
+  };
+}
+
+function initializeV128Statuses(report) {
+  if (!report.v128SelfTestStatus) report.v128SelfTestStatus = { status: 'not_run' };
 }
 
 function legacySelfTestPreservedStatus(legacyVersion) {
@@ -9257,6 +9275,7 @@ async function runSourceHarnessGate() {
   initializeV125Statuses(report);
   initializeV126Statuses(report);
   initializeV127Statuses(report);
+  initializeV128Statuses(report);
   initializeV101Statuses(report);
   initializeV102Statuses(report);
   initializeV103Statuses(report);
@@ -13259,6 +13278,7 @@ async function runSourceHarnessCoreContractGate() {
   runV125Gates(report, gateEnv);
   runV126Gates(report, gateEnv);
   runV127Gates(report, gateEnv);
+  runV128Gates(report, gateEnv);
   writeV117LoadBearingArtifacts(report);
 
   for (const [key, value] of Object.entries({
@@ -13295,6 +13315,7 @@ async function runSourceHarnessCoreContractGate() {
     v125SelfTestStatus: report.v125SelfTestStatus,
     v126SelfTestStatus: report.v126SelfTestStatus,
     v127SelfTestStatus: report.v127SelfTestStatus,
+    v128SelfTestStatus: report.v128SelfTestStatus,
   })) {
     applyStatusOutcome(key, value, failures, warnings);
   }

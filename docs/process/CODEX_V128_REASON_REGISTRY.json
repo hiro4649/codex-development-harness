@@ -1,0 +1,52 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "schemaVersion": "1.2.8",
+  "name": "CODEX_V128_REASON_REGISTRY",
+  "providerNeutralCore": true,
+  "githubAdapterSeparated": true,
+  "unknownReasonFailClosed": true,
+  "reasons": {
+    "required_check_pending": {
+      "allowedStates": ["pending"],
+      "defaultEvidenceRef": "provider.requiredChecks",
+      "effectsByPhase": {
+        "pushed_waiting_remote": "awaiting",
+        "merge_boundary": "blocking"
+      }
+    },
+    "provider_snapshot_incomplete": {
+      "allowedStates": ["pending", "missing"],
+      "defaultEvidenceRef": "provider.snapshotCompleteness",
+      "effectsByPhase": {
+        "pushed_waiting_remote": "awaiting",
+        "merge_boundary": "blocking"
+      }
+    },
+    "receipt_hydration_invalid": {
+      "allowedStates": ["invalid", "missing"],
+      "defaultEvidenceRef": "receipt.hydration",
+      "effectsByPhase": {
+        "local_pre_pr": "blocking",
+        "merge_boundary": "blocking"
+      }
+    },
+    "old_v128_authority_draft_pollution": {
+      "allowedStates": ["observed"],
+      "defaultEvidenceRef": "activeSurface.scan",
+      "effectsByPhase": {
+        "local_pre_pr": "blocking",
+        "pushed_waiting_remote": "blocking"
+      }
+    },
+    "routine_context_over_budget": {
+      "allowedStates": ["failed"],
+      "defaultEvidenceRef": "tokenEconomy.perTransitionManagedBytes",
+      "effectsByPhase": {
+        "local_pre_pr": "blocking",
+        "pushed_waiting_remote": "blocking"
+      }
+    }
+  },
+  "forbiddenReasonStates": ["awaiting", "blocking"],
+  "safeSummaryOnly": true
+}
