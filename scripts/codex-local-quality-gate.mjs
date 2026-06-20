@@ -70,6 +70,10 @@ import {
   validateV128ProjectionIntegrity,
 } from './codex-v128-integrity-lib.mjs';
 import { readAndEvaluateV128StateMatrix } from './codex-v128-state-matrix.mjs';
+import {
+  buildV128ValidationExecutionPlan,
+  validateV128ValidationExecutionPlan,
+} from './codex-v128-validation-execution-plan.mjs';
 
 
 
@@ -363,6 +367,23 @@ function writeV117LoadBearingArtifacts(report = {}) {
   });
   const v128ManagedContextEmitter = buildV128ManagedContextEmitter({ headSha: head });
   const v128StateMatrixExecution = readAndEvaluateV128StateMatrix();
+  const v128ValidationExecutionPlan = buildV128ValidationExecutionPlan({
+    observedExecution: true,
+    workspaceObserved: true,
+    headSha: head,
+    branch: process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || 'unknown',
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: routineProjectionReadSurface.status, stabilityClass: 'decision_stable' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: v128ManagedContextEmitter.status, stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: v128StateMatrixExecution.status, stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  });
+  const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);
+  if (report.orchestrationCapsule) {
+    report.orchestrationCapsule.validationExecutionPlanAndReuse = v128ValidationExecutionPlan;
+  }
   if (report.orchestrationCapsule?.deterministicDecisionProjection) {
     report.orchestrationCapsule.deterministicDecisionProjection = {
       ...report.orchestrationCapsule.deterministicDecisionProjection,
@@ -432,6 +453,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
       && routineProjectionReadSurface.status === 'pass'
       && v128ProjectionIntegrityStatus.status === 'pass'
       && v128StateMatrixExecution.status === 'pass'
+      && v128ValidationExecutionPlanStatus.status === 'pass'
       ? 'pass'
       : 'fail',
     projectionCanonicalBytes: routineDecisionProjection.projectionCanonicalBytes,
@@ -456,6 +478,13 @@ function writeV117LoadBearingArtifacts(report = {}) {
     stateMatrixTransitionCells: v128StateMatrixExecution.transitionCells,
     stateMatrixHardInvalidCells: v128StateMatrixExecution.hardInvalidCells,
     stateMatrixUnresolvedCells: v128StateMatrixExecution.unresolvedCells,
+    validationExecutionPlanStatus: v128ValidationExecutionPlanStatus.status,
+    validationExecutionObservationState: v128ValidationExecutionPlanStatus.observationState,
+    validationExecutionFinalizerMode: v128ValidationExecutionPlan.profileExecution.finalizerMode,
+    validationExecutionDownstreamRespawnAllowed: v128ValidationExecutionPlan.profileExecution.downstreamRespawnAllowed,
+    validationReuseDecision: v128ValidationExecutionPlan.validationReuseDecision.reuseDecision,
+    validationReuseCacheKeyHasPlaceholder: v128ValidationExecutionPlan.validationReuseDecision.cacheKeyHasPlaceholder,
+    workspaceIdentityCanonicalityState: v128ValidationExecutionPlan.workspaceIdentity.canonicalityState,
     projectionBytesMax: 1600,
     stressProjectionBytesMax: 2048,
     observed: true,
@@ -503,6 +532,8 @@ function writeV117LoadBearingArtifacts(report = {}) {
     v128ProjectionIntegrityStatus,
     v128ManagedContextEmitter,
     v128StateMatrixExecution,
+    v128ValidationExecutionPlan,
+    v128ValidationExecutionPlanStatus,
     routineDecisionProjectionStatus: report.routineDecisionProjectionStatus,
     ...Object.fromEntries(V119_STATUS_KEYS.map((key) => [key, report[key]])),
     orchestrationCapsule: {

@@ -165,11 +165,15 @@ v127_common_safety_floor
 Validation execution is represented inside the existing
 `codex-orchestration-capsule.safe.json`; v1.2.8 does not add a
 `token-validation-state.safe.json` or any other new P0 artifact. The execution
-contract is a profile DAG with an aggregate-only finalizer:
+contract is an observed profile DAG with an aggregate-only finalizer. A missing
+runtime execution packet is `observationState=not_exercised` and may only pass
+as partial Source Shadow Candidate evidence; it is not Activation evidence:
 
 ```text
 validation node:
   executed at most once per run
+  dependency edges declared by dependsOn
+  graph cycle / missing dependency / duplicate edge fail closed
 
 downstream gate:
   reads typed result
@@ -178,6 +182,12 @@ downstream gate:
 missing or stale upstream evidence:
   upstream_evidence_missing
   do not silently rerun outside the declared plan
+
+required skipped node:
+  blocking
+
+optional skipped node:
+  advisory only
 ```
 
 Validation reuse must be content-addressed by at least:
@@ -194,14 +204,27 @@ environmentClass
 ```
 
 `unknown`, `required`, empty, null, undefined, or placeholder values make the
-reuse key invalid. Reuse reports must say both what was reused and what was not
-rerun.
+reuse key invalid. `not_available` is also invalid. A genuinely not-required
+field must be a typed state with a reason, for example
+`state=not_required_with_reason` and `reasonCode=PROFILE_HAS_NO_LOCKFILE`.
+Reuse reports must say both what was reused and what was not rerun, and reused
+nodes must carry a source run reference, result digest, source head, cache key,
+and result schema version.
+
+The `scriptDigest` is not a label hash. It is a source-closure digest over the
+declared validation entrypoint, schema, profile/spec, and canonicalizer surface.
+Undeclared imports are activation blockers.
 
 Decision-stable fields, cache-stable fields, environment diagnostics, owner
 inputs, and forbidden values are separate classes. Environment diagnostics such
 as runner/build metadata may be displayed or used for troubleshooting, but they
 must not enter the merge decision digest. Raw logs, secrets, and local absolute
 paths are forbidden in remote safe artifacts.
+
+The aggregate finalizer is a typed-result reader only. Its source surface must
+not import child_process, execute shell commands, or open network clients. A
+missing upstream result is `upstream_evidence_missing`; it must not be repaired
+by the finalizer rerunning the command.
 
 ### 4. Resumable Loop and Permission Projection
 
@@ -250,7 +273,8 @@ automatic resume is forbidden.
 Workspace identity is part of the resume surface. It records repository key,
 remote digest, branch, head, active harness version, a worktree identity digest,
 and a canonicality state. Raw workspace paths stay local diagnostic only and
-must not be uploaded.
+must not be uploaded. `canonicalityState=canonical` is valid only when
+`observationState=observed`; unobserved workspaces are `unknown`.
 
 ## Canonical JSON
 

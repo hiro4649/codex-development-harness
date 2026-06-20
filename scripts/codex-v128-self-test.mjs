@@ -388,10 +388,22 @@ function projectionInputDigestTamperFails() {
 function validationExecutionPlanVerifies() {
   return passed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
     nodeResults: [
       { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
       { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
-      { nodeRef: 'state_matrix_executor', executionState: 'reused', status: 'pass', stabilityClass: 'decision_stable' },
+      {
+        nodeRef: 'state_matrix_executor',
+        executionState: 'reused',
+        status: 'pass',
+        stabilityClass: 'decision_stable',
+        sourceRunRef: 'github:run:27881777742:attempt:1',
+        sourceResultDigest: `sha256:${'a'.repeat(64)}`,
+        sourceHeadSha: 'f'.repeat(40),
+      },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
     ],
   })));
 }
@@ -399,8 +411,14 @@ function validationExecutionPlanVerifies() {
 function validationExecutionDuplicateNodeFails() {
   return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodes: [
+      { nodeRef: 'compile', dependsOn: [], required: true },
+      { nodeRef: 'compile', dependsOn: [], required: true },
+    ],
     nodeResults: [
-      { nodeRef: 'compile', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
       { nodeRef: 'compile', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
     ],
   })));
@@ -409,21 +427,100 @@ function validationExecutionDuplicateNodeFails() {
 function validationExecutionRespawnFails() {
   return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
     downstreamRespawnAllowed: true,
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
   })));
 }
 
 function validationReusePlaceholderFails() {
   return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'unknown',
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
     reuseDecision: 'hit',
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
   })));
 }
 
 function validationExecutionRawWorkspacePathFails() {
   return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
     rawWorkspacePathUploaded: true,
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationDefaultIsNotExercisedPartial() {
+  const plan = buildV128ValidationExecutionPlan();
+  const validation = validateV128ValidationExecutionPlan(plan);
+  return validation.status === 'pass'
+    && validation.observationState === 'not_exercised'
+    && validation.executionStatus === 'partial_shadow_candidate'
+    && plan.profileExecution.nodeResults.length === 0;
+}
+
+function validationGraphCycleFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodes: [
+      { nodeRef: 'a', dependsOn: ['b'], required: true },
+      { nodeRef: 'b', dependsOn: ['a'], required: true },
+    ],
+    nodeResults: [
+      { nodeRef: 'a', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'b', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationGraphMissingDependencyFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodes: [{ nodeRef: 'a', dependsOn: ['missing'], required: true }],
+    nodeResults: [{ nodeRef: 'a', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' }],
+  })));
+}
+
+function validationRequiredSkippedFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'skipped', stabilityClass: 'decision_stable', skipReasonCode: 'TEST_SKIP' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
   })));
 }
 
@@ -469,7 +566,11 @@ const cases = [
   ['projection_payload_digest_tamper_fails', () => projectionPayloadDigestTamperFails()],
   ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
   ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
+  ['validation_default_is_not_exercised_partial', () => validationDefaultIsNotExercisedPartial()],
   ['validation_execution_duplicate_node_fails', () => validationExecutionDuplicateNodeFails()],
+  ['validation_graph_cycle_fails', () => validationGraphCycleFails()],
+  ['validation_graph_missing_dependency_fails', () => validationGraphMissingDependencyFails()],
+  ['validation_required_skipped_fails', () => validationRequiredSkippedFails()],
   ['validation_execution_downstream_respawn_fails', () => validationExecutionRespawnFails()],
   ['validation_reuse_placeholder_cache_key_fails', () => validationReusePlaceholderFails()],
   ['validation_execution_raw_workspace_path_fails', () => validationExecutionRawWorkspacePathFails()],

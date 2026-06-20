@@ -3,16 +3,24 @@
 // CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import process from 'node:process';
 
 const VALIDATION_NODES_MAX = 12;
 const FINALIZER_MODES = new Set(['aggregate_only']);
 const EXECUTION_STATES = new Set(['executed', 'reused', 'rerun']);
 const NODE_STATUSES = new Set(['pass', 'fail', 'skipped']);
+const OBSERVATION_STATES = new Set(['observed', 'not_exercised']);
+const FIELD_STATES = new Set(['observed', 'not_required_with_reason', 'missing', 'invalid']);
 const REUSE_DECISIONS = new Set(['hit', 'partial_hit', 'miss']);
 const STABILITY_CLASSES = new Set(['decision_stable', 'cache_stable', 'environment_diagnostic', 'owner_input', 'forbidden']);
 const CANONICALITY_STATES = new Set(['canonical', 'duplicate_candidate', 'repo_mismatch', 'harness_version_mismatch', 'unknown']);
-const PLACEHOLDER_VALUES = new Set(['', 'unknown', 'required', 'null', 'undefined', 'placeholder']);
+const PLACEHOLDER_VALUES = new Set(['', 'unknown', 'required', 'null', 'undefined', 'placeholder', 'not_available']);
+const SOURCE_CLOSURE_FILES = [
+  'scripts/codex-v128-validation-execution-plan.mjs',
+  'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
+  'docs/process/CODEX_V128_SPEC.md',
+];
 
 function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -24,12 +32,8 @@ function digestValue(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
 }
 
-function stableDigest(label, input = {}) {
-  return digestValue({ label, ...input });
-}
-
-function truncateStrings(values = [], limit = 16) {
-  return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
+function sha256Text(text) {
+  return `sha256:${crypto.createHash('sha256').update(text).digest('hex')}`;
 }
 
 function safeText(value, fallback) {
@@ -41,31 +45,168 @@ function isPlaceholder(value) {
   return PLACEHOLDER_VALUES.has(String(value ?? '').trim().toLowerCase());
 }
 
-function defaultNodeResults(input = {}) {
-  return Array.isArray(input.nodeResults) && input.nodeResults.length
-    ? input.nodeResults
-    : [
-      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
-      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
-      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
-    ];
+function readFileDigest(filePath) {
+  const text = fs.readFileSync(filePath, 'utf8');
+  return {
+    path: filePath,
+    digest: sha256Text(text),
+    bytes: Buffer.byteLength(text, 'utf8'),
+  };
 }
 
-function normalizeNode(node = {}) {
-  const nodeRef = safeText(node.nodeRef, 'unknown_node');
+function sourceClosureManifest(input = {}) {
+  const files = Array.isArray(input.sourceClosureFiles) && input.sourceClosureFiles.length
+    ? input.sourceClosureFiles
+    : SOURCE_CLOSURE_FILES;
+  const sourceFiles = files.map(readFileDigest);
+  return {
+    sourceFiles,
+    sourceClosureDigest: digestValue(sourceFiles),
+  };
+}
+
+function defaultGraphNodes() {
+  return [
+    { nodeRef: 'projection_reader', dependsOn: [], required: true },
+    { nodeRef: 'managed_context_emitter', dependsOn: ['projection_reader'], required: true },
+    { nodeRef: 'state_matrix_executor', dependsOn: ['managed_context_emitter'], required: true },
+    { nodeRef: 'aggregate_finalizer', dependsOn: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'], required: true },
+  ];
+}
+
+function normalizeGraphNode(node = {}) {
+  return {
+    nodeRef: safeText(node.nodeRef, 'unknown_node'),
+    dependsOn: Array.isArray(node.dependsOn) ? node.dependsOn.map(String) : [],
+    required: node.required !== false,
+  };
+}
+
+function normalizeNodeResult(node = {}, graphNode = {}) {
+  const nodeRef = safeText(node.nodeRef || graphNode.nodeRef, 'unknown_node');
   const executionState = EXECUTION_STATES.has(node.executionState) ? node.executionState : 'executed';
   const status = NODE_STATUSES.has(node.status) ? node.status : 'fail';
   const stabilityClass = STABILITY_CLASSES.has(node.stabilityClass) ? node.stabilityClass : 'decision_stable';
-  return {
+  const resultDigest = node.resultDigest || digestValue({
     nodeRef,
     executionState,
     status,
     stabilityClass,
     typedResultRef: node.typedResultRef || `${nodeRef}:typed_result`,
+  });
+  return {
+    nodeRef,
+    dependsOn: Array.isArray(node.dependsOn) ? node.dependsOn.map(String) : (graphNode.dependsOn || []),
+    required: node.required === undefined ? graphNode.required !== false : node.required !== false,
+    executionState,
+    executionCount: Number(node.executionCount ?? (executionState === 'reused' ? 0 : 1)),
+    status,
+    stabilityClass,
+    typedResultRef: node.typedResultRef || `${nodeRef}:typed_result`,
+    resultDigest,
+    skipReasonCode: node.skipReasonCode || null,
+    sourceRunRef: node.sourceRunRef || null,
+    sourceResultDigest: node.sourceResultDigest || null,
+    sourceHeadSha: node.sourceHeadSha || null,
+    resultSchemaVersion: node.resultSchemaVersion || '1.0.0',
   };
 }
 
-function classifyReuseDecision(nodes = [], input = {}) {
+function evaluateGraph(graphNodes = []) {
+  const reasons = [];
+  const nodeRefs = graphNodes.map((node) => node.nodeRef);
+  const duplicateNodeRefs = [...new Set(nodeRefs.filter((nodeRef, index) => nodeRefs.indexOf(nodeRef) !== index))];
+  const duplicateEdges = [];
+  for (const node of graphNodes) {
+    const seen = new Set();
+    for (const dependency of node.dependsOn || []) {
+      if (seen.has(dependency)) duplicateEdges.push(`${node.nodeRef}:${dependency}`);
+      seen.add(dependency);
+      if (!nodeRefs.includes(dependency)) reasons.push(`graph_dependency_unknown_${node.nodeRef}_${dependency}`);
+    }
+  }
+  if (duplicateNodeRefs.length) reasons.push('graph_duplicate_node_ref');
+  if (duplicateEdges.length) reasons.push('graph_duplicate_edge');
+  const order = [];
+  const temporary = new Set();
+  const permanent = new Set();
+  const byRef = new Map(graphNodes.map((node) => [node.nodeRef, node]));
+  function visit(nodeRef) {
+    if (permanent.has(nodeRef)) return;
+    if (temporary.has(nodeRef)) {
+      reasons.push('graph_cycle_detected');
+      return;
+    }
+    const node = byRef.get(nodeRef);
+    if (!node) return;
+    temporary.add(nodeRef);
+    for (const dependency of [...(node.dependsOn || [])].sort()) visit(dependency);
+    temporary.delete(nodeRef);
+    permanent.add(nodeRef);
+    order.push(nodeRef);
+  }
+  for (const nodeRef of [...nodeRefs].sort()) visit(nodeRef);
+  return {
+    status: reasons.length ? 'fail' : 'pass',
+    reasonCodes: [...new Set(reasons)],
+    duplicateNodeRefs,
+    duplicateEdges,
+    topologicalOrder: order,
+    graphDigest: digestValue(graphNodes),
+    topologicalOrderDigest: digestValue(order),
+  };
+}
+
+function fieldState(value, options = {}) {
+  if (options.notRequired === true) {
+    return {
+      state: 'not_required_with_reason',
+      value: null,
+      reasonCode: options.reasonCode || 'NOT_REQUIRED',
+    };
+  }
+  if (isPlaceholder(value)) {
+    return {
+      state: 'missing',
+      value: null,
+      reasonCode: options.reasonCode || 'FIELD_MISSING',
+    };
+  }
+  return {
+    state: 'observed',
+    value: String(value),
+  };
+}
+
+function fieldValue(field) {
+  return field?.state === 'observed' ? field.value : field?.state;
+}
+
+function buildCacheKeyFields(input = {}, planDigest, sourceClosureDigest) {
+  const head = input.headSha || process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'not_available';
+  return {
+    headSha: fieldState(head, { reasonCode: 'HEAD_NOT_OBSERVED' }),
+    planDigest: fieldState(planDigest),
+    scriptDigest: fieldState(input.scriptDigest || sourceClosureDigest),
+    lockfileDigest: input.lockfileDigest
+      ? fieldState(input.lockfileDigest)
+      : fieldState(null, { notRequired: true, reasonCode: 'PROFILE_HAS_NO_LOCKFILE' }),
+    runnerImageDigest: fieldState(input.runnerImageDigest || digestValue({
+      provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
+      os: process.platform,
+    })),
+    runtimeVersion: fieldState(input.runtimeVersion || process.version),
+    taskProfile: fieldState(input.taskProfile || 'source_shadow_candidate'),
+    environmentClass: fieldState(input.environmentClass || (process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local')),
+  };
+}
+
+function cacheKeyHasInvalidField(cacheKeyFields = {}) {
+  return Object.values(cacheKeyFields).some((field) => ['missing', 'invalid'].includes(field?.state));
+}
+
+function classifyReuseDecision(nodes = [], input = {}, cacheKeyInvalid = false) {
+  if (cacheKeyInvalid) return 'miss';
   if (input.reuseDecision && REUSE_DECISIONS.has(input.reuseDecision)) return input.reuseDecision;
   const reused = nodes.filter((node) => node.executionState === 'reused').length;
   const executed = nodes.filter((node) => node.executionState === 'executed').length;
@@ -74,77 +215,105 @@ function classifyReuseDecision(nodes = [], input = {}) {
   return 'miss';
 }
 
-function buildCacheKeyFields(input = {}, planDigest) {
+function finalizerStaticScan() {
+  const entry = 'scripts/codex-v128-validation-execution-plan.mjs';
+  const text = fs.readFileSync(entry, 'utf8');
+  const childProcessImportDetected = /from\s+['"]node:child_process['"]|from\s+['"]child_process['"]|require\(\s*['"]child_process['"]\s*\)/.test(text);
+  const shellExecutionDetected = /spawnSync\(|execSync\(|execFileSync\(|\bshell:\s*true\b/.test(text);
   return {
-    headSha: safeText(input.headSha || process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA, 'not_available'),
-    planDigest,
-    scriptDigest: input.scriptDigest || stableDigest('v128_validation_execution_plan_script'),
-    lockfileDigest: input.lockfileDigest || 'not_applicable',
-    runnerImageDigest: input.runnerImageDigest || stableDigest('runner_image', {
-      provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
-      os: process.platform,
-    }),
-    runtimeVersion: input.runtimeVersion || process.version,
-    taskProfile: input.taskProfile || 'source_shadow_candidate',
-    environmentClass: input.environmentClass || (process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local'),
+    finalizerSourcePath: entry,
+    childProcessImportDetected,
+    shellExecutionDetected,
+    networkImportDetected: /from\s+['"]node:https?['"]|require\(\s*['"]https?['"]\s*\)/.test(text),
   };
 }
 
 export function buildV128ValidationExecutionPlan(input = {}) {
-  const nodes = defaultNodeResults(input).map(normalizeNode).slice(0, VALIDATION_NODES_MAX);
-  const nodeRefs = nodes.map((node) => node.nodeRef);
-  const duplicatedNodeRefs = [...new Set(nodeRefs.filter((nodeRef, index) => nodeRefs.indexOf(nodeRef) !== index))];
-  const executedNodeRefs = nodes.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef);
-  const reusedNodeRefs = nodes.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef);
-  const rerunNodeRefs = nodes.filter((node) => node.executionState === 'rerun').map((node) => node.nodeRef);
-  const failedNode = nodes.find((node) => node.status === 'fail') || null;
+  const observationState = input.observedExecution === true || (Array.isArray(input.nodeResults) && input.nodeResults.length > 0)
+    ? 'observed'
+    : 'not_exercised';
+  const graphNodes = (Array.isArray(input.nodes) && input.nodes.length ? input.nodes : defaultGraphNodes()).map(normalizeGraphNode).slice(0, VALIDATION_NODES_MAX);
+  const graph = evaluateGraph(graphNodes);
+  const resultsByRef = new Map((Array.isArray(input.nodeResults) ? input.nodeResults : []).map((node) => [node.nodeRef, node]));
+  const nodeResults = observationState === 'observed'
+    ? graphNodes.map((node) => normalizeNodeResult(resultsByRef.get(node.nodeRef) || {
+      nodeRef: node.nodeRef,
+      status: 'skipped',
+      executionState: 'executed',
+      skipReasonCode: 'MISSING_OBSERVED_RESULT',
+    }, node))
+    : [];
+  const executedNodeRefs = nodeResults.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef);
+  const reusedNodeRefs = nodeResults.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef);
+  const rerunNodeRefs = nodeResults.filter((node) => node.executionState === 'rerun').map((node) => node.nodeRef);
+  const failedNode = nodeResults.find((node) => node.status === 'fail') || null;
+  const requiredSkippedNode = nodeResults.find((node) => node.required === true && node.status === 'skipped') || null;
+  const sourceClosure = sourceClosureManifest(input);
   const planCore = {
     profileId: input.profileId || 'source_shadow_validation',
-    nodeRefs,
-    nodeCount: nodes.length,
+    graphDigest: graph.graphDigest,
+    topologicalOrderDigest: graph.topologicalOrderDigest,
     finalizerMode: input.finalizerMode || 'aggregate_only',
     downstreamRespawnAllowed: input.downstreamRespawnAllowed === true,
   };
   const planDigest = digestValue(planCore);
-  const cacheKeyFields = buildCacheKeyFields(input, planDigest);
-  const cacheKeyValues = Object.values(cacheKeyFields).map((value) => String(value ?? ''));
-  const cacheKeyHasPlaceholder = cacheKeyValues.some(isPlaceholder);
-  const reuseDecision = cacheKeyHasPlaceholder ? 'miss' : classifyReuseDecision(nodes, input);
-  const cacheKeyDigest = cacheKeyHasPlaceholder ? null : digestValue(cacheKeyFields);
+  const cacheKeyFields = buildCacheKeyFields(input, planDigest, sourceClosure.sourceClosureDigest);
+  const cacheKeyInvalid = cacheKeyHasInvalidField(cacheKeyFields);
+  const reuseDecision = classifyReuseDecision(nodeResults, input, cacheKeyInvalid);
+  const cacheKeyDigest = cacheKeyInvalid ? null : digestValue(cacheKeyFields);
+  const staticScan = finalizerStaticScan();
+  const workspaceObserved = input.workspaceObserved === true || observationState === 'observed';
   const workspaceIdentityCore = {
     repositoryKey: input.repositoryKey || 'github.com:hiro4649/codex-development-harness',
-    remoteDigest: input.remoteDigest || stableDigest('remote', { repositoryKey: input.repositoryKey || 'github.com:hiro4649/codex-development-harness' }),
+    remoteDigest: input.remoteDigest || digestValue({ repositoryKey: input.repositoryKey || 'github.com:hiro4649/codex-development-harness' }),
     branch: input.branch || process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || 'unknown',
-    headSha: cacheKeyFields.headSha,
+    headSha: fieldValue(cacheKeyFields.headSha) || 'unknown',
     activeHarnessVersion: input.activeHarnessVersion || '1.2.7',
   };
-  const status = duplicatedNodeRefs.length === 0
-    && nodes.length > 0
-    && nodes.length <= VALIDATION_NODES_MAX
-    && failedNode === null
-    && FINALIZER_MODES.has(planCore.finalizerMode)
-    && planCore.downstreamRespawnAllowed === false
-    && cacheKeyHasPlaceholder === false
-    ? 'pass'
-    : 'fail';
+  const status = observationState === 'not_exercised'
+    ? 'partial_shadow_candidate'
+    : (graph.status === 'pass'
+      && failedNode === null
+      && requiredSkippedNode === null
+      && FINALIZER_MODES.has(planCore.finalizerMode)
+      && planCore.downstreamRespawnAllowed === false
+      && cacheKeyInvalid === false
+      && staticScan.childProcessImportDetected === false
+      && staticScan.shellExecutionDetected === false
+      && staticScan.networkImportDetected === false
+        ? 'pass'
+        : 'fail');
   return {
     schemaVersion: '1.2.8',
     executionKind: 'validation_execution_plan_shadow',
     authority: 'non_authoritative_execution_surface',
     candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    observationState,
+    graph: {
+      graphDigest: graph.graphDigest,
+      topologicalOrderDigest: graph.topologicalOrderDigest,
+      topologicalOrder: graph.topologicalOrder,
+      nodes: graphNodes,
+      duplicateNodeRefs: graph.duplicateNodeRefs,
+      duplicateEdges: graph.duplicateEdges,
+      status: graph.status,
+      reasonCodes: graph.reasonCodes,
+    },
+    sourceClosure,
     profileExecution: {
       profileId: planCore.profileId,
       planDigest,
-      headSha: cacheKeyFields.headSha,
-      nodeCount: nodes.length,
-      nodeResults: nodes,
+      headSha: fieldValue(cacheKeyFields.headSha) || 'unknown',
+      nodeCount: graphNodes.length,
+      nodeResults,
       executedNodeRefs,
       reusedNodeRefs,
       rerunNodeRefs,
       failedNodeRef: failedNode?.nodeRef || null,
-      duplicatedNodeRefs,
+      requiredSkippedNodeRef: requiredSkippedNode?.nodeRef || null,
       finalizerMode: planCore.finalizerMode,
       downstreamRespawnAllowed: planCore.downstreamRespawnAllowed,
+      finalizerStaticScan: staticScan,
       status,
     },
     validationReuseDecision: {
@@ -152,10 +321,10 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       reusedNodeRefs,
       executedNodeRefs,
       rerunNodeRefs,
-      missReasonRef: cacheKeyHasPlaceholder ? 'CACHE_KEY_PLACEHOLDER' : (reuseDecision === 'miss' ? 'NO_REUSABLE_NODE' : null),
+      missReasonRef: cacheKeyInvalid ? 'CACHE_KEY_FIELD_MISSING_OR_INVALID' : (reuseDecision === 'miss' ? 'NO_REUSABLE_NODE' : null),
       cacheKeyDigest,
       cacheKeyFields,
-      cacheKeyHasPlaceholder,
+      cacheKeyHasPlaceholder: cacheKeyInvalid,
       skippedNodeRefs: reuseDecision === 'hit' || reuseDecision === 'partial_hit' ? reusedNodeRefs : [],
     },
     stableDiagnosticTaxonomy: {
@@ -168,6 +337,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       rawLogForbidden: true,
       secretForbidden: true,
       localAbsolutePathForbidden: true,
+      decisionInputManifestScanned: input.decisionInputManifestScanned === true || observationState === 'observed',
       fields: [
         { field: 'normalizedArtifactFingerprint', stabilityClass: 'decision_stable' },
         { field: 'validationCacheKeyDigest', stabilityClass: 'cache_stable' },
@@ -177,16 +347,19 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     workspaceIdentity: {
       ...workspaceIdentityCore,
       worktreeIdentityDigest: input.worktreeIdentityDigest || digestValue(workspaceIdentityCore),
-      canonicalityState: input.canonicalityState || 'canonical',
+      canonicalityState: input.canonicalityState || (workspaceObserved ? 'canonical' : 'unknown'),
+      observationState: workspaceObserved ? 'observed' : 'not_exercised',
       rawWorkspacePathUploaded: input.rawWorkspacePathUploaded === true,
     },
     phaseProgress: {
       phase: input.phase || 'validation',
-      currentNodeRef: input.currentNodeRef || nodes[nodes.length - 1]?.nodeRef || null,
-      completedNodeCount: nodes.filter((node) => node.status === 'pass').length,
-      totalNodeCount: nodes.length,
-      lastProgressDigest: digestValue({ nodeRefs, status }),
+      currentNodeRef: input.currentNodeRef || graph.topologicalOrder[graph.topologicalOrder.length - 1] || null,
+      completedNodeCount: nodeResults.filter((node) => node.status === 'pass').length,
+      totalNodeCount: graphNodes.length,
+      progressSequence: Number(input.progressSequence || (observationState === 'observed' ? 1 : 0)),
+      lastProgressDigest: digestValue({ graphDigest: graph.graphDigest, status, completed: nodeResults.map((node) => [node.nodeRef, node.status]) }),
       stallClass: input.stallClass || 'none',
+      observed: observationState === 'observed',
     },
     ownerAuthorityCreated: false,
     newP0ArtifactCreated: false,
@@ -200,34 +373,55 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const reuse = plan.validationReuseDecision || {};
   const taxonomy = plan.stableDiagnosticTaxonomy || {};
   const workspace = plan.workspaceIdentity || {};
+  const graph = plan.graph || {};
   const nodeResults = Array.isArray(execution.nodeResults) ? execution.nodeResults : [];
-  const nodeRefs = nodeResults.map((node) => node.nodeRef);
-  const duplicateRefs = nodeRefs.filter((nodeRef, index) => nodeRefs.indexOf(nodeRef) !== index);
   if (plan.schemaVersion !== '1.2.8') reasons.push('validation_execution_schema_invalid');
   if (plan.executionKind !== 'validation_execution_plan_shadow') reasons.push('validation_execution_kind_invalid');
   if (plan.authority !== 'non_authoritative_execution_surface') reasons.push('validation_execution_authority_invalid');
   if (plan.candidateActivationState !== 'source_shadow_candidate') reasons.push('validation_execution_activation_state_invalid');
+  if (!OBSERVATION_STATES.has(plan.observationState)) reasons.push('validation_execution_observation_state_invalid');
   if (!execution.profileId) reasons.push('profile_execution_profile_id_required');
   if (!/^sha256:[a-f0-9]{64}$/.test(String(execution.planDigest || ''))) reasons.push('profile_execution_plan_digest_invalid');
-  if (nodeResults.length < 1 || nodeResults.length > VALIDATION_NODES_MAX) reasons.push('profile_execution_node_count_invalid');
-  if (duplicateRefs.length > 0 || (execution.duplicatedNodeRefs || []).length > 0) reasons.push('profile_execution_duplicate_node_ref');
+  if (!/^sha256:[a-f0-9]{64}$/.test(String(graph.graphDigest || ''))) reasons.push('validation_graph_digest_invalid');
+  if (!/^sha256:[a-f0-9]{64}$/.test(String(graph.topologicalOrderDigest || ''))) reasons.push('validation_graph_topological_digest_invalid');
+  if (graph.status !== 'pass') reasons.push('validation_graph_invalid');
+  if ((graph.duplicateNodeRefs || []).length > 0) reasons.push('graph_duplicate_node_ref');
+  if ((graph.duplicateEdges || []).length > 0) reasons.push('graph_duplicate_edge');
+  if (!Array.isArray(graph.nodes) || graph.nodes.length < 1 || graph.nodes.length > VALIDATION_NODES_MAX) reasons.push('validation_graph_node_count_invalid');
+  if (plan.observationState === 'observed' && (nodeResults.length < 1 || nodeResults.length !== graph.nodes.length)) reasons.push('profile_execution_observed_node_results_required');
+  if (plan.observationState === 'not_exercised' && nodeResults.length > 0) reasons.push('not_exercised_plan_cannot_include_node_results');
   if (!FINALIZER_MODES.has(execution.finalizerMode)) reasons.push('profile_execution_finalizer_must_be_aggregate_only');
   if (execution.downstreamRespawnAllowed === true) reasons.push('profile_execution_downstream_respawn_forbidden');
   if (execution.failedNodeRef) reasons.push('profile_execution_failed_node_present');
+  if (execution.requiredSkippedNodeRef) reasons.push('profile_execution_required_skipped_node_present');
+  const staticScan = execution.finalizerStaticScan || {};
+  if (staticScan.childProcessImportDetected === true) reasons.push('finalizer_child_process_import_forbidden');
+  if (staticScan.shellExecutionDetected === true) reasons.push('finalizer_shell_execution_forbidden');
+  if (staticScan.networkImportDetected === true) reasons.push('finalizer_network_import_forbidden');
   for (const node of nodeResults) {
     if (!node.nodeRef) reasons.push('profile_execution_node_ref_required');
     if (!EXECUTION_STATES.has(node.executionState)) reasons.push(`profile_execution_state_invalid_${node.executionState || 'missing'}`);
     if (!NODE_STATUSES.has(node.status)) reasons.push(`profile_execution_node_status_invalid_${node.status || 'missing'}`);
     if (!STABILITY_CLASSES.has(node.stabilityClass)) reasons.push(`stability_class_invalid_${node.stabilityClass || 'missing'}`);
+    if (Number(node.executionCount || 0) > 1) reasons.push('profile_execution_node_executed_more_than_once');
+    if (node.required === true && node.status === 'skipped') reasons.push('profile_execution_required_skipped_node_present');
+    if (node.executionState === 'reused') {
+      if (!node.sourceRunRef) reasons.push('reused_node_source_run_ref_required');
+      if (!/^sha256:[a-f0-9]{64}$/.test(String(node.sourceResultDigest || ''))) reasons.push('reused_node_source_result_digest_required');
+      if (!/^[a-f0-9]{40}$/.test(String(node.sourceHeadSha || ''))) reasons.push('reused_node_source_head_sha_required');
+      if (!node.resultSchemaVersion) reasons.push('reused_node_result_schema_required');
+    }
   }
   if (!REUSE_DECISIONS.has(reuse.reuseDecision)) reasons.push('validation_reuse_decision_invalid');
-  if (reuse.cacheKeyHasPlaceholder === true) reasons.push('validation_reuse_cache_key_placeholder');
-  if (!/^sha256:[a-f0-9]{64}$/.test(String(reuse.cacheKeyDigest || ''))) reasons.push('validation_reuse_cache_key_digest_invalid');
-  for (const value of Object.values(reuse.cacheKeyFields || {})) {
-    if (isPlaceholder(value)) reasons.push('validation_reuse_cache_key_placeholder_value');
+  if (plan.observationState === 'observed' && reuse.cacheKeyHasPlaceholder === true) reasons.push('validation_reuse_cache_key_placeholder');
+  if (plan.observationState === 'observed' && !/^sha256:[a-f0-9]{64}$/.test(String(reuse.cacheKeyDigest || ''))) reasons.push('validation_reuse_cache_key_digest_invalid');
+  for (const field of Object.values(reuse.cacheKeyFields || {})) {
+    if (!FIELD_STATES.has(field?.state)) reasons.push('validation_reuse_cache_key_field_state_invalid');
+    if (plan.observationState === 'observed' && ['missing', 'invalid'].includes(field?.state)) reasons.push('validation_reuse_cache_key_field_missing_or_invalid');
   }
   if (taxonomy.environmentDiagnosticExcludedFromDecisionDigest !== true) reasons.push('environment_diagnostic_must_be_excluded_from_decision_digest');
   if (taxonomy.rawLogForbidden !== true || taxonomy.secretForbidden !== true || taxonomy.localAbsolutePathForbidden !== true) reasons.push('stable_diagnostic_forbidden_boundary_missing');
+  if (plan.observationState === 'observed' && taxonomy.decisionInputManifestScanned !== true) reasons.push('decision_input_manifest_scan_required');
   for (const field of taxonomy.fields || []) {
     if (!STABILITY_CLASSES.has(field.stabilityClass)) reasons.push(`taxonomy_field_stability_invalid_${field.stabilityClass || 'missing'}`);
     if (field.stabilityClass === 'forbidden') reasons.push('forbidden_field_cannot_enter_execution_surface');
@@ -236,13 +430,17 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (!/^sha256:[a-f0-9]{64}$/.test(String(workspace.remoteDigest || ''))) reasons.push('workspace_remote_digest_invalid');
   if (!/^sha256:[a-f0-9]{64}$/.test(String(workspace.worktreeIdentityDigest || ''))) reasons.push('workspace_identity_digest_invalid');
   if (!CANONICALITY_STATES.has(workspace.canonicalityState)) reasons.push(`workspace_canonicality_invalid_${workspace.canonicalityState || 'missing'}`);
+  if (!OBSERVATION_STATES.has(workspace.observationState)) reasons.push('workspace_observation_state_invalid');
+  if (workspace.canonicalityState === 'canonical' && workspace.observationState !== 'observed') reasons.push('workspace_canonical_requires_observation');
   if (workspace.rawWorkspacePathUploaded === true) reasons.push('raw_workspace_path_upload_forbidden');
   if (plan.ownerAuthorityCreated === true) reasons.push('validation_execution_cannot_create_owner_authority');
   if (plan.newP0ArtifactCreated === true) reasons.push('validation_execution_cannot_create_new_p0_artifact');
   return reasons.length ? { status: 'fail', reasonCodes: [...new Set(reasons)], safeSummaryOnly: true } : {
     status: 'pass',
+    executionStatus: execution.status,
+    observationState: plan.observationState,
     planDigest: execution.planDigest,
-    cacheKeyDigest: reuse.cacheKeyDigest,
+    cacheKeyDigest: reuse.cacheKeyDigest || null,
     safeSummaryOnly: true,
   };
 }

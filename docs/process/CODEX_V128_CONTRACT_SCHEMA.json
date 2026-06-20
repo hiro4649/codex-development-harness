@@ -74,10 +74,22 @@
     "storage": "codex-orchestration-capsule.safe.json",
     "newP0ArtifactAllowed": false,
     "profileDagRequired": true,
+    "observationStates": ["observed", "not_exercised"],
+    "notExercisedPassIsPartialShadowOnly": true,
+    "dependsOnRequired": true,
+    "cycleDetectionRequired": true,
+    "missingDependencyFails": true,
+    "duplicateEdgeFails": true,
+    "topologicalOrderDigestRequired": true,
     "nodeExecutionMaxPerRun": 1,
+    "requiredSkippedNodeBlocks": true,
+    "optionalSkippedNodeEffect": "advisory",
     "finalizerMode": "aggregate_only",
     "downstreamCommandRespawnAllowed": false,
     "downstreamReadsTypedResult": true,
+    "finalizerChildProcessImportAllowed": false,
+    "finalizerShellExecutionAllowed": false,
+    "finalizerNetworkImportAllowed": false,
     "upstreamMissingReason": "upstream_evidence_missing",
     "cacheKeyFields": [
       "headSha",
@@ -89,9 +101,13 @@
       "taskProfile",
       "environmentClass"
     ],
-    "cacheKeyPlaceholderValuesForbidden": ["", "unknown", "required", "null", "undefined", "placeholder"],
+    "cacheKeyFieldStates": ["observed", "not_required_with_reason", "missing", "invalid"],
+    "cacheKeyPlaceholderValuesForbidden": ["", "unknown", "required", "null", "undefined", "placeholder", "not_available"],
     "reuseDecisions": ["hit", "partial_hit", "miss"],
-    "reuseReportMustListSkippedNodes": true
+    "reuseReportMustListSkippedNodes": true,
+    "reusedNodeRequires": ["sourceRunRef", "sourceResultDigest", "sourceHeadSha", "cacheKeyDigest", "resultSchemaVersion"],
+    "scriptDigestSource": "source_closure_manifest",
+    "undeclaredImportActivationBlocker": true
   },
   "stableDiagnosticTaxonomy": {
     "classes": ["decision_stable", "cache_stable", "environment_diagnostic", "owner_input", "forbidden"],
@@ -133,6 +149,7 @@
       "canonicalityState"
     ],
     "canonicalityStates": ["canonical", "duplicate_candidate", "repo_mismatch", "harness_version_mismatch", "unknown"],
+    "canonicalRequiresObservedWorkspace": true,
     "rawWorkspacePathRemoteArtifactAllowed": false
   },
   "safeSummaryOnly": true
