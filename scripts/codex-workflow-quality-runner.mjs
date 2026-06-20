@@ -3171,6 +3171,25 @@ function statusFromArtifact(artifact, extra = {}) {
   return artifact ? { status: 'pass', safeSummaryOnly: true, ...extra } : { status: 'missing', safeSummaryOnly: true, ...extra };
 }
 
+function buildWorkflowActiveGateReasonSummaryInput(report = {}) {
+  const v128 = report.v128SelfTestStatus || {};
+  const activationGate = process.env.CODEX_V128_ACTIVATION_GATE === '1'
+    || v128.candidateActivationState === 'source_activation_candidate'
+    || v128.candidateActivationState === 'active';
+  if (v128.status !== 'fail' || activationGate) return report;
+  return {
+    ...report,
+    v128SelfTestStatus: {
+      ...v128,
+      candidateStatus: v128.status,
+      status: 'pass_shadow_candidate_fail_non_blocking_active_v127',
+      reasonCodes: ['v128_shadow_candidate_failure_does_not_change_v127_active_exit'],
+      activeGateInfluence: 'non_blocking_shadow_candidate',
+      safeSummaryOnly: true,
+    },
+  };
+}
+
 
 
 
@@ -4134,7 +4153,7 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
 
-  const reasonSummary = buildCompactReasonSummary(report).summary || {
+  const reasonSummary = buildCompactReasonSummary(buildWorkflowActiveGateReasonSummaryInput(report)).summary || {
 
 
 
