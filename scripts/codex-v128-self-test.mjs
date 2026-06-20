@@ -385,25 +385,68 @@ function projectionInputDigestTamperFails() {
   }).reasonCodes.includes('projection_input_digest_mismatch');
 }
 
+function executedNode(nodeRef, status = 'pass', stabilityClass = 'decision_stable', payload = {}) {
+  return {
+    nodeRef,
+    executionState: 'executed',
+    executionCount: 1,
+    executionCountSource: 'executor_registry',
+    executionCountObserved: true,
+    status,
+    stabilityClass,
+    typedResultPayload: {
+      schemaVersion: '1.0.0',
+      nodeRef,
+      status,
+      ...payload,
+    },
+  };
+}
+
+function reusedNode(nodeRef, payload = {}) {
+  return {
+    nodeRef,
+    executionState: 'reused',
+    executionCount: 0,
+    executionCountSource: 'executor_registry',
+    executionCountObserved: true,
+    status: 'pass',
+    stabilityClass: 'decision_stable',
+    sourceRunRef: 'github:run:27881777742:attempt:1',
+    sourceResultDigest: `sha256:${'a'.repeat(64)}`,
+    sourceHeadSha: 'f'.repeat(40),
+    resultSchemaVersion: '1.0.0',
+    typedResultPayload: {
+      schemaVersion: '1.0.0',
+      nodeRef,
+      status: 'pass',
+      reused: true,
+      ...payload,
+    },
+  };
+}
+
+function validValidationNodeResults() {
+  return [
+    executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200 }),
+    executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+    executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+    executedNode('aggregate_finalizer', 'pass', 'decision_stable', { upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'] }),
+  ];
+}
+
 function validationExecutionPlanVerifies() {
   return passed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
     observedExecution: true,
     workspaceObserved: true,
     decisionInputManifestScanned: true,
     nodeResults: [
-      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
-      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
-      {
-        nodeRef: 'state_matrix_executor',
-        executionState: 'reused',
-        status: 'pass',
-        stabilityClass: 'decision_stable',
-        sourceRunRef: 'github:run:27881777742:attempt:1',
-        sourceResultDigest: `sha256:${'a'.repeat(64)}`,
-        sourceHeadSha: 'f'.repeat(40),
-      },
-      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200 }),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+      reusedNode('state_matrix_executor', { totalCells: 96 }),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', { upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'] }),
     ],
   })));
 }
@@ -470,6 +513,114 @@ function validationExecutionRawWorkspacePathFails() {
       { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
     ],
   })));
+}
+
+function validationTypedPayloadTamperFails() {
+  const plan = buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  });
+  plan.typedResults.projection_reader.surfaceCanonicalBytes = 9999;
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('typed_result_payload_digest_mismatch');
+}
+
+function validationAggregateFinalizerBlocksFailedUpstream() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'fail', 'decision_stable', { reason: 'BROKEN_READER' }),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', { upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'] }),
+    ],
+  })));
+}
+
+function validationExecutionCountTwoFails() {
+  const nodes = validValidationNodeResults();
+  nodes[0] = { ...nodes[0], executionCount: 2 };
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: nodes,
+  })));
+}
+
+function validationCacheHitWithExecutedNodeFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    nodeResults: validValidationNodeResults(),
+  })));
+}
+
+function validationCacheMissWithReusedNodeFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'miss',
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reusedNode('state_matrix_executor'),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  })));
+}
+
+function validationWorkspaceUnobservedCannotBeCanonical() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: false,
+    canonicalityState: 'canonical',
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  })));
+}
+
+function validationRunnerImageMissingPreventsReuse() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    nodeResults: [
+      reusedNode('projection_reader'),
+      reusedNode('managed_context_emitter'),
+      reusedNode('state_matrix_executor'),
+      reusedNode('aggregate_finalizer'),
+    ],
+  })));
+}
+
+function validationSourceClosureIncludesConsumers() {
+  const plan = buildV128ValidationExecutionPlan();
+  const paths = new Set(plan.sourceClosure.sourceFiles.map((file) => file.path));
+  return paths.has('scripts/codex-v128-validation-execution-plan.mjs')
+    && paths.has('scripts/codex-v128-aggregate-finalizer.mjs')
+    && paths.has('scripts/codex-local-quality-gate.mjs')
+    && paths.has('scripts/codex-orchestration-capsule.mjs');
 }
 
 function validationDefaultIsNotExercisedPartial() {
@@ -574,6 +725,14 @@ const cases = [
   ['validation_execution_downstream_respawn_fails', () => validationExecutionRespawnFails()],
   ['validation_reuse_placeholder_cache_key_fails', () => validationReusePlaceholderFails()],
   ['validation_execution_raw_workspace_path_fails', () => validationExecutionRawWorkspacePathFails()],
+  ['validation_typed_payload_tamper_fails', () => validationTypedPayloadTamperFails()],
+  ['validation_aggregate_finalizer_blocks_failed_upstream', () => validationAggregateFinalizerBlocksFailedUpstream()],
+  ['validation_execution_count_two_fails', () => validationExecutionCountTwoFails()],
+  ['validation_cache_hit_with_executed_node_fails', () => validationCacheHitWithExecutedNodeFails()],
+  ['validation_cache_miss_with_reused_node_fails', () => validationCacheMissWithReusedNodeFails()],
+  ['validation_workspace_unobserved_cannot_be_canonical', () => validationWorkspaceUnobservedCannotBeCanonical()],
+  ['validation_runner_image_missing_prevents_reuse', () => validationRunnerImageMissingPreventsReuse()],
+  ['validation_source_closure_includes_consumers', () => validationSourceClosureIncludesConsumers()],
   ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },

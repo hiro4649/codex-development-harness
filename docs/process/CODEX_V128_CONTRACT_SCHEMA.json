@@ -82,6 +82,9 @@
     "duplicateEdgeFails": true,
     "topologicalOrderDigestRequired": true,
     "nodeExecutionMaxPerRun": 1,
+    "executionCountSourceRequired": "executor_registry",
+    "typedResultPayloadDigestRequired": true,
+    "typedResultRefFormat": "#/typedResults/{nodeRef}",
     "requiredSkippedNodeBlocks": true,
     "optionalSkippedNodeEffect": "advisory",
     "finalizerMode": "aggregate_only",
@@ -97,16 +100,32 @@
       "scriptDigest",
       "lockfileDigest",
       "runnerImageDigest",
+      "runnerClassDigest",
       "runtimeVersion",
       "taskProfile",
       "environmentClass"
     ],
+    "requiredCacheFields": ["headSha", "planDigest", "scriptDigest", "runtimeVersion", "taskProfile", "environmentClass"],
+    "runnerImageDigestMissingEffect": "reuse_forbidden_not_plan_failure",
     "cacheKeyFieldStates": ["observed", "not_required_with_reason", "missing", "invalid"],
     "cacheKeyPlaceholderValuesForbidden": ["", "unknown", "required", "null", "undefined", "placeholder", "not_available"],
     "reuseDecisions": ["hit", "partial_hit", "miss"],
+    "reuseDecisionConsistency": {
+      "hit": "all_nodes_reused_no_executed_nodes",
+      "partial_hit": "some_reused_and_some_executed_nodes",
+      "miss": "no_reused_nodes"
+    },
     "reuseReportMustListSkippedNodes": true,
     "reusedNodeRequires": ["sourceRunRef", "sourceResultDigest", "sourceHeadSha", "cacheKeyDigest", "resultSchemaVersion"],
     "scriptDigestSource": "source_closure_manifest",
+    "scriptDigestSourceClosureFiles": [
+      "scripts/codex-v128-validation-execution-plan.mjs",
+      "scripts/codex-v128-aggregate-finalizer.mjs",
+      "scripts/codex-local-quality-gate.mjs",
+      "scripts/codex-orchestration-capsule.mjs",
+      "docs/process/CODEX_V128_CONTRACT_SCHEMA.json",
+      "docs/process/CODEX_V128_SPEC.md"
+    ],
     "undeclaredImportActivationBlocker": true
   },
   "stableDiagnosticTaxonomy": {
@@ -143,9 +162,13 @@
       "repositoryKey",
       "remoteDigest",
       "branch",
+      "sourceBranch",
+      "checkoutRef",
+      "testedTreeKind",
       "headSha",
       "activeHarnessVersion",
       "worktreeIdentityDigest",
+      "observationDigest",
       "canonicalityState"
     ],
     "canonicalityStates": ["canonical", "duplicate_candidate", "repo_mismatch", "harness_version_mismatch", "unknown"],

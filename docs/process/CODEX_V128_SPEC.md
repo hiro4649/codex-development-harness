@@ -171,9 +171,11 @@ as partial Source Shadow Candidate evidence; it is not Activation evidence:
 
 ```text
 validation node:
-  executed at most once per run
+  executed at most once per run from executor registry observation
+  executionCountSource=executor_registry
   dependency edges declared by dependsOn
   graph cycle / missing dependency / duplicate edge fail closed
+  resultDigest binds the actual canonical typed payload, not node metadata
 
 downstream gate:
   reads typed result
@@ -198,6 +200,7 @@ planDigest
 scriptDigest
 lockfileDigest
 runnerImageDigest
+runnerClassDigest
 runtimeVersion
 taskProfile
 environmentClass
@@ -207,13 +210,30 @@ environmentClass
 reuse key invalid. `not_available` is also invalid. A genuinely not-required
 field must be a typed state with a reason, for example
 `state=not_required_with_reason` and `reasonCode=PROFILE_HAS_NO_LOCKFILE`.
-Reuse reports must say both what was reused and what was not rerun, and reused
-nodes must carry a source run reference, result digest, source head, cache key,
-and result schema version.
+`runnerImageDigest` must be a real observed runner image identity. If only a
+provider/OS class is available, it is recorded as `runnerClassDigest`;
+`runnerImageDigest` remains `missing`, and validation reuse is forbidden rather
+than guessed. Reuse reports must say both what was reused and what was not
+rerun, and reused nodes must carry a source run reference, result digest,
+source head, cache key, and result schema version. The reuse decision must be
+consistent with node states:
+
+```text
+hit:
+  all nodes reused, no executed nodes
+
+partial_hit:
+  at least one reused node and at least one executed node
+
+miss:
+  no reused nodes
+```
 
 The `scriptDigest` is not a label hash. It is a source-closure digest over the
-declared validation entrypoint, schema, profile/spec, and canonicalizer surface.
-Undeclared imports are activation blockers.
+declared validation entrypoint, aggregate finalizer, local quality-gate adapter,
+orchestration consumer, schema, profile/spec, and canonicalizer surface.
+Undeclared imports are activation blockers. A consumer change that can alter
+node result construction invalidates the reuse key.
 
 Decision-stable fields, cache-stable fields, environment diagnostics, owner
 inputs, and forbidden values are separate classes. Environment diagnostics such
@@ -225,6 +245,11 @@ The aggregate finalizer is a typed-result reader only. Its source surface must
 not import child_process, execute shell commands, or open network clients. A
 missing upstream result is `upstream_evidence_missing`; it must not be repaired
 by the finalizer rerunning the command.
+
+The decision input manifest must be actually scanned before
+`decisionInputManifestScanned=true` is emitted. A builder cannot set this field
+only because an observed plan exists. The manifest separates decision-stable
+payload digests from environment diagnostics.
 
 ### 4. Resumable Loop and Permission Projection
 
@@ -271,9 +296,11 @@ preservation, gitignore coverage, and upload prohibition. Network-filesystem
 automatic resume is forbidden.
 
 Workspace identity is part of the resume surface. It records repository key,
-remote digest, branch, head, active harness version, a worktree identity digest,
-and a canonicality state. Raw workspace paths stay local diagnostic only and
-must not be uploaded. `canonicalityState=canonical` is valid only when
+remote digest, branch, source branch, checkout ref, tested tree kind, head,
+active harness version, a worktree identity digest, an observation digest, and
+a canonicality state. Pull-request merge refs and source branches are separate
+fields. Raw workspace paths stay local diagnostic only and must not be
+uploaded. `canonicalityState=canonical` is valid only when
 `observationState=observed`; unobserved workspaces are `unknown`.
 
 ## Canonical JSON

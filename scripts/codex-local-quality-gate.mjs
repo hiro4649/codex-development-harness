@@ -6,6 +6,7 @@
 
 
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 
 
@@ -74,6 +75,7 @@ import {
   buildV128ValidationExecutionPlan,
   validateV128ValidationExecutionPlan,
 } from './codex-v128-validation-execution-plan.mjs';
+import { aggregateV128ValidationResults } from './codex-v128-aggregate-finalizer.mjs';
 
 
 
@@ -274,6 +276,103 @@ function firstKnownHead(...values) {
   return 'unknown';
 }
 
+function sha256Canonical(value) {
+  return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
+}
+
+function gitText(args = []) {
+  try {
+    const result = spawnSync('git', args, { cwd: process.cwd(), encoding: 'utf8' });
+    if (result.status !== 0) return null;
+    const text = String(result.stdout || '').trim();
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
+function observeV128WorkspaceIdentity(head) {
+  const remoteUrl = gitText(['remote', 'get-url', 'origin']);
+  const commonDir = gitText(['rev-parse', '--git-common-dir']);
+  const topLevel = gitText(['rev-parse', '--show-toplevel']);
+  const gitHead = gitText(['rev-parse', 'HEAD']);
+  const branch = process.env.GITHUB_HEAD_REF || process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || gitText(['branch', '--show-current']) || 'unknown';
+  const checkoutRef = process.env.GITHUB_REF || process.env.GITHUB_REF_NAME || branch;
+  const repositoryKey = remoteUrl && /github\.com[:/]hiro4649\/codex-development-harness(?:\.git)?$/i.test(remoteUrl)
+    ? 'github.com:hiro4649/codex-development-harness'
+    : 'unknown';
+  const observed = Boolean(remoteUrl && commonDir && topLevel && gitHead && gitHead === head);
+  const testedTreeKind = String(checkoutRef || '').includes('/pull/') || /^\d+\/merge$/.test(String(process.env.GITHUB_REF_NAME || ''))
+    ? 'pull_request_merge_ref'
+    : 'branch_head';
+  const observationCore = {
+    repositoryKey,
+    remoteDigest: remoteUrl ? sha256Canonical({ remoteUrl }) : null,
+    commonDirDigest: commonDir ? sha256Canonical({ commonDir }) : null,
+    rootDigest: topLevel ? sha256Canonical({ topLevel }) : null,
+    sourceBranch: branch,
+    checkoutRef,
+    testedTreeKind,
+    headSha: gitHead || head || 'unknown',
+  };
+  return {
+    ...observationCore,
+    observationState: observed ? 'observed' : 'not_exercised',
+    canonicalityState: observed && repositoryKey !== 'unknown' ? 'canonical' : 'unknown',
+    observationDigest: sha256Canonical(observationCore),
+    rawWorkspacePathUploaded: false,
+  };
+}
+
+function buildV128DecisionInputManifest(input = {}) {
+  const fields = [
+    { field: 'finalDecision', stabilityClass: 'decision_stable', digest: sha256Canonical(input.finalDecision || null) },
+    { field: 'evidenceCapsule', stabilityClass: 'decision_stable', digest: sha256Canonical(input.evidenceCapsule || null) },
+    { field: 'decisionCapsule', stabilityClass: 'decision_stable', digest: sha256Canonical(input.decisionCapsule || null) },
+  ];
+  return {
+    status: 'pass',
+    fields,
+    environmentDiagnosticExcludedFromDecisionDigest: true,
+    digest: sha256Canonical(fields),
+    safeSummaryOnly: true,
+  };
+}
+
+function createV128ExecutionRegistry() {
+  const counts = new Map();
+  const typedResults = {};
+  const nodeResults = [];
+  return {
+    record(nodeRef, stabilityClass, callback) {
+      const payload = callback();
+      const executionCount = (counts.get(nodeRef) || 0) + 1;
+      counts.set(nodeRef, executionCount);
+      typedResults[nodeRef] = payload;
+      const nodeResult = {
+        nodeRef,
+        executionState: 'executed',
+        executionCount,
+        executionCountSource: 'executor_registry',
+        executionCountObserved: true,
+        status: payload?.status === 'pass' ? 'pass' : 'fail',
+        stabilityClass,
+        typedResultPayload: payload,
+        resultDigest: sha256Canonical(payload),
+        resultSchemaVersion: payload?.schemaVersion || '1.0.0',
+      };
+      nodeResults.push(nodeResult);
+      return { payload, nodeResult };
+    },
+    get nodeResults() {
+      return nodeResults;
+    },
+    get typedResults() {
+      return typedResults;
+    },
+  };
+}
+
 function buildV117ArtifactEntries(head) {
   const artifacts = loadBearingArtifactNames();
   return artifacts.map((artifactName) => {
@@ -359,26 +458,68 @@ function writeV117LoadBearingArtifacts(report = {}) {
   };
   const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head, projectionInputs);
   const stressDecisionProjection = buildV128StressDecisionProjection(report, projectionInputs);
-  const routineProjectionReadSurface = buildV128RoutineProjectionReadSurface(routineDecisionProjection);
+  const v128ExecutionRegistry = createV128ExecutionRegistry();
+  const projectionReaderExecution = v128ExecutionRegistry.record('projection_reader', 'decision_stable', () => {
+    const surface = buildV128RoutineProjectionReadSurface(routineDecisionProjection);
+    return {
+      ...surface,
+      schemaVersion: '1.0.0',
+      nodeRef: 'projection_reader',
+    };
+  });
+  const routineProjectionReadSurface = projectionReaderExecution.payload;
   const v128ProjectionIntegrityStatus = validateV128ProjectionIntegrity(routineDecisionProjection, {
     ...projectionInputs,
     verifySourceDigest: true,
     verifyInputDigest: true,
   });
-  const v128ManagedContextEmitter = buildV128ManagedContextEmitter({ headSha: head });
-  const v128StateMatrixExecution = readAndEvaluateV128StateMatrix();
+  const managedContextExecution = v128ExecutionRegistry.record('managed_context_emitter', 'cache_stable', () => {
+    const context = buildV128ManagedContextEmitter({ headSha: head });
+    return {
+      ...context,
+      schemaVersion: '1.0.0',
+      nodeRef: 'managed_context_emitter',
+      sourceFileCount: Array.isArray(context.sourceFiles) ? context.sourceFiles.length : 0,
+    };
+  });
+  const v128ManagedContextEmitter = managedContextExecution.payload;
+  const stateMatrixExecution = v128ExecutionRegistry.record('state_matrix_executor', 'decision_stable', () => {
+    const matrix = readAndEvaluateV128StateMatrix();
+    return {
+      ...matrix,
+      schemaVersion: '1.0.0',
+      nodeRef: 'state_matrix_executor',
+    };
+  });
+  const v128StateMatrixExecution = stateMatrixExecution.payload;
+  const upstreamNodeResults = [
+    projectionReaderExecution.nodeResult,
+    managedContextExecution.nodeResult,
+    stateMatrixExecution.nodeResult,
+  ];
+  v128ExecutionRegistry.record('aggregate_finalizer', 'decision_stable', () => aggregateV128ValidationResults({
+    upstreamNodeResults,
+  }));
+  const workspaceObservation = observeV128WorkspaceIdentity(head);
+  const decisionInputManifest = buildV128DecisionInputManifest(projectionInputs);
   const v128ValidationExecutionPlan = buildV128ValidationExecutionPlan({
     observedExecution: true,
-    workspaceObserved: true,
+    workspaceObservation,
     headSha: head,
+    repositoryKey: workspaceObservation.repositoryKey,
+    remoteDigest: workspaceObservation.remoteDigest,
     branch: process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || 'unknown',
-    decisionInputManifestScanned: true,
-    nodeResults: [
-      { nodeRef: 'projection_reader', executionState: 'executed', status: routineProjectionReadSurface.status, stabilityClass: 'decision_stable' },
-      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: v128ManagedContextEmitter.status, stabilityClass: 'cache_stable' },
-      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: v128StateMatrixExecution.status, stabilityClass: 'decision_stable' },
-      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
-    ],
+    sourceBranch: workspaceObservation.sourceBranch,
+    checkoutRef: workspaceObservation.checkoutRef,
+    testedTreeKind: workspaceObservation.testedTreeKind,
+    runnerClassDigest: sha256Canonical({
+      provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
+      os: process.platform,
+      arch: process.arch,
+    }),
+    decisionInputManifest,
+    nodeResults: v128ExecutionRegistry.nodeResults,
+    typedResults: v128ExecutionRegistry.typedResults,
   });
   const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);
   if (report.orchestrationCapsule) {

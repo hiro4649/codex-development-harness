@@ -18,9 +18,13 @@ const CANONICALITY_STATES = new Set(['canonical', 'duplicate_candidate', 'repo_m
 const PLACEHOLDER_VALUES = new Set(['', 'unknown', 'required', 'null', 'undefined', 'placeholder', 'not_available']);
 const SOURCE_CLOSURE_FILES = [
   'scripts/codex-v128-validation-execution-plan.mjs',
+  'scripts/codex-v128-aggregate-finalizer.mjs',
+  'scripts/codex-local-quality-gate.mjs',
+  'scripts/codex-orchestration-capsule.mjs',
   'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
   'docs/process/CODEX_V128_SPEC.md',
 ];
+const REQUIRED_CACHE_FIELDS = new Set(['headSha', 'planDigest', 'scriptDigest', 'runtimeVersion', 'taskProfile', 'environmentClass']);
 
 function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -82,27 +86,34 @@ function normalizeGraphNode(node = {}) {
   };
 }
 
-function normalizeNodeResult(node = {}, graphNode = {}) {
+function typedResultRef(nodeRef) {
+  return `#/typedResults/${nodeRef}`;
+}
+
+function normalizeNodeResult(node = {}, graphNode = {}, typedPayload = null) {
   const nodeRef = safeText(node.nodeRef || graphNode.nodeRef, 'unknown_node');
   const executionState = EXECUTION_STATES.has(node.executionState) ? node.executionState : 'executed';
   const status = NODE_STATUSES.has(node.status) ? node.status : 'fail';
   const stabilityClass = STABILITY_CLASSES.has(node.stabilityClass) ? node.stabilityClass : 'decision_stable';
-  const resultDigest = node.resultDigest || digestValue({
+  const resultPayload = typedPayload || node.typedResultPayload || {
     nodeRef,
     executionState,
     status,
     stabilityClass,
-    typedResultRef: node.typedResultRef || `${nodeRef}:typed_result`,
-  });
+  };
+  const resultDigest = node.resultDigest || digestValue(resultPayload);
+  const hasExecutionCount = node.executionCount !== undefined && node.executionCount !== null;
   return {
     nodeRef,
     dependsOn: Array.isArray(node.dependsOn) ? node.dependsOn.map(String) : (graphNode.dependsOn || []),
     required: node.required === undefined ? graphNode.required !== false : node.required !== false,
     executionState,
-    executionCount: Number(node.executionCount ?? (executionState === 'reused' ? 0 : 1)),
+    executionCount: hasExecutionCount ? Number(node.executionCount) : (executionState === 'reused' ? 0 : 1),
+    executionCountSource: node.executionCountSource || (hasExecutionCount ? 'executor_registry' : 'derived_default'),
+    executionCountObserved: node.executionCountObserved === true || node.executionCountSource === 'executor_registry',
     status,
     stabilityClass,
-    typedResultRef: node.typedResultRef || `${nodeRef}:typed_result`,
+    typedResultRef: node.typedResultRef || typedResultRef(nodeRef),
     resultDigest,
     skipReasonCode: node.skipReasonCode || null,
     sourceRunRef: node.sourceRunRef || null,
@@ -191,7 +202,14 @@ function buildCacheKeyFields(input = {}, planDigest, sourceClosureDigest) {
     lockfileDigest: input.lockfileDigest
       ? fieldState(input.lockfileDigest)
       : fieldState(null, { notRequired: true, reasonCode: 'PROFILE_HAS_NO_LOCKFILE' }),
-    runnerImageDigest: fieldState(input.runnerImageDigest || digestValue({
+    runnerImageDigest: input.runnerImageDigest
+      ? fieldState(input.runnerImageDigest)
+      : {
+        state: 'missing',
+        value: null,
+        reasonCode: 'RUNNER_IMAGE_DIGEST_NOT_OBSERVED',
+      },
+    runnerClassDigest: fieldState(input.runnerClassDigest || digestValue({
       provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
       os: process.platform,
     })),
@@ -202,7 +220,12 @@ function buildCacheKeyFields(input = {}, planDigest, sourceClosureDigest) {
 }
 
 function cacheKeyHasInvalidField(cacheKeyFields = {}) {
-  return Object.values(cacheKeyFields).some((field) => ['missing', 'invalid'].includes(field?.state));
+  return Object.entries(cacheKeyFields).some(([key, field]) => field?.state === 'invalid'
+    || (field?.state === 'missing' && REQUIRED_CACHE_FIELDS.has(key)));
+}
+
+function cacheReuseEligible(cacheKeyFields = {}) {
+  return Object.values(cacheKeyFields).every((field) => !['missing', 'invalid'].includes(field?.state));
 }
 
 function classifyReuseDecision(nodes = [], input = {}, cacheKeyInvalid = false) {
@@ -216,7 +239,7 @@ function classifyReuseDecision(nodes = [], input = {}, cacheKeyInvalid = false) 
 }
 
 function finalizerStaticScan() {
-  const entry = 'scripts/codex-v128-validation-execution-plan.mjs';
+  const entry = 'scripts/codex-v128-aggregate-finalizer.mjs';
   const text = fs.readFileSync(entry, 'utf8');
   const childProcessImportDetected = /from\s+['"]node:child_process['"]|from\s+['"]child_process['"]|require\(\s*['"]child_process['"]\s*\)/.test(text);
   const shellExecutionDetected = /spawnSync\(|execSync\(|execFileSync\(|\bshell:\s*true\b/.test(text);
@@ -234,15 +257,31 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     : 'not_exercised';
   const graphNodes = (Array.isArray(input.nodes) && input.nodes.length ? input.nodes : defaultGraphNodes()).map(normalizeGraphNode).slice(0, VALIDATION_NODES_MAX);
   const graph = evaluateGraph(graphNodes);
+  const providedTypedResults = input.typedResults && typeof input.typedResults === 'object' ? input.typedResults : {};
   const resultsByRef = new Map((Array.isArray(input.nodeResults) ? input.nodeResults : []).map((node) => [node.nodeRef, node]));
   const nodeResults = observationState === 'observed'
-    ? graphNodes.map((node) => normalizeNodeResult(resultsByRef.get(node.nodeRef) || {
-      nodeRef: node.nodeRef,
-      status: 'skipped',
-      executionState: 'executed',
-      skipReasonCode: 'MISSING_OBSERVED_RESULT',
-    }, node))
+    ? graphNodes.map((node) => {
+      const raw = resultsByRef.get(node.nodeRef) || {
+        nodeRef: node.nodeRef,
+        status: 'skipped',
+        executionState: 'executed',
+        skipReasonCode: 'MISSING_OBSERVED_RESULT',
+      };
+      return normalizeNodeResult(raw, node, providedTypedResults[node.nodeRef] || raw.typedResultPayload || null);
+    })
     : [];
+  const typedResults = observationState === 'observed'
+    ? Object.fromEntries(nodeResults.map((node) => {
+      const raw = resultsByRef.get(node.nodeRef) || {};
+      const payload = providedTypedResults[node.nodeRef] || raw.typedResultPayload || {
+        nodeRef: node.nodeRef,
+        executionState: node.executionState,
+        status: node.status,
+        stabilityClass: node.stabilityClass,
+      };
+      return [node.nodeRef, payload];
+    }))
+    : {};
   const executedNodeRefs = nodeResults.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef);
   const reusedNodeRefs = nodeResults.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef);
   const rerunNodeRefs = nodeResults.filter((node) => node.executionState === 'rerun').map((node) => node.nodeRef);
@@ -259,17 +298,22 @@ export function buildV128ValidationExecutionPlan(input = {}) {
   const planDigest = digestValue(planCore);
   const cacheKeyFields = buildCacheKeyFields(input, planDigest, sourceClosure.sourceClosureDigest);
   const cacheKeyInvalid = cacheKeyHasInvalidField(cacheKeyFields);
+  const reuseEligible = cacheReuseEligible(cacheKeyFields);
   const reuseDecision = classifyReuseDecision(nodeResults, input, cacheKeyInvalid);
-  const cacheKeyDigest = cacheKeyInvalid ? null : digestValue(cacheKeyFields);
+  const cacheKeyDigest = reuseEligible ? digestValue(cacheKeyFields) : null;
   const staticScan = finalizerStaticScan();
-  const workspaceObserved = input.workspaceObserved === true || observationState === 'observed';
+  const workspaceObserved = input.workspaceObserved === true || input.workspaceObservation?.observationState === 'observed';
   const workspaceIdentityCore = {
     repositoryKey: input.repositoryKey || 'github.com:hiro4649/codex-development-harness',
     remoteDigest: input.remoteDigest || digestValue({ repositoryKey: input.repositoryKey || 'github.com:hiro4649/codex-development-harness' }),
     branch: input.branch || process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || 'unknown',
+    sourceBranch: input.sourceBranch || process.env.GITHUB_HEAD_REF || input.branch || process.env.CODEX_BRANCH || 'unknown',
+    checkoutRef: input.checkoutRef || process.env.GITHUB_REF || process.env.GITHUB_REF_NAME || 'unknown',
+    testedTreeKind: input.testedTreeKind || (String(process.env.GITHUB_REF || '').includes('/pull/') ? 'pull_request_merge_ref' : 'branch_head'),
     headSha: fieldValue(cacheKeyFields.headSha) || 'unknown',
     activeHarnessVersion: input.activeHarnessVersion || '1.2.7',
   };
+  const decisionInputManifestScanned = input.decisionInputManifest?.status === 'pass' || input.decisionInputManifestScanned === true;
   const status = observationState === 'not_exercised'
     ? 'partial_shadow_candidate'
     : (graph.status === 'pass'
@@ -299,6 +343,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       status: graph.status,
       reasonCodes: graph.reasonCodes,
     },
+    typedResults,
     sourceClosure,
     profileExecution: {
       profileId: planCore.profileId,
@@ -325,6 +370,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       cacheKeyDigest,
       cacheKeyFields,
       cacheKeyHasPlaceholder: cacheKeyInvalid,
+      cacheReuseEligible: reuseEligible,
       skippedNodeRefs: reuseDecision === 'hit' || reuseDecision === 'partial_hit' ? reusedNodeRefs : [],
     },
     stableDiagnosticTaxonomy: {
@@ -337,18 +383,21 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       rawLogForbidden: true,
       secretForbidden: true,
       localAbsolutePathForbidden: true,
-      decisionInputManifestScanned: input.decisionInputManifestScanned === true || observationState === 'observed',
+      decisionInputManifestScanned,
+      decisionInputManifestDigest: input.decisionInputManifest?.digest || null,
       fields: [
         { field: 'normalizedArtifactFingerprint', stabilityClass: 'decision_stable' },
         { field: 'validationCacheKeyDigest', stabilityClass: 'cache_stable' },
-        { field: 'runnerImageDigest', stabilityClass: 'environment_diagnostic' },
+      { field: 'runnerImageDigest', stabilityClass: 'environment_diagnostic' },
+        { field: 'runnerClassDigest', stabilityClass: 'environment_diagnostic' },
       ],
     },
     workspaceIdentity: {
       ...workspaceIdentityCore,
       worktreeIdentityDigest: input.worktreeIdentityDigest || digestValue(workspaceIdentityCore),
-      canonicalityState: input.canonicalityState || (workspaceObserved ? 'canonical' : 'unknown'),
+      canonicalityState: input.canonicalityState || input.workspaceObservation?.canonicalityState || (workspaceObserved ? 'canonical' : 'unknown'),
       observationState: workspaceObserved ? 'observed' : 'not_exercised',
+      observationDigest: input.workspaceObservation?.observationDigest || (workspaceObserved ? digestValue(workspaceIdentityCore) : null),
       rawWorkspacePathUploaded: input.rawWorkspacePathUploaded === true,
     },
     phaseProgress: {
@@ -374,6 +423,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const taxonomy = plan.stableDiagnosticTaxonomy || {};
   const workspace = plan.workspaceIdentity || {};
   const graph = plan.graph || {};
+  const typedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
   const nodeResults = Array.isArray(execution.nodeResults) ? execution.nodeResults : [];
   if (plan.schemaVersion !== '1.2.8') reasons.push('validation_execution_schema_invalid');
   if (plan.executionKind !== 'validation_execution_plan_shadow') reasons.push('validation_execution_kind_invalid');
@@ -403,7 +453,13 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (!EXECUTION_STATES.has(node.executionState)) reasons.push(`profile_execution_state_invalid_${node.executionState || 'missing'}`);
     if (!NODE_STATUSES.has(node.status)) reasons.push(`profile_execution_node_status_invalid_${node.status || 'missing'}`);
     if (!STABILITY_CLASSES.has(node.stabilityClass)) reasons.push(`stability_class_invalid_${node.stabilityClass || 'missing'}`);
+    if (node.typedResultRef !== typedResultRef(node.nodeRef)) reasons.push('typed_result_ref_invalid');
+    if (!typedResults[node.nodeRef]) reasons.push('typed_result_payload_missing');
+    else if (node.resultDigest !== digestValue(typedResults[node.nodeRef])) reasons.push('typed_result_payload_digest_mismatch');
+    if (plan.observationState === 'observed' && node.executionState === 'executed' && node.executionCountObserved !== true) reasons.push('execution_count_observation_required');
     if (Number(node.executionCount || 0) > 1) reasons.push('profile_execution_node_executed_more_than_once');
+    if (node.executionState === 'executed' && Number(node.executionCount) !== 1) reasons.push('executed_node_execution_count_must_be_one');
+    if (node.executionState === 'reused' && Number(node.executionCount) !== 0) reasons.push('reused_node_execution_count_must_be_zero');
     if (node.required === true && node.status === 'skipped') reasons.push('profile_execution_required_skipped_node_present');
     if (node.executionState === 'reused') {
       if (!node.sourceRunRef) reasons.push('reused_node_source_run_ref_required');
@@ -413,11 +469,18 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     }
   }
   if (!REUSE_DECISIONS.has(reuse.reuseDecision)) reasons.push('validation_reuse_decision_invalid');
+  const executedCount = nodeResults.filter((node) => node.executionState === 'executed').length;
+  const reusedCount = nodeResults.filter((node) => node.executionState === 'reused').length;
+  if (reuse.reuseDecision === 'hit' && (reusedCount === 0 || executedCount > 0)) reasons.push('validation_reuse_hit_execution_state_mismatch');
+  if (reuse.reuseDecision === 'partial_hit' && (reusedCount === 0 || executedCount === 0)) reasons.push('validation_reuse_partial_hit_state_mismatch');
+  if (reuse.reuseDecision === 'miss' && reusedCount > 0) reasons.push('validation_reuse_miss_cannot_include_reused_nodes');
   if (plan.observationState === 'observed' && reuse.cacheKeyHasPlaceholder === true) reasons.push('validation_reuse_cache_key_placeholder');
-  if (plan.observationState === 'observed' && !/^sha256:[a-f0-9]{64}$/.test(String(reuse.cacheKeyDigest || ''))) reasons.push('validation_reuse_cache_key_digest_invalid');
-  for (const field of Object.values(reuse.cacheKeyFields || {})) {
+  if (plan.observationState === 'observed' && reuse.reuseDecision !== 'miss' && !/^sha256:[a-f0-9]{64}$/.test(String(reuse.cacheKeyDigest || ''))) reasons.push('validation_reuse_cache_key_digest_invalid');
+  for (const [fieldName, field] of Object.entries(reuse.cacheKeyFields || {})) {
     if (!FIELD_STATES.has(field?.state)) reasons.push('validation_reuse_cache_key_field_state_invalid');
-    if (plan.observationState === 'observed' && ['missing', 'invalid'].includes(field?.state)) reasons.push('validation_reuse_cache_key_field_missing_or_invalid');
+    if (plan.observationState === 'observed' && field?.state === 'invalid') reasons.push('validation_reuse_cache_key_field_missing_or_invalid');
+    if (plan.observationState === 'observed' && field?.state === 'missing' && REQUIRED_CACHE_FIELDS.has(fieldName)) reasons.push('validation_reuse_cache_key_field_missing_or_invalid');
+    if (fieldName === 'runnerImageDigest' && field?.state === 'missing' && reuse.reuseDecision !== 'miss') reasons.push('runner_image_missing_prevents_reuse');
   }
   if (taxonomy.environmentDiagnosticExcludedFromDecisionDigest !== true) reasons.push('environment_diagnostic_must_be_excluded_from_decision_digest');
   if (taxonomy.rawLogForbidden !== true || taxonomy.secretForbidden !== true || taxonomy.localAbsolutePathForbidden !== true) reasons.push('stable_diagnostic_forbidden_boundary_missing');
@@ -455,4 +518,3 @@ function main() {
 if (process.argv[1] && process.argv[1].endsWith('codex-v128-validation-execution-plan.mjs')) {
   main();
 }
-
