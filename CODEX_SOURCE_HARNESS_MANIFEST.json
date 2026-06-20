@@ -103,7 +103,8 @@
     "docs/process/CODEX_V128_STATE_MATRIX.json",
     "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
     "docs/process/CODEX_V128_REPLAY_CORPUS.json",
-    "scripts/codex-v128-self-test.mjs"
+    "scripts/codex-v128-self-test.mjs",
+    "scripts/codex-v128-projection-reader.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -566,7 +567,8 @@
     "docs/process/CODEX_V128_STATE_MATRIX.json",
     "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
     "docs/process/CODEX_V128_REPLAY_CORPUS.json",
-    "scripts/codex-v128-self-test.mjs"
+    "scripts/codex-v128-self-test.mjs",
+    "scripts/codex-v128-projection-reader.mjs"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -1824,6 +1826,8 @@
       "diagnosticColdArtifactReadMax": 3,
       "routineProjectionBytesMax": 1600,
       "stressProjectionBytesMax": 2048,
+      "boundedProjectionReader": "scripts/codex-v128-projection-reader.mjs",
+      "boundedProjectionReaderSurfaceBytesMax": 1600,
       "perTransitionManagedContextBytesMax": 4096,
       "managedContextBytesObserved": false,
       "managedContextObservationRequiredForActivation": true,

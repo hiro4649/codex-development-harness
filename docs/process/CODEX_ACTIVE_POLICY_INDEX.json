@@ -186,6 +186,8 @@
       "authority": "non_authoritative",
       "routineBytesMax": 1600,
       "stressBytesMax": 2048,
+      "boundedReader": "scripts/codex-v128-projection-reader.mjs",
+      "boundedReaderSurfaceBytesMax": 1600,
       "managedContextBytesObserved": false,
       "managedContextObservationRequiredForActivation": true
     },

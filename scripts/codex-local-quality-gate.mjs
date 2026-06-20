@@ -63,6 +63,7 @@ import { LOAD_BEARING_ARTIFACTS, buildArtifactConsistencyReport } from './codex-
 import { V119_OPERATOR_STATUS_KEYS as V119_STATUS_KEYS, buildOrchestrationReport, validateOrchestrationCapsule } from './codex-orchestration-capsule.mjs';
 import { buildWorkerProofReport } from './codex-worker-proof-capsule.mjs';
 import { buildOwnerDecisionBriefReport } from './codex-owner-decision-brief.mjs';
+import { buildV128RoutineProjectionReadSurface } from './codex-v128-projection-reader.mjs';
 
 
 
@@ -306,6 +307,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
   };
   const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head);
   const stressDecisionProjection = buildV128StressDecisionProjection(report);
+  const routineProjectionReadSurface = buildV128RoutineProjectionReadSurface(routineDecisionProjection);
   if (report.orchestrationCapsule?.deterministicDecisionProjection) {
     report.orchestrationCapsule.deterministicDecisionProjection = {
       ...report.orchestrationCapsule.deterministicDecisionProjection,
@@ -361,13 +363,21 @@ function writeV117LoadBearingArtifacts(report = {}) {
     };
   }
   report.routineDecisionProjection = routineDecisionProjection;
+  report.routineProjectionReadSurface = routineProjectionReadSurface;
   report.routineDecisionProjectionStatus = {
     status: routineDecisionProjection.projectionCanonicalBytes <= 1600
       && stressDecisionProjection.projectionCanonicalBytes <= 2048
+      && routineProjectionReadSurface.status === 'pass'
       ? 'pass'
       : 'fail',
     projectionCanonicalBytes: routineDecisionProjection.projectionCanonicalBytes,
     stressProjectionCanonicalBytes: stressDecisionProjection.projectionCanonicalBytes,
+    boundedReaderStatus: routineProjectionReadSurface.status,
+    boundedReaderSurfaceBytes: routineProjectionReadSurface.surfaceCanonicalBytes,
+    boundedReaderBytesMax: routineProjectionReadSurface.routineReadSurfaceBytesMax,
+    boundedReaderColdArtifactRead: routineProjectionReadSurface.coldArtifactRead,
+    boundedReaderManagedSafeArtifactRead: routineProjectionReadSurface.managedSafeArtifactRead,
+    boundedReaderManagedContextBytesObserved: routineProjectionReadSurface.managedContextBytesObserved,
     projectionBytesMax: 1600,
     stressProjectionBytesMax: 2048,
     observed: true,
@@ -411,6 +421,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     ownerMergeAuthorized: report.ownerMergeAuthorized === true,
     routineDecisionProjection,
     stressDecisionProjection,
+    routineProjectionReadSurface,
     routineDecisionProjectionStatus: report.routineDecisionProjectionStatus,
     ...Object.fromEntries(V119_STATUS_KEYS.map((key) => [key, report[key]])),
     orchestrationCapsule: {
@@ -3948,7 +3959,7 @@ function runV119Gates(report, gateEnv) {
     worktreeCleanBefore: process.env.CODEX_WORKTREE_CLEAN_BEFORE === 'false' ? false : true,
     worktreeCleanAfter: process.env.CODEX_WORKTREE_CLEAN_AFTER === 'false' ? false : true,
     terminalAction: process.env.CODEX_TERMINAL_ACTION || 'create_pr_only',
-    allowedFiles: ['AGENTS.md', 'README.md', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V128_CONTRACT_SCHEMA.json', 'docs/process/CODEX_V128_REASON_REGISTRY.json', 'docs/process/CODEX_V128_STATE_MATRIX.json', 'docs/process/CODEX_V128_PRESERVATION_MATRIX.json', 'docs/process/CODEX_V128_REPLAY_CORPUS.json', 'scripts/codex-v128-self-test.mjs', 'docs/process/CODEX_V127_SPEC.md', 'scripts/codex-v127-self-test.mjs', 'docs/process/CODEX_V126_SPEC.md', 'scripts/codex-v126-self-test.mjs', 'docs/process/CODEX_V125_SPEC.md', 'scripts/codex-v125-self-test.mjs', 'docs/process/CODEX_V124_SPEC.md', 'scripts/codex-v124-self-test.mjs', 'docs/process/CODEX_V123_SPEC.md', 'scripts/codex-v123-self-test.mjs', 'docs/process/CODEX_V122_SPEC.md', 'scripts/codex-v122-self-test.mjs', 'docs/process/CODEX_V121_SPEC.md', 'scripts/codex-v121-self-test.mjs', 'scripts/codex-v107-gate-lib.mjs', 'scripts/codex-orchestration-capsule.mjs', 'scripts/codex-worker-proof-capsule.mjs', 'scripts/codex-owner-decision-brief.mjs', 'scripts/codex-local-quality-gate.mjs', 'scripts/codex-workflow-quality-runner.mjs', 'scripts/codex-harness-version.mjs'],
+    allowedFiles: ['AGENTS.md', 'README.md', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V128_CONTRACT_SCHEMA.json', 'docs/process/CODEX_V128_REASON_REGISTRY.json', 'docs/process/CODEX_V128_STATE_MATRIX.json', 'docs/process/CODEX_V128_PRESERVATION_MATRIX.json', 'docs/process/CODEX_V128_REPLAY_CORPUS.json', 'scripts/codex-v128-self-test.mjs', 'scripts/codex-v128-projection-reader.mjs', 'docs/process/CODEX_V127_SPEC.md', 'scripts/codex-v127-self-test.mjs', 'docs/process/CODEX_V126_SPEC.md', 'scripts/codex-v126-self-test.mjs', 'docs/process/CODEX_V125_SPEC.md', 'scripts/codex-v125-self-test.mjs', 'docs/process/CODEX_V124_SPEC.md', 'scripts/codex-v124-self-test.mjs', 'docs/process/CODEX_V123_SPEC.md', 'scripts/codex-v123-self-test.mjs', 'docs/process/CODEX_V122_SPEC.md', 'scripts/codex-v122-self-test.mjs', 'docs/process/CODEX_V121_SPEC.md', 'scripts/codex-v121-self-test.mjs', 'scripts/codex-v107-gate-lib.mjs', 'scripts/codex-orchestration-capsule.mjs', 'scripts/codex-worker-proof-capsule.mjs', 'scripts/codex-owner-decision-brief.mjs', 'scripts/codex-local-quality-gate.mjs', 'scripts/codex-workflow-quality-runner.mjs', 'scripts/codex-harness-version.mjs'],
     forbiddenFiles: ['package.json', 'package-lock.json', 'pnpm-lock.yaml', '.github/workflows/quality-gate.yml'],
     acceptanceCriteria: ['three_p0_artifacts_only', 'v118_final_decision_pointer', 'v119_compatibility_preserved', 'v120_compatibility_preserved', 'v121_compatibility_preserved', 'v122_compatibility_preserved', 'v123_compatibility_preserved', 'v124_compatibility_preserved', 'v125_compatibility_preserved', 'v126_compatibility_preserved', 'v127_compatibility_preserved', 'v128_self_test'],
     nonGoals: ['target_rollout', 'product_code', 'workflow_engine'],

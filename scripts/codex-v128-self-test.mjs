@@ -15,6 +15,7 @@ import {
   validateV128TokenMinimalReadCompatibilityRouter,
 } from './codex-orchestration-capsule.mjs';
 import { classifyV128ShadowCandidateForActiveGate } from './codex-local-quality-gate.mjs';
+import { readV128RoutineProjectionSurfaceFromSafeSummaryText } from './codex-v128-projection-reader.mjs';
 
 function test(name, fn) {
   try {
@@ -223,6 +224,47 @@ function stateMatrixIsFiniteUniqueOrPartialDeclared() {
     && matrix.activationBlockingUntilFullReplay === true;
 }
 
+function boundedProjectionReaderExecutes() {
+  const projection = {
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection',
+    authority: 'non_authoritative_projection',
+    finalAuthority: 'v1.1.8_final_decision_kernel',
+    activeHarnessVersion: '1.2.7',
+    candidateHarnessVersion: '1.2.8',
+    candidateActivationState: 'source_shadow_candidate',
+    headSha: 'f'.repeat(40),
+    status: 'pass',
+    qualityScore: 100,
+    technicalChecksReady: true,
+    ownerMergeAuthorized: false,
+    blockingCount: 0,
+    v127: 'pass',
+    v128: 'pass',
+    runtimeReadinessClaimed: false,
+    productionReadinessClaimed: false,
+    productFilesChanged: false,
+    packageFilesChanged: false,
+    safeNextAction: 'owner_merge_decision_only',
+    observed: true,
+    metricsSource: 'runtime_safe_summary_projection',
+    projectionCanonicalBytes: 0,
+    withinRoutineBudget: true,
+  };
+  const safeSummary = JSON.stringify({
+    status: 'pass',
+    routineDecisionProjection: projection,
+    largeDiagnosticSurface: 'x'.repeat(25000),
+  });
+  const surface = readV128RoutineProjectionSurfaceFromSafeSummaryText(safeSummary);
+  return surface.status === 'pass'
+    && surface.sourceArtifactBytes > 25000
+    && surface.surfaceCanonicalBytes <= 1600
+    && surface.managedSafeArtifactRead === 1
+    && surface.coldArtifactRead === 0
+    && surface.managedContextBytesObserved === false;
+}
+
 const cases = [
   ['v128_self_test_must_pass', () => true],
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -257,6 +299,7 @@ const cases = [
     orthogonalReasonModel: { reasons: [{ reasonCode: 'required_check_pending', state: 'awaiting', evidenceRef: 'provider.requiredChecks' }] },
   }).orthogonalReasonModel))],
   ['routine_cold_artifact_read_is_zero', () => passed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule().tokenMinimalReadCompatibilityRouter))],
+  ['bounded_projection_reader_extracts_projection_only', () => boundedProjectionReaderExecutes()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
   }).tokenMinimalReadCompatibilityRouter))],
@@ -344,6 +387,7 @@ const fixtureGroups = [
   'deterministic_decision_projection_matrix',
   'orthogonal_reason_model_matrix',
   'token_minimal_read_router_matrix',
+  'bounded_projection_reader_execution',
   'resumable_loop_permission_projection_matrix',
   'reader_before_writer_migration_matrix',
   'replay_corpus_execution',

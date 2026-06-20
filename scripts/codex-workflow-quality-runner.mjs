@@ -4173,6 +4173,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   const preRunnerSafeSummary = readSafeJsonArtifact('codex-quality-gate-safe-summary.json') || {};
   const routineDecisionProjection = report.routineDecisionProjection || preRunnerSafeSummary.routineDecisionProjection || null;
   const stressDecisionProjection = report.stressDecisionProjection || preRunnerSafeSummary.stressDecisionProjection || null;
+  const routineProjectionReadSurface = report.routineProjectionReadSurface || preRunnerSafeSummary.routineProjectionReadSurface || null;
   const routineDecisionProjectionStatus = report.routineDecisionProjectionStatus
     || preRunnerSafeSummary.routineDecisionProjectionStatus
     || { status: routineDecisionProjection ? 'present' : 'missing', safeSummaryOnly: true };
@@ -4233,6 +4234,8 @@ export function evaluateWorkflowReport(report, options = {}) {
     routineDecisionProjection,
 
     stressDecisionProjection,
+
+    routineProjectionReadSurface,
 
     routineDecisionProjectionStatus,
 

@@ -634,6 +634,8 @@
       "diagnosticColdArtifactReadMax": 3,
       "routineProjectionBytesMax": 1600,
       "stressProjectionBytesMax": 2048,
+      "boundedProjectionReader": "scripts/codex-v128-projection-reader.mjs",
+      "boundedProjectionReaderSurfaceBytesMax": 1600,
       "perTransitionManagedContextBytesMax": 4096,
       "managedContextBytesObserved": false,
       "managedContextObservationRequiredForActivation": true,

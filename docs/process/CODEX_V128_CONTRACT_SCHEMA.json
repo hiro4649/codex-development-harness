@@ -42,6 +42,8 @@
     "routineColdArtifactRead": 0,
     "diagnosticColdArtifactReadMax": 3,
     "compiledEffectiveInstructionCapsuleCount": 1,
+    "boundedProjectionReader": "scripts/codex-v128-projection-reader.mjs",
+    "boundedProjectionReaderSurfaceBytesMax": 1600,
     "perTransitionManagedContextBytesMax": 4096,
     "managedContextBytesObserved": false,
     "managedContextObservationRequiredForActivation": true,
