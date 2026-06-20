@@ -15,7 +15,11 @@ import {
   validateV128TokenMinimalReadCompatibilityRouter,
 } from './codex-orchestration-capsule.mjs';
 import { classifyV128ShadowCandidateForActiveGate } from './codex-local-quality-gate.mjs';
-import { readV128RoutineProjectionSurfaceFromSafeSummaryText } from './codex-v128-projection-reader.mjs';
+import {
+  buildV128RoutineProjectionReadSurface,
+  formatV128ProjectionReaderOutput,
+  readV128RoutineProjectionSurfaceFromSafeSummaryText,
+} from './codex-v128-projection-reader.mjs';
 
 function test(name, fn) {
   try {
@@ -257,12 +261,39 @@ function boundedProjectionReaderExecutes() {
     largeDiagnosticSurface: 'x'.repeat(25000),
   });
   const surface = readV128RoutineProjectionSurfaceFromSafeSummaryText(safeSummary);
+  const formatted = formatV128ProjectionReaderOutput(surface);
   return surface.status === 'pass'
     && surface.sourceArtifactBytes > 25000
     && surface.surfaceCanonicalBytes <= 1600
+    && formatted.exitCode === 0
+    && formatted.outputBytes <= 1600
     && surface.managedSafeArtifactRead === 1
     && surface.coldArtifactRead === 0
     && surface.managedContextBytesObserved === false;
+}
+
+function boundedProjectionReaderRejectsDuplicateKeys() {
+  try {
+    readV128RoutineProjectionSurfaceFromSafeSummaryText('{"routineDecisionProjection":{},"routineDecisionProjection":{}}');
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+function boundedProjectionReaderCompactsOverBudgetFailure() {
+  const surface = buildV128RoutineProjectionReadSurface({
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection',
+    authority: 'non_authoritative_projection',
+    headSha: 'f'.repeat(40),
+    oversizedField: 'x'.repeat(3000),
+  });
+  const formatted = formatV128ProjectionReaderOutput(surface);
+  return surface.status === 'fail'
+    && formatted.exitCode === 1
+    && formatted.outputBytes <= 1600
+    && formatted.output.includes('routine_projection_reader_stdout_over_budget');
 }
 
 const cases = [
@@ -300,6 +331,8 @@ const cases = [
   }).orthogonalReasonModel))],
   ['routine_cold_artifact_read_is_zero', () => passed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule().tokenMinimalReadCompatibilityRouter))],
   ['bounded_projection_reader_extracts_projection_only', () => boundedProjectionReaderExecutes()],
+  ['bounded_projection_reader_rejects_duplicate_keys', () => boundedProjectionReaderRejectsDuplicateKeys()],
+  ['bounded_projection_reader_compacts_over_budget_failure', () => boundedProjectionReaderCompactsOverBudgetFailure()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
   }).tokenMinimalReadCompatibilityRouter))],

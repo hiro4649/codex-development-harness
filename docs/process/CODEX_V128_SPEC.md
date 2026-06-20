@@ -121,6 +121,8 @@ diagnostic cold artifact read <= 3
 routine Projection <= 1600 bytes
 stress Projection <= 2048 bytes
 routine bounded Projection reader surface <= 1600 bytes
+routine bounded Projection reader stdout <= 1600 bytes
+routine bounded Projection reader rejects duplicate JSON keys
 per-transition managed context <= 4096 bytes
 routine final report <= 8 lines
 routine owner interrupt = 0
@@ -139,7 +141,10 @@ bounded reader for the stored Projection. It may parse the Safe Summary artifact
 as machine input, but its model-facing output is limited to the
 `routineDecisionProjection` surface and must stay within the routine Projection
 reader budget. This proves the small routine read surface without claiming that
-the full managed context emitter is implemented.
+the full managed context emitter is implemented. The reader CLI emits compact
+canonical JSON, not pretty JSON, and fails closed if the actual emitted UTF-8
+stdout would exceed the same routine reader budget. The reader uses strict JSON
+parsing with duplicate-key rejection.
 
 Root AGENTS, applicable nested AGENTS, and the active profile are compiled into
 one deterministic model-facing instruction capsule. The compilation must not
@@ -248,6 +253,8 @@ Projection <= 1600 measured canonical UTF-8 bytes
 stress Projection <= 2048 measured canonical UTF-8 bytes
 bounded Projection reader extracts only routineDecisionProjection
 bounded Projection reader model-facing surface <= 1600 measured canonical UTF-8 bytes
+bounded Projection reader actual stdout <= 1600 measured UTF-8 bytes
+bounded Projection reader duplicate-key rejection pass
 harnessManagedContextBytesEmitted <= 4096
 source and target deterministic replay pass
 PR body display-only replay pass

@@ -188,6 +188,8 @@
       "stressBytesMax": 2048,
       "boundedReader": "scripts/codex-v128-projection-reader.mjs",
       "boundedReaderSurfaceBytesMax": 1600,
+      "boundedReaderStdoutBytesMax": 1600,
+      "boundedReaderStrictJson": true,
       "managedContextBytesObserved": false,
       "managedContextObservationRequiredForActivation": true
     },
