@@ -408,6 +408,13 @@ function executedNode(nodeRef, status = 'pass', stabilityClass = 'decision_stabl
 }
 
 function reusedNode(nodeRef, payload = {}) {
+  const typedResultPayload = {
+    schemaVersion: '1.0.0',
+    nodeRef,
+    status: 'pass',
+    reused: true,
+    ...payload,
+  };
   return {
     nodeRef,
     executionState: 'reused',
@@ -417,16 +424,10 @@ function reusedNode(nodeRef, payload = {}) {
     status: 'pass',
     stabilityClass: 'decision_stable',
     sourceRunRef: 'github:run:27881777742:attempt:1',
-    sourceResultDigest: `sha256:${'a'.repeat(64)}`,
+    sourceResultDigest: sha256Canonical(typedResultPayload),
     sourceHeadSha: 'f'.repeat(40),
     resultSchemaVersion: '1.0.0',
-    typedResultPayload: {
-      schemaVersion: '1.0.0',
-      nodeRef,
-      status: 'pass',
-      reused: true,
-      ...payload,
-    },
+    typedResultPayload,
   };
 }
 
@@ -616,6 +617,42 @@ function validationCacheMissWithReusedNodeFails() {
   })));
 }
 
+function validationReusedNodeSourceDigestMismatchFails() {
+  const reused = reusedNode('state_matrix_executor');
+  reused.sourceResultDigest = `sha256:${'c'.repeat(64)}`;
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reused,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  })).reasonCodes.includes('reused_node_source_result_digest_mismatch');
+}
+
+function validationReusedNodeCacheKeyDigestMismatchFails() {
+  const reused = reusedNode('state_matrix_executor');
+  reused.cacheKeyDigest = `sha256:${'c'.repeat(64)}`;
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reused,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  })).reasonCodes.includes('reused_node_cache_key_digest_mismatch');
+}
+
 function validationWorkspaceUnobservedCannotBeCanonical() {
   return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
@@ -655,6 +692,33 @@ function validationSourceClosureIncludesConsumers() {
     && paths.has('scripts/codex-v128-managed-context-emitter.mjs')
     && paths.has('scripts/codex-v128-state-matrix.mjs')
     && paths.has('scripts/codex-v128-integrity-lib.mjs');
+}
+
+function validationSourceClosureDetectsUndeclaredImports() {
+  const plan = buildV128ValidationExecutionPlan();
+  return plan.sourceClosure.declaredImportScanStatus === 'activation_blocker'
+    && plan.sourceClosure.undeclaredRelativeImportCount > 0
+    && Array.isArray(plan.sourceClosure.undeclaredRelativeImportSamples);
+}
+
+function validationDiagnosticManifestNeedsSanitizedDigest() {
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifest: {
+      status: 'pass',
+      taxonomyScanStatus: 'pass',
+      taxonomyScan: {
+        scannedPathCount: 1,
+        environmentDiagnosticPathCount: 1,
+        forbiddenPathCount: 0,
+        environmentDiagnosticExcludedFromDecisionDigest: true,
+      },
+    },
+    nodeResults: validValidationNodeResults(),
+  })).reasonCodes.includes('decision_input_manifest_sanitized_digest_required');
 }
 
 function validationFinalizerMissingUpstreamNodeFails() {
@@ -826,9 +890,13 @@ const cases = [
   ['validation_execution_count_two_fails', () => validationExecutionCountTwoFails()],
   ['validation_cache_hit_with_executed_node_fails', () => validationCacheHitWithExecutedNodeFails()],
   ['validation_cache_miss_with_reused_node_fails', () => validationCacheMissWithReusedNodeFails()],
+  ['validation_reused_node_source_digest_mismatch_fails', () => validationReusedNodeSourceDigestMismatchFails()],
+  ['validation_reused_node_cache_key_digest_mismatch_fails', () => validationReusedNodeCacheKeyDigestMismatchFails()],
   ['validation_workspace_unobserved_cannot_be_canonical', () => validationWorkspaceUnobservedCannotBeCanonical()],
   ['validation_runner_image_missing_prevents_reuse', () => validationRunnerImageMissingPreventsReuse()],
   ['validation_source_closure_includes_consumers', () => validationSourceClosureIncludesConsumers()],
+  ['validation_source_closure_detects_undeclared_imports', () => validationSourceClosureDetectsUndeclaredImports()],
+  ['validation_diagnostic_manifest_needs_sanitized_digest', () => validationDiagnosticManifestNeedsSanitizedDigest()],
   ['validation_finalizer_missing_upstream_node_fails', () => validationFinalizerMissingUpstreamNodeFails()],
   ['validation_finalizer_wrong_upstream_digest_fails', () => validationFinalizerWrongUpstreamDigestFails()],
   ['validation_finalizer_pass_with_failed_upstream_fails', () => validationFinalizerPassWithFailedUpstreamFails()],

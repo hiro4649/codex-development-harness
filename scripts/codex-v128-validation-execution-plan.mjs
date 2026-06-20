@@ -4,6 +4,7 @@
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 import process from 'node:process';
 
 const VALIDATION_NODES_MAX = 12;
@@ -59,6 +60,7 @@ function readFileDigest(filePath) {
     path: filePath,
     digest: sha256Text(text),
     bytes: Buffer.byteLength(text, 'utf8'),
+    text,
   };
 }
 
@@ -66,9 +68,33 @@ function sourceClosureManifest(input = {}) {
   const files = Array.isArray(input.sourceClosureFiles) && input.sourceClosureFiles.length
     ? input.sourceClosureFiles
     : SOURCE_CLOSURE_FILES;
-  const sourceFiles = files.map(readFileDigest);
+  const declared = new Set(files.map((file) => file.replace(/\\/g, '/')));
+  const sourceFileReads = files.map(readFileDigest);
+  const importPattern = /(?:import\s+(?:[^'"]*?\s+from\s*)?|export\s+[^'"]*?\s+from\s*|import\s*\(\s*|require\(\s*)['"]([^'"]+)['"]/g;
+  const undeclared = [];
+  const resolveDeclaredPath = (fromPath, specifier) => {
+    if (!specifier.startsWith('.')) return null;
+    const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromPath.replace(/\\/g, '/')), specifier));
+    const candidates = [base, `${base}.mjs`, `${base}.js`, `${base}.json`, path.posix.join(base, 'index.mjs'), path.posix.join(base, 'index.js')];
+    return candidates.find((candidate) => declared.has(candidate)) || base;
+  };
+  for (const file of sourceFileReads) {
+    importPattern.lastIndex = 0;
+    let match;
+    while ((match = importPattern.exec(file.text)) !== null) {
+      const specifier = match[1];
+      const resolved = resolveDeclaredPath(file.path, specifier);
+      if (resolved && !declared.has(resolved)) {
+        undeclared.push({ from: file.path, specifier, resolved });
+      }
+    }
+  }
+  const sourceFiles = sourceFileReads.map(({ text, ...entry }) => entry);
   return {
     sourceFiles,
+    declaredImportScanStatus: undeclared.length ? 'activation_blocker' : 'pass',
+    undeclaredRelativeImportCount: undeclared.length,
+    undeclaredRelativeImportSamples: undeclared.slice(0, 12),
     sourceClosureDigest: digestValue(sourceFiles),
   };
 }
@@ -123,6 +149,7 @@ function normalizeNodeResult(node = {}, graphNode = {}, typedPayload = null) {
     sourceRunRef: node.sourceRunRef || null,
     sourceResultDigest: node.sourceResultDigest || null,
     sourceHeadSha: node.sourceHeadSha || null,
+    cacheKeyDigest: node.cacheKeyDigest || null,
     resultSchemaVersion: node.resultSchemaVersion || '1.0.0',
   };
 }
@@ -305,6 +332,11 @@ export function buildV128ValidationExecutionPlan(input = {}) {
   const reuseEligible = cacheReuseEligible(cacheKeyFields);
   const reuseDecision = classifyReuseDecision(nodeResults, input, cacheKeyInvalid);
   const cacheKeyDigest = reuseEligible ? digestValue(cacheKeyFields) : null;
+  const boundNodeResults = nodeResults.map((node) => (
+    node.executionState === 'reused' && !node.cacheKeyDigest
+      ? { ...node, cacheKeyDigest }
+      : node
+  ));
   const staticScan = finalizerStaticScan();
   const workspaceObserved = input.workspaceObserved === true || input.workspaceObservation?.observationState === 'observed';
   const workspaceIdentityCore = {
@@ -355,7 +387,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       planDigest,
       headSha: fieldValue(cacheKeyFields.headSha) || 'unknown',
       nodeCount: graphNodes.length,
-      nodeResults,
+      nodeResults: boundNodeResults,
       executedNodeRefs,
       reusedNodeRefs,
       rerunNodeRefs,
@@ -391,6 +423,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       decisionInputManifestScanned,
       decisionInputManifestDigest: input.decisionInputManifest?.digest || null,
       decisionInputManifestScan: input.decisionInputManifest?.taxonomyScan || null,
+      decisionInputManifestSanitizedDigest: input.decisionInputManifest?.sanitizedDecisionInputDigest || input.decisionInputManifest?.taxonomyScan?.sanitizedDecisionInputDigest || null,
       decisionInputManifestTaxonomyStatus: input.decisionInputManifest?.taxonomyScanStatus || (decisionInputManifestScanned ? 'pass' : 'not_scanned'),
       fields: [
         { field: 'normalizedArtifactFingerprint', stabilityClass: 'decision_stable' },
@@ -410,7 +443,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     phaseProgress: {
       phase: input.phase || 'validation',
       currentNodeRef: input.currentNodeRef || graph.topologicalOrder[graph.topologicalOrder.length - 1] || null,
-      completedNodeCount: nodeResults.filter((node) => node.status === 'pass').length,
+      completedNodeCount: boundNodeResults.filter((node) => node.status === 'pass').length,
       totalNodeCount: graphNodes.length,
       progressSequence: Number(input.progressSequence || (observationState === 'observed' ? 1 : 0)),
       lastProgressDigest: digestValue({ graphDigest: graph.graphDigest, status, completed: nodeResults.map((node) => [node.nodeRef, node.status]) }),
@@ -445,6 +478,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (!/^sha256:[a-f0-9]{64}$/.test(String(graph.graphDigest || ''))) reasons.push('validation_graph_digest_invalid');
   if (!/^sha256:[a-f0-9]{64}$/.test(String(graph.topologicalOrderDigest || ''))) reasons.push('validation_graph_topological_digest_invalid');
   if (graph.status !== 'pass') reasons.push('validation_graph_invalid');
+  if (plan.candidateActivationState === 'source_activation' && plan.sourceClosure?.undeclaredRelativeImportCount > 0) reasons.push('source_closure_undeclared_import_activation_blocker');
   if ((graph.duplicateNodeRefs || []).length > 0) reasons.push('graph_duplicate_node_ref');
   if ((graph.duplicateEdges || []).length > 0) reasons.push('graph_duplicate_edge');
   if (!Array.isArray(graph.nodes) || graph.nodes.length < 1 || graph.nodes.length > VALIDATION_NODES_MAX) reasons.push('validation_graph_node_count_invalid');
@@ -474,7 +508,10 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (node.executionState === 'reused') {
       if (!node.sourceRunRef) reasons.push('reused_node_source_run_ref_required');
       if (!/^sha256:[a-f0-9]{64}$/.test(String(node.sourceResultDigest || ''))) reasons.push('reused_node_source_result_digest_required');
+      else if (node.sourceResultDigest !== node.resultDigest) reasons.push('reused_node_source_result_digest_mismatch');
       if (!/^[a-f0-9]{40}$/.test(String(node.sourceHeadSha || ''))) reasons.push('reused_node_source_head_sha_required');
+      if (!/^sha256:[a-f0-9]{64}$/.test(String(node.cacheKeyDigest || ''))) reasons.push('reused_node_cache_key_digest_required');
+      else if (reuse.cacheKeyDigest && node.cacheKeyDigest !== reuse.cacheKeyDigest) reasons.push('reused_node_cache_key_digest_mismatch');
       if (!node.resultSchemaVersion) reasons.push('reused_node_result_schema_required');
     }
   }
@@ -524,6 +561,8 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (plan.observationState === 'observed' && taxonomy.decisionInputManifestScanned !== true) reasons.push('decision_input_manifest_scan_required');
   if (plan.observationState === 'observed' && taxonomy.decisionInputManifestTaxonomyStatus !== 'pass') reasons.push('decision_input_manifest_taxonomy_scan_required');
   if (taxonomy.decisionInputManifestScan?.forbiddenPathCount > 0) reasons.push('decision_input_manifest_forbidden_path_detected');
+  if (taxonomy.decisionInputManifestScan?.environmentDiagnosticPathCount > 0
+    && !/^sha256:[a-f0-9]{64}$/.test(String(taxonomy.decisionInputManifestSanitizedDigest || ''))) reasons.push('decision_input_manifest_sanitized_digest_required');
   for (const field of taxonomy.fields || []) {
     if (!STABILITY_CLASSES.has(field.stabilityClass)) reasons.push(`taxonomy_field_stability_invalid_${field.stabilityClass || 'missing'}`);
     if (field.stabilityClass === 'forbidden') reasons.push('forbidden_field_cannot_enter_execution_surface');

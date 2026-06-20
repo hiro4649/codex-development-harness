@@ -122,6 +122,10 @@
     },
     "reuseReportMustListSkippedNodes": true,
     "reusedNodeRequires": ["sourceRunRef", "sourceResultDigest", "sourceHeadSha", "cacheKeyDigest", "resultSchemaVersion"],
+    "reusedNodeDigestChecks": [
+      "node.cacheKeyDigest == validationReuseDecision.cacheKeyDigest",
+      "node.sourceResultDigest == node.resultDigest"
+    ],
     "scriptDigestSource": "source_closure_manifest",
     "scriptDigestSourceClosureFiles": [
       "scripts/codex-v128-validation-execution-plan.mjs",
@@ -136,11 +140,13 @@
       "docs/process/CODEX_V128_SPEC.md"
     ],
     "decisionInputManifestTaxonomyScanRequired": true,
+    "decisionInputManifestSanitizedDigestRequiredWhenDiagnosticPresent": true,
     "undeclaredImportActivationBlocker": true
   },
   "stableDiagnosticTaxonomy": {
     "classes": ["decision_stable", "cache_stable", "environment_diagnostic", "owner_input", "forbidden"],
     "environmentDiagnosticInDecisionDigestAllowed": false,
+    "diagnosticExclusionMode": "sanitize_before_digest",
     "rawLogAllowed": false,
     "secretAllowed": false,
     "localAbsolutePathRemoteArtifactAllowed": false

@@ -229,19 +229,37 @@ miss:
   no reused nodes
 ```
 
+For any reused node, provenance is load-bearing before cache hit or partial hit
+can become an active performance feature:
+
+```text
+node.cacheKeyDigest:
+  must match validationReuseDecision.cacheKeyDigest
+
+node.sourceResultDigest:
+  must match the node result digest currently bound under #/typedResults/{nodeRef}
+
+sourceRunRef / sourceHeadSha / resultSchemaVersion:
+  required for every reused node
+```
+
 The `scriptDigest` is not a label hash. It is a source-closure digest over the
 declared validation entrypoint, aggregate finalizer, local quality-gate adapter,
 orchestration consumer, node implementations, schema, profile/spec, and
 canonicalizer surface. At minimum this includes the projection reader, managed
 context emitter, state matrix executor, and projection integrity library.
-Undeclared imports are activation blockers. A consumer or node implementation
-change that can alter node result construction invalidates the reuse key.
+Undeclared relative imports must be scanned and reported by the source closure.
+They are activation blockers, not shadow-candidate merge authority. A consumer
+or node implementation change that can alter node result construction invalidates
+the reuse key.
 
 Decision-stable fields, cache-stable fields, environment diagnostics, owner
 inputs, and forbidden values are separate classes. Environment diagnostics such
 as runner/build metadata may be displayed or used for troubleshooting, but they
-must not enter the merge decision digest. Raw logs, secrets, and local absolute
-paths are forbidden in remote safe artifacts.
+must not enter the merge decision digest. The decision input manifest must
+sanitize diagnostic paths before digest generation, and must emit a sanitized
+decision input digest when any diagnostic path is present. Raw logs, secrets,
+and local absolute paths are forbidden in remote safe artifacts.
 
 The aggregate finalizer is a typed-result reader only. Its source surface must
 not import child_process, execute shell commands, or open network clients. A
@@ -265,7 +283,9 @@ The decision input manifest must be actually scanned before
 `decisionInputManifestScanned=true` is emitted. A builder cannot set this field
 only because an observed plan exists. The manifest separates decision-stable
 payload digests from environment diagnostics, recursively scans input paths, and
-fails if a forbidden path enters the decision input manifest.
+fails if a forbidden path enters the decision input manifest. Diagnostic paths
+must be detected, excluded from decision digests, and represented only by safe
+counts/digests.
 
 ### 4. Resumable Loop and Permission Projection
 

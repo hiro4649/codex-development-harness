@@ -330,39 +330,57 @@ function buildV128DecisionInputManifest(input = {}) {
   const scannedPaths = [];
   const environmentDiagnosticPaths = [];
   const forbiddenPaths = [];
-  const walk = (value, pathParts = []) => {
+  const sanitize = (value, pathParts = []) => {
     const pathText = pathParts.join('.');
+    const keyText = pathParts[pathParts.length - 1] || '';
+    const forbidden = pathText && forbiddenKeyPattern.test(keyText) && value !== false && value !== null && value !== undefined && value !== '';
+    const diagnostic = pathText && !forbidden && diagnosticKeyPattern.test(keyText);
     if (pathText) {
       scannedPaths.push(pathText);
-      const keyText = pathParts[pathParts.length - 1] || '';
-      if (forbiddenKeyPattern.test(keyText) && value !== false && value !== null && value !== undefined && value !== '') forbiddenPaths.push(pathText);
-      else if (diagnosticKeyPattern.test(keyText)) environmentDiagnosticPaths.push(pathText);
+      if (forbidden) forbiddenPaths.push(pathText);
+      else if (diagnostic) environmentDiagnosticPaths.push(pathText);
     }
-    if (!value || typeof value !== 'object') return;
+    if (forbidden || diagnostic) return { include: false, value: null };
+    if (!value || typeof value !== 'object') return { include: true, value };
     if (Array.isArray(value)) {
-      value.forEach((item, index) => walk(item, [...pathParts, String(index)]));
-      return;
+      const items = [];
+      value.forEach((item, index) => {
+        const child = sanitize(item, [...pathParts, String(index)]);
+        if (child.include) items.push(child.value);
+      });
+      return { include: true, value: items };
     }
-    for (const key of Object.keys(value)) walk(value[key], [...pathParts, key]);
+    const object = {};
+    for (const key of Object.keys(value)) {
+      const child = sanitize(value[key], [...pathParts, key]);
+      if (child.include) object[key] = child.value;
+    }
+    return { include: true, value: object };
   };
-  for (const [root, value] of Object.entries(input)) walk(value, [root]);
+  const sanitizedInput = {};
+  for (const [root, value] of Object.entries(input)) {
+    const sanitized = sanitize(value, [root]);
+    if (sanitized.include) sanitizedInput[root] = sanitized.value;
+  }
   const taxonomyScan = {
     scannedPathCount: scannedPaths.length,
     environmentDiagnosticPathCount: environmentDiagnosticPaths.length,
     forbiddenPathCount: forbiddenPaths.length,
+    sanitizedDecisionInputDigest: sha256Canonical(sanitizedInput),
     environmentDiagnosticExcludedFromDecisionDigest: true,
     safeSummaryOnly: true,
   };
   const fields = [
-    { field: 'finalDecision', stabilityClass: 'decision_stable', digest: sha256Canonical(input.finalDecision || null) },
-    { field: 'evidenceCapsule', stabilityClass: 'decision_stable', digest: sha256Canonical(input.evidenceCapsule || null) },
-    { field: 'decisionCapsule', stabilityClass: 'decision_stable', digest: sha256Canonical(input.decisionCapsule || null) },
+    { field: 'finalDecision', stabilityClass: 'decision_stable', digest: sha256Canonical(sanitizedInput.finalDecision || null) },
+    { field: 'evidenceCapsule', stabilityClass: 'decision_stable', digest: sha256Canonical(sanitizedInput.evidenceCapsule || null) },
+    { field: 'decisionCapsule', stabilityClass: 'decision_stable', digest: sha256Canonical(sanitizedInput.decisionCapsule || null) },
   ];
   return {
     status: 'pass',
     fields,
     taxonomyScanStatus: forbiddenPaths.length ? 'fail' : 'pass',
     taxonomyScan,
+    sanitizedDecisionInputDigest: sha256Canonical(sanitizedInput),
     environmentDiagnosticExcludedFromDecisionDigest: true,
     digest: sha256Canonical(fields),
     safeSummaryOnly: true,
