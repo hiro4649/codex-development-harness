@@ -131,17 +131,18 @@ repeated safety text = 0
 
 The 4096 byte budget is per decision transition, not the cumulative task total.
 The cumulative task bytes, repeated context bytes, and transitions-per-task are
-telemetry. In Source Shadow Candidate mode, `perTransitionManagedBytes` remains
-unobserved until an actual managed context emitter measures AGENTS/profile/
-provider/attested-view bytes. Projection bytes must not be reused as managed
-context bytes.
+telemetry. In Source Shadow Candidate mode, `scripts/codex-v128-managed-context-emitter.mjs`
+measures a deterministic source managed-context capsule containing AGENTS,
+profile, provider summary, attested view, and source digests. Projection bytes
+must not be reused as managed context bytes. Source Activation remains blocked
+until the remaining activation replay and target canary requirements are proven.
 
 `scripts/codex-v128-projection-reader.mjs` is the Source Shadow Candidate
 bounded reader for the stored Projection. It may parse the Safe Summary artifact
 as machine input, but its model-facing output is limited to the
 `routineDecisionProjection` surface and must stay within the routine Projection
-reader budget. This proves the small routine read surface without claiming that
-the full managed context emitter is implemented. The reader CLI emits compact
+reader budget. This proves the small routine read surface without using the
+managed context bytes as a substitute. The reader CLI emits compact
 canonical JSON, not pretty JSON, and fails closed if the actual emitted UTF-8
 stdout would exceed the same routine reader budget. The reader uses strict JSON
 parsing with duplicate-key rejection.

@@ -104,7 +104,8 @@
     "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
     "docs/process/CODEX_V128_REPLAY_CORPUS.json",
     "scripts/codex-v128-self-test.mjs",
-    "scripts/codex-v128-projection-reader.mjs"
+    "scripts/codex-v128-projection-reader.mjs",
+    "scripts/codex-v128-managed-context-emitter.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -568,7 +569,8 @@
     "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
     "docs/process/CODEX_V128_REPLAY_CORPUS.json",
     "scripts/codex-v128-self-test.mjs",
-    "scripts/codex-v128-projection-reader.mjs"
+    "scripts/codex-v128-projection-reader.mjs",
+    "scripts/codex-v128-managed-context-emitter.mjs"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -1830,8 +1832,11 @@
       "boundedProjectionReaderSurfaceBytesMax": 1600,
       "boundedProjectionReaderStdoutBytesMax": 1600,
       "boundedProjectionReaderStrictJson": true,
+      "managedContextEmitter": "scripts/codex-v128-managed-context-emitter.mjs",
       "perTransitionManagedContextBytesMax": 4096,
-      "managedContextBytesObserved": false,
+      "managedContextBytesObserved": true,
+      "managedContextObservationSource": "v128_managed_context_emitter",
+      "managedContextObservationScope": "source_shadow_candidate",
       "managedContextObservationRequiredForActivation": true,
       "routineFinalReportLineMax": 8,
       "routineOwnerInterruptMax": 0

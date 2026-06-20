@@ -4174,6 +4174,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   const routineDecisionProjection = report.routineDecisionProjection || preRunnerSafeSummary.routineDecisionProjection || null;
   const stressDecisionProjection = report.stressDecisionProjection || preRunnerSafeSummary.stressDecisionProjection || null;
   const routineProjectionReadSurface = report.routineProjectionReadSurface || preRunnerSafeSummary.routineProjectionReadSurface || null;
+  const v128ManagedContextEmitter = report.v128ManagedContextEmitter || preRunnerSafeSummary.v128ManagedContextEmitter || null;
   const routineDecisionProjectionStatus = report.routineDecisionProjectionStatus
     || preRunnerSafeSummary.routineDecisionProjectionStatus
     || { status: routineDecisionProjection ? 'present' : 'missing', safeSummaryOnly: true };
@@ -4236,6 +4237,8 @@ export function evaluateWorkflowReport(report, options = {}) {
     stressDecisionProjection,
 
     routineProjectionReadSurface,
+
+    v128ManagedContextEmitter,
 
     routineDecisionProjectionStatus,
 
