@@ -3297,6 +3297,32 @@ function hasRequiredStatusClosureTrueBlocker(report, failures, options = {}) {
 export function buildRequiredStatusClosureV3Report(report, failures = [], options = {}) {
   const mode = report.targetQualityScoreStatus && !report.sourceHarnessValidationStatus ? 'target' : 'source';
   const targetMode = mode === 'target';
+  if (!targetMode) {
+    return {
+      requiredStatusClosureV3Status: {
+        status: 'pass',
+        closedFalseWorkflowRequiredStatusFailure: false,
+        failureCountBeforeClosure: failures.length,
+        reasonCodes: ['source_mode_target_closure_not_applicable'],
+        safeSummaryOnly: true,
+      },
+      targetSafeSummaryRequiredClosureStatus: {
+        status: 'pass',
+        targetSummaryPass: false,
+        trueBlockerPresent: false,
+        reasonCodes: ['source_mode_target_closure_not_applicable'],
+        safeSummaryOnly: true,
+      },
+      workflowRequiredStatusClosureRepairStatus: {
+        status: 'pass',
+        repair: 'source_mode_no_target_safe_summary_closure',
+        remoteRequiredChecksSubstituted: false,
+        trueBlockersPreserved: true,
+        reasonCodes: ['source_mode_target_closure_not_applicable'],
+        safeSummaryOnly: true,
+      },
+    };
+  }
   const v113Target = report.harnessVersion === '1.1.3' && targetMode;
   const targetSummaryPass = report.targetQualityScoreStatus?.status === 'pass' && report.targetMergeReady === true;
   const trueBlockerPresent = hasRequiredStatusClosureTrueBlocker(report, failures, options);

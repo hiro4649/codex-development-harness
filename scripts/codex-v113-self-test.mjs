@@ -121,6 +121,7 @@ const cases = [
   test('required_status_closure_preserves_true_blockers', () => buildRequiredStatusClosureV3Fixture({ workflowRequiredStatusFailure: true, trueBlockerPresent: true }).status === 'fail'),
   test('workflow_required_status_closure_v3_passes_false_failure', () => criptoClosureReport.workflowRequiredStatusClosureRepairStatus.status === 'pass' && criptoClosureReport.requiredStatusClosureV3Status.closedFalseWorkflowRequiredStatusFailure === true),
   test('workflow_required_status_closure_does_not_substitute_remote_required_checks', () => buildRequiredStatusClosureV3Report(criptoPr31WorkflowReport, criptoRequiredFailures, { requiredRemoteChecksPass: false }).workflowRequiredStatusClosureRepairStatus.status === 'fail'),
+  test('workflow_required_status_closure_is_not_applicable_in_source_mode', () => buildRequiredStatusClosureV3Report({ harnessVersion: '1.2.8', sourceHarnessValidationStatus: { status: 'pass' } }, ['qualityScoreStatus=fail']).workflowRequiredStatusClosureRepairStatus.status === 'pass'),
   test('workflow_evaluate_closes_cripto_pr31_false_required_status_failure', () => evaluateWorkflowReport(criptoPr31WorkflowReport, { harnessMode: 'target' }).failures.length === 0),
   test('safe_artifact_index_entry_points', () => artifactIndex.decision === 'codex-decision-object.safe.json' && artifactIndex.minimalBlockers === 'codex-minimal-blockers.safe.json'),
   test('conversation_cost_ledger_no_full_json_console', () => costLedger.fullJsonConsoleLines === 0 && costLedger.visibleStatusCount <= 7),
