@@ -2102,6 +2102,18 @@ const sourceCoreRequiredPass = [
   ...V101_STATUS_KEYS,
 ];
 
+const sourceShadowSelfTestStatusKeys = [
+  'v120SelfTestStatus',
+  'v121SelfTestStatus',
+  'v122SelfTestStatus',
+  'v123SelfTestStatus',
+  'v124SelfTestStatus',
+  'v125SelfTestStatus',
+  'v126SelfTestStatus',
+  'v127SelfTestStatus',
+  'v128SelfTestStatus',
+];
+
 const targetRequiredPass = [
 
 
@@ -4400,6 +4412,8 @@ export function evaluateWorkflowReport(report, options = {}) {
 
     safeArtifactClassifierStatus: report.safeArtifactClassifierStatus || { status: 'missing' },
 
+    safeArtifactValidation: report.safeArtifactValidation || { status: 'missing' },
+
 
 
 
@@ -5050,6 +5064,7 @@ export function evaluateWorkflowReport(report, options = {}) {
     v117SelfTestStatus: report.v117SelfTestStatus || { status: 'missing' },
     v118SelfTestStatus: report.v118SelfTestStatus || { status: 'missing' },
     v119SelfTestStatus: report.v119SelfTestStatus || { status: 'missing' },
+    ...Object.fromEntries(sourceShadowSelfTestStatusKeys.map((key) => [key, report[key] || { status: 'missing' }])),
     ...Object.fromEntries(V119_OPERATOR_STATUS_KEYS.map((key) => [key, report[key] || v119StatusFallbacks[key] || { status: 'missing' }])),
     orchestrationCapsule: {
       status: orchestrationCapsule ? 'present' : 'missing',

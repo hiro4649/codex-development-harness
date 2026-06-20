@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // CODEX_QUALITY_HARNESS_FILE v1.1.3
 
+import fs from 'node:fs';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import {
   BOUNDARY_PROFILES,
@@ -87,6 +88,7 @@ const criptoPr31WorkflowReport = {
 };
 const criptoRequiredFailures = ['prProfileStatus=fail', 'promptGovernanceStatus=fail', 'knowledgeGovernanceStatus=fail'];
 const criptoClosureReport = buildRequiredStatusClosureV3Report(criptoPr31WorkflowReport, criptoRequiredFailures);
+const workflowRunnerText = fs.readFileSync('scripts/codex-workflow-quality-runner.mjs', 'utf8');
 
 const cases = [
   test('all_v113_status_keys_default_pass', () => V113_STATUS_KEYS.every((key) => statuses[key]?.status === 'pass')),
@@ -122,6 +124,8 @@ const cases = [
   test('workflow_required_status_closure_v3_passes_false_failure', () => criptoClosureReport.workflowRequiredStatusClosureRepairStatus.status === 'pass' && criptoClosureReport.requiredStatusClosureV3Status.closedFalseWorkflowRequiredStatusFailure === true),
   test('workflow_required_status_closure_does_not_substitute_remote_required_checks', () => buildRequiredStatusClosureV3Report(criptoPr31WorkflowReport, criptoRequiredFailures, { requiredRemoteChecksPass: false }).workflowRequiredStatusClosureRepairStatus.status === 'fail'),
   test('workflow_required_status_closure_is_not_applicable_in_source_mode', () => buildRequiredStatusClosureV3Report({ harnessVersion: '1.2.8', sourceHarnessValidationStatus: { status: 'pass' } }, ['qualityScoreStatus=fail']).workflowRequiredStatusClosureRepairStatus.status === 'pass'),
+  test('workflow_safe_summary_preserves_v128_shadow_self_test', () => workflowRunnerText.includes('sourceShadowSelfTestStatusKeys') && workflowRunnerText.includes('v128SelfTestStatus')),
+  test('workflow_safe_summary_preserves_safe_artifact_validation', () => workflowRunnerText.includes('safeArtifactValidation: report.safeArtifactValidation')),
   test('workflow_evaluate_closes_cripto_pr31_false_required_status_failure', () => evaluateWorkflowReport(criptoPr31WorkflowReport, { harnessMode: 'target' }).failures.length === 0),
   test('safe_artifact_index_entry_points', () => artifactIndex.decision === 'codex-decision-object.safe.json' && artifactIndex.minimalBlockers === 'codex-minimal-blockers.safe.json'),
   test('conversation_cost_ledger_no_full_json_console', () => costLedger.fullJsonConsoleLines === 0 && costLedger.visibleStatusCount <= 7),
