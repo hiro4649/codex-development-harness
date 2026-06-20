@@ -4,6 +4,9 @@
   "name": "CODEX_V128_STATE_MATRIX",
   "finiteEnumProductRequired": true,
   "routineRuntimeUsesCompiledTable": true,
+  "coverage": "partial_shadow_candidate",
+  "fullEnumProductExecuted": false,
+  "activationBlockingUntilFullReplay": true,
   "implicitFallbackForbidden": true,
   "firstMatchRuleForbidden": true,
   "states": [

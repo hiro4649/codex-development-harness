@@ -43,6 +43,8 @@
     "diagnosticColdArtifactReadMax": 3,
     "compiledEffectiveInstructionCapsuleCount": 1,
     "perTransitionManagedContextBytesMax": 4096,
+    "managedContextBytesObserved": false,
+    "managedContextObservationRequiredForActivation": true,
     "routineFinalReportLineMax": 8,
     "routineOwnerInterruptMax": 0,
     "repeatedSafetyTextMax": 0

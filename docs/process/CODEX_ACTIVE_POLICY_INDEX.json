@@ -185,7 +185,9 @@
       "storedArtifact": "codex-quality-gate-safe-summary.json",
       "authority": "non_authoritative",
       "routineBytesMax": 1600,
-      "stressBytesMax": 2048
+      "stressBytesMax": 2048,
+      "managedContextBytesObserved": false,
+      "managedContextObservationRequiredForActivation": true
     },
     "preservationMatrix": "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
     "activationState": "source_shadow_candidate",
@@ -193,6 +195,8 @@
     "shadowTargetCanary": "not_started",
     "activationReady": false,
     "observedProjectionRequiredForActivation": true,
+    "stateMatrixCoverage": "partial_shadow_candidate",
+    "postMergeReplayCoverage": "partial_shadow_candidate",
     "placeholderReceiptValid": false
   }
 }

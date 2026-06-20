@@ -635,6 +635,8 @@
       "routineProjectionBytesMax": 1600,
       "stressProjectionBytesMax": 2048,
       "perTransitionManagedContextBytesMax": 4096,
+      "managedContextBytesObserved": false,
+      "managedContextObservationRequiredForActivation": true,
       "routineFinalReportLineMax": 8,
       "routineOwnerInterruptMax": 0
     },
@@ -657,6 +659,8 @@
     "shadowTargetCanary": "not_started",
     "activationReady": false,
     "observedProjectionRequiredForActivation": true,
+    "stateMatrixCoverage": "partial_shadow_candidate",
+    "postMergeReplayCoverage": "partial_shadow_candidate",
     "placeholderReceiptValid": false
   }
 }

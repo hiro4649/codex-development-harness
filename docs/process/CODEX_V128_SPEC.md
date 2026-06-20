@@ -128,7 +128,10 @@ repeated safety text = 0
 
 The 4096 byte budget is per decision transition, not the cumulative task total.
 The cumulative task bytes, repeated context bytes, and transitions-per-task are
-telemetry.
+telemetry. In Source Shadow Candidate mode, `perTransitionManagedBytes` remains
+unobserved until an actual managed context emitter measures AGENTS/profile/
+provider/attested-view bytes. Projection bytes must not be reused as managed
+context bytes.
 
 Root AGENTS, applicable nested AGENTS, and the active profile are compiled into
 one deterministic model-facing instruction capsule. The compilation must not
@@ -222,6 +225,9 @@ Specification PR is allowed. Source Shadow Candidate is conditional on the
 v128 self-test, Preservation Matrix, replay corpus, and active v1.2.7 gate
 impact remaining clean. Source Activation, active target canary, and portfolio
 rollout are not part of this Source body PR unless separately instructed.
+State Matrix and post-merge replay coverage may be `partial_shadow_candidate`
+for this PR only. That partial status blocks Source Activation until the full
+finite enum product and post-merge replay are executed.
 
 Activation remains NO-GO unless all of the following are proven by machine
 tests, not static defaults:

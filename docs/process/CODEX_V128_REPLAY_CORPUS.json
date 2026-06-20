@@ -41,6 +41,7 @@
     {
       "caseId": "post_merge_lane_preservation",
       "expected": "pass",
+      "replayStatus": "partial_shadow_candidate",
       "checks": ["post_merge_sentinel", "blocked_recovery", "post_merge_verify"]
     }
   ],

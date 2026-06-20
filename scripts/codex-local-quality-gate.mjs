@@ -305,6 +305,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     safeSummaryOnly: true,
   };
   const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head);
+  const stressDecisionProjection = buildV128StressDecisionProjection(report);
   if (report.orchestrationCapsule?.deterministicDecisionProjection) {
     report.orchestrationCapsule.deterministicDecisionProjection = {
       ...report.orchestrationCapsule.deterministicDecisionProjection,
@@ -314,7 +315,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
       projectionBytesObserved: true,
       projectionMeasurementSource: 'runtime_safe_summary_projection',
       projectionBytes: routineDecisionProjection.projectionCanonicalBytes,
-      stressProjectionBytes: routineDecisionProjection.projectionCanonicalBytes,
+      stressProjectionBytes: stressDecisionProjection.projectionCanonicalBytes,
     };
   }
   if (report.orchestrationCapsule?.tokenMinimalReadCompatibilityRouter) {
@@ -322,9 +323,9 @@ function writeV117LoadBearingArtifacts(report = {}) {
       ...report.orchestrationCapsule.tokenMinimalReadCompatibilityRouter,
       candidateActivationState: 'source_shadow_candidate',
       activationReady: false,
-      managedBytesObserved: true,
-      managedBytesMeasurementSource: 'runtime_projection_measurement',
-      perTransitionManagedBytes: routineDecisionProjection.projectionCanonicalBytes,
+      managedBytesObserved: false,
+      managedBytesMeasurementSource: 'not_observed',
+      perTransitionManagedBytes: null,
       transitionsPerTaskObserved: false,
     };
   }
@@ -361,10 +362,16 @@ function writeV117LoadBearingArtifacts(report = {}) {
   }
   report.routineDecisionProjection = routineDecisionProjection;
   report.routineDecisionProjectionStatus = {
-    status: routineDecisionProjection.withinRoutineBudget ? 'pass' : 'fail',
+    status: routineDecisionProjection.projectionCanonicalBytes <= 1600
+      && stressDecisionProjection.projectionCanonicalBytes <= 2048
+      ? 'pass'
+      : 'fail',
     projectionCanonicalBytes: routineDecisionProjection.projectionCanonicalBytes,
+    stressProjectionCanonicalBytes: stressDecisionProjection.projectionCanonicalBytes,
     projectionBytesMax: 1600,
+    stressProjectionBytesMax: 2048,
     observed: true,
+    stressObserved: true,
     safeSummaryOnly: true,
   };
   const safeSummary = {
@@ -403,6 +410,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     technicalChecksReady: report.technicalChecksReady === true,
     ownerMergeAuthorized: report.ownerMergeAuthorized === true,
     routineDecisionProjection,
+    stressDecisionProjection,
     routineDecisionProjectionStatus: report.routineDecisionProjectionStatus,
     ...Object.fromEntries(V119_STATUS_KEYS.map((key) => [key, report[key]])),
     orchestrationCapsule: {
@@ -3493,6 +3501,28 @@ function canonicalJsonBytes(value) {
   return Buffer.byteLength(canonicalJson(value), 'utf8');
 }
 
+function finalizeMeasuredProjection(projectionBase) {
+  let projection = {
+    ...projectionBase,
+    projectionCanonicalBytes: 0,
+    withinRoutineBudget: false,
+  };
+  for (let i = 0; i < 8; i += 1) {
+    const bytes = canonicalJsonBytes(projection);
+    const next = {
+      ...projection,
+      projectionCanonicalBytes: bytes,
+      withinRoutineBudget: bytes <= 1600,
+    };
+    if (next.projectionCanonicalBytes === projection.projectionCanonicalBytes
+      && next.withinRoutineBudget === projection.withinRoutineBudget) {
+      return next;
+    }
+    projection = next;
+  }
+  return projection;
+}
+
 function buildV128RoutineDecisionProjection(report = {}, head = 'unknown') {
   const blockingReasons = report.reasonSummaryStatus?.summary?.blockingReasons || [];
   const projectionBase = {
@@ -3518,14 +3548,35 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown') {
     safeNextAction: report.finalDecision?.safeNextAction || report.decisionCapsule?.safeNextAction || 'owner_merge_decision_only',
     observed: true,
     metricsSource: 'runtime_safe_summary_projection',
-    projectionCanonicalBytes: 0,
   };
-  let bytes = canonicalJsonBytes(projectionBase);
-  const projection = { ...projectionBase, projectionCanonicalBytes: bytes };
-  bytes = canonicalJsonBytes(projection);
-  projection.projectionCanonicalBytes = bytes;
-  projection.withinRoutineBudget = bytes <= 1600;
-  return projection;
+  return finalizeMeasuredProjection(projectionBase);
+}
+
+function buildV128StressDecisionProjection(report = {}) {
+  return finalizeMeasuredProjection({
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection_stress_fixture',
+    authority: 'non_authoritative_projection',
+    finalAuthority: 'v1.1.8_final_decision_kernel',
+    activeHarnessVersion: '1.2.7',
+    candidateHarnessVersion: '1.2.8',
+    candidateActivationState: 'source_shadow_candidate',
+    headSha: 'f'.repeat(40),
+    status: 'manual_confirmation_required',
+    qualityScore: 100,
+    technicalChecksReady: true,
+    ownerMergeAuthorized: false,
+    blockingCount: 9,
+    v127: report.v127SelfTestStatus?.status || 'pass',
+    v128: report.v128SelfTestStatus?.status || 'pass',
+    runtimeReadinessClaimed: false,
+    productionReadinessClaimed: false,
+    productFilesChanged: false,
+    packageFilesChanged: false,
+    safeNextAction: 'owner_merge_decision_only',
+    observed: true,
+    metricsSource: 'runtime_safe_summary_projection_stress_fixture',
+  });
 }
 
 function buildV127RemoteEvidenceContext(env = process.env) {
@@ -4064,14 +4115,31 @@ function runV128Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V128_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v128-self-test.mjs', 'v128SelfTestStatus', 'CODEX_V128_SELF_TEST_REPORT', gateEnv);
-  report.v128SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
+  report.v128SelfTestStatus = {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
+    candidateActivationState: 'source_shadow_candidate',
+    activeGateInfluence: 'non_blocking_shadow_candidate',
   };
 }
 
 function initializeV128Statuses(report) {
   if (!report.v128SelfTestStatus) report.v128SelfTestStatus = { status: 'not_run' };
+}
+
+export function classifyV128ShadowCandidateForActiveGate(key, value = {}, env = process.env) {
+  if (key !== 'v128SelfTestStatus') return { applies: false, blocksActiveGate: value?.status === 'fail' };
+  const activationGate = env.CODEX_V128_ACTIVATION_GATE === '1'
+    || value.candidateActivationState === 'source_activation_candidate'
+    || value.candidateActivationState === 'active';
+  const failed = value?.status === 'fail';
+  return {
+    applies: true,
+    blocksActiveGate: failed && activationGate,
+    effectiveStatus: failed && !activationGate ? 'pass_shadow_candidate_fail_non_blocking_active_v127' : (value?.status || 'missing'),
+    reasonCodes: failed && !activationGate ? ['v128_shadow_candidate_failure_does_not_change_v127_active_exit'] : [],
+    safeSummaryOnly: true,
+  };
 }
 
 function legacySelfTestPreservedStatus(legacyVersion) {
@@ -8703,6 +8771,8 @@ function applyStatusOutcome(key, value, failures, warnings) {
 
 
   if (value?.status === 'fail') {
+    const v128Shadow = classifyV128ShadowCandidateForActiveGate(key, value, process.env);
+    if (v128Shadow.applies && v128Shadow.blocksActiveGate === false) return;
     if (process.env.CODEX_HARNESS_MODE === 'target') {
       const compatibility = classifyTargetModeCompatibilityStatus(key, value);
       if (String(compatibility.effectiveStatus || '').startsWith('pass_')) return;

@@ -14,6 +14,7 @@ import {
   validateV128ResumableLoopAndPermissionProjection,
   validateV128TokenMinimalReadCompatibilityRouter,
 } from './codex-orchestration-capsule.mjs';
+import { classifyV128ShadowCandidateForActiveGate } from './codex-local-quality-gate.mjs';
 
 function test(name, fn) {
   try {
@@ -46,14 +47,96 @@ function canonicalDigest(value) {
 }
 
 function parseJsonRejectDuplicateKeys(text) {
-  const seen = new Set();
-  const keyPattern = /"((?:[^"\\]|\\.)*)"\s*:/g;
-  let match;
-  while ((match = keyPattern.exec(text))) {
-    const key = match[1];
-    if (seen.has(key)) throw new Error(`duplicate_key:${key}`);
-    seen.add(key);
+  const stack = [];
+  let index = 0;
+  function top() { return stack[stack.length - 1]; }
+  function completeValue() {
+    const frame = top();
+    if (!frame) return;
+    if (frame.type === 'object' && frame.state === 'value') frame.state = 'comma_or_end';
+    else if (frame.type === 'array' && frame.state === 'value_or_end') frame.state = 'comma_or_end';
   }
+  function readString() {
+    let result = '';
+    index += 1;
+    while (index < text.length) {
+      const ch = text[index];
+      if (ch === '\\') {
+        result += ch + (text[index + 1] || '');
+        index += 2;
+        continue;
+      }
+      if (ch === '"') {
+        index += 1;
+        return JSON.parse(`"${result}"`);
+      }
+      result += ch;
+      index += 1;
+    }
+    throw new Error('unterminated_string');
+  }
+  function skipPrimitive() {
+    while (index < text.length && !/[\s,\]\}]/.test(text[index])) index += 1;
+    completeValue();
+  }
+  while (index < text.length) {
+    const ch = text[index];
+    if (/\s/.test(ch)) {
+      index += 1;
+      continue;
+    }
+    const frame = top();
+    if (ch === '{') {
+      stack.push({ type: 'object', keys: new Set(), state: 'key_or_end' });
+      index += 1;
+      continue;
+    }
+    if (ch === '[') {
+      stack.push({ type: 'array', state: 'value_or_end' });
+      index += 1;
+      continue;
+    }
+    if (ch === '}') {
+      if (!frame || frame.type !== 'object' || !['key_or_end', 'comma_or_end'].includes(frame.state)) throw new Error('object_state_invalid');
+      stack.pop();
+      index += 1;
+      completeValue();
+      continue;
+    }
+    if (ch === ']') {
+      if (!frame || frame.type !== 'array' || !['value_or_end', 'comma_or_end'].includes(frame.state)) throw new Error('array_state_invalid');
+      stack.pop();
+      index += 1;
+      completeValue();
+      continue;
+    }
+    if (ch === ',') {
+      if (!frame || frame.state !== 'comma_or_end') throw new Error('comma_state_invalid');
+      frame.state = frame.type === 'object' ? 'key_or_end' : 'value_or_end';
+      index += 1;
+      continue;
+    }
+    if (ch === ':') {
+      if (!frame || frame.type !== 'object' || frame.state !== 'colon') throw new Error('colon_state_invalid');
+      frame.state = 'value';
+      index += 1;
+      continue;
+    }
+    if (ch === '"') {
+      const value = readString();
+      const current = top();
+      if (current?.type === 'object' && current.state === 'key_or_end') {
+        if (current.keys.has(value)) throw new Error(`duplicate_key:${value}`);
+        current.keys.add(value);
+        current.state = 'colon';
+      } else {
+        completeValue();
+      }
+      continue;
+    }
+    skipPrimitive();
+  }
+  if (stack.length) throw new Error('json_stack_unclosed');
   return JSON.parse(text);
 }
 
@@ -109,12 +192,18 @@ function replayCorpusExecutes() {
         },
       }).resumableLoopAndPermissionProjection));
     }
-    if (item.caseId === 'post_merge_lane_preservation') return true;
+    if (item.caseId === 'post_merge_lane_preservation') {
+      return item.replayStatus === 'partial_shadow_candidate'
+        && Array.isArray(item.checks)
+        && item.checks.includes('post_merge_sentinel')
+        && item.checks.includes('blocked_recovery')
+        && item.checks.includes('post_merge_verify');
+    }
     return false;
   });
 }
 
-function stateMatrixIsFiniteUnique() {
+function stateMatrixIsFiniteUniqueOrPartialDeclared() {
   const matrix = readJson('docs/process/CODEX_V128_STATE_MATRIX.json');
   const keys = new Set();
   for (const row of [...matrix.states, ...matrix.hardInvalid]) {
@@ -122,12 +211,16 @@ function stateMatrixIsFiniteUnique() {
     if (keys.has(key)) return false;
     keys.add(key);
   }
-  return matrix.finiteEnumProductRequired === true
+  const uniqueRows = matrix.finiteEnumProductRequired === true
     && matrix.routineRuntimeUsesCompiledTable === true
     && matrix.implicitFallbackForbidden === true
     && matrix.firstMatchRuleForbidden === true
     && matrix.states.length >= 6
     && matrix.hardInvalid.length >= 3;
+  if (!uniqueRows) return false;
+  if (matrix.fullEnumProductExecuted === true) return true;
+  return matrix.coverage === 'partial_shadow_candidate'
+    && matrix.activationBlockingUntilFullReplay === true;
 }
 
 const cases = [
@@ -170,6 +263,23 @@ const cases = [
   ['routine_cold_read_fails_when_nonzero', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { routineColdArtifactRead: 1 },
   }).tokenMinimalReadCompatibilityRouter))],
+  ['v128_candidate_failure_does_not_block_active_v127_exit', () => {
+    const result = classifyV128ShadowCandidateForActiveGate('v128SelfTestStatus', {
+      status: 'fail',
+      candidateActivationState: 'source_shadow_candidate',
+    }, {});
+    return result.applies === true
+      && result.blocksActiveGate === false
+      && result.effectiveStatus === 'pass_shadow_candidate_fail_non_blocking_active_v127';
+  }],
+  ['v128_activation_gate_blocks_failed_candidate', () => {
+    const result = classifyV128ShadowCandidateForActiveGate('v128SelfTestStatus', {
+      status: 'fail',
+      candidateActivationState: 'source_activation_candidate',
+    }, {});
+    return result.applies === true
+      && result.blocksActiveGate === true;
+  }],
   ['permission_projection_is_not_authority', () => passed(validateV128ResumableLoopAndPermissionProjection(buildOrchestrationCapsule().resumableLoopAndPermissionProjection))],
   ['unhydrated_receipt_cannot_project_actions', () => failed(validateV128ResumableLoopAndPermissionProjection(buildOrchestrationCapsule({
     resumableLoopAndPermissionProjection: { allowedActionCodes: ['commit'] },
@@ -207,7 +317,7 @@ const cases = [
     resumableLoopAndPermissionProjection: { networkFilesystemAutoResumeAllowed: true },
   }).resumableLoopAndPermissionProjection))],
   ['replay_corpus_is_executed', () => replayCorpusExecutes()],
-  ['state_matrix_is_finite_unique', () => stateMatrixIsFiniteUnique()],
+  ['state_matrix_is_finite_unique_or_partial_declared', () => stateMatrixIsFiniteUniqueOrPartialDeclared()],
   ['strict_json_rejects_duplicate_keys', () => {
     try {
       parseJsonRejectDuplicateKeys('{"a":1,"a":2}');
@@ -217,6 +327,14 @@ const cases = [
     }
   }],
   ['canonical_digest_is_order_independent', () => canonicalDigest({ b: 2, a: 1 }) === canonicalDigest({ a: 1, b: 2 })],
+  ['duplicate_keys_allowed_in_different_objects', () => {
+    try {
+      parseJsonRejectDuplicateKeys('{"a":1,"nested":{"a":2}}');
+      return true;
+    } catch {
+      return false;
+    }
+  }],
   ['target_mode_does_not_require_source_manifest', () => activeManifestPathsForMode({ CODEX_HARNESS_MODE: 'target' }).join('|') === 'docs/process/CODEX_HARNESS_MANIFEST.json'],
   ['orchestration_capsule_validates_all_v128_internal_blocks', () => Object.values(validateOrchestrationCapsule(buildOrchestrationCapsule())).every((item) => item.status === 'pass')],
 ].map(([name, fn]) => test(name, fn));
@@ -229,8 +347,9 @@ const fixtureGroups = [
   'resumable_loop_permission_projection_matrix',
   'reader_before_writer_migration_matrix',
   'replay_corpus_execution',
-  'state_matrix_uniqueness_execution',
+  'state_matrix_partial_shadow_candidate_execution',
   'strict_json_and_canonical_digest_execution',
+  'active_v127_exit_isolation_negative',
 ];
 
 const failures = cases.filter((item) => item.status !== 'pass');
@@ -241,6 +360,9 @@ const report = {
     failureCount: failures.length,
     fixtureGroups,
     executedFixtureGroups: fixtureGroups,
+    stateMatrixCoverage: 'partial_shadow_candidate',
+    postMergeReplayCoverage: 'partial_shadow_candidate',
+    sourceActivationReady: false,
     safeSummaryOnly: true,
   },
   cases,

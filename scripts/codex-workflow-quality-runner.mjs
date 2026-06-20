@@ -4172,6 +4172,7 @@ export function evaluateWorkflowReport(report, options = {}) {
   const finalDecisionArtifact = report.finalDecision || readSafeJsonArtifact('codex-final-decision.safe.json');
   const preRunnerSafeSummary = readSafeJsonArtifact('codex-quality-gate-safe-summary.json') || {};
   const routineDecisionProjection = report.routineDecisionProjection || preRunnerSafeSummary.routineDecisionProjection || null;
+  const stressDecisionProjection = report.stressDecisionProjection || preRunnerSafeSummary.stressDecisionProjection || null;
   const routineDecisionProjectionStatus = report.routineDecisionProjectionStatus
     || preRunnerSafeSummary.routineDecisionProjectionStatus
     || { status: routineDecisionProjection ? 'present' : 'missing', safeSummaryOnly: true };
@@ -4230,6 +4231,8 @@ export function evaluateWorkflowReport(report, options = {}) {
     ownerMergeAuthorized: finalDecisionArtifact?.mergeAllowed === true,
 
     routineDecisionProjection,
+
+    stressDecisionProjection,
 
     routineDecisionProjectionStatus,
 
