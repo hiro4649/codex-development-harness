@@ -3995,11 +3995,29 @@ function pushUniqueFailure(failures = [], id, message) {
   failures.push({ id, message: message || id });
 }
 
+export function buildV127ActiveGateReasonSummaryInput(report = {}) {
+  const v128Shadow = classifyV128ShadowCandidateForActiveGate('v128SelfTestStatus', report.v128SelfTestStatus, process.env);
+  if (!v128Shadow.applies || v128Shadow.blocksActiveGate !== false) return report;
+  return {
+    ...report,
+    v128SelfTestStatus: {
+      ...(report.v128SelfTestStatus || {}),
+      candidateStatus: report.v128SelfTestStatus?.status || 'missing',
+      status: v128Shadow.effectiveStatus,
+      reasonCodes: v128Shadow.reasonCodes,
+      activeGateInfluence: 'non_blocking_shadow_candidate',
+      safeSummaryOnly: true,
+    },
+  };
+}
+
 function applyV127PostClosureConsistency(report = {}, outcome = {}) {
   const failures = Array.isArray(outcome.failures) ? outcome.failures : [];
   const warnings = Array.isArray(outcome.warnings) ? outcome.warnings : [];
   delete report.reasonSummaryStatus;
-  const firstSummary = buildCompactReasonSummary(report);
+  delete report.qualityScoreStatus;
+  delete report.safeArtifactValidation;
+  const firstSummary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput(report));
   const firstBlockingReasons = firstSummary.summary?.blockingReasons || [];
   if (firstBlockingReasons.length > 0) {
     pushUniqueFailure(
@@ -4055,7 +4073,7 @@ function applyV127PostClosureConsistency(report = {}, outcome = {}) {
       report.finalDecisionStatus = validateFinalDecisionKernel(report.finalDecision);
     }
   }
-  const finalSummary = buildCompactReasonSummary(report);
+  const finalSummary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput(report));
   report.reasonSummaryStatus = {
     status: finalSummary.status,
     reasonCodes: finalSummary.reasonCodes,

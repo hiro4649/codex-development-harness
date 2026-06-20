@@ -14,7 +14,10 @@ import {
   validateV128ResumableLoopAndPermissionProjection,
   validateV128TokenMinimalReadCompatibilityRouter,
 } from './codex-orchestration-capsule.mjs';
-import { classifyV128ShadowCandidateForActiveGate } from './codex-local-quality-gate.mjs';
+import {
+  buildV127ActiveGateReasonSummaryInput,
+  classifyV128ShadowCandidateForActiveGate,
+} from './codex-local-quality-gate.mjs';
 import {
   buildV128RoutineProjectionReadSurface,
   formatV128ProjectionReaderOutput,
@@ -949,6 +952,19 @@ const cases = [
     return result.applies === true
       && result.blocksActiveGate === false
       && result.effectiveStatus === 'pass_shadow_candidate_fail_non_blocking_active_v127';
+  }],
+  ['v128_shadow_failure_does_not_reenter_reason_summary_as_blocker', () => {
+    const result = buildV127ActiveGateReasonSummaryInput({
+      status: 'pass',
+      v128SelfTestStatus: {
+        status: 'fail',
+        candidateActivationState: 'source_shadow_candidate',
+        safeSummaryOnly: true,
+      },
+    });
+    return result.v128SelfTestStatus.status === 'pass_shadow_candidate_fail_non_blocking_active_v127'
+      && result.v128SelfTestStatus.candidateStatus === 'fail'
+      && result.v128SelfTestStatus.activeGateInfluence === 'non_blocking_shadow_candidate';
   }],
   ['v128_activation_gate_blocks_failed_candidate', () => {
     const result = classifyV128ShadowCandidateForActiveGate('v128SelfTestStatus', {
