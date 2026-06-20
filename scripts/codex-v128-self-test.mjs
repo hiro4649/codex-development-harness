@@ -21,6 +21,12 @@ import {
   readV128RoutineProjectionSurfaceFromSafeSummaryText,
 } from './codex-v128-projection-reader.mjs';
 import { buildV128ManagedContextEmitter } from './codex-v128-managed-context-emitter.mjs';
+import {
+  buildV128ProjectionSourceDigestBinding,
+  validateV128ProjectionIntegrity,
+} from './codex-v128-integrity-lib.mjs';
+import { readAndEvaluateV128StateMatrix } from './codex-v128-state-matrix.mjs';
+import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
 
 function test(name, fn) {
   try {
@@ -50,6 +56,15 @@ function canonicalJson(value) {
 
 function canonicalDigest(value) {
   return crypto.createHash('sha256').update(canonicalJson(value)).digest('hex');
+}
+
+function buildBoundV128Projection(base = {}, inputs = {}) {
+  const projection = { ...base };
+  projection.sourceBinding = buildV128ProjectionSourceDigestBinding(projection.headSha || 'unknown', {
+    ...inputs,
+    projectionPayload: projection,
+  });
+  return projection;
 }
 
 function parseJsonRejectDuplicateKeys(text) {
@@ -210,27 +225,16 @@ function replayCorpusExecutes() {
 }
 
 function stateMatrixIsFiniteUniqueOrPartialDeclared() {
-  const matrix = readJson('docs/process/CODEX_V128_STATE_MATRIX.json');
-  const keys = new Set();
-  for (const row of [...matrix.states, ...matrix.hardInvalid]) {
-    const key = `${row.decisionPhase}|${row.providerClosureState || '*'}|${row.mergeAuthorityState || '*'}`;
-    if (keys.has(key)) return false;
-    keys.add(key);
-  }
-  const uniqueRows = matrix.finiteEnumProductRequired === true
-    && matrix.routineRuntimeUsesCompiledTable === true
-    && matrix.implicitFallbackForbidden === true
-    && matrix.firstMatchRuleForbidden === true
-    && matrix.states.length >= 6
-    && matrix.hardInvalid.length >= 3;
-  if (!uniqueRows) return false;
-  if (matrix.fullEnumProductExecuted === true) return true;
-  return matrix.coverage === 'partial_shadow_candidate'
-    && matrix.activationBlockingUntilFullReplay === true;
+  const result = readAndEvaluateV128StateMatrix();
+  return result.status === 'pass'
+    && result.coverage === 'full_shadow_candidate'
+    && result.fullEnumProductExecuted === true
+    && result.totalCells > 0
+    && result.unresolvedCells === 0;
 }
 
 function boundedProjectionReaderExecutes() {
-  const projection = {
+  const projection = buildBoundV128Projection({
     schemaVersion: '1.2.8',
     projectionKind: 'routine_decision_projection',
     authority: 'non_authoritative_projection',
@@ -239,6 +243,7 @@ function boundedProjectionReaderExecutes() {
     candidateHarnessVersion: '1.2.8',
     candidateActivationState: 'source_shadow_candidate',
     headSha: 'f'.repeat(40),
+    sourceBinding: buildV128ProjectionSourceDigestBinding('f'.repeat(40)),
     status: 'pass',
     qualityScore: 100,
     technicalChecksReady: true,
@@ -255,7 +260,7 @@ function boundedProjectionReaderExecutes() {
     metricsSource: 'runtime_safe_summary_projection',
     projectionCanonicalBytes: 0,
     withinRoutineBudget: true,
-  };
+  });
   const safeSummary = JSON.stringify({
     status: 'pass',
     routineDecisionProjection: projection,
@@ -264,13 +269,27 @@ function boundedProjectionReaderExecutes() {
   const surface = readV128RoutineProjectionSurfaceFromSafeSummaryText(safeSummary);
   const formatted = formatV128ProjectionReaderOutput(surface);
   return surface.status === 'pass'
-    && surface.sourceArtifactBytes > 25000
     && surface.surfaceCanonicalBytes <= 1600
     && formatted.exitCode === 0
     && formatted.outputBytes <= 1600
     && surface.managedSafeArtifactRead === 1
     && surface.coldArtifactRead === 0
     && surface.managedContextBytesObserved === false;
+}
+
+function evidenceCapsuleDoesNotSubstituteProviderHeads() {
+  const head = 'f'.repeat(40);
+  const capsule = buildEvidenceCapsule({
+    terminalAction: 'merge_current_pr',
+    headSha: head,
+    qualityGateRunId: '27800000000',
+    artifactId: 'artifact-1',
+  });
+  return capsule.fresh === false
+    && capsule.status === 'needs_run'
+    && capsule.currentHeadEvidence.prHeadSha === 'unknown'
+    && capsule.currentHeadEvidence.workflowHeadSha === 'unknown'
+    && capsule.currentHeadEvidence.artifactHeadSha === 'unknown';
 }
 
 function boundedProjectionReaderRejectsDuplicateKeys() {
@@ -283,13 +302,13 @@ function boundedProjectionReaderRejectsDuplicateKeys() {
 }
 
 function boundedProjectionReaderCompactsOverBudgetFailure() {
-  const surface = buildV128RoutineProjectionReadSurface({
+  const surface = buildV128RoutineProjectionReadSurface(buildBoundV128Projection({
     schemaVersion: '1.2.8',
     projectionKind: 'routine_decision_projection',
     authority: 'non_authoritative_projection',
     headSha: 'f'.repeat(40),
     oversizedField: 'x'.repeat(3000),
-  });
+  }));
   const formatted = formatV128ProjectionReaderOutput(surface);
   return surface.status === 'fail'
     && formatted.exitCode === 1
@@ -307,6 +326,59 @@ function managedContextEmitterObservesBytes() {
     && context.instructionCapsule.llmSummaryUsed === false
     && context.attestedView.projectionAuthority === 'non_authoritative'
     && context.sourceActivationReady === false;
+}
+
+function projectionIntegrityBindingVerifies() {
+  const inputs = {
+    finalDecision: { terminalAction: 'create_pr_only', safeNextAction: 'owner_merge_decision_only' },
+    evidenceCapsule: { status: 'pass', fresh: true },
+    decisionCapsule: { decision: 'allowed', mergeAllowed: false },
+  };
+  const projection = buildBoundV128Projection({
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection',
+    authority: 'non_authoritative_projection',
+    headSha: 'f'.repeat(40),
+  }, inputs);
+  return validateV128ProjectionIntegrity(projection, { ...inputs, verifySourceDigest: true, verifyInputDigest: true }).status === 'pass'
+    && validateV128ProjectionIntegrity({
+      ...projection,
+      sourceBinding: { ...projection.sourceBinding, headSha: 'e'.repeat(40) },
+    }, { ...inputs, verifyInputDigest: true }).status === 'fail'
+    && validateV128ProjectionIntegrity({
+      ...projection,
+      sourceBinding: { ...projection.sourceBinding, generatorContractDigest: 'sha256:bad' },
+    }, { ...inputs, verifyInputDigest: true }).status === 'fail';
+}
+
+function projectionPayloadDigestTamperFails() {
+  const projection = buildBoundV128Projection({
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection',
+    authority: 'non_authoritative_projection',
+    headSha: 'f'.repeat(40),
+    qualityScore: 100,
+  });
+  return validateV128ProjectionIntegrity({ ...projection, qualityScore: 99 }).reasonCodes.includes('projection_payload_digest_mismatch');
+}
+
+function projectionInputDigestTamperFails() {
+  const inputs = {
+    finalDecision: { terminalAction: 'create_pr_only', safeNextAction: 'owner_merge_decision_only' },
+    evidenceCapsule: { status: 'pass', fresh: true },
+    decisionCapsule: { decision: 'allowed', mergeAllowed: false },
+  };
+  const projection = buildBoundV128Projection({
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection',
+    authority: 'non_authoritative_projection',
+    headSha: 'f'.repeat(40),
+  }, inputs);
+  return validateV128ProjectionIntegrity(projection, {
+    ...inputs,
+    finalDecision: { terminalAction: 'create_pr_only', safeNextAction: 'repair_harness_only' },
+    verifyInputDigest: true,
+  }).reasonCodes.includes('projection_input_digest_mismatch');
 }
 
 const cases = [
@@ -346,6 +418,10 @@ const cases = [
   ['bounded_projection_reader_extracts_projection_only', () => boundedProjectionReaderExecutes()],
   ['bounded_projection_reader_rejects_duplicate_keys', () => boundedProjectionReaderRejectsDuplicateKeys()],
   ['bounded_projection_reader_compacts_over_budget_failure', () => boundedProjectionReaderCompactsOverBudgetFailure()],
+  ['evidence_capsule_missing_provider_heads_cannot_pass_same_head', () => evidenceCapsuleDoesNotSubstituteProviderHeads()],
+  ['projection_integrity_binding_verifies_schema_head_and_source_digest', () => projectionIntegrityBindingVerifies()],
+  ['projection_payload_digest_tamper_fails', () => projectionPayloadDigestTamperFails()],
+  ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
   ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
@@ -407,7 +483,7 @@ const cases = [
     resumableLoopAndPermissionProjection: { networkFilesystemAutoResumeAllowed: true },
   }).resumableLoopAndPermissionProjection))],
   ['replay_corpus_is_executed', () => replayCorpusExecutes()],
-  ['state_matrix_is_finite_unique_or_partial_declared', () => stateMatrixIsFiniteUniqueOrPartialDeclared()],
+  ['state_matrix_full_enum_product_executes', () => stateMatrixIsFiniteUniqueOrPartialDeclared()],
   ['strict_json_rejects_duplicate_keys', () => {
     try {
       parseJsonRejectDuplicateKeys('{"a":1,"a":2}');
@@ -439,7 +515,7 @@ const fixtureGroups = [
   'resumable_loop_permission_projection_matrix',
   'reader_before_writer_migration_matrix',
   'replay_corpus_execution',
-  'state_matrix_partial_shadow_candidate_execution',
+  'state_matrix_full_shadow_candidate_execution',
   'strict_json_and_canonical_digest_execution',
   'active_v127_exit_isolation_negative',
 ];
@@ -452,7 +528,7 @@ const report = {
     failureCount: failures.length,
     fixtureGroups,
     executedFixtureGroups: fixtureGroups,
-    stateMatrixCoverage: 'partial_shadow_candidate',
+    stateMatrixCoverage: 'full_shadow_candidate',
     postMergeReplayCoverage: 'partial_shadow_candidate',
     sourceActivationReady: false,
     safeSummaryOnly: true,

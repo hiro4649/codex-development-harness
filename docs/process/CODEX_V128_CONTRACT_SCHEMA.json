@@ -28,7 +28,21 @@
     "placeholderBytesAllowed": false,
     "providerClosurePreclaimAllowed": false,
     "finalDecisionInputAllowed": false,
+    "integrityBindingRequired": true,
+    "integrityBindingChecks": ["schema", "head", "generator_contract_digest", "projection_input_digest", "projection_payload_digest"],
+    "routineReaderIntegrityChecks": ["schema", "head", "projection_payload_digest"],
+    "gateIntegrityChecks": ["generator_contract_digest", "projection_input_digest"],
     "artifactDependencyDag": "acyclic"
+  },
+  "stateMatrix": {
+    "executor": "scripts/codex-v128-state-matrix.mjs",
+    "coverage": "full_shadow_candidate",
+    "axisScope": "declared_three_axis_shadow_matrix",
+    "fullEnumProductExecuted": true,
+    "expectedCellCount": 96,
+    "expectedTransitionCount": 6,
+    "expectedHardInvalidCount": 90,
+    "implicitTransitionFallbackAllowed": false
   },
   "reason": {
     "states": ["none", "observed", "pending", "missing", "failed", "valid", "invalid", "stale", "blocked"],
