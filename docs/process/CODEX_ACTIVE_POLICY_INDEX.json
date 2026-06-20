@@ -18,13 +18,16 @@
         "docs/process/CODEX_V127_SPEC.md"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
       ],
       "mdFilesReadMax": 3,
-      "selectedSkillsMax": 2,
-      "thirdSkillAllowed": false
+      "selectedSkillsMax": 1,
+      "thirdSkillAllowed": false,
+      "mandatorySafetySelectedSkillsMax": 2,
+      "mandatorySafetyTriggerRequiresAllowlist": true
     },
     "metadata_light": {
       "requiredReads": [
@@ -32,7 +35,7 @@
         "docs/process/CODEX_HARNESS_MANIFEST.json"
       ],
       "deferredReads": [
-        "docs/process/CODEX_V127_SPEC.md",
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -49,6 +52,7 @@
         "owner_rollout_instruction"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -64,6 +68,7 @@
         "docs/process/CODEX_V127_SPEC.md"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -81,6 +86,7 @@
         "failing_legacy_spec_only"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "unrelated_legacy_specs",
         "pr_history_docs"
@@ -97,11 +103,12 @@
     "docs/process/CODEX_V127_SPEC.md"
   ],
   "deferredReads": [
+    "docs/process/CODEX_V128_SPEC.md",
     "README.md",
     "legacy_specs",
     "pr_history_docs"
   ],
-  "selectedSkillsMax": 2,
+  "selectedSkillsMax": 1,
   "mdFilesReadMax": 3,
   "newP0Artifact": false,
   "newTopLevelStatus": false,
@@ -148,6 +155,52 @@
       "legalComplianceClaimed": false,
       "youtubePolicyComplianceClaimed": false,
       "walletRpcDeployAccess": false
-    }
+    },
+    "compatibility": "blocking"
+  },
+  "mandatorySafetySelectedSkillsMax": 2,
+  "mandatorySafetyTriggerRequiresAllowlist": true,
+  "deterministicDecisionProjectionAndTokenMinimalLoopClosure": {
+    "version": "1.2.8",
+    "name": "Deterministic Decision Projection and Token-Minimal Loop Closure",
+    "sourceOnlyRelease": true,
+    "targetRollout": "not_started",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "routine": {
+      "managedSafeArtifactRead": 1,
+      "coldArtifactRead": 0,
+      "compiledInstructionCapsule": 1,
+      "selectedSkillMax": 1,
+      "mandatorySafetySelectedSkillMax": 2,
+      "finalReportLineMax": 8,
+      "ownerInterruptMax": 0
+    },
+    "diagnostic": {
+      "coldArtifactReadMax": 3
+    },
+    "projection": {
+      "storedArtifact": "codex-quality-gate-safe-summary.json",
+      "authority": "non_authoritative",
+      "routineBytesMax": 1600,
+      "stressBytesMax": 2048,
+      "boundedReader": "scripts/codex-v128-projection-reader.mjs",
+      "boundedReaderSurfaceBytesMax": 1600,
+      "boundedReaderStdoutBytesMax": 1600,
+      "boundedReaderStrictJson": true,
+      "managedContextBytesObserved": false,
+      "managedContextObservationRequiredForActivation": true
+    },
+    "preservationMatrix": "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
+    "activationState": "source_shadow_candidate",
+    "sourceActivation": "not_started",
+    "shadowTargetCanary": "not_started",
+    "activationReady": false,
+    "observedProjectionRequiredForActivation": true,
+    "stateMatrixCoverage": "partial_shadow_candidate",
+    "postMergeReplayCoverage": "partial_shadow_candidate",
+    "placeholderReceiptValid": false
   }
 }

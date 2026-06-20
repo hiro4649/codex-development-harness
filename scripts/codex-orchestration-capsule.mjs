@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.7
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -39,6 +39,8 @@ export const V126_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V126_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 export const V127_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
 export const V127_P0_ARTIFACTS = V119_P0_ARTIFACTS;
+export const V128_OPERATOR_STATUS_KEYS = V119_OPERATOR_STATUS_KEYS;
+export const V128_P0_ARTIFACTS = V119_P0_ARTIFACTS;
 
 const MODEL_TIERS = new Set(['low_cost_worker', 'standard_worker', 'specialist_reviewer', 'highest_reasoning_reviewer']);
 const TYPED_BLOCKERS = new Set([
@@ -78,7 +80,7 @@ const READ_BUDGET_STATUS = new Set(['pass', 'warn', 'blocked']);
 const CONTEXT_SOURCE_TYPES = new Set(['agentsMd', 'manifest', 'activeSpec', 'legacySpec', 'readme', 'skill', 'prHistory', 'safeArtifact', 'userProvidedText', 'webOrGitHubMetadata']);
 const HARD_CONTEXT_BLOCKERS = new Set(['raw_logs_read', 'full_history_read_without_scope', 'wrong_profile_skill', 'legacy_spec_overread_active_conflict']);
 const READ_BUDGET_BY_TASK_PROFILE = {
-  routine: { mdFilesReadMax: 3, selectedSkillsMax: 2 },
+  routine: { mdFilesReadMax: 3, selectedSkillsMax: 1, mandatorySafetySelectedSkillsMax: 2 },
   metadata_light: { mdFilesReadMax: 2, selectedSkillsMax: 1 },
   target_rollout: { mdFilesReadMax: 4, selectedSkillsMax: 2 },
   incident_triage: { mdFilesReadMax: 5, selectedSkillsMax: 3 },
@@ -127,6 +129,11 @@ const V127_REMOTE_STATUSES = new Set(['missing', 'pending', 'pass', 'fail', 'not
 const V127_BLOCKER_RECOVERIES = new Set(['none', 'refresh_current_head_evidence_only', 'rerun_same_head_remote_gate', 'repair_harness_only', 'owner_boundary_stop', 'reduce_context_and_retry', 'stop_required_check_failure']);
 const V127_SKILL_ROI = new Set(['positive', 'neutral', 'negative', 'mandatory_safety']);
 const V127_PLACEHOLDER_VALUES = new Set(['', 'unknown', 'required', 'none', 'null']);
+const V128_REASON_STATES = new Set(['none', 'observed', 'pending', 'missing', 'failed', 'valid', 'invalid', 'stale', 'blocked']);
+const V128_REASON_EFFECTS = new Set(['none', 'awaiting', 'blocking', 'advisory', 'display_only', 'compatibility_shadow']);
+const V128_DECISION_PHASES = new Set(['local_pre_pr', 'pushed_waiting_remote', 'provider_closed', 'owner_boundary', 'merge_boundary', 'post_merge_verify', 'blocked_recovery']);
+const V128_PROFILE_BASELINES = new Set(['v127_common_safety_floor', 'v127_source_baseline', 'v127_full_target_baseline', 'v127_restricted_token_target_baseline']);
+const V128_ALLOWED_CONTINUATION_ACTIONS = new Set(['edit', 'check', 'commit', 'push', 'create_pr', 'rerun_ci', 'fix_ci']);
 const CONTEXT_LEDGER_STATUSES = new Set(['pass', 'warn', 'blocked']);
 const OBSERVED_CONTEXT_SOURCE_TYPES = new Set(['agentsMd', 'manifest', 'activeSpec', 'skill', 'readme', 'legacySpec', 'prHistory', 'safeArtifact', 'githubMetadata', 'rawLog', 'fullHistory']);
 const OBSERVED_READ_REASONS = new Set(['active_authority', 'task_profile_required', 'safe_artifact_pointer', 'compatibility_failure', 'authority_conflict', 'owner_requested', 'not_recorded']);
@@ -394,6 +401,10 @@ function defaultActiveAuthorityTuple(input = {}) {
     manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.7',
     activeSelfTestSuite: input.activeSelfTestSuite || 'v127',
     activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V127_SPEC.md',
+    candidateHarnessVersion: input.candidateHarnessVersion || '1.2.8',
+    candidateSelfTestSuite: input.candidateSelfTestSuite || 'v128',
+    candidateSpecPath: input.candidateSpecPath || 'docs/process/CODEX_V128_SPEC.md',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
     finalAuthorityPointer: input.finalAuthorityPointer || 'v1.1.8_final_decision_kernel',
     sourceOnlyRelease: input.sourceOnlyRelease !== false,
   };
@@ -404,7 +415,8 @@ function defaultSkillContextRouting(input = {}) {
   const budget = READ_BUDGET_BY_TASK_PROFILE[taskProfile];
   const selectedSkills = truncateList(input.selectedSkills || [], 5);
   const mdFilesRead = truncateList(input.mdFilesRead || [], 10);
-  const selectedSkillsMax = budget.selectedSkillsMax;
+  const mandatorySafetyTrigger = input.mandatorySafetyTrigger === true;
+  const selectedSkillsMax = mandatorySafetyTrigger ? (budget.mandatorySafetySelectedSkillsMax || budget.selectedSkillsMax) : budget.selectedSkillsMax;
   const mdFilesReadMax = budget.mdFilesReadMax;
   const requestedSelectedSkillsMax = Number(input.selectedSkillsMax || selectedSkillsMax);
   const requestedMdFilesReadMax = Number(input.mdFilesReadMax || mdFilesReadMax);
@@ -427,7 +439,7 @@ function defaultSkillContextRouting(input = {}) {
         ? 'blocked'
         : 'pass';
   return {
-    schemaVersion: input.schemaVersion || '1.2.7',
+    schemaVersion: input.schemaVersion || '1.2.8',
     taskProfile,
     selectedSkills,
     rejectedSkills: truncateList(input.rejectedSkills || [], 10),
@@ -451,6 +463,9 @@ function defaultSkillContextRouting(input = {}) {
     mdTokenBudget: Math.max(1, Number(input.mdTokenBudget || 2000)),
     tokenBudgetStatus,
     selectedSkillsMax,
+    mandatorySafetyTrigger,
+    mandatorySafetyTriggerId: input.mandatorySafetyTriggerId || null,
+    mandatorySafetyTriggerAllowlisted: input.mandatorySafetyTriggerAllowlisted === true,
     mdFilesReadMax,
     requestedSelectedSkillsMax,
     requestedMdFilesReadMax,
@@ -529,7 +544,7 @@ function defaultWorkspaceIdentityGate(input = {}) {
     || (mutationTask && worktreeClean === false && !dirtyAllowed);
   const warn = !blocked && (wrongRepo || repoResolvableOnGitHub === false || worktreeClean === false || localOnlyState);
   return {
-    workspaceIdentityVersion: '1.2.7',
+    workspaceIdentityVersion: '1.2.8',
     expectedRepo: input.expectedRepo || input.repo || 'hiro4649/codex-development-harness',
     actualRemoteUrl: input.actualRemoteUrl || 'safe_url_or_hash',
     defaultBranch: input.defaultBranch || 'main',
@@ -552,13 +567,16 @@ function defaultWorkspaceIdentityGate(input = {}) {
 
 function defaultActivePolicyIndex(input = {}) {
   return {
-    schemaVersion: '1.2.7',
+    schemaVersion: input.schemaVersion || '1.2.7',
     indexPath: input.indexPath || 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
     taskProfile: TASK_PROFILES.has(input.taskProfile) ? input.taskProfile : 'routine',
     requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V127_SPEC.md'], 8),
     allowedConditionalReads: truncateList(input.allowedConditionalReads || [], 8),
     forbiddenByDefault: truncateList(input.forbiddenByDefault || ['README.md', 'legacy_specs', 'pr_history_docs'], 8),
-    selectedSkillsMax: Math.max(0, Number(input.selectedSkillsMax || 2)),
+    selectedSkillsMax: Math.max(0, Number(input.selectedSkillsMax || 1)),
+    mandatorySafetySelectedSkillsMax: Math.max(0, Number(input.mandatorySafetySelectedSkillsMax || 2)),
+    routineColdArtifactReadMax: Math.max(0, Number(input.routineColdArtifactReadMax || 0)),
+    routineManagedArtifactReadMax: Math.max(0, Number(input.routineManagedArtifactReadMax || 1)),
     mdFilesReadMax: Math.max(0, Number(input.mdFilesReadMax || 3)),
     activePolicyIndexStatus: input.activePolicyIndexStatus || 'pass',
     safeNextAction: input.activePolicyIndexSafeNextAction || input.safeNextAction || 'one_action',
@@ -1422,6 +1440,288 @@ function defaultBlockerClosureAndProductValuePressure(input = {}) {
   };
 }
 
+function defaultV128DeterministicDecisionProjection(input = {}) {
+  const projectionBytesObserved = input.projectionBytesObserved === true || input.projectionMeasurementSource === 'runtime_safe_summary_projection';
+  const projectionBytes = projectionBytesObserved ? Math.max(0, Number(input.projectionBytes || 0)) : null;
+  const stressProjectionBytes = projectionBytesObserved ? Math.max(0, Number(input.stressProjectionBytes ?? input.projectionBytes ?? 0)) : null;
+  return {
+    runtimeVersion: '1.2.8',
+    name: 'Deterministic Decision Projection',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    activationReady: input.activationReady === true,
+    storedProjectionArtifact: input.storedProjectionArtifact || 'codex-quality-gate-safe-summary.json',
+    storedProjectionField: input.storedProjectionField || 'routineDecisionProjection',
+    storedProjectionAuthority: 'non_authoritative',
+    decisionCapsuleAuthority: 'domain_decision_authority',
+    evidenceCapsuleAuthority: 'same_head_freshness_authority',
+    finalDecisionAuthority: 'pass_block_mergeAllowed_exit_code_authority',
+    projectionDoesNotReplaceFinalDecision: input.projectionDoesNotReplaceFinalDecision !== false,
+    providerClosurePreclaimed: input.providerClosurePreclaimed === true,
+    threeStageSeparation: {
+      storedProjection: input.threeStageSeparation?.storedProjection || 'non_authoritative',
+      ephemeralAttestedView: input.threeStageSeparation?.ephemeralAttestedView || 'derived_non_authoritative',
+      mergeBoundaryFinalDecision: input.threeStageSeparation?.mergeBoundaryFinalDecision || 'authoritative_recompute',
+    },
+    artifactDependencyDagAcyclic: input.artifactDependencyDagAcyclic !== false,
+    oldDraftAuthorityPollution: input.oldDraftAuthorityPollution === true,
+    decisionCapsuleIsProjectionPhraseDetected: input.decisionCapsuleIsProjectionPhraseDetected === true,
+    readerBeforeWriterMigration: input.readerBeforeWriterMigration !== false,
+    candidateToolingIsolatedFromActiveGate: input.candidateToolingIsolatedFromActiveGate !== false,
+    projectionBytesObserved,
+    projectionMeasurementSource: projectionBytesObserved ? (input.projectionMeasurementSource || 'runtime_safe_summary_projection') : 'not_observed',
+    projectionBytes,
+    stressProjectionBytes,
+    projectionBytesMax: 1600,
+    stressProjectionBytesMax: 2048,
+    safeSummaryOnly: true,
+  };
+}
+
+function defaultV128OrthogonalReasonModel(input = {}) {
+  const reasons = Array.isArray(input.reasons) && input.reasons.length
+    ? input.reasons
+    : [{ reasonCode: 'required_check_pending', state: 'pending', evidenceRef: 'provider.requiredChecks' }];
+  return {
+    runtimeVersion: '1.2.8',
+    name: 'Orthogonal Reason Model',
+    reasons: reasons.map((reason) => ({
+      reasonCode: reason.reasonCode || 'unknown_reason',
+      state: reason.state || 'pending',
+      evidenceRef: reason.evidenceRef || 'unknown',
+    })),
+    effectByPhase: input.effectByPhase || {
+      pushed_waiting_remote: { required_check_pending: 'awaiting' },
+      merge_boundary: { required_check_pending: 'blocking' },
+    },
+    stateEffectSeparated: input.stateEffectSeparated !== false,
+    unknownReasonFailClosed: input.unknownReasonFailClosed !== false,
+    providerNeutralCore: input.providerNeutralCore !== false,
+    githubAdapterSeparated: input.githubAdapterSeparated !== false,
+    stateMatrixFiniteAndUnique: input.stateMatrixFiniteAndUnique !== false,
+    safeSummaryOnly: true,
+  };
+}
+
+function defaultV128TokenMinimalReadCompatibilityRouter(input = {}) {
+  const managedBytesObserved = input.managedBytesObserved === true || input.managedBytesMeasurementSource === 'runtime_projection_measurement';
+  return {
+    runtimeVersion: '1.2.8',
+    name: 'Token-Minimal Read and Compatibility Router',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    activationReady: input.activationReady === true,
+    profileBaselines: truncateList(input.profileBaselines || ['v127_common_safety_floor', 'v127_source_baseline', 'v127_full_target_baseline', 'v127_restricted_token_target_baseline'], 8),
+    profileBaselineInheritance: input.profileBaselineInheritance !== false,
+    routineSelectedSkillMax: Math.max(0, Number(input.routineSelectedSkillMax || 1)),
+    mandatorySafetySelectedSkillMax: Math.max(0, Number(input.mandatorySafetySelectedSkillMax || 2)),
+    mandatorySafetyTriggerAllowlisted: input.mandatorySafetyTriggerAllowlisted !== false,
+    headPrCannotCreateMandatoryTrigger: input.headPrCannotCreateMandatoryTrigger !== false,
+    routineManagedSafeArtifactRead: Math.max(0, Number(input.routineManagedSafeArtifactRead || 1)),
+    routineColdArtifactRead: Math.max(0, Number(input.routineColdArtifactRead || 0)),
+    diagnosticColdArtifactReadMax: Math.max(0, Number(input.diagnosticColdArtifactReadMax || 3)),
+    compiledEffectiveInstructionCapsuleCount: Math.max(0, Number(input.compiledEffectiveInstructionCapsuleCount || 1)),
+    compiledInstructionCapsuleDeterministic: input.compiledInstructionCapsuleDeterministic !== false,
+    llmSummaryForInstructionCapsule: input.llmSummaryForInstructionCapsule === true,
+    instructionSourceDigestsRecorded: input.instructionSourceDigestsRecorded !== false,
+    instructionConflictHardFailure: input.instructionConflictHardFailure !== false,
+    forbiddenBoundaryWeakeningAllowed: input.forbiddenBoundaryWeakeningAllowed === true,
+    managedBytesObserved,
+    managedBytesMeasurementSource: managedBytesObserved ? (input.managedBytesMeasurementSource || 'runtime_projection_measurement') : 'not_observed',
+    perTransitionManagedBytes: managedBytesObserved ? Math.max(0, Number(input.perTransitionManagedBytes || 0)) : null,
+    perTransitionManagedBytesMax: 4096,
+    repeatedContextBytes: Math.max(0, Number(input.repeatedContextBytes || 0)),
+    transitionsPerTaskObserved: input.transitionsPerTaskObserved === true,
+    microTransitionInflationGuard: input.microTransitionInflationGuard !== false,
+    finalReportLineBudget: Math.max(0, Number(input.finalReportLineBudget || 8)),
+    routineOwnerInterruptCount: Math.max(0, Number(input.routineOwnerInterruptCount || 0)),
+    repeatedSafetyTextCount: Math.max(0, Number(input.repeatedSafetyTextCount || 0)),
+    observedTokenMetricsDefaultFalse: input.observedTokenMetricsDefaultFalse !== false,
+    safeSummaryOnly: true,
+  };
+}
+
+function defaultV128ResumableLoopAndPermissionProjection(input = {}) {
+  const receipt = input.receiptHydrationBinding || {};
+  const checkpoint = input.checkpointBinding || {};
+  const receiptProvided = Object.prototype.hasOwnProperty.call(input, 'receiptHydrationBinding');
+  const checkpointProvided = Object.prototype.hasOwnProperty.call(input, 'checkpointBinding');
+  const receiptValidInput = receipt.receiptHydrationState === 'valid';
+  const checkpointValidInput = checkpoint.checkpointHydrationState === 'valid' || checkpoint.checkpointState === 'valid';
+  return {
+    runtimeVersion: '1.2.8',
+    name: 'Resumable Loop and Permission Projection',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    projectionCreatesPermission: input.projectionCreatesPermission === true,
+    permissionDerivedFromCurrentReceipt: input.permissionDerivedFromCurrentReceipt === true,
+    allowedActionCodes: truncateList(input.allowedActionCodes || [], 12),
+    receiptHydrationBinding: {
+      receiptHydrationState: receipt.receiptHydrationState || 'not_available',
+      receiptDigest: receipt.receiptDigest || null,
+      taskId: receipt.taskId || null,
+      repositoryKey: receipt.repositoryKey || null,
+      branchConstraint: receipt.branchConstraint || null,
+      scopeContractDigest: receipt.scopeContractDigest || null,
+      ownerInstructionDigest: receipt.ownerInstructionDigest || null,
+      observedBinding: receipt.observedBinding === true,
+    },
+    receiptInvalidators: truncateList(input.receiptInvalidators || ['new_owner_instruction', 'scope_delta', 'repository_change', 'branch_violation', 'receipt_revoke', 'task_id_change'], 12),
+    sameSessionRoutineRequiresHydratedReceipt: input.sameSessionRoutineRequiresHydratedReceipt !== false,
+    crossSessionResumeDiagnosticOnly: input.crossSessionResumeDiagnosticOnly !== false,
+    checkpointBinding: {
+      checkpointState: checkpoint.checkpointState || checkpoint.checkpointHydrationState || 'not_available',
+      checkpointSchemaVersion: checkpoint.checkpointSchemaVersion || null,
+      headOid: checkpoint.headOid || null,
+      scopeContractDigest: checkpoint.scopeContractDigest || null,
+      processReceiptDigest: checkpoint.processReceiptDigest || null,
+      lastVerifiedEvidenceDigest: checkpoint.lastVerifiedEvidenceDigest || null,
+      workerId: checkpoint.workerId || null,
+      worktreeId: checkpoint.worktreeId || null,
+      checkpointSequence: checkpoint.checkpointSequence === undefined ? null : Number(checkpoint.checkpointSequence || 1),
+      previousCheckpointDigest: checkpoint.previousCheckpointDigest || null,
+      observedBinding: checkpoint.observedBinding === true,
+    },
+    checkpointAuthority: 'non_authoritative_resume_assist',
+    perWorktreeExclusiveLock: input.perWorktreeExclusiveLock !== false,
+    checkpointRereadBeforeWrite: input.checkpointRereadBeforeWrite !== false,
+    sequenceDigestRechecked: input.sequenceDigestRechecked !== false,
+    atomicReplacement: input.atomicReplacement !== false,
+    previousCheckpointPreserved: input.previousCheckpointPreserved !== false,
+    checkpointUploadForbidden: input.checkpointUploadForbidden !== false,
+    staleLockRecoveryProfile: input.staleLockRecoveryProfile || 'same_machine_liveness_or_diagnostic_resume',
+    networkFilesystemAutoResumeAllowed: input.networkFilesystemAutoResumeAllowed === true,
+    readerBeforeWriterMigration: input.readerBeforeWriterMigration !== false,
+    safeSummaryOnly: true,
+  };
+}
+
+export function validateV128DeterministicDecisionProjection(control = {}) {
+  const reasons = [];
+  if (control.runtimeVersion !== '1.2.8') reasons.push('v128_projection_version_invalid');
+  if (!['source_shadow_candidate', 'source_activation_candidate', 'active'].includes(control.candidateActivationState || 'source_shadow_candidate')) reasons.push('v128_projection_activation_state_invalid');
+  if (control.storedProjectionArtifact !== 'codex-quality-gate-safe-summary.json') reasons.push('projection_must_live_in_safe_summary');
+  if (control.storedProjectionField !== 'routineDecisionProjection') reasons.push('projection_field_must_be_routine_decision_projection');
+  if (control.storedProjectionAuthority !== 'non_authoritative') reasons.push('stored_projection_must_be_non_authoritative');
+  if (control.decisionCapsuleAuthority !== 'domain_decision_authority') reasons.push('decision_capsule_authority_must_be_preserved');
+  if (control.finalDecisionAuthority !== 'pass_block_mergeAllowed_exit_code_authority') reasons.push('final_decision_authority_must_be_preserved');
+  if (control.projectionDoesNotReplaceFinalDecision !== true) reasons.push('projection_cannot_replace_final_decision');
+  if (control.providerClosurePreclaimed === true) reasons.push('projection_cannot_preclaim_provider_closure');
+  if (control.threeStageSeparation?.mergeBoundaryFinalDecision !== 'authoritative_recompute') reasons.push('merge_boundary_final_decision_must_recompute');
+  if (control.artifactDependencyDagAcyclic !== true) reasons.push('artifact_dependency_dag_must_be_acyclic');
+  if (control.oldDraftAuthorityPollution === true || control.decisionCapsuleIsProjectionPhraseDetected === true) reasons.push('old_v128_authority_draft_pollution');
+  if (control.readerBeforeWriterMigration !== true) reasons.push('reader_before_writer_migration_required');
+  if (control.candidateToolingIsolatedFromActiveGate !== true) reasons.push('candidate_tooling_must_be_isolated');
+  if (control.activationReady === true && control.projectionBytesObserved !== true) reasons.push('activation_requires_observed_projection_bytes');
+  if (control.projectionBytesObserved !== true && control.projectionMeasurementSource !== 'not_observed') reasons.push('unobserved_projection_source_must_be_not_observed');
+  if (control.projectionBytesObserved === true && Number(control.projectionBytes || 0) <= 0) reasons.push('observed_projection_bytes_required');
+  if (control.projectionBytesObserved === true && Number(control.projectionBytes || 0) > 1600) reasons.push('routine_projection_bytes_over_budget');
+  if (control.projectionBytesObserved === true && Number(control.stressProjectionBytes || 0) > 2048) reasons.push('stress_projection_bytes_over_budget');
+  return reasons.length ? fail(reasons) : pass({ projectionBytes: control.projectionBytes, stressProjectionBytes: control.stressProjectionBytes });
+}
+
+export function validateV128OrthogonalReasonModel(control = {}) {
+  const reasons = [];
+  if (control.runtimeVersion !== '1.2.8') reasons.push('v128_reason_model_version_invalid');
+  if (control.stateEffectSeparated !== true) reasons.push('reason_state_effect_must_be_separated');
+  for (const reason of control.reasons || []) {
+    if (!reason.reasonCode) reasons.push('reason_code_required');
+    if (!V128_REASON_STATES.has(reason.state)) reasons.push(`reason_state_invalid_${reason.state || 'missing'}`);
+    if (['awaiting', 'blocking'].includes(reason.state)) reasons.push('reason_effect_value_used_as_state');
+    if (!reason.evidenceRef) reasons.push('reason_evidence_ref_required');
+  }
+  for (const [phase, effects] of Object.entries(control.effectByPhase || {})) {
+    if (!V128_DECISION_PHASES.has(phase)) reasons.push(`reason_phase_invalid_${phase}`);
+    for (const effect of Object.values(effects || {})) {
+      if (!V128_REASON_EFFECTS.has(effect)) reasons.push(`reason_effect_invalid_${effect}`);
+    }
+  }
+  if (control.unknownReasonFailClosed !== true) reasons.push('unknown_reason_must_fail_closed');
+  if (control.providerNeutralCore !== true) reasons.push('reason_core_must_be_provider_neutral');
+  if (control.githubAdapterSeparated !== true) reasons.push('github_adapter_must_be_separated');
+  if (control.stateMatrixFiniteAndUnique !== true) reasons.push('state_matrix_must_be_finite_unique');
+  return reasons.length ? fail(reasons) : pass({ reasonCount: (control.reasons || []).length });
+}
+
+export function validateV128TokenMinimalReadCompatibilityRouter(control = {}) {
+  const reasons = [];
+  if (control.runtimeVersion !== '1.2.8') reasons.push('v128_token_router_version_invalid');
+  if (!['source_shadow_candidate', 'source_activation_candidate', 'active'].includes(control.candidateActivationState || 'source_shadow_candidate')) reasons.push('v128_token_router_activation_state_invalid');
+  for (const baseline of control.profileBaselines || []) {
+    if (!V128_PROFILE_BASELINES.has(baseline)) reasons.push(`profile_baseline_invalid_${baseline}`);
+  }
+  if (control.profileBaselineInheritance !== true) reasons.push('profile_baseline_must_be_inherited');
+  if (Number(control.routineSelectedSkillMax || 0) > 1) reasons.push('routine_skill_max_must_be_one');
+  if (Number(control.mandatorySafetySelectedSkillMax || 0) > 2) reasons.push('mandatory_safety_skill_max_must_be_two');
+  if (control.mandatorySafetyTriggerAllowlisted !== true) reasons.push('mandatory_safety_trigger_allowlist_required');
+  if (control.headPrCannotCreateMandatoryTrigger !== true) reasons.push('head_pr_cannot_create_mandatory_trigger');
+  if (Number(control.routineManagedSafeArtifactRead || 0) !== 1) reasons.push('routine_safe_artifact_read_must_be_one');
+  if (Number(control.routineColdArtifactRead || 0) !== 0) reasons.push('routine_cold_artifact_read_must_be_zero');
+  if (Number(control.diagnosticColdArtifactReadMax || 0) > 3) reasons.push('diagnostic_cold_artifact_read_over_budget');
+  if (Number(control.compiledEffectiveInstructionCapsuleCount || 0) !== 1) reasons.push('compiled_instruction_capsule_count_must_be_one');
+  if (control.compiledInstructionCapsuleDeterministic !== true) reasons.push('compiled_instruction_capsule_must_be_deterministic');
+  if (control.llmSummaryForInstructionCapsule === true) reasons.push('instruction_capsule_llm_summary_forbidden');
+  if (control.instructionSourceDigestsRecorded !== true) reasons.push('instruction_source_digests_required');
+  if (control.instructionConflictHardFailure !== true) reasons.push('instruction_conflict_must_fail_hard');
+  if (control.forbiddenBoundaryWeakeningAllowed === true) reasons.push('forbidden_boundary_weakening_forbidden');
+  if (control.activationReady === true && control.managedBytesObserved !== true) reasons.push('activation_requires_observed_managed_bytes');
+  if (control.managedBytesObserved !== true && control.managedBytesMeasurementSource !== 'not_observed') reasons.push('unobserved_managed_bytes_source_must_be_not_observed');
+  if (control.managedBytesObserved === true && Number(control.perTransitionManagedBytes || 0) > 4096) reasons.push('per_transition_context_bytes_over_budget');
+  if (control.activationReady === true && control.transitionsPerTaskObserved !== true) reasons.push('activation_requires_transition_observation');
+  if (control.microTransitionInflationGuard !== true) reasons.push('micro_transition_inflation_guard_required');
+  if (Number(control.finalReportLineBudget || 0) > 8) reasons.push('final_report_line_budget_over_v128_budget');
+  if (Number(control.routineOwnerInterruptCount || 0) !== 0) reasons.push('routine_owner_interrupt_must_be_zero');
+  if (Number(control.repeatedSafetyTextCount || 0) !== 0) reasons.push('repeated_safety_text_must_be_zero');
+  if (control.observedTokenMetricsDefaultFalse !== true) reasons.push('observed_token_metrics_default_false_required');
+  return reasons.length ? fail(reasons) : pass({ perTransitionManagedBytes: control.perTransitionManagedBytes });
+}
+
+export function validateV128ResumableLoopAndPermissionProjection(control = {}) {
+  const reasons = [];
+  const receipt = control.receiptHydrationBinding || {};
+  const checkpoint = control.checkpointBinding || {};
+  if (control.runtimeVersion !== '1.2.8') reasons.push('v128_resume_permission_version_invalid');
+  if (!['source_shadow_candidate', 'source_activation_candidate', 'active'].includes(control.candidateActivationState || 'source_shadow_candidate')) reasons.push('v128_resume_permission_activation_state_invalid');
+  if (control.projectionCreatesPermission === true) reasons.push('projection_cannot_create_permission');
+  const receiptState = receipt.receiptHydrationState || 'not_available';
+  const checkpointState = checkpoint.checkpointState || 'not_available';
+  if (!['not_available', 'valid'].includes(receiptState)) reasons.push('receipt_hydration_state_invalid');
+  if (!['not_available', 'valid'].includes(checkpointState)) reasons.push('checkpoint_state_invalid');
+  if (receiptState === 'valid' && control.permissionDerivedFromCurrentReceipt !== true) reasons.push('permission_must_derive_from_current_receipt');
+  if (receiptState === 'not_available' && (control.allowedActionCodes || []).length > 0) reasons.push('unhydrated_receipt_cannot_project_allowed_actions');
+  for (const action of control.allowedActionCodes || []) {
+    if (!V128_ALLOWED_CONTINUATION_ACTIONS.has(action)) reasons.push(`continuation_action_invalid_${action}`);
+  }
+  const receiptPlaceholders = new Set(['sha256:receipt', 'task-v128', 'github.com:hiro4649/codex-development-harness', 'codex/harness-v1-2-8-*', 'sha256:scope', 'sha256:owner']);
+  if (receiptState === 'valid') {
+    for (const key of ['receiptDigest', 'taskId', 'repositoryKey', 'branchConstraint', 'scopeContractDigest', 'ownerInstructionDigest']) {
+      if (!receipt[key]) reasons.push(`receipt_hydration_missing_${key}`);
+      if (receiptPlaceholders.has(receipt[key])) reasons.push(`receipt_hydration_placeholder_${key}`);
+    }
+    if (receipt.observedBinding !== true) reasons.push('receipt_hydration_observed_binding_required');
+  }
+  for (const invalidator of ['new_owner_instruction', 'scope_delta', 'repository_change', 'branch_violation', 'receipt_revoke', 'task_id_change']) {
+    if (!control.receiptInvalidators?.includes(invalidator)) reasons.push(`receipt_invalidator_missing_${invalidator}`);
+  }
+  if (control.sameSessionRoutineRequiresHydratedReceipt !== true) reasons.push('same_session_routine_requires_hydrated_receipt');
+  if (control.crossSessionResumeDiagnosticOnly !== true) reasons.push('cross_session_resume_must_be_diagnostic');
+  const checkpointPlaceholders = new Set(['sha', 'sha256:scope', 'sha256:receipt', 'sha256:evidence', 'single_worker', 'source_worktree', 'sha256:previous']);
+  if (checkpointState === 'valid') {
+    for (const key of ['headOid', 'scopeContractDigest', 'processReceiptDigest', 'lastVerifiedEvidenceDigest', 'workerId', 'worktreeId', 'checkpointSequence', 'previousCheckpointDigest']) {
+      if (!checkpoint[key]) reasons.push(`checkpoint_binding_missing_${key}`);
+      if (checkpointPlaceholders.has(checkpoint[key])) reasons.push(`checkpoint_binding_placeholder_${key}`);
+    }
+    if (checkpoint.observedBinding !== true) reasons.push('checkpoint_observed_binding_required');
+  }
+  if (control.checkpointAuthority !== 'non_authoritative_resume_assist') reasons.push('checkpoint_must_be_non_authoritative');
+  if (control.perWorktreeExclusiveLock !== true) reasons.push('checkpoint_requires_per_worktree_lock');
+  if (control.checkpointRereadBeforeWrite !== true) reasons.push('checkpoint_requires_reread_before_write');
+  if (control.sequenceDigestRechecked !== true) reasons.push('checkpoint_sequence_digest_recheck_required');
+  if (control.atomicReplacement !== true) reasons.push('checkpoint_atomic_replacement_required');
+  if (control.previousCheckpointPreserved !== true) reasons.push('previous_checkpoint_preservation_required');
+  if (control.checkpointUploadForbidden !== true) reasons.push('checkpoint_upload_forbidden');
+  if (control.networkFilesystemAutoResumeAllowed === true) reasons.push('network_filesystem_auto_resume_forbidden');
+  if (control.readerBeforeWriterMigration !== true) reasons.push('reader_before_writer_migration_required');
+  return reasons.length ? fail(reasons) : pass({ continuationState: 'continue' });
+}
+
 export function buildOrchestrationCapsule(input = {}) {
   const v127ProcessInput = (input.typedOwnerProcessReceiptAndContinuationKernel || input).ownerProcessReceipt || {};
   const v127ProcessHasProvenance = Boolean(v127ProcessInput.receiptId && v127ProcessInput.taskId && (v127ProcessInput.ownerInstructionHash || v127ProcessInput.sourceInstructionRef));
@@ -1488,7 +1788,10 @@ export function buildOrchestrationCapsule(input = {}) {
   });
   return {
     orchestrationVersion: '1',
+    sourceHarnessVersion: input.sourceHarnessVersion || '1.2.8',
     activeHarnessVersion: input.activeHarnessVersion || '1.2.7',
+    candidateHarnessVersion: input.candidateHarnessVersion || '1.2.8',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,
@@ -1540,10 +1843,14 @@ export function buildOrchestrationCapsule(input = {}) {
     validationDagAndContentAddressedReuse: defaultValidationDagAndContentAddressedReuse(input.validationDagAndContentAddressedReuse || input),
     contextOutputOwnerInterruptTokenBudget: defaultContextOutputOwnerInterruptTokenBudget(input.contextOutputOwnerInterruptTokenBudget || input),
     blockerClosureAndProductValuePressure: defaultBlockerClosureAndProductValuePressure(input.blockerClosureAndProductValuePressure || input),
+    deterministicDecisionProjection: defaultV128DeterministicDecisionProjection(input.deterministicDecisionProjection || input),
+    orthogonalReasonModel: defaultV128OrthogonalReasonModel(input.orthogonalReasonModel || input),
+    tokenMinimalReadCompatibilityRouter: defaultV128TokenMinimalReadCompatibilityRouter(input.tokenMinimalReadCompatibilityRouter || input),
+    resumableLoopAndPermissionProjection: defaultV128ResumableLoopAndPermissionProjection(input.resumableLoopAndPermissionProjection || input),
     authorityBoundary: {
       conflictPrecedence: [
-        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_v1.2.2_v1.2.3_v1.2.4_v1.2.5_v1.2.6_and_v1.2.7',
-        'v1.1.9_orchestration_over_v1.2.0_routing_v1.2.1_calibration_v1.2.2_context_routing_v1.2.3_observed_evidence_v1.2.4_delegated_autonomy_v1.2.5_control_plane_v1.2.6_observed_state_loop_and_v1.2.7_receipt_continuation',
+        'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_v1.2.2_v1.2.3_v1.2.4_v1.2.5_v1.2.6_v1.2.7_and_v1.2.8',
+        'v1.1.9_orchestration_over_v1.2.0_routing_v1.2.1_calibration_v1.2.2_context_routing_v1.2.3_observed_evidence_v1.2.4_delegated_autonomy_v1.2.5_control_plane_v1.2.6_observed_state_loop_v1.2.7_receipt_continuation_and_v1.2.8_projection_compression',
         'owner_only_boundary_over_reviewer_output',
       ],
       highTierReviewCreatesOwnerApproval: false,
@@ -1803,9 +2110,9 @@ export function validateFinalDecisionClosure(closure = {}) {
 
 export function validateWorkspaceIdentityGate(gate = {}) {
   const reasons = [];
-  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(gate.workspaceIdentityVersion)) reasons.push('workspace_identity_version_invalid');
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
-  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(gate.manifestActiveHarnessVersion)) reasons.push('workspace_identity_manifest_version_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(gate.workspaceIdentityVersion)) reasons.push('workspace_identity_version_invalid');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(gate.manifestActiveHarnessVersion)) reasons.push('workspace_identity_manifest_version_invalid');
   if (gate.wrongRepo === true && gate.readOnlyAudit !== true) reasons.push('wrong_workspace_blocked');
   if (gate.frozenBranchUsed === true) reasons.push('frozen_branch_blocked');
   if (gate.mutationTask === true && gate.repoResolvableOnGitHub !== true) reasons.push('unresolvable_remote_for_mutation');
@@ -1817,14 +2124,17 @@ export function validateWorkspaceIdentityGate(gate = {}) {
 
 export function validateActivePolicyIndex(index = {}) {
   const reasons = [];
-  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(index.schemaVersion)) reasons.push('active_policy_index_schema_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(index.schemaVersion)) reasons.push('active_policy_index_schema_invalid');
   if (index.indexPath !== 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json') reasons.push('active_policy_index_path_invalid');
   for (const item of ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json']) {
     if (!Array.isArray(index.requiredReads) || !index.requiredReads.includes(item)) reasons.push(`active_policy_index_missing_${item}`);
   }
-  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
+  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
   if (Array.isArray(index.requiredReads) && index.requiredReads.some((item) => ['README.md', 'legacy_specs', 'pr_history_docs'].includes(item))) reasons.push('active_policy_index_required_reads_too_broad');
   if (Number(index.selectedSkillsMax || 0) > 3) reasons.push('active_policy_index_skill_budget_too_high');
+  if (index.schemaVersion === '1.2.8' && Number(index.selectedSkillsMax || 0) > 1) reasons.push('active_policy_index_v128_routine_skill_budget_too_high');
+  if (index.schemaVersion === '1.2.8' && Number(index.routineColdArtifactReadMax || 0) !== 0) reasons.push('active_policy_index_v128_cold_read_budget_invalid');
+  if (index.schemaVersion === '1.2.8' && Number(index.routineManagedArtifactReadMax || 0) > 1) reasons.push('active_policy_index_v128_managed_read_budget_too_high');
   if (Number(index.mdFilesReadMax || 0) > 6) reasons.push('active_policy_index_md_budget_too_high');
   return reasons.length ? fail(reasons) : pass({ taskProfile: index.taskProfile, requiredReads: Array.isArray(index.requiredReads) ? index.requiredReads.length : 0 });
 }
@@ -2361,19 +2671,23 @@ export function validateSkillContextRouting(routing = {}) {
   const budget = READ_BUDGET_BY_TASK_PROFILE[taskProfile];
   const selectedSkills = Array.isArray(routing.selectedSkills) ? routing.selectedSkills : [];
   const mdFilesRead = Array.isArray(routing.mdFilesRead) ? routing.mdFilesRead : [];
-  const selectedSkillsMax = Number(routing.selectedSkillsMax || budget.selectedSkillsMax);
+  const mandatorySafetyTrigger = routing.mandatorySafetyTrigger === true;
+  const budgetSelectedSkillsMax = mandatorySafetyTrigger ? (budget.mandatorySafetySelectedSkillsMax || budget.selectedSkillsMax) : budget.selectedSkillsMax;
+  const selectedSkillsMax = Number(routing.selectedSkillsMax || budgetSelectedSkillsMax);
   const mdFilesReadMax = Number(routing.mdFilesReadMax || budget.mdFilesReadMax);
-  const effectiveSelectedSkillsMax = Math.min(selectedSkillsMax, budget.selectedSkillsMax);
+  const effectiveSelectedSkillsMax = Math.min(selectedSkillsMax, budgetSelectedSkillsMax);
   const effectiveMdFilesReadMax = Math.min(mdFilesReadMax, budget.mdFilesReadMax);
   const authority = routing.activeAuthorityTuple || {};
   const blockers = new Set(routing.blockerClasses || []);
-  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
+  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
   if (!TASK_PROFILES.has(routing.taskProfile)) reasons.push('task_profile_invalid');
-  if (selectedSkillsMax > budget.selectedSkillsMax) reasons.push('selected_skills_max_cannot_override_task_profile_budget');
+  if (mandatorySafetyTrigger && routing.mandatorySafetyTriggerAllowlisted !== true) reasons.push('mandatory_safety_trigger_requires_allowlist');
+  if (mandatorySafetyTrigger && !routing.mandatorySafetyTriggerId) reasons.push('mandatory_safety_trigger_requires_id');
+  if (selectedSkillsMax > budgetSelectedSkillsMax) reasons.push('selected_skills_max_cannot_override_task_profile_budget');
   if (mdFilesReadMax > budget.mdFilesReadMax) reasons.push('md_files_read_max_cannot_override_task_profile_budget');
   if (selectedSkills.length > effectiveSelectedSkillsMax) reasons.push('selected_skills_over_task_profile_budget');
   if (selectedSkills.length >= 3) {
-    if (budget.selectedSkillsMax < 3) reasons.push('third_skill_forbidden_by_task_profile');
+    if (budgetSelectedSkillsMax < 3) reasons.push('third_skill_forbidden_by_task_profile');
     if (routing.thirdSkillAllowed !== true) reasons.push('third_skill_requires_explicit_allowance');
     if (!routing.typedJustification) reasons.push('third_skill_requires_typed_justification');
     if ((routing.tokenBudgetStatus || 'pass') !== 'pass') reasons.push('third_skill_requires_token_budget_pass');
@@ -2389,10 +2703,10 @@ export function validateSkillContextRouting(routing = {}) {
   if (!READ_BUDGET_STATUS.has(routing.readBudgetStatus)) reasons.push('read_budget_status_invalid');
   if (routing.readBudgetStatus === 'blocked') reasons.push('read_budget_blocked');
   for (const blocker of blockers) if (HARD_CONTEXT_BLOCKERS.has(blocker)) reasons.push(blocker);
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
-  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
-  if (!['v122', 'v123', 'v124', 'v125', 'v126', 'v127'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
-  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
+  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
+  if (!['v122', 'v123', 'v124', 'v125', 'v126', 'v127', 'v128'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
+  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
   if (authority.finalAuthorityPointer !== 'v1.1.8_final_decision_kernel') reasons.push('active_authority_final_decision_pointer_missing');
   if (routing.ownerProvidedContext?.countedAsFileRead === true) reasons.push('owner_provided_context_not_file_read');
   return reasons.length ? fail(reasons) : pass({ taskProfile, selectedSkills: selectedSkills.length, mdFilesRead: mdFilesRead.length, readBudgetStatus: routing.readBudgetStatus });
@@ -2440,6 +2754,10 @@ export function validateOrchestrationCapsule(capsule = {}) {
     tokenEconomyOwnerInterruptInternalStatus: validateContextOutputOwnerInterruptTokenBudget(capsule.contextOutputOwnerInterruptTokenBudget || {}),
     v127PermissionGrantReceiptCoherenceInternalStatus: validateV127PermissionGrantReceiptCoherence(capsule),
     blockerClosureProductValueInternalStatus: validateBlockerClosureAndProductValuePressure(capsule.blockerClosureAndProductValuePressure || {}),
+    deterministicDecisionProjectionInternalStatus: validateV128DeterministicDecisionProjection(capsule.deterministicDecisionProjection || {}),
+    orthogonalReasonModelInternalStatus: validateV128OrthogonalReasonModel(capsule.orthogonalReasonModel || {}),
+    tokenMinimalReadCompatibilityRouterInternalStatus: validateV128TokenMinimalReadCompatibilityRouter(capsule.tokenMinimalReadCompatibilityRouter || {}),
+    resumableLoopPermissionProjectionInternalStatus: validateV128ResumableLoopAndPermissionProjection(capsule.resumableLoopAndPermissionProjection || {}),
   };
 }
 

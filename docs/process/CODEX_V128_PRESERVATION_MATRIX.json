@@ -1,0 +1,83 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "schemaVersion": "1.2.8",
+  "name": "CODEX_V128_PRESERVATION_MATRIX",
+  "baselineModel": "inherited_profile_floor",
+  "profiles": {
+    "v127_common_safety_floor": {
+      "authorityInvariants": [
+        "final_decision_authority_preserved",
+        "decision_capsule_domain_authority_preserved",
+        "required_check_failure_not_owner_overridable",
+        "owner_authority_separation_preserved"
+      ],
+      "safetyInvariants": [
+        "same_head_boundary_preserved",
+        "pr_body_display_only_preserved",
+        "raw_logs_forbidden",
+        "self_approval_forbidden",
+        "github_approval_review_forbidden",
+        "stop_circuit_preserved"
+      ],
+      "operationalInvariants": [
+        "process_receipt_provenance_required",
+        "in_scope_commit_push_pr_ci_repair_continuation",
+        "scope_delta_expires_process_receipt",
+        "exact_head_merge_authority_expires_on_head_change",
+        "fix_ci_canonical_action_preserved",
+        "validation_reuse_preserved",
+        "post_merge_sentinel_preserved",
+        "blocked_recovery_preserved",
+        "post_merge_verify_preserved"
+      ],
+      "tokenInvariants": [
+        "routine_skill_max_one",
+        "mandatory_safety_override_max_two_with_allowlist",
+        "routine_safe_artifact_read_one",
+        "routine_cold_read_zero",
+        "final_output_max_eight_lines",
+        "repeated_safety_text_zero",
+        "routine_owner_interrupt_zero",
+        "observed_token_metrics_default_false"
+      ]
+    },
+    "v127_source_baseline": {
+      "inherits": "v127_common_safety_floor",
+      "sourceOnlyRelease": true,
+      "targetRollout": "not_started",
+      "sourceManifestDependency": "allowed_for_source"
+    },
+    "v127_full_target_baseline": {
+      "inherits": "v127_common_safety_floor",
+      "sourceManifestDependency": "forbidden_for_target",
+      "targetModeIndependence": true
+    },
+    "v127_restricted_token_target_baseline": {
+      "inherits": "v127_common_safety_floor",
+      "sourceManifestDependency": "forbidden_for_target",
+      "forbiddenCapabilities": [
+        "deploy",
+        "funded_tx",
+        "governance_tx",
+        "bscscan_verification",
+        "readiness_claim",
+        "wallet_rpc",
+        "secret_access"
+      ]
+    }
+  },
+  "migrationContracts": [
+    "v127_v128_dual_reader",
+    "reader_before_writer",
+    "rollback_writer_to_v127",
+    "shadow_target_canary_before_source_activation"
+  ],
+  "acceptanceMetrics": [
+    "false_pass_zero_in_replay_and_canary",
+    "false_technical_blocker_zero_in_replay_and_canary",
+    "active_v127_gate_impact_zero",
+    "routine_projection_bytes_le_1600",
+    "per_transition_context_bytes_le_4096"
+  ],
+  "safeSummaryOnly": true
+}

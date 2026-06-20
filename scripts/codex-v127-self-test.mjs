@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.7
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import fs from 'node:fs';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -73,9 +73,9 @@ function activeManifestPathsForMode(env = process.env) {
 
 function manifestThemeMatchesActiveVersion() {
   const manifests = activeManifestPathsForMode().map((file) => JSON.parse(fs.readFileSync(file, 'utf8')));
-  return manifests.every((manifest) => manifest.activeHarnessVersion === '1.2.7'
-    && manifest.activeSelfTestSuite === 'v127'
-    && manifest.theme === 'Receipt-Carried Continuation and Evidence Compression');
+  return manifests.every((manifest) => ['1.2.7', '1.2.8'].includes(manifest.activeHarnessVersion)
+    && ['v127', 'v128'].includes(manifest.activeSelfTestSuite)
+    && ['Receipt-Carried Continuation and Evidence Compression', 'Deterministic Decision Projection and Token-Minimal Loop Closure'].includes(manifest.theme));
 }
 
 const cases = [
@@ -83,12 +83,12 @@ const cases = [
   ['v127_adds_no_new_p0_artifact', () => V127_P0_ARTIFACTS.length === 3 && V127_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
   ['v127_adds_no_new_top_level_status', () => V127_OPERATOR_STATUS_KEYS.length === 8 && !V127_OPERATOR_STATUS_KEYS.includes('decisionEvidenceEnvelopeStatus')],
   ['v127_preserves_v118_final_decision', () => buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
-  ['v127_active_authority_tuple_is_current', () => {
+  ['v127_compatibility_survives_v128_active_authority', () => {
     const tuple = buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple;
-    return tuple.agentsMarker === 'CODEX_QUALITY_HARNESS_FILE v1.2.7'
-      && tuple.manifestActiveHarnessVersion === '1.2.7'
-      && tuple.activeSelfTestSuite === 'v127'
-      && tuple.activeSpecPath === 'docs/process/CODEX_V127_SPEC.md';
+    return ['CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8'].includes(tuple.agentsMarker)
+      && ['1.2.7', '1.2.8'].includes(tuple.manifestActiveHarnessVersion)
+      && ['v127', 'v128'].includes(tuple.activeSelfTestSuite)
+      && ['docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md'].includes(tuple.activeSpecPath);
   }],
   ['process_receipt_survives_in_scope_commit_head_changes', () => passed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
     typedOwnerProcessReceiptAndContinuationKernel: {

@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.7",
-  "harnessVersion": "1.2.7",
-  "sourceHarnessVersion": "1.2.7",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "harnessVersion": "1.2.8",
+  "sourceHarnessVersion": "1.2.8",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.2.7",
+  "schemaVersion": "1.2.8",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -96,7 +96,15 @@
     "docs/process/CODEX_V126_SPEC.md",
     "scripts/codex-v126-self-test.mjs",
     "docs/process/CODEX_V127_SPEC.md",
-    "scripts/codex-v127-self-test.mjs"
+    "scripts/codex-v127-self-test.mjs",
+    "docs/process/CODEX_V128_SPEC.md",
+    "docs/process/CODEX_V128_CONTRACT_SCHEMA.json",
+    "docs/process/CODEX_V128_REASON_REGISTRY.json",
+    "docs/process/CODEX_V128_STATE_MATRIX.json",
+    "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
+    "docs/process/CODEX_V128_REPLAY_CORPUS.json",
+    "scripts/codex-v128-self-test.mjs",
+    "scripts/codex-v128-projection-reader.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -552,7 +560,15 @@
     "docs/process/CODEX_HARNESS_V1_1_1_TOKEN_HARD_CAP_CONTEXT_CAPSULE_FAILURE_CLOSURE_POLICY.md",
     "docs/process/CODEX_V111_SPEC.md",
     "docs/process/CODEX_STATUS_TAXONOMY_V1_1_1.json",
-    "docs/process/CODEX_V125_SPEC.md"
+    "docs/process/CODEX_V125_SPEC.md",
+    "docs/process/CODEX_V128_SPEC.md",
+    "docs/process/CODEX_V128_CONTRACT_SCHEMA.json",
+    "docs/process/CODEX_V128_REASON_REGISTRY.json",
+    "docs/process/CODEX_V128_STATE_MATRIX.json",
+    "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
+    "docs/process/CODEX_V128_REPLAY_CORPUS.json",
+    "scripts/codex-v128-self-test.mjs",
+    "scripts/codex-v128-projection-reader.mjs"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -941,7 +957,8 @@
     "v105": "advisory",
     "v104": "advisory",
     "v103": "advisory",
-    "v127": "blocking_current"
+    "v127": "blocking_current_active_authority",
+    "v128": "source_shadow_candidate"
   },
   "targetRollout": "not_started",
   "representativeRealPrValidation": "not_started",
@@ -1343,7 +1360,7 @@
   ],
   "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
-  "theme": "Receipt-Carried Continuation and Evidence Compression",
+  "theme": "Deterministic Decision Projection and Token-Minimal Loop Closure",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",
@@ -1618,7 +1635,8 @@
     "v114": "blocking_compatibility",
     "v113": "selected_critical",
     "v080_v112": "target_shadow_legacy_count_only",
-    "v127": "blocking_current"
+    "v127": "blocking_current_active_authority",
+    "v128": "source_shadow_candidate"
   },
   "contextRouting": {
     "version": "1.2.4",
@@ -1779,5 +1797,66 @@
       "youtubePolicyComplianceClaimed": false,
       "walletRpcDeployAccess": false
     }
+  },
+  "upgradePath": "v127_to_v128_shadow_candidate_then_activation",
+  "deterministicDecisionProjectionAndTokenMinimalLoopClosure": {
+    "version": "1.2.8",
+    "name": "Deterministic Decision Projection and Token-Minimal Loop Closure",
+    "sourceOnlyRelease": true,
+    "targetRollout": "not_started",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "p0InternalBlocks": [
+      "Deterministic Decision Projection",
+      "Orthogonal Reason Model",
+      "Token-Minimal Read and Compatibility Router",
+      "Resumable Loop and Permission Projection"
+    ],
+    "authority": {
+      "decisionCapsule": "domain_decision_authority",
+      "evidenceCapsule": "same_head_freshness_authority",
+      "finalDecision": "pass_block_mergeAllowed_exit_code_authority",
+      "qualityGateSafeSummary": "non_authoritative_projection"
+    },
+    "tokenEconomy": {
+      "routineManagedSafeArtifactRead": 1,
+      "routineColdArtifactRead": 0,
+      "diagnosticColdArtifactReadMax": 3,
+      "routineProjectionBytesMax": 1600,
+      "stressProjectionBytesMax": 2048,
+      "boundedProjectionReader": "scripts/codex-v128-projection-reader.mjs",
+      "boundedProjectionReaderSurfaceBytesMax": 1600,
+      "boundedProjectionReaderStdoutBytesMax": 1600,
+      "boundedProjectionReaderStrictJson": true,
+      "perTransitionManagedContextBytesMax": 4096,
+      "managedContextBytesObserved": false,
+      "managedContextObservationRequiredForActivation": true,
+      "routineFinalReportLineMax": 8,
+      "routineOwnerInterruptMax": 0
+    },
+    "migration": {
+      "readerBeforeWriter": true,
+      "dualReader": true,
+      "rollback": true,
+      "shadowTargetCanaryBeforeActivation": true
+    },
+    "safety": {
+      "rawLogsRead": false,
+      "selfApproval": false,
+      "githubApprovalReview": false,
+      "runtimeReadinessClaimed": false,
+      "productionReadinessClaimed": false,
+      "walletRpcDeployAccess": false
+    },
+    "activationState": "source_shadow_candidate",
+    "sourceActivation": "not_started",
+    "shadowTargetCanary": "not_started",
+    "activationReady": false,
+    "observedProjectionRequiredForActivation": true,
+    "stateMatrixCoverage": "partial_shadow_candidate",
+    "postMergeReplayCoverage": "partial_shadow_candidate",
+    "placeholderReceiptValid": false
   }
 }

@@ -1,0 +1,49 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "schemaVersion": "1.2.8",
+  "name": "CODEX_V128_REPLAY_CORPUS",
+  "scope": "source_shadow_candidate_preconditions",
+  "cases": [
+    {
+      "caseId": "projection_non_authority",
+      "expected": "pass",
+      "checks": ["safe_summary_projection_non_authoritative", "final_decision_not_replaced"]
+    },
+    {
+      "caseId": "old_draft_authority_pollution",
+      "expected": "fail",
+      "checks": ["decision_capsule_is_projection_phrase_detected"]
+    },
+    {
+      "caseId": "reason_pending_waiting_remote",
+      "expected": "awaiting",
+      "reasonCode": "required_check_pending",
+      "state": "pending",
+      "phase": "pushed_waiting_remote"
+    },
+    {
+      "caseId": "reason_pending_merge_boundary",
+      "expected": "blocking",
+      "reasonCode": "required_check_pending",
+      "state": "pending",
+      "phase": "merge_boundary"
+    },
+    {
+      "caseId": "routine_token_surface",
+      "expected": "pass",
+      "checks": ["routine_safe_artifact_read_one", "routine_cold_read_zero", "compiled_instruction_capsule_one"]
+    },
+    {
+      "caseId": "receipt_scope_delta",
+      "expected": "fail",
+      "checks": ["scope_delta_expires_process_receipt"]
+    },
+    {
+      "caseId": "post_merge_lane_preservation",
+      "expected": "pass",
+      "replayStatus": "partial_shadow_candidate",
+      "checks": ["post_merge_sentinel", "blocked_recovery", "post_merge_verify"]
+    }
+  ],
+  "safeSummaryOnly": true
+}

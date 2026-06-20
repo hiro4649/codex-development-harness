@@ -1,0 +1,69 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "schemaVersion": "1.2.8",
+  "name": "CODEX_V128_STATE_MATRIX",
+  "finiteEnumProductRequired": true,
+  "routineRuntimeUsesCompiledTable": true,
+  "coverage": "partial_shadow_candidate",
+  "fullEnumProductExecuted": false,
+  "activationBlockingUntilFullReplay": true,
+  "implicitFallbackForbidden": true,
+  "firstMatchRuleForbidden": true,
+  "states": [
+    {
+      "decisionPhase": "local_pre_pr",
+      "providerClosureState": "not_required_for_phase",
+      "mergeAuthorityState": "not_required_for_phase",
+      "transition": "continue_commit_push_create_pr"
+    },
+    {
+      "decisionPhase": "pushed_waiting_remote",
+      "providerClosureState": "pending",
+      "mergeAuthorityState": "not_required_for_phase",
+      "transition": "wait_for_remote_gate"
+    },
+    {
+      "decisionPhase": "provider_closed",
+      "providerClosureState": "pass",
+      "mergeAuthorityState": "required",
+      "transition": "owner_merge_decision_only"
+    },
+    {
+      "decisionPhase": "merge_boundary",
+      "providerClosureState": "pass",
+      "mergeAuthorityState": "valid",
+      "transition": "merge_current_pr"
+    },
+    {
+      "decisionPhase": "post_merge_verify",
+      "providerClosureState": "not_required_for_phase",
+      "mergeAuthorityState": "not_required_for_phase",
+      "transition": "post_merge_verify"
+    },
+    {
+      "decisionPhase": "blocked_recovery",
+      "providerClosureState": "fail",
+      "mergeAuthorityState": "not_required_for_phase",
+      "transition": "repair_harness_only"
+    }
+  ],
+  "hardInvalid": [
+    {
+      "decisionPhase": "merge_boundary",
+      "providerClosureState": "pending",
+      "reason": "provider_pending_cannot_merge"
+    },
+    {
+      "decisionPhase": "merge_boundary",
+      "mergeAuthorityState": "missing",
+      "reason": "merge_requires_current_owner_receipt"
+    },
+    {
+      "decisionPhase": "provider_closed",
+      "providerClosureState": "pass",
+      "mergeAuthorityState": "valid",
+      "reason": "provider_closed_projection_cannot_execute_merge"
+    }
+  ],
+  "safeSummaryOnly": true
+}

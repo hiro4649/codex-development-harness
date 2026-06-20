@@ -1,14 +1,14 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.7",
-  "schemaVersion": "1.2.7",
-  "sourceHarnessVersion": "1.2.7",
-  "harnessVersion": "1.2.7",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "schemaVersion": "1.2.8",
+  "sourceHarnessVersion": "1.2.8",
+  "harnessVersion": "1.2.8",
   "activeHarnessVersion": "1.2.7",
   "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v126_to_v127",
+  "upgradePath": "v127_to_v128_shadow_candidate_then_activation",
   "activeSelfTestSuite": "v127",
   "activeSelfTestStatusKey": "v127SelfTestStatus",
   "legacySelfTests": {
@@ -27,7 +27,8 @@
     "v114": "blocking_compatibility",
     "v113": "selected_critical",
     "v080_v112": "target_shadow_legacy_count_only",
-    "v127": "blocking_current"
+    "v127": "blocking_current_active_authority",
+    "v128": "source_shadow_candidate"
   },
   "sourceOnlyRelease": true,
   "targetRollout": "not_started",
@@ -35,7 +36,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Receipt-Carried Continuation and Evidence Compression",
+  "theme": "Deterministic Decision Projection and Token-Minimal Loop Closure",
   "requiredStatuses": [
     "orchestrationModeStatus",
     "permissionGrantStatus",
@@ -605,5 +606,65 @@
       "youtubePolicyComplianceClaimed": false,
       "walletRpcDeployAccess": false
     }
+  },
+  "deterministicDecisionProjectionAndTokenMinimalLoopClosure": {
+    "version": "1.2.8",
+    "name": "Deterministic Decision Projection and Token-Minimal Loop Closure",
+    "sourceOnlyRelease": true,
+    "targetRollout": "not_started",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "p0InternalBlocks": [
+      "Deterministic Decision Projection",
+      "Orthogonal Reason Model",
+      "Token-Minimal Read and Compatibility Router",
+      "Resumable Loop and Permission Projection"
+    ],
+    "authority": {
+      "decisionCapsule": "domain_decision_authority",
+      "evidenceCapsule": "same_head_freshness_authority",
+      "finalDecision": "pass_block_mergeAllowed_exit_code_authority",
+      "qualityGateSafeSummary": "non_authoritative_projection"
+    },
+    "tokenEconomy": {
+      "routineManagedSafeArtifactRead": 1,
+      "routineColdArtifactRead": 0,
+      "diagnosticColdArtifactReadMax": 3,
+      "routineProjectionBytesMax": 1600,
+      "stressProjectionBytesMax": 2048,
+      "boundedProjectionReader": "scripts/codex-v128-projection-reader.mjs",
+      "boundedProjectionReaderSurfaceBytesMax": 1600,
+      "boundedProjectionReaderStdoutBytesMax": 1600,
+      "boundedProjectionReaderStrictJson": true,
+      "perTransitionManagedContextBytesMax": 4096,
+      "managedContextBytesObserved": false,
+      "managedContextObservationRequiredForActivation": true,
+      "routineFinalReportLineMax": 8,
+      "routineOwnerInterruptMax": 0
+    },
+    "migration": {
+      "readerBeforeWriter": true,
+      "dualReader": true,
+      "rollback": true,
+      "shadowTargetCanaryBeforeActivation": true
+    },
+    "safety": {
+      "rawLogsRead": false,
+      "selfApproval": false,
+      "githubApprovalReview": false,
+      "runtimeReadinessClaimed": false,
+      "productionReadinessClaimed": false,
+      "walletRpcDeployAccess": false
+    },
+    "activationState": "source_shadow_candidate",
+    "sourceActivation": "not_started",
+    "shadowTargetCanary": "not_started",
+    "activationReady": false,
+    "observedProjectionRequiredForActivation": true,
+    "stateMatrixCoverage": "partial_shadow_candidate",
+    "postMergeReplayCoverage": "partial_shadow_candidate",
+    "placeholderReceiptValid": false
   }
 }
