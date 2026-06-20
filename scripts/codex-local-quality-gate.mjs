@@ -325,6 +325,34 @@ function observeV128WorkspaceIdentity(head) {
 }
 
 function buildV128DecisionInputManifest(input = {}) {
+  const diagnosticKeyPattern = /runner|workspace|localPath|runtimeVersion|environment|providerSummary|sourceFiles/i;
+  const forbiddenKeyPattern = /rawLog|logText|secret|token|password|privateKey|localAbsolutePath|workspacePath/i;
+  const scannedPaths = [];
+  const environmentDiagnosticPaths = [];
+  const forbiddenPaths = [];
+  const walk = (value, pathParts = []) => {
+    const pathText = pathParts.join('.');
+    if (pathText) {
+      scannedPaths.push(pathText);
+      const keyText = pathParts[pathParts.length - 1] || '';
+      if (forbiddenKeyPattern.test(keyText) && value !== false && value !== null && value !== undefined && value !== '') forbiddenPaths.push(pathText);
+      else if (diagnosticKeyPattern.test(keyText)) environmentDiagnosticPaths.push(pathText);
+    }
+    if (!value || typeof value !== 'object') return;
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => walk(item, [...pathParts, String(index)]));
+      return;
+    }
+    for (const key of Object.keys(value)) walk(value[key], [...pathParts, key]);
+  };
+  for (const [root, value] of Object.entries(input)) walk(value, [root]);
+  const taxonomyScan = {
+    scannedPathCount: scannedPaths.length,
+    environmentDiagnosticPathCount: environmentDiagnosticPaths.length,
+    forbiddenPathCount: forbiddenPaths.length,
+    environmentDiagnosticExcludedFromDecisionDigest: true,
+    safeSummaryOnly: true,
+  };
   const fields = [
     { field: 'finalDecision', stabilityClass: 'decision_stable', digest: sha256Canonical(input.finalDecision || null) },
     { field: 'evidenceCapsule', stabilityClass: 'decision_stable', digest: sha256Canonical(input.evidenceCapsule || null) },
@@ -333,6 +361,8 @@ function buildV128DecisionInputManifest(input = {}) {
   return {
     status: 'pass',
     fields,
+    taxonomyScanStatus: forbiddenPaths.length ? 'fail' : 'pass',
+    taxonomyScan,
     environmentDiagnosticExcludedFromDecisionDigest: true,
     digest: sha256Canonical(fields),
     safeSummaryOnly: true,

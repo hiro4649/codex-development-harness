@@ -231,9 +231,11 @@ miss:
 
 The `scriptDigest` is not a label hash. It is a source-closure digest over the
 declared validation entrypoint, aggregate finalizer, local quality-gate adapter,
-orchestration consumer, schema, profile/spec, and canonicalizer surface.
-Undeclared imports are activation blockers. A consumer change that can alter
-node result construction invalidates the reuse key.
+orchestration consumer, node implementations, schema, profile/spec, and
+canonicalizer surface. At minimum this includes the projection reader, managed
+context emitter, state matrix executor, and projection integrity library.
+Undeclared imports are activation blockers. A consumer or node implementation
+change that can alter node result construction invalidates the reuse key.
 
 Decision-stable fields, cache-stable fields, environment diagnostics, owner
 inputs, and forbidden values are separate classes. Environment diagnostics such
@@ -246,10 +248,24 @@ not import child_process, execute shell commands, or open network clients. A
 missing upstream result is `upstream_evidence_missing`; it must not be repaired
 by the finalizer rerunning the command.
 
+The finalizer payload must be semantically checked:
+
+```text
+upstreamNodeRefs:
+  exactly match aggregate_finalizer.dependsOn
+
+upstreamResultDigests:
+  exactly match each upstream node result digest
+
+failed upstream:
+  requires finalizer status=fail and failedNodeRefs entry
+```
+
 The decision input manifest must be actually scanned before
 `decisionInputManifestScanned=true` is emitted. A builder cannot set this field
 only because an observed plan exists. The manifest separates decision-stable
-payload digests from environment diagnostics.
+payload digests from environment diagnostics, recursively scans input paths, and
+fails if a forbidden path enters the decision input manifest.
 
 ### 4. Resumable Loop and Permission Projection
 

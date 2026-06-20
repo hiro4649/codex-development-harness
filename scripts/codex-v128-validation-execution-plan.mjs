@@ -21,6 +21,10 @@ const SOURCE_CLOSURE_FILES = [
   'scripts/codex-v128-aggregate-finalizer.mjs',
   'scripts/codex-local-quality-gate.mjs',
   'scripts/codex-orchestration-capsule.mjs',
+  'scripts/codex-v128-projection-reader.mjs',
+  'scripts/codex-v128-managed-context-emitter.mjs',
+  'scripts/codex-v128-state-matrix.mjs',
+  'scripts/codex-v128-integrity-lib.mjs',
   'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
   'docs/process/CODEX_V128_SPEC.md',
 ];
@@ -313,7 +317,8 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     headSha: fieldValue(cacheKeyFields.headSha) || 'unknown',
     activeHarnessVersion: input.activeHarnessVersion || '1.2.7',
   };
-  const decisionInputManifestScanned = input.decisionInputManifest?.status === 'pass' || input.decisionInputManifestScanned === true;
+  const decisionInputManifestScanned = input.decisionInputManifest?.taxonomyScanStatus === 'pass'
+    || input.decisionInputManifestScanned === true;
   const status = observationState === 'not_exercised'
     ? 'partial_shadow_candidate'
     : (graph.status === 'pass'
@@ -385,6 +390,8 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       localAbsolutePathForbidden: true,
       decisionInputManifestScanned,
       decisionInputManifestDigest: input.decisionInputManifest?.digest || null,
+      decisionInputManifestScan: input.decisionInputManifest?.taxonomyScan || null,
+      decisionInputManifestTaxonomyStatus: input.decisionInputManifest?.taxonomyScanStatus || (decisionInputManifestScanned ? 'pass' : 'not_scanned'),
       fields: [
         { field: 'normalizedArtifactFingerprint', stabilityClass: 'decision_stable' },
         { field: 'validationCacheKeyDigest', stabilityClass: 'cache_stable' },
@@ -425,6 +432,9 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const graph = plan.graph || {};
   const typedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
   const nodeResults = Array.isArray(execution.nodeResults) ? execution.nodeResults : [];
+  const graphNodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+  const graphByRef = new Map(graphNodes.map((node) => [node.nodeRef, node]));
+  const resultByRef = new Map(nodeResults.map((node) => [node.nodeRef, node]));
   if (plan.schemaVersion !== '1.2.8') reasons.push('validation_execution_schema_invalid');
   if (plan.executionKind !== 'validation_execution_plan_shadow') reasons.push('validation_execution_kind_invalid');
   if (plan.authority !== 'non_authoritative_execution_surface') reasons.push('validation_execution_authority_invalid');
@@ -468,6 +478,33 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
       if (!node.resultSchemaVersion) reasons.push('reused_node_result_schema_required');
     }
   }
+  const aggregateGraphNode = graphByRef.get('aggregate_finalizer');
+  const aggregatePayload = typedResults.aggregate_finalizer || null;
+  if (plan.observationState === 'observed') {
+    if (!aggregateGraphNode) reasons.push('finalizer_graph_node_required');
+    if (!aggregatePayload) reasons.push('finalizer_typed_payload_required');
+  }
+  if (aggregateGraphNode && aggregatePayload) {
+    const expectedRefs = [...(aggregateGraphNode.dependsOn || [])].sort();
+    const actualRefs = [...(aggregatePayload.upstreamNodeRefs || [])].sort();
+    if (JSON.stringify(expectedRefs) !== JSON.stringify(actualRefs)) reasons.push('finalizer_upstream_refs_mismatch');
+    const digestByRef = new Map((aggregatePayload.upstreamResultDigests || []).map((item) => [item.nodeRef, item.resultDigest]));
+    for (const upstreamRef of expectedRefs) {
+      const upstreamResult = resultByRef.get(upstreamRef);
+      if (!upstreamResult) {
+        reasons.push('finalizer_upstream_result_missing');
+        continue;
+      }
+      if (!digestByRef.has(upstreamRef)) reasons.push('finalizer_upstream_digest_missing');
+      else if (digestByRef.get(upstreamRef) !== upstreamResult.resultDigest) reasons.push('finalizer_upstream_digest_mismatch');
+    }
+    const failedUpstreamRefs = expectedRefs.filter((upstreamRef) => resultByRef.get(upstreamRef)?.status !== 'pass');
+    if (failedUpstreamRefs.length && aggregatePayload.status !== 'fail') reasons.push('finalizer_failed_upstream_must_fail');
+    const payloadFailedRefs = new Set(aggregatePayload.failedNodeRefs || []);
+    for (const upstreamRef of failedUpstreamRefs) {
+      if (!payloadFailedRefs.has(upstreamRef)) reasons.push('finalizer_failed_upstream_ref_missing');
+    }
+  }
   if (!REUSE_DECISIONS.has(reuse.reuseDecision)) reasons.push('validation_reuse_decision_invalid');
   const executedCount = nodeResults.filter((node) => node.executionState === 'executed').length;
   const reusedCount = nodeResults.filter((node) => node.executionState === 'reused').length;
@@ -485,6 +522,8 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (taxonomy.environmentDiagnosticExcludedFromDecisionDigest !== true) reasons.push('environment_diagnostic_must_be_excluded_from_decision_digest');
   if (taxonomy.rawLogForbidden !== true || taxonomy.secretForbidden !== true || taxonomy.localAbsolutePathForbidden !== true) reasons.push('stable_diagnostic_forbidden_boundary_missing');
   if (plan.observationState === 'observed' && taxonomy.decisionInputManifestScanned !== true) reasons.push('decision_input_manifest_scan_required');
+  if (plan.observationState === 'observed' && taxonomy.decisionInputManifestTaxonomyStatus !== 'pass') reasons.push('decision_input_manifest_taxonomy_scan_required');
+  if (taxonomy.decisionInputManifestScan?.forbiddenPathCount > 0) reasons.push('decision_input_manifest_forbidden_path_detected');
   for (const field of taxonomy.fields || []) {
     if (!STABILITY_CLASSES.has(field.stabilityClass)) reasons.push(`taxonomy_field_stability_invalid_${field.stabilityClass || 'missing'}`);
     if (field.stabilityClass === 'forbidden') reasons.push('forbidden_field_cannot_enter_execution_surface');

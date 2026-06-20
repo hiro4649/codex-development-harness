@@ -85,6 +85,11 @@
     "executionCountSourceRequired": "executor_registry",
     "typedResultPayloadDigestRequired": true,
     "typedResultRefFormat": "#/typedResults/{nodeRef}",
+    "aggregateFinalizerSemanticChecks": [
+      "upstream_refs_match_graph_dependsOn",
+      "upstream_result_digests_match_node_results",
+      "failed_upstream_requires_failed_finalizer"
+    ],
     "requiredSkippedNodeBlocks": true,
     "optionalSkippedNodeEffect": "advisory",
     "finalizerMode": "aggregate_only",
@@ -123,9 +128,14 @@
       "scripts/codex-v128-aggregate-finalizer.mjs",
       "scripts/codex-local-quality-gate.mjs",
       "scripts/codex-orchestration-capsule.mjs",
+      "scripts/codex-v128-projection-reader.mjs",
+      "scripts/codex-v128-managed-context-emitter.mjs",
+      "scripts/codex-v128-state-matrix.mjs",
+      "scripts/codex-v128-integrity-lib.mjs",
       "docs/process/CODEX_V128_CONTRACT_SCHEMA.json",
       "docs/process/CODEX_V128_SPEC.md"
     ],
+    "decisionInputManifestTaxonomyScanRequired": true,
     "undeclaredImportActivationBlocker": true
   },
   "stableDiagnosticTaxonomy": {
