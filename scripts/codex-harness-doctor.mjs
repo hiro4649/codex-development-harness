@@ -15,8 +15,11 @@ const oneSafeNextAction = blocking.length ? 'repair_first_blocking_status' : 've
 const report = {
   marker: 'CODEX_QUALITY_HARNESS_FILE v1.0.7',
   status: 'pass',
-  activeHarnessVersion: registry.currentVersion,
+  sourceHarnessVersion: registry.currentVersion,
+  activeHarnessVersion: registry.activeHarnessVersion || registry.currentVersion,
   activeSelfTestKey: registry.activeSelfTestStatusKey,
+  candidateHarnessVersion: registry.candidateHarnessVersion || null,
+  candidateSelfTestKey: registry.candidateSelfTestStatusKey || null,
   centralRegistrySource: 'scripts/codex-harness-version.mjs',
   prContextSource: evidence?.pr_number ? 'evidence_pack' : 'absent',
   bodyHash: evidence?.pr_body_hash || 'absent',

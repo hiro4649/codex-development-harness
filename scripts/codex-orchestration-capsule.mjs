@@ -397,10 +397,14 @@ function normalizeContextSources(input = {}) {
 
 function defaultActiveAuthorityTuple(input = {}) {
   return {
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.8',
-    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.8',
-    activeSelfTestSuite: input.activeSelfTestSuite || 'v128',
-    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V128_SPEC.md',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.7',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.7',
+    activeSelfTestSuite: input.activeSelfTestSuite || 'v127',
+    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V127_SPEC.md',
+    candidateHarnessVersion: input.candidateHarnessVersion || '1.2.8',
+    candidateSelfTestSuite: input.candidateSelfTestSuite || 'v128',
+    candidateSpecPath: input.candidateSpecPath || 'docs/process/CODEX_V128_SPEC.md',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
     finalAuthorityPointer: input.finalAuthorityPointer || 'v1.1.8_final_decision_kernel',
     sourceOnlyRelease: input.sourceOnlyRelease !== false,
   };
@@ -441,7 +445,7 @@ function defaultSkillContextRouting(input = {}) {
     rejectedSkills: truncateList(input.rejectedSkills || [], 10),
     mdFilesRead,
     mdFilesRejected: truncateList(input.mdFilesRejected || [], 20),
-    requiredFirstReads: truncateList(input.requiredFirstReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V128_SPEC.md'], 8),
+    requiredFirstReads: truncateList(input.requiredFirstReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V127_SPEC.md'], 8),
     deferredReads: truncateList(input.deferredReads || ['README.md', 'legacy_specs', 'pr_history_docs'], 12),
     forbiddenReads: truncateList(input.forbiddenReads || ['raw_logs', 'full_history_without_scope'], 12),
     contextSourceType: normalizeContextSources(input.contextSourceType || {}),
@@ -546,8 +550,8 @@ function defaultWorkspaceIdentityGate(input = {}) {
     defaultBranch: input.defaultBranch || 'main',
     currentBranch: input.currentBranch || input.branch || 'unknown',
     headSha: input.headSha || null,
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.8',
-    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.8',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.7',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.7',
     mutationTask,
     readOnlyAudit,
     worktreeClean,
@@ -563,10 +567,10 @@ function defaultWorkspaceIdentityGate(input = {}) {
 
 function defaultActivePolicyIndex(input = {}) {
   return {
-    schemaVersion: '1.2.8',
+    schemaVersion: input.schemaVersion || '1.2.7',
     indexPath: input.indexPath || 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
     taskProfile: TASK_PROFILES.has(input.taskProfile) ? input.taskProfile : 'routine',
-    requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V128_SPEC.md'], 8),
+    requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V127_SPEC.md'], 8),
     allowedConditionalReads: truncateList(input.allowedConditionalReads || [], 8),
     forbiddenByDefault: truncateList(input.forbiddenByDefault || ['README.md', 'legacy_specs', 'pr_history_docs'], 8),
     selectedSkillsMax: Math.max(0, Number(input.selectedSkillsMax || 1)),
@@ -1437,12 +1441,16 @@ function defaultBlockerClosureAndProductValuePressure(input = {}) {
 }
 
 function defaultV128DeterministicDecisionProjection(input = {}) {
-  const projectionBytes = Math.max(0, Number(input.projectionBytes || 1400));
-  const stressProjectionBytes = Math.max(0, Number(input.stressProjectionBytes || 1900));
+  const projectionBytesObserved = input.projectionBytesObserved === true || input.projectionMeasurementSource === 'runtime_safe_summary_projection';
+  const projectionBytes = projectionBytesObserved ? Math.max(0, Number(input.projectionBytes || 0)) : null;
+  const stressProjectionBytes = projectionBytesObserved ? Math.max(0, Number(input.stressProjectionBytes ?? input.projectionBytes ?? 0)) : null;
   return {
     runtimeVersion: '1.2.8',
     name: 'Deterministic Decision Projection',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    activationReady: input.activationReady === true,
     storedProjectionArtifact: input.storedProjectionArtifact || 'codex-quality-gate-safe-summary.json',
+    storedProjectionField: input.storedProjectionField || 'routineDecisionProjection',
     storedProjectionAuthority: 'non_authoritative',
     decisionCapsuleAuthority: 'domain_decision_authority',
     evidenceCapsuleAuthority: 'same_head_freshness_authority',
@@ -1459,6 +1467,8 @@ function defaultV128DeterministicDecisionProjection(input = {}) {
     decisionCapsuleIsProjectionPhraseDetected: input.decisionCapsuleIsProjectionPhraseDetected === true,
     readerBeforeWriterMigration: input.readerBeforeWriterMigration !== false,
     candidateToolingIsolatedFromActiveGate: input.candidateToolingIsolatedFromActiveGate !== false,
+    projectionBytesObserved,
+    projectionMeasurementSource: projectionBytesObserved ? (input.projectionMeasurementSource || 'runtime_safe_summary_projection') : 'not_observed',
     projectionBytes,
     stressProjectionBytes,
     projectionBytesMax: 1600,
@@ -1493,9 +1503,12 @@ function defaultV128OrthogonalReasonModel(input = {}) {
 }
 
 function defaultV128TokenMinimalReadCompatibilityRouter(input = {}) {
+  const managedBytesObserved = input.managedBytesObserved === true || input.managedBytesMeasurementSource === 'runtime_projection_measurement';
   return {
     runtimeVersion: '1.2.8',
     name: 'Token-Minimal Read and Compatibility Router',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    activationReady: input.activationReady === true,
     profileBaselines: truncateList(input.profileBaselines || ['v127_common_safety_floor', 'v127_source_baseline', 'v127_full_target_baseline', 'v127_restricted_token_target_baseline'], 8),
     profileBaselineInheritance: input.profileBaselineInheritance !== false,
     routineSelectedSkillMax: Math.max(0, Number(input.routineSelectedSkillMax || 1)),
@@ -1511,10 +1524,12 @@ function defaultV128TokenMinimalReadCompatibilityRouter(input = {}) {
     instructionSourceDigestsRecorded: input.instructionSourceDigestsRecorded !== false,
     instructionConflictHardFailure: input.instructionConflictHardFailure !== false,
     forbiddenBoundaryWeakeningAllowed: input.forbiddenBoundaryWeakeningAllowed === true,
-    perTransitionManagedBytes: Math.max(0, Number(input.perTransitionManagedBytes || 3800)),
+    managedBytesObserved,
+    managedBytesMeasurementSource: managedBytesObserved ? (input.managedBytesMeasurementSource || 'runtime_projection_measurement') : 'not_observed',
+    perTransitionManagedBytes: managedBytesObserved ? Math.max(0, Number(input.perTransitionManagedBytes || 0)) : null,
     perTransitionManagedBytesMax: 4096,
     repeatedContextBytes: Math.max(0, Number(input.repeatedContextBytes || 0)),
-    transitionsPerTaskObserved: input.transitionsPerTaskObserved !== false,
+    transitionsPerTaskObserved: input.transitionsPerTaskObserved === true,
     microTransitionInflationGuard: input.microTransitionInflationGuard !== false,
     finalReportLineBudget: Math.max(0, Number(input.finalReportLineBudget || 8)),
     routineOwnerInterruptCount: Math.max(0, Number(input.routineOwnerInterruptCount || 0)),
@@ -1529,34 +1544,40 @@ function defaultV128ResumableLoopAndPermissionProjection(input = {}) {
   const checkpoint = input.checkpointBinding || {};
   const receiptProvided = Object.prototype.hasOwnProperty.call(input, 'receiptHydrationBinding');
   const checkpointProvided = Object.prototype.hasOwnProperty.call(input, 'checkpointBinding');
+  const receiptValidInput = receipt.receiptHydrationState === 'valid';
+  const checkpointValidInput = checkpoint.checkpointHydrationState === 'valid' || checkpoint.checkpointState === 'valid';
   return {
     runtimeVersion: '1.2.8',
     name: 'Resumable Loop and Permission Projection',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
     projectionCreatesPermission: input.projectionCreatesPermission === true,
-    permissionDerivedFromCurrentReceipt: input.permissionDerivedFromCurrentReceipt !== false,
-    allowedActionCodes: truncateList(input.allowedActionCodes || ['edit', 'check', 'commit', 'push', 'create_pr', 'rerun_ci', 'fix_ci'], 12),
+    permissionDerivedFromCurrentReceipt: input.permissionDerivedFromCurrentReceipt === true,
+    allowedActionCodes: truncateList(input.allowedActionCodes || [], 12),
     receiptHydrationBinding: {
-      receiptHydrationState: receipt.receiptHydrationState || (receiptProvided ? null : 'valid'),
-      receiptDigest: receipt.receiptDigest || (receiptProvided ? null : 'sha256:receipt'),
-      taskId: receipt.taskId || (receiptProvided ? null : 'task-v128'),
-      repositoryKey: receipt.repositoryKey || (receiptProvided ? null : 'github.com:hiro4649/codex-development-harness'),
-      branchConstraint: receipt.branchConstraint || (receiptProvided ? null : 'codex/harness-v1-2-8-*'),
-      scopeContractDigest: receipt.scopeContractDigest || (receiptProvided ? null : 'sha256:scope'),
-      ownerInstructionDigest: receipt.ownerInstructionDigest || (receiptProvided ? null : 'sha256:owner'),
+      receiptHydrationState: receipt.receiptHydrationState || 'not_available',
+      receiptDigest: receipt.receiptDigest || null,
+      taskId: receipt.taskId || null,
+      repositoryKey: receipt.repositoryKey || null,
+      branchConstraint: receipt.branchConstraint || null,
+      scopeContractDigest: receipt.scopeContractDigest || null,
+      ownerInstructionDigest: receipt.ownerInstructionDigest || null,
+      observedBinding: receipt.observedBinding === true,
     },
     receiptInvalidators: truncateList(input.receiptInvalidators || ['new_owner_instruction', 'scope_delta', 'repository_change', 'branch_violation', 'receipt_revoke', 'task_id_change'], 12),
     sameSessionRoutineRequiresHydratedReceipt: input.sameSessionRoutineRequiresHydratedReceipt !== false,
     crossSessionResumeDiagnosticOnly: input.crossSessionResumeDiagnosticOnly !== false,
     checkpointBinding: {
-      checkpointSchemaVersion: checkpoint.checkpointSchemaVersion || (checkpointProvided ? null : '1.2.8'),
-      headOid: checkpoint.headOid || (checkpointProvided ? null : 'sha'),
-      scopeContractDigest: checkpoint.scopeContractDigest || (checkpointProvided ? null : 'sha256:scope'),
-      processReceiptDigest: checkpoint.processReceiptDigest || (checkpointProvided ? null : 'sha256:receipt'),
-      lastVerifiedEvidenceDigest: checkpoint.lastVerifiedEvidenceDigest || (checkpointProvided ? null : 'sha256:evidence'),
-      workerId: checkpoint.workerId || (checkpointProvided ? null : 'single_worker'),
-      worktreeId: checkpoint.worktreeId || (checkpointProvided ? null : 'source_worktree'),
-      checkpointSequence: checkpointProvided && checkpoint.checkpointSequence === undefined ? null : Number(checkpoint.checkpointSequence || 1),
-      previousCheckpointDigest: checkpoint.previousCheckpointDigest || (checkpointProvided ? null : 'sha256:previous'),
+      checkpointState: checkpoint.checkpointState || checkpoint.checkpointHydrationState || 'not_available',
+      checkpointSchemaVersion: checkpoint.checkpointSchemaVersion || null,
+      headOid: checkpoint.headOid || null,
+      scopeContractDigest: checkpoint.scopeContractDigest || null,
+      processReceiptDigest: checkpoint.processReceiptDigest || null,
+      lastVerifiedEvidenceDigest: checkpoint.lastVerifiedEvidenceDigest || null,
+      workerId: checkpoint.workerId || null,
+      worktreeId: checkpoint.worktreeId || null,
+      checkpointSequence: checkpoint.checkpointSequence === undefined ? null : Number(checkpoint.checkpointSequence || 1),
+      previousCheckpointDigest: checkpoint.previousCheckpointDigest || null,
+      observedBinding: checkpoint.observedBinding === true,
     },
     checkpointAuthority: 'non_authoritative_resume_assist',
     perWorktreeExclusiveLock: input.perWorktreeExclusiveLock !== false,
@@ -1575,7 +1596,9 @@ function defaultV128ResumableLoopAndPermissionProjection(input = {}) {
 export function validateV128DeterministicDecisionProjection(control = {}) {
   const reasons = [];
   if (control.runtimeVersion !== '1.2.8') reasons.push('v128_projection_version_invalid');
+  if (!['source_shadow_candidate', 'source_activation_candidate', 'active'].includes(control.candidateActivationState || 'source_shadow_candidate')) reasons.push('v128_projection_activation_state_invalid');
   if (control.storedProjectionArtifact !== 'codex-quality-gate-safe-summary.json') reasons.push('projection_must_live_in_safe_summary');
+  if (control.storedProjectionField !== 'routineDecisionProjection') reasons.push('projection_field_must_be_routine_decision_projection');
   if (control.storedProjectionAuthority !== 'non_authoritative') reasons.push('stored_projection_must_be_non_authoritative');
   if (control.decisionCapsuleAuthority !== 'domain_decision_authority') reasons.push('decision_capsule_authority_must_be_preserved');
   if (control.finalDecisionAuthority !== 'pass_block_mergeAllowed_exit_code_authority') reasons.push('final_decision_authority_must_be_preserved');
@@ -1586,8 +1609,11 @@ export function validateV128DeterministicDecisionProjection(control = {}) {
   if (control.oldDraftAuthorityPollution === true || control.decisionCapsuleIsProjectionPhraseDetected === true) reasons.push('old_v128_authority_draft_pollution');
   if (control.readerBeforeWriterMigration !== true) reasons.push('reader_before_writer_migration_required');
   if (control.candidateToolingIsolatedFromActiveGate !== true) reasons.push('candidate_tooling_must_be_isolated');
-  if (Number(control.projectionBytes || 0) > 1600) reasons.push('routine_projection_bytes_over_budget');
-  if (Number(control.stressProjectionBytes || 0) > 2048) reasons.push('stress_projection_bytes_over_budget');
+  if (control.activationReady === true && control.projectionBytesObserved !== true) reasons.push('activation_requires_observed_projection_bytes');
+  if (control.projectionBytesObserved !== true && control.projectionMeasurementSource !== 'not_observed') reasons.push('unobserved_projection_source_must_be_not_observed');
+  if (control.projectionBytesObserved === true && Number(control.projectionBytes || 0) <= 0) reasons.push('observed_projection_bytes_required');
+  if (control.projectionBytesObserved === true && Number(control.projectionBytes || 0) > 1600) reasons.push('routine_projection_bytes_over_budget');
+  if (control.projectionBytesObserved === true && Number(control.stressProjectionBytes || 0) > 2048) reasons.push('stress_projection_bytes_over_budget');
   return reasons.length ? fail(reasons) : pass({ projectionBytes: control.projectionBytes, stressProjectionBytes: control.stressProjectionBytes });
 }
 
@@ -1617,6 +1643,7 @@ export function validateV128OrthogonalReasonModel(control = {}) {
 export function validateV128TokenMinimalReadCompatibilityRouter(control = {}) {
   const reasons = [];
   if (control.runtimeVersion !== '1.2.8') reasons.push('v128_token_router_version_invalid');
+  if (!['source_shadow_candidate', 'source_activation_candidate', 'active'].includes(control.candidateActivationState || 'source_shadow_candidate')) reasons.push('v128_token_router_activation_state_invalid');
   for (const baseline of control.profileBaselines || []) {
     if (!V128_PROFILE_BASELINES.has(baseline)) reasons.push(`profile_baseline_invalid_${baseline}`);
   }
@@ -1634,8 +1661,10 @@ export function validateV128TokenMinimalReadCompatibilityRouter(control = {}) {
   if (control.instructionSourceDigestsRecorded !== true) reasons.push('instruction_source_digests_required');
   if (control.instructionConflictHardFailure !== true) reasons.push('instruction_conflict_must_fail_hard');
   if (control.forbiddenBoundaryWeakeningAllowed === true) reasons.push('forbidden_boundary_weakening_forbidden');
-  if (Number(control.perTransitionManagedBytes || 0) > 4096) reasons.push('per_transition_context_bytes_over_budget');
-  if (control.transitionsPerTaskObserved !== true) reasons.push('transitions_per_task_observation_required');
+  if (control.activationReady === true && control.managedBytesObserved !== true) reasons.push('activation_requires_observed_managed_bytes');
+  if (control.managedBytesObserved !== true && control.managedBytesMeasurementSource !== 'not_observed') reasons.push('unobserved_managed_bytes_source_must_be_not_observed');
+  if (control.managedBytesObserved === true && Number(control.perTransitionManagedBytes || 0) > 4096) reasons.push('per_transition_context_bytes_over_budget');
+  if (control.activationReady === true && control.transitionsPerTaskObserved !== true) reasons.push('activation_requires_transition_observation');
   if (control.microTransitionInflationGuard !== true) reasons.push('micro_transition_inflation_guard_required');
   if (Number(control.finalReportLineBudget || 0) > 8) reasons.push('final_report_line_budget_over_v128_budget');
   if (Number(control.routineOwnerInterruptCount || 0) !== 0) reasons.push('routine_owner_interrupt_must_be_zero');
@@ -1649,22 +1678,37 @@ export function validateV128ResumableLoopAndPermissionProjection(control = {}) {
   const receipt = control.receiptHydrationBinding || {};
   const checkpoint = control.checkpointBinding || {};
   if (control.runtimeVersion !== '1.2.8') reasons.push('v128_resume_permission_version_invalid');
+  if (!['source_shadow_candidate', 'source_activation_candidate', 'active'].includes(control.candidateActivationState || 'source_shadow_candidate')) reasons.push('v128_resume_permission_activation_state_invalid');
   if (control.projectionCreatesPermission === true) reasons.push('projection_cannot_create_permission');
-  if (control.permissionDerivedFromCurrentReceipt !== true) reasons.push('permission_must_derive_from_current_receipt');
+  const receiptState = receipt.receiptHydrationState || 'not_available';
+  const checkpointState = checkpoint.checkpointState || 'not_available';
+  if (!['not_available', 'valid'].includes(receiptState)) reasons.push('receipt_hydration_state_invalid');
+  if (!['not_available', 'valid'].includes(checkpointState)) reasons.push('checkpoint_state_invalid');
+  if (receiptState === 'valid' && control.permissionDerivedFromCurrentReceipt !== true) reasons.push('permission_must_derive_from_current_receipt');
+  if (receiptState === 'not_available' && (control.allowedActionCodes || []).length > 0) reasons.push('unhydrated_receipt_cannot_project_allowed_actions');
   for (const action of control.allowedActionCodes || []) {
     if (!V128_ALLOWED_CONTINUATION_ACTIONS.has(action)) reasons.push(`continuation_action_invalid_${action}`);
   }
-  for (const key of ['receiptDigest', 'taskId', 'repositoryKey', 'branchConstraint', 'scopeContractDigest', 'ownerInstructionDigest']) {
-    if (!receipt[key]) reasons.push(`receipt_hydration_missing_${key}`);
+  const receiptPlaceholders = new Set(['sha256:receipt', 'task-v128', 'github.com:hiro4649/codex-development-harness', 'codex/harness-v1-2-8-*', 'sha256:scope', 'sha256:owner']);
+  if (receiptState === 'valid') {
+    for (const key of ['receiptDigest', 'taskId', 'repositoryKey', 'branchConstraint', 'scopeContractDigest', 'ownerInstructionDigest']) {
+      if (!receipt[key]) reasons.push(`receipt_hydration_missing_${key}`);
+      if (receiptPlaceholders.has(receipt[key])) reasons.push(`receipt_hydration_placeholder_${key}`);
+    }
+    if (receipt.observedBinding !== true) reasons.push('receipt_hydration_observed_binding_required');
   }
-  if (receipt.receiptHydrationState !== 'valid') reasons.push('receipt_hydration_state_must_be_valid_for_routine');
   for (const invalidator of ['new_owner_instruction', 'scope_delta', 'repository_change', 'branch_violation', 'receipt_revoke', 'task_id_change']) {
     if (!control.receiptInvalidators?.includes(invalidator)) reasons.push(`receipt_invalidator_missing_${invalidator}`);
   }
   if (control.sameSessionRoutineRequiresHydratedReceipt !== true) reasons.push('same_session_routine_requires_hydrated_receipt');
   if (control.crossSessionResumeDiagnosticOnly !== true) reasons.push('cross_session_resume_must_be_diagnostic');
-  for (const key of ['headOid', 'scopeContractDigest', 'processReceiptDigest', 'lastVerifiedEvidenceDigest', 'workerId', 'worktreeId', 'checkpointSequence', 'previousCheckpointDigest']) {
-    if (!checkpoint[key]) reasons.push(`checkpoint_binding_missing_${key}`);
+  const checkpointPlaceholders = new Set(['sha', 'sha256:scope', 'sha256:receipt', 'sha256:evidence', 'single_worker', 'source_worktree', 'sha256:previous']);
+  if (checkpointState === 'valid') {
+    for (const key of ['headOid', 'scopeContractDigest', 'processReceiptDigest', 'lastVerifiedEvidenceDigest', 'workerId', 'worktreeId', 'checkpointSequence', 'previousCheckpointDigest']) {
+      if (!checkpoint[key]) reasons.push(`checkpoint_binding_missing_${key}`);
+      if (checkpointPlaceholders.has(checkpoint[key])) reasons.push(`checkpoint_binding_placeholder_${key}`);
+    }
+    if (checkpoint.observedBinding !== true) reasons.push('checkpoint_observed_binding_required');
   }
   if (control.checkpointAuthority !== 'non_authoritative_resume_assist') reasons.push('checkpoint_must_be_non_authoritative');
   if (control.perWorktreeExclusiveLock !== true) reasons.push('checkpoint_requires_per_worktree_lock');
@@ -1744,7 +1788,10 @@ export function buildOrchestrationCapsule(input = {}) {
   });
   return {
     orchestrationVersion: '1',
-    activeHarnessVersion: input.activeHarnessVersion || '1.2.8',
+    sourceHarnessVersion: input.sourceHarnessVersion || '1.2.8',
+    activeHarnessVersion: input.activeHarnessVersion || '1.2.7',
+    candidateHarnessVersion: input.candidateHarnessVersion || '1.2.8',
+    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,

@@ -4170,6 +4170,11 @@ export function evaluateWorkflowReport(report, options = {}) {
   const workerProofCapsule = report.workerProofCapsule || readSafeJsonArtifact('codex-worker-proof.safe.json');
   const ownerDecisionBrief = report.ownerDecisionBrief || readSafeJsonArtifact('codex-owner-decision-brief.safe.json');
   const finalDecisionArtifact = report.finalDecision || readSafeJsonArtifact('codex-final-decision.safe.json');
+  const preRunnerSafeSummary = readSafeJsonArtifact('codex-quality-gate-safe-summary.json') || {};
+  const routineDecisionProjection = report.routineDecisionProjection || preRunnerSafeSummary.routineDecisionProjection || null;
+  const routineDecisionProjectionStatus = report.routineDecisionProjectionStatus
+    || preRunnerSafeSummary.routineDecisionProjectionStatus
+    || { status: routineDecisionProjection ? 'present' : 'missing', safeSummaryOnly: true };
   const decisionEvidenceEnvelope = orchestrationCapsule?.decisionEvidenceEnvelopeAndSameHeadBinder?.decisionEvidenceEnvelope || {};
   const tokenEconomyMetrics = orchestrationCapsule?.contextOutputOwnerInterruptTokenBudget?.tokenEconomyMetrics || {};
   const v119StatusFallbacks = {
@@ -4223,6 +4228,10 @@ export function evaluateWorkflowReport(report, options = {}) {
     technicalChecksReady: Boolean(report.technicalChecksReady ?? report.mergeReady),
 
     ownerMergeAuthorized: finalDecisionArtifact?.mergeAllowed === true,
+
+    routineDecisionProjection,
+
+    routineDecisionProjectionStatus,
 
 
 

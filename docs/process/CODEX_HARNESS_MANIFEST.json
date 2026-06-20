@@ -3,14 +3,14 @@
   "schemaVersion": "1.2.8",
   "sourceHarnessVersion": "1.2.8",
   "harnessVersion": "1.2.8",
-  "activeHarnessVersion": "1.2.8",
-  "targetHarnessVersion": "1.2.8",
+  "activeHarnessVersion": "1.2.7",
+  "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
-  "upgradePath": "direct_v127_to_v128",
-  "activeSelfTestSuite": "v128",
-  "activeSelfTestStatusKey": "v128SelfTestStatus",
+  "upgradePath": "v127_to_v128_shadow_candidate_then_activation",
+  "activeSelfTestSuite": "v127",
+  "activeSelfTestStatusKey": "v127SelfTestStatus",
   "legacySelfTests": {
     "v126": "blocking_compatibility",
     "v125": "blocking_compatibility",
@@ -27,8 +27,8 @@
     "v114": "blocking_compatibility",
     "v113": "selected_critical",
     "v080_v112": "target_shadow_legacy_count_only",
-    "v127": "blocking_compatibility",
-    "v128": "blocking_current"
+    "v127": "blocking_current_active_authority",
+    "v128": "source_shadow_candidate"
   },
   "sourceOnlyRelease": true,
   "targetRollout": "not_started",
@@ -651,6 +651,12 @@
       "runtimeReadinessClaimed": false,
       "productionReadinessClaimed": false,
       "walletRpcDeployAccess": false
-    }
+    },
+    "activationState": "source_shadow_candidate",
+    "sourceActivation": "not_started",
+    "shadowTargetCanary": "not_started",
+    "activationReady": false,
+    "observedProjectionRequiredForActivation": true,
+    "placeholderReceiptValid": false
   }
 }

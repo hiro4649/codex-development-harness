@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
-  "schemaVersion": "1.2.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.7",
+  "schemaVersion": "1.2.7",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
   "purpose": "Bound md and skill reads by task profile while preserving active authority.",
@@ -15,9 +15,10 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V128_SPEC.md"
+        "docs/process/CODEX_V127_SPEC.md"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -47,10 +48,11 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V128_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "owner_rollout_instruction"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -63,9 +65,10 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V128_SPEC.md"
+        "docs/process/CODEX_V127_SPEC.md"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -79,10 +82,11 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V128_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "failing_legacy_spec_only"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
         "README.md",
         "unrelated_legacy_specs",
         "pr_history_docs"
@@ -96,9 +100,10 @@
   "requiredReads": [
     "AGENTS.md",
     "docs/process/CODEX_HARNESS_MANIFEST.json",
-    "docs/process/CODEX_V128_SPEC.md"
+    "docs/process/CODEX_V127_SPEC.md"
   ],
   "deferredReads": [
+    "docs/process/CODEX_V128_SPEC.md",
     "README.md",
     "legacy_specs",
     "pr_history_docs"
@@ -182,6 +187,12 @@
       "routineBytesMax": 1600,
       "stressBytesMax": 2048
     },
-    "preservationMatrix": "docs/process/CODEX_V128_PRESERVATION_MATRIX.json"
+    "preservationMatrix": "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
+    "activationState": "source_shadow_candidate",
+    "sourceActivation": "not_started",
+    "shadowTargetCanary": "not_started",
+    "activationReady": false,
+    "observedProjectionRequiredForActivation": true,
+    "placeholderReceiptValid": false
   }
 }

@@ -10,15 +10,18 @@ Closure.
 
 ## Supersedes
 
-This file is the only active v1.2.8 specification. Any earlier draft that
-redefined `codex-decision-capsule.safe.json` as a Projection is non-authority
-archive material. Active v1.2.8 readers must hard-fail if the active surface
-contains the phrase `Decision Capsule is Projection`.
+This file is the only normative v1.2.8 candidate specification. Any earlier
+draft that redefined `codex-decision-capsule.safe.json` as a Projection is
+non-authority archive material. v1.2.8 candidate readers must hard-fail if the
+active surface contains the phrase `Decision Capsule is Projection`.
 
 ## Scope
 
-v1.2.8 is a Source HARNESS body release. It is a compression and loop-closure
-release, not an authority expansion. It preserves:
+v1.2.8 is a Source HARNESS body candidate release. In this PR it is a Source
+Shadow Candidate, not Source Activation. Active authority remains v1.2.7 /
+v127 until a separate activation PR proves the required shadow/canary evidence.
+It is a compression and loop-closure release, not an authority expansion. It
+preserves:
 
 - v1.1.8 Final Decision as final pass/block/mergeAllowed/exit-code authority
 - v1.1.9 three P0 safe artifacts and operator-visible status surface
@@ -34,7 +37,9 @@ same-head remote gate bypass, or readiness/legal/YouTube compliance claims.
 
 ## Authority Model
 
-The authority model is unchanged:
+The authority model is unchanged. v1.2.8 candidate tooling must not replace the
+active v1.2.7 writer, active v127 self-test suite, or Final Decision exit
+behavior:
 
 - `codex-decision-capsule.safe.json`: domain decision authority
 - `codex-evidence-capsule.safe.json`: same-head and freshness authority
@@ -43,17 +48,21 @@ The authority model is unchanged:
 - `codex-quality-gate-safe-summary.json`: non-authoritative stored Projection
 
 The stored Projection never creates merge authority, owner authority, permission
-authority, provider closure, or Final Decision input authority.
+authority, provider closure, or Final Decision input authority. Source
+Activation requires observed projection bytes, replayed state matrix fixtures,
+and active v1.2.7 gate impact of zero.
 
 ## P0 Internal Blocks
 
-v1.2.8 adds only internal fields inside the existing v1.1.9 P0 artifacts.
+v1.2.8 adds only candidate internal fields inside the existing v1.1.9 P0
+artifacts.
 
 ### 1. Deterministic Decision Projection
 
 The Safe Summary may carry a small stored Projection for routine reading. It
 must remain non-authoritative and must be derived from existing authoritative
-artifacts.
+artifacts. Placeholder bytes are not valid measurements: unobserved projection
+size must be `null` with `projectionMeasurementSource=not_observed`.
 
 The flow is three-stage:
 
@@ -100,7 +109,8 @@ codes fail closed.
 
 ### 3. Token-Minimal Read and Compatibility Router
 
-Routine mode is one small read surface:
+Routine mode is one small read surface. A cold artifact read means the flow is
+diagnostic or repair, not routine:
 
 ```text
 routine selected skill <= 1
@@ -156,8 +166,10 @@ The receipt expires on new owner instruction, scope delta, repository change,
 branch violation, receipt revoke, or taskId change.
 
 Same-session routine may read one managed safe artifact only when the current
-receipt is already hydrated. Cross-session or another-thread resume is a
-diagnostic profile and must revalidate receipt and Orchestration Capsule.
+receipt is already hydrated. A missing receipt is `not_available`, not valid.
+Placeholder receipt or checkpoint digests are invalid. Cross-session or
+another-thread resume is a diagnostic profile and must revalidate receipt and
+Orchestration Capsule.
 
 Checkpoint is non-authoritative resume assistance. It must bind at least:
 
@@ -210,5 +222,27 @@ Specification PR is allowed. Source Shadow Candidate is conditional on the
 v128 self-test, Preservation Matrix, replay corpus, and active v1.2.7 gate
 impact remaining clean. Source Activation, active target canary, and portfolio
 rollout are not part of this Source body PR unless separately instructed.
+
+Activation remains NO-GO unless all of the following are proven by machine
+tests, not static defaults:
+
+```text
+v1.2.7 Preservation Matrix exact-match
+routine cold artifact read = 0
+routine total managed artifact read = 1
+Projection <= 1600 measured canonical UTF-8 bytes
+stress Projection <= 2048 measured canonical UTF-8 bytes
+harnessManagedContextBytesEmitted <= 4096
+source and target deterministic replay pass
+PR body display-only replay pass
+receipt provenance and expiry replay pass
+required-check failure non-owner-overridable
+validation reuse regression 0
+post-merge lanes replay pass
+false PASS 0
+false technical blocker 0
+unresolved divergence 0
+active v1.2.7 gate impact 0
+```
 
 <!-- CODEX_QUALITY_HARNESS_END -->

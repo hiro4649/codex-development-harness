@@ -937,9 +937,9 @@
     "codex-v126-self-test.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.2.8",
-  "activeSelfTestSuite": "v128",
-  "activeSelfTestStatusKey": "v128SelfTestStatus",
+  "activeHarnessVersion": "1.2.7",
+  "activeSelfTestSuite": "v127",
+  "activeSelfTestStatusKey": "v127SelfTestStatus",
   "legacySelfTestSuites": {
     "v126": "blocking_compatibility",
     "v125": "blocking_compatibility",
@@ -955,7 +955,8 @@
     "v105": "advisory",
     "v104": "advisory",
     "v103": "advisory",
-    "v127": "blocking_current"
+    "v127": "blocking_current_active_authority",
+    "v128": "source_shadow_candidate"
   },
   "targetRollout": "not_started",
   "representativeRealPrValidation": "not_started",
@@ -1355,7 +1356,7 @@
     "vgcBscScanVerificationBoundaryStatus",
     "vgcMainnetReadinessBoundaryStatus"
   ],
-  "targetHarnessVersion": "1.2.8",
+  "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
   "theme": "Deterministic Decision Projection and Token-Minimal Loop Closure",
   "requiredStatuses": [
@@ -1632,8 +1633,8 @@
     "v114": "blocking_compatibility",
     "v113": "selected_critical",
     "v080_v112": "target_shadow_legacy_count_only",
-    "v127": "blocking_compatibility",
-    "v128": "blocking_current"
+    "v127": "blocking_current_active_authority",
+    "v128": "source_shadow_candidate"
   },
   "contextRouting": {
     "version": "1.2.4",
@@ -1795,7 +1796,7 @@
       "walletRpcDeployAccess": false
     }
   },
-  "upgradePath": "direct_v127_to_v128",
+  "upgradePath": "v127_to_v128_shadow_candidate_then_activation",
   "deterministicDecisionProjectionAndTokenMinimalLoopClosure": {
     "version": "1.2.8",
     "name": "Deterministic Decision Projection and Token-Minimal Loop Closure",
@@ -1840,6 +1841,12 @@
       "runtimeReadinessClaimed": false,
       "productionReadinessClaimed": false,
       "walletRpcDeployAccess": false
-    }
+    },
+    "activationState": "source_shadow_candidate",
+    "sourceActivation": "not_started",
+    "shadowTargetCanary": "not_started",
+    "activationReady": false,
+    "observedProjectionRequiredForActivation": true,
+    "placeholderReceiptValid": false
   }
 }

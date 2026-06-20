@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.8
+CODEX_QUALITY_HARNESS_FILE v1.2.7
 
 ## Prime Directive
 
@@ -212,8 +212,9 @@ AI-only merge, self approval, GitHub approval review, deploy/wallet/RPC/secret
 automation, same-head remote gate bypass, or readiness/legal/YouTube compliance
 claims.
 For v1.2.8 Deterministic Decision Projection and Token-Minimal Loop Closure,
-use `docs/process/CODEX_V128_SPEC.md` and
-`docs/process/CODEX_ACTIVE_POLICY_INDEX.json`. v1.2.8 adds only internal
+use `docs/process/CODEX_V128_SPEC.md` only as a Source Shadow Candidate spec
+unless a separate activation PR is explicitly authorized. Active authority in
+this PR remains v1.2.7 / v127. v1.2.8 adds only candidate internal
 Deterministic Decision Projection, Orthogonal Reason Model, Token-Minimal Read
 and Compatibility Router, and Resumable Loop/Permission Projection fields
 inside the existing v1.1.9 P0 artifacts. Safe Summary may carry a
@@ -227,7 +228,8 @@ or Final Decision input authority. v1.2.8 must not add new P0 artifacts,
 top-level statuses, new Skills, target rollout, product/package/runtime/
 workflow changes, raw-log access, AI owner authority, AI-only merge, self
 approval, GitHub approval review, deploy/wallet/RPC/secret automation,
-same-head bypass, or readiness/legal/YouTube compliance claims.
+same-head bypass, or readiness/legal/YouTube compliance claims. Source
+activation, target canary, and portfolio rollout are not part of this PR.
 
 ## Plan-First Rule
 
