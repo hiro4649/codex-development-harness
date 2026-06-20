@@ -30,6 +30,29 @@ const SOURCE_CLOSURE_FILES = [
   'docs/process/CODEX_V128_SPEC.md',
 ];
 const REQUIRED_CACHE_FIELDS = new Set(['headSha', 'planDigest', 'scriptDigest', 'runtimeVersion', 'taskProfile', 'environmentClass']);
+const REUSE_BINDING_FIELDS = new Set(['sourceHeadOid', 'baseOid', 'testedCommitOid', 'testedTreeKind', 'validationContextDigest']);
+const NODE_SOURCE_CLOSURE_SEEDS = {
+  projection_reader: [
+    'scripts/codex-v128-projection-reader.mjs',
+    'scripts/codex-v128-integrity-lib.mjs',
+    'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
+    'docs/process/CODEX_V128_SPEC.md',
+  ],
+  managed_context_emitter: [
+    'scripts/codex-v128-managed-context-emitter.mjs',
+    'docs/process/CODEX_V128_SPEC.md',
+  ],
+  state_matrix_executor: [
+    'scripts/codex-v128-state-matrix.mjs',
+    'docs/process/CODEX_V128_STATE_MATRIX.json',
+    'docs/process/CODEX_V128_SPEC.md',
+  ],
+  aggregate_finalizer: [
+    'scripts/codex-v128-aggregate-finalizer.mjs',
+    'scripts/codex-v128-validation-execution-plan.mjs',
+    'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
+  ],
+};
 
 function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -126,6 +149,29 @@ function sourceClosureManifest(input = {}) {
     sourceClosureTruncated: truncated,
     sourceClosureDigest: digestValue(sourceFiles),
   };
+}
+
+function nodeSourceClosureManifest(input = {}, graphNodes = defaultGraphNodes()) {
+  const closures = {};
+  for (const node of graphNodes) {
+    const seeds = input.nodeSourceClosureSeeds?.[node.nodeRef] || NODE_SOURCE_CLOSURE_SEEDS[node.nodeRef] || SOURCE_CLOSURE_FILES;
+    const closure = sourceClosureManifest({
+      ...input,
+      sourceClosureFiles: seeds,
+      maxSourceClosureFiles: input.maxNodeSourceClosureFiles || 128,
+    });
+    closures[node.nodeRef] = {
+      seedSourceFileCount: closure.seedSourceFileCount,
+      sourceFileCount: closure.sourceFiles.length,
+      relativeImportEdgeCount: closure.relativeImportEdgeCount,
+      transitiveRelativeImportCount: closure.transitiveRelativeImportCount,
+      unresolvedRelativeImportCount: closure.unresolvedRelativeImportCount,
+      sourceClosureTruncated: closure.sourceClosureTruncated,
+      declaredImportScanStatus: closure.declaredImportScanStatus,
+      nodeSourceClosureDigest: closure.sourceClosureDigest,
+    };
+  }
+  return closures;
 }
 
 function defaultGraphNodes() {
@@ -253,10 +299,39 @@ function fieldValue(field) {
   return field?.state === 'observed' ? field.value : field?.state;
 }
 
-function buildCacheKeyFields(input = {}, planDigest, sourceClosureDigest) {
+function buildValidationContext(input = {}, head) {
+  const testedTreeKind = input.testedTreeKind
+    || (String(process.env.GITHUB_REF || '').includes('/pull/') ? 'pull_request_merge_ref' : 'branch_head');
+  const sourceHeadOid = input.sourceHeadOid || process.env.CODEX_PR_HEAD_SHA || head;
+  const baseOid = input.baseOid || process.env.CODEX_PR_BASE_SHA || null;
+  const testedCommitOid = input.testedCommitOid || process.env.GITHUB_SHA || head;
+  const context = {
+    sourceHeadOid: fieldState(sourceHeadOid, { reasonCode: 'SOURCE_HEAD_NOT_OBSERVED' }),
+    baseOid: baseOid
+      ? fieldState(baseOid, { reasonCode: 'BASE_NOT_OBSERVED' })
+      : fieldState(null, { notRequired: testedTreeKind === 'branch_head', reasonCode: testedTreeKind === 'branch_head' ? 'BRANCH_HEAD_HAS_NO_BASE_OID' : 'BASE_NOT_OBSERVED' }),
+    testedCommitOid: fieldState(testedCommitOid, { reasonCode: 'TESTED_COMMIT_NOT_OBSERVED' }),
+    testedTreeKind: fieldState(testedTreeKind, { reasonCode: 'TESTED_TREE_KIND_NOT_OBSERVED' }),
+  };
+  context.validationContextDigest = fieldState(digestValue({
+    sourceHeadOid: fieldValue(context.sourceHeadOid),
+    baseOid: fieldValue(context.baseOid),
+    testedCommitOid: fieldValue(context.testedCommitOid),
+    testedTreeKind: fieldValue(context.testedTreeKind),
+  }));
+  return context;
+}
+
+function buildCacheKeyFields(input = {}, planDigest, sourceClosureDigest, validationContext = null) {
   const head = input.headSha || process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'not_available';
+  const context = validationContext || buildValidationContext(input, head);
   return {
     headSha: fieldState(head, { reasonCode: 'HEAD_NOT_OBSERVED' }),
+    sourceHeadOid: context.sourceHeadOid,
+    baseOid: context.baseOid,
+    testedCommitOid: context.testedCommitOid,
+    testedTreeKind: context.testedTreeKind,
+    validationContextDigest: context.validationContextDigest,
     planDigest: fieldState(planDigest),
     scriptDigest: fieldState(input.scriptDigest || sourceClosureDigest),
     lockfileDigest: input.lockfileDigest
@@ -348,6 +423,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
   const failedNode = nodeResults.find((node) => node.status === 'fail') || null;
   const requiredSkippedNode = nodeResults.find((node) => node.required === true && node.status === 'skipped') || null;
   const sourceClosure = sourceClosureManifest(input);
+  const nodeSourceClosures = nodeSourceClosureManifest(input, graphNodes);
   const planCore = {
     profileId: input.profileId || 'source_shadow_validation',
     graphDigest: graph.graphDigest,
@@ -356,14 +432,25 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     downstreamRespawnAllowed: input.downstreamRespawnAllowed === true,
   };
   const planDigest = digestValue(planCore);
-  const cacheKeyFields = buildCacheKeyFields(input, planDigest, sourceClosure.sourceClosureDigest);
+  const headForContext = input.headSha || process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'not_available';
+  const validationContext = buildValidationContext(input, headForContext);
+  const cacheKeyFields = buildCacheKeyFields(input, planDigest, sourceClosure.sourceClosureDigest, validationContext);
   const cacheKeyInvalid = cacheKeyHasInvalidField(cacheKeyFields);
   const reuseEligible = cacheReuseEligible(cacheKeyFields);
   const reuseDecision = classifyReuseDecision(nodeResults, input, cacheKeyInvalid);
   const cacheKeyDigest = reuseEligible ? digestValue(cacheKeyFields) : null;
+  const nodeCacheKeyDigests = Object.fromEntries(graphNodes.map((node) => {
+    const nodeSourceDigest = nodeSourceClosures[node.nodeRef]?.nodeSourceClosureDigest || sourceClosure.sourceClosureDigest;
+    const nodeFields = {
+      ...cacheKeyFields,
+      scriptDigest: fieldState(nodeSourceDigest),
+      nodeRef: fieldState(node.nodeRef),
+    };
+    return [node.nodeRef, cacheReuseEligible(nodeFields) ? digestValue(nodeFields) : null];
+  }));
   const boundNodeResults = nodeResults.map((node) => (
     node.executionState === 'reused' && !node.cacheKeyDigest
-      ? { ...node, cacheKeyDigest }
+      ? { ...node, cacheKeyDigest: nodeCacheKeyDigests[node.nodeRef] || cacheKeyDigest }
       : node
   ));
   const staticScan = finalizerStaticScan();
@@ -374,7 +461,11 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     branch: input.branch || process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || 'unknown',
     sourceBranch: input.sourceBranch || process.env.GITHUB_HEAD_REF || input.branch || process.env.CODEX_BRANCH || 'unknown',
     checkoutRef: input.checkoutRef || process.env.GITHUB_REF || process.env.GITHUB_REF_NAME || 'unknown',
-    testedTreeKind: input.testedTreeKind || (String(process.env.GITHUB_REF || '').includes('/pull/') ? 'pull_request_merge_ref' : 'branch_head'),
+    testedTreeKind: fieldValue(validationContext.testedTreeKind) || 'unknown',
+    sourceHeadOid: fieldValue(validationContext.sourceHeadOid) || 'unknown',
+    baseOid: fieldValue(validationContext.baseOid) || 'unknown',
+    testedCommitOid: fieldValue(validationContext.testedCommitOid) || 'unknown',
+    validationContextDigest: fieldValue(validationContext.validationContextDigest) || null,
     headSha: fieldValue(cacheKeyFields.headSha) || 'unknown',
     activeHarnessVersion: input.activeHarnessVersion || '1.2.7',
   };
@@ -411,6 +502,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     },
     typedResults,
     sourceClosure,
+    nodeSourceClosures,
     profileExecution: {
       profileId: planCore.profileId,
       planDigest,
@@ -435,6 +527,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       missReasonRef: cacheKeyInvalid ? 'CACHE_KEY_FIELD_MISSING_OR_INVALID' : (reuseDecision === 'miss' ? 'NO_REUSABLE_NODE' : null),
       cacheKeyDigest,
       cacheKeyFields,
+      nodeCacheKeyDigests,
       cacheKeyHasPlaceholder: cacheKeyInvalid,
       cacheReuseEligible: reuseEligible,
       skippedNodeRefs: reuseDecision === 'hit' || reuseDecision === 'partial_hit' ? reusedNodeRefs : [],
@@ -540,7 +633,8 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
       else if (node.sourceResultDigest !== node.resultDigest) reasons.push('reused_node_source_result_digest_mismatch');
       if (!/^[a-f0-9]{40}$/.test(String(node.sourceHeadSha || ''))) reasons.push('reused_node_source_head_sha_required');
       if (!/^sha256:[a-f0-9]{64}$/.test(String(node.cacheKeyDigest || ''))) reasons.push('reused_node_cache_key_digest_required');
-      else if (reuse.cacheKeyDigest && node.cacheKeyDigest !== reuse.cacheKeyDigest) reasons.push('reused_node_cache_key_digest_mismatch');
+      else if (reuse.nodeCacheKeyDigests?.[node.nodeRef] && node.cacheKeyDigest !== reuse.nodeCacheKeyDigests[node.nodeRef]) reasons.push('reused_node_cache_key_digest_mismatch');
+      else if (!reuse.nodeCacheKeyDigests?.[node.nodeRef] && reuse.cacheKeyDigest && node.cacheKeyDigest !== reuse.cacheKeyDigest) reasons.push('reused_node_cache_key_digest_mismatch');
       if (!node.resultSchemaVersion) reasons.push('reused_node_result_schema_required');
     }
   }
@@ -583,7 +677,12 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (!FIELD_STATES.has(field?.state)) reasons.push('validation_reuse_cache_key_field_state_invalid');
     if (plan.observationState === 'observed' && field?.state === 'invalid') reasons.push('validation_reuse_cache_key_field_missing_or_invalid');
     if (plan.observationState === 'observed' && field?.state === 'missing' && REQUIRED_CACHE_FIELDS.has(fieldName)) reasons.push('validation_reuse_cache_key_field_missing_or_invalid');
+    if (plan.observationState === 'observed' && reuse.reuseDecision !== 'miss' && field?.state === 'missing' && REUSE_BINDING_FIELDS.has(fieldName)) reasons.push('validation_reuse_binding_field_missing');
     if (fieldName === 'runnerImageDigest' && field?.state === 'missing' && reuse.reuseDecision !== 'miss') reasons.push('runner_image_missing_prevents_reuse');
+  }
+  for (const [nodeRef, digest] of Object.entries(reuse.nodeCacheKeyDigests || {})) {
+    if (!graphByRef.has(nodeRef)) reasons.push('node_cache_key_digest_unknown_node');
+    if (reuse.reuseDecision !== 'miss' && !/^sha256:[a-f0-9]{64}$/.test(String(digest || ''))) reasons.push('node_cache_key_digest_invalid');
   }
   if (taxonomy.environmentDiagnosticExcludedFromDecisionDigest !== true) reasons.push('environment_diagnostic_must_be_excluded_from_decision_digest');
   if (taxonomy.rawLogForbidden !== true || taxonomy.secretForbidden !== true || taxonomy.localAbsolutePathForbidden !== true) reasons.push('stable_diagnostic_forbidden_boundary_missing');

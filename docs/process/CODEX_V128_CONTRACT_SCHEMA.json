@@ -101,6 +101,11 @@
     "upstreamMissingReason": "upstream_evidence_missing",
     "cacheKeyFields": [
       "headSha",
+      "sourceHeadOid",
+      "baseOid",
+      "testedCommitOid",
+      "testedTreeKind",
+      "validationContextDigest",
       "planDigest",
       "scriptDigest",
       "lockfileDigest",
@@ -120,6 +125,10 @@
       "partial_hit": "some_reused_and_some_executed_nodes",
       "miss": "no_reused_nodes"
     },
+    "reuseBindingFields": ["sourceHeadOid", "baseOid", "testedCommitOid", "testedTreeKind", "validationContextDigest"],
+    "pullRequestMergeRefReuseRequiresBaseOid": true,
+    "nodeScopedSourceClosureDigests": true,
+    "nodeCacheKeyDigestAllowed": true,
     "reuseReportMustListSkippedNodes": true,
     "reusedNodeRequires": ["sourceRunRef", "sourceResultDigest", "sourceHeadSha", "cacheKeyDigest", "resultSchemaVersion"],
     "reusedNodeDigestChecks": [
@@ -128,6 +137,7 @@
     ],
     "scriptDigestSource": "source_closure_manifest",
     "scriptDigestTransitiveRelativeImports": true,
+    "scriptDigestNodeScopedClosure": true,
     "scriptDigestSourceClosureFiles": [
       "scripts/codex-v128-validation-execution-plan.mjs",
       "scripts/codex-v128-aggregate-finalizer.mjs",
@@ -183,6 +193,10 @@
       "sourceBranch",
       "checkoutRef",
       "testedTreeKind",
+      "sourceHeadOid",
+      "baseOid",
+      "testedCommitOid",
+      "validationContextDigest",
       "headSha",
       "activeHarnessVersion",
       "worktreeIdentityDigest",

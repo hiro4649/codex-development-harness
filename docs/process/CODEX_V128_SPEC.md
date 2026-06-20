@@ -196,6 +196,11 @@ Validation reuse must be content-addressed by at least:
 
 ```text
 headSha
+sourceHeadOid
+baseOid
+testedCommitOid
+testedTreeKind
+validationContextDigest
 planDigest
 scriptDigest
 lockfileDigest
@@ -243,6 +248,13 @@ sourceRunRef / sourceHeadSha / resultSchemaVersion:
   required for every reused node
 ```
 
+For pull request merge-ref validation, cache reuse must bind the source head,
+base commit, tested commit/tree kind, and validation context digest. A source
+head match alone is insufficient because the tested merge tree can change when
+the base branch advances. Missing `baseOid` on a pull request merge-ref prevents
+cache hit or partial hit. A branch-head validation may mark `baseOid` as
+`not_required_with_reason`.
+
 The `scriptDigest` is not a label hash. It is a source-closure digest over the
 declared validation entrypoint, aggregate finalizer, local quality-gate adapter,
 orchestration consumer, node implementations, schema, profile/spec, and
@@ -256,6 +268,13 @@ result construction invalidates the reuse key.
 
 The expanded source closure is cold diagnostic evidence. It must not enlarge the
 routine model-facing Projection read surface.
+
+To avoid turning the transitive closure into a permanent performance penalty,
+v1.2.8 also emits node-scoped source-closure digests. A node cache key may use
+the node-scoped digest for its implementation surface while the aggregate plan
+keeps the whole closure for cold audit and Activation review. This is a Shadow
+Candidate performance-preparation feature, not a claim that cache hit or
+partial-hit speedup has already been proven.
 
 Decision-stable fields, cache-stable fields, environment diagnostics, owner
 inputs, and forbidden values are separate classes. Environment diagnostics such

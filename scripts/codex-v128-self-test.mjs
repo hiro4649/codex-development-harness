@@ -703,6 +703,36 @@ function validationSourceClosureResolvesTransitiveImports() {
     && Array.isArray(plan.sourceClosure.relativeImportClosureFiles);
 }
 
+function validationNodeScopedSourceClosuresExist() {
+  const plan = buildV128ValidationExecutionPlan();
+  const closures = plan.nodeSourceClosures || {};
+  const nodeRefs = ['projection_reader', 'managed_context_emitter', 'state_matrix_executor', 'aggregate_finalizer'];
+  return nodeRefs.every((nodeRef) => /^sha256:[a-f0-9]{64}$/.test(String(closures[nodeRef]?.nodeSourceClosureDigest || '')))
+    && nodeRefs.every((nodeRef) => closures[nodeRef].sourceFileCount <= plan.sourceClosure.sourceFiles.length)
+    && closures.managed_context_emitter.sourceFileCount < plan.sourceClosure.sourceFiles.length;
+}
+
+function validationPrMergeReuseRequiresBaseOid() {
+  const plan = buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    testedCommitOid: 'e'.repeat(40),
+    testedTreeKind: 'pull_request_merge_ref',
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    nodeResults: [
+      reusedNode('projection_reader'),
+      reusedNode('managed_context_emitter'),
+      reusedNode('state_matrix_executor'),
+      reusedNode('aggregate_finalizer'),
+    ],
+  });
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('validation_reuse_binding_field_missing');
+}
+
 function validationDiagnosticManifestNeedsSanitizedDigest() {
   return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
@@ -898,6 +928,8 @@ const cases = [
   ['validation_runner_image_missing_prevents_reuse', () => validationRunnerImageMissingPreventsReuse()],
   ['validation_source_closure_includes_consumers', () => validationSourceClosureIncludesConsumers()],
   ['validation_source_closure_resolves_transitive_imports', () => validationSourceClosureResolvesTransitiveImports()],
+  ['validation_node_scoped_source_closures_exist', () => validationNodeScopedSourceClosuresExist()],
+  ['validation_pr_merge_reuse_requires_base_oid', () => validationPrMergeReuseRequiresBaseOid()],
   ['validation_diagnostic_manifest_needs_sanitized_digest', () => validationDiagnosticManifestNeedsSanitizedDigest()],
   ['validation_finalizer_missing_upstream_node_fails', () => validationFinalizerMissingUpstreamNodeFails()],
   ['validation_finalizer_wrong_upstream_digest_fails', () => validationFinalizerWrongUpstreamDigestFails()],
