@@ -303,7 +303,7 @@ function buildValidationContext(input = {}, head) {
   const testedTreeKind = input.testedTreeKind
     || (String(process.env.GITHUB_REF || '').includes('/pull/') ? 'pull_request_merge_ref' : 'branch_head');
   const sourceHeadOid = input.sourceHeadOid || process.env.CODEX_PR_HEAD_SHA || head;
-  const baseOid = input.baseOid || process.env.CODEX_PR_BASE_SHA || null;
+  const baseOid = Object.hasOwn(input, 'baseOid') ? input.baseOid : (process.env.CODEX_PR_BASE_SHA || null);
   const testedCommitOid = input.testedCommitOid || process.env.GITHUB_SHA || head;
   const context = {
     sourceHeadOid: fieldState(sourceHeadOid, { reasonCode: 'SOURCE_HEAD_NOT_OBSERVED' }),

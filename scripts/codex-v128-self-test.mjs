@@ -719,6 +719,7 @@ function validationPrMergeReuseRequiresBaseOid() {
   const plan = buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
     sourceHeadOid: 'f'.repeat(40),
+    baseOid: null,
     testedCommitOid: 'e'.repeat(40),
     testedTreeKind: 'pull_request_merge_ref',
     runnerImageDigest: `sha256:${'b'.repeat(64)}`,
