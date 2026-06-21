@@ -85,6 +85,7 @@ function compactValidationPlan(plan = {}, status = {}) {
   const reuse = plan.validationReuseDecision || {};
   const requeue = plan.failureDirectedRequeue || {};
   const economy = plan.loopEconomy || {};
+  const admission = plan.loopAdmissionRouter || {};
   return {
     status: status.status || 'missing',
     observationState: status.observationState || plan.observationState || 'unknown',
@@ -95,6 +96,10 @@ function compactValidationPlan(plan = {}, status = {}) {
     reuseDecision: reuse.reuseDecision || 'unknown',
     unaffectedNodeRerunCount: Number(requeue.unaffectedNodeRerunCount || 0),
     loopBudgetState: economy.budgetState || 'unknown',
+    executionMode: admission.executionMode || 'unknown',
+    admissionStatus: admission.admissionStatus || 'unknown',
+    nextActionCode: admission.nextActionCode || 'unknown',
+    admissionDigest: admission.admissionDigest || null,
     managedInputBytesPerAcceptedChange: economy.managedInputBytesPerAcceptedChange ?? null,
     fullContextResendCount: Number(economy.fullContextResendCount || 0),
     deltaContextBytes: Number(economy.deltaContextBytes || 0),
@@ -439,6 +444,26 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     reusedNodeCount: Number(economy.reusedNodeCount || 0),
     managedInputBytesPerAcceptedChange: economy.managedInputBytesPerAcceptedChange ?? null,
     budgetState: economy.budgetState || 'unknown',
+  };
+  const admission = plan.loopAdmissionRouter || {};
+  compact.loopAdmissionRouter = {
+    executionMode: admission.executionMode || 'unknown',
+    admissionStatus: admission.admissionStatus || 'unknown',
+    admissionReasonCode: admission.admissionReasonCode || null,
+    budgetState: admission.budgetState || 'unknown',
+    failedNodeCount: Number(admission.failedNodeCount || 0),
+    stopReason: admission.stopReason || null,
+    nextActionCode: admission.nextActionCode || 'unknown',
+    protectedExecutorAvailable: admission.protectedExecutorAvailable === true,
+    maxIterations: Number(admission.maxIterations || 3),
+    maxModelInvocations: Number(admission.maxModelInvocations || 4),
+    humanOwnerDecisionRequired: admission.humanOwnerDecisionRequired === true,
+    ownerAuthorityCreated: admission.ownerAuthorityCreated === true,
+    sourceActivationAuthorized: admission.sourceActivationAuthorized === true,
+    targetRolloutAuthorized: admission.targetRolloutAuthorized === true,
+    newP0ArtifactCreated: admission.newP0ArtifactCreated === true,
+    admissionDigest: admission.admissionDigest || null,
+    safeSummaryOnly: true,
   };
   const memory = plan.selectiveFailureMemory || {};
   compact.selectiveFailureMemory = {

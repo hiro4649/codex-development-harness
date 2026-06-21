@@ -212,6 +212,25 @@
       "flipFlopMax": 1,
       "declaredBudgetAsObservedAllowed": false
     },
+    "loopAdmissionRouter": {
+      "artifactSurface": "orchestrationCapsule.validationExecutionPlanAndReuse.loopAdmissionRouter",
+      "newP0Artifact": false,
+      "executionModes": ["one_shot", "bounded_goal", "protected_routine"],
+      "defaultExecutionMode": "bounded_goal",
+      "progression": ["one_shot", "bounded_goal", "protected_routine"],
+      "protectedRoutineRequiresExecutor": true,
+      "deterministicVerifierRequiredForBoundedGoal": true,
+      "humanOwnerDecisionRequired": false,
+      "ownerAuthorityCreated": false,
+      "sourceActivationAuthorized": false,
+      "targetRolloutAuthorized": false,
+      "allowedNextActionCodes": ["ACCEPT_CHANGE", "REPAIR_FAILED_NODE", "STOP_NO_PROGRESS", "WAIT_FOR_EVIDENCE"],
+      "maxIterations": 3,
+      "maxModelInvocations": 4,
+      "sameBlockerMax": 1,
+      "noProgressWindow": 1,
+      "flipFlopMax": 1
+    },
     "nodeInputDigestCacheBinding": {
       "artifactSurface": "orchestrationCapsule.validationExecutionPlanAndReuse.validationReuseDecision.nodeInputDigests",
       "requiredForObservedNodes": true,

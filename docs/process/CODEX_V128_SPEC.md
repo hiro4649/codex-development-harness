@@ -395,6 +395,29 @@ invalidated cache evidence. Unchanged, already-passing nodes must not be rerun.
 Repeating the same failed node with the same node input digest and same failure
 class produces `no_progress_same_failure` instead of another model attempt.
 
+Loop admission is a v1.2.8 shadow decision surface, not authority. It selects
+the smallest safe execution mode:
+
+```text
+one_shot:
+  one implementation pass plus one verification pass
+
+bounded_goal:
+  deterministic verifier available
+  maxIterations=3
+
+protected_routine:
+  repeated safe routine work
+  protected executor available
+```
+
+The router emits `executionMode`, `admissionStatus`, `budgetState`,
+`failedNodeCount`, `stopReason`, and `nextActionCode`. It must never create
+owner authority, Source Activation, target rollout, or a new P0 artifact.
+`protected_routine` is invalid without a protected executor. Individual PR
+human judgment is not required for eligible standing-policy work; deterministic
+verification and protected execution decide pass/reject.
+
 `commandOrFunctionDigest` is the node-scoped source closure digest, not a
 metadata hash of the node name or adapter id. The validator recomputes ledger
 counts, duplicate node executions, sequence uniqueness, and command digest

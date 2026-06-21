@@ -11,6 +11,9 @@ const VALIDATION_NODES_MAX = 12;
 const DELTA_CONTEXT_BYTES_MAX = 768;
 const MAX_ITERATIONS = 3;
 const MAX_MODEL_INVOCATIONS = 4;
+const LOOP_EXECUTION_MODES = new Set(['one_shot', 'bounded_goal', 'protected_routine']);
+const LOOP_ADMISSION_STATUSES = new Set(['admitted', 'blocked']);
+const LOOP_NEXT_ACTION_CODES = new Set(['ACCEPT_CHANGE', 'REPAIR_FAILED_NODE', 'STOP_NO_PROGRESS', 'WAIT_FOR_EVIDENCE']);
 const FINALIZER_MODES = new Set(['aggregate_only']);
 const EXECUTION_STATES = new Set(['executed', 'reused', 'rerun']);
 const NODE_STATUSES = new Set(['pass', 'fail', 'skipped']);
@@ -629,6 +632,53 @@ function buildSelectiveFailureMemory(input = {}, failureDirectedRequeue = {}) {
   };
 }
 
+function buildLoopAdmissionRouter(input = {}, validationStatus = 'partial_shadow_candidate', failureDirectedRequeue = {}, loopEconomy = {}) {
+  const failedNodeCount = Array.isArray(failureDirectedRequeue.failedNodeRefs) ? failureDirectedRequeue.failedNodeRefs.length : 0;
+  const deterministicVerifierAvailable = input.deterministicVerifierAvailable !== false;
+  const protectedExecutorAvailable = input.protectedExecutorAvailable === true;
+  const protectedLifecycleRequested = input.protectedLifecycleRequested === true;
+  let executionMode = 'one_shot';
+  if (protectedLifecycleRequested && protectedExecutorAvailable && loopEconomy.budgetState === 'within_budget') {
+    executionMode = 'protected_routine';
+  } else if (deterministicVerifierAvailable) {
+    executionMode = 'bounded_goal';
+  }
+  const stopReason = failureDirectedRequeue.noProgressStop === true
+    ? 'no_progress_same_failure'
+    : (loopEconomy.budgetState === 'over_budget' ? 'loop_budget_exceeded' : null);
+  const admissionStatus = stopReason ? 'blocked' : 'admitted';
+  const nextActionCode = stopReason
+    ? 'STOP_NO_PROGRESS'
+    : (failedNodeCount > 0 || validationStatus === 'fail' ? 'REPAIR_FAILED_NODE' : (validationStatus === 'partial_shadow_candidate' ? 'WAIT_FOR_EVIDENCE' : 'ACCEPT_CHANGE'));
+  const router = {
+    routerKind: 'loop_admission_router',
+    executionMode,
+    admissionStatus,
+    admissionReasonCode: admissionStatus === 'admitted' ? `${executionMode}_admitted` : stopReason,
+    budgetState: loopEconomy.budgetState || 'unknown',
+    failedNodeCount,
+    stopReason,
+    nextActionCode,
+    deterministicVerifierAvailable,
+    protectedExecutorAvailable,
+    protectedLifecycleRequested,
+    maxIterations: MAX_ITERATIONS,
+    maxModelInvocations: MAX_MODEL_INVOCATIONS,
+    fullContextResendCount: Number(loopEconomy.fullContextResendCount || 0),
+    deltaContextBytes: Number(loopEconomy.deltaContextBytes || 0),
+    humanOwnerDecisionRequired: false,
+    ownerAuthorityCreated: false,
+    sourceActivationAuthorized: false,
+    targetRolloutAuthorized: false,
+    newP0ArtifactCreated: false,
+    safeSummaryOnly: true,
+  };
+  return {
+    ...router,
+    admissionDigest: digestValue(router),
+  };
+}
+
 function finalizerStaticScan() {
   const entry = 'scripts/codex-v128-aggregate-finalizer.mjs';
   const text = fs.readFileSync(entry, 'utf8');
@@ -753,6 +803,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
   const failureDirectedRequeue = buildFailureDirectedRequeue(input, graphNodes, boundNodeResults, nodeInputDigests);
   const loopEconomy = buildLoopEconomy(input, boundNodeResults, status, failureDirectedRequeue);
   const selectiveFailureMemory = buildSelectiveFailureMemory(input, failureDirectedRequeue);
+  const loopAdmissionRouter = buildLoopAdmissionRouter(input, status, failureDirectedRequeue, loopEconomy);
   return {
     schemaVersion: '1.2.8',
     executionKind: 'validation_execution_plan_shadow',
@@ -812,6 +863,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     },
     failureDirectedRequeue,
     loopEconomy,
+    loopAdmissionRouter,
     selectiveFailureMemory,
     stableDiagnosticTaxonomy: {
       decisionStableClasses: ['decision_stable'],
@@ -865,6 +917,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const reuse = plan.validationReuseDecision || {};
   const requeue = plan.failureDirectedRequeue || {};
   const loopEconomy = plan.loopEconomy || {};
+  const loopAdmissionRouter = plan.loopAdmissionRouter || {};
   const failureMemory = plan.selectiveFailureMemory || {};
   const taxonomy = plan.stableDiagnosticTaxonomy || {};
   const workspace = plan.workspaceIdentity || {};
@@ -1037,6 +1090,18 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     && !(Number(loopEconomy.managedInputBytesPerAcceptedChange) > 0)) reasons.push('loop_economy_managed_bytes_per_accepted_change_required');
   if (Number(loopEconomy.maxIterations || MAX_ITERATIONS) !== MAX_ITERATIONS) reasons.push('loop_economy_max_iterations_invalid');
   if (Number(loopEconomy.maxModelInvocations || MAX_MODEL_INVOCATIONS) !== MAX_MODEL_INVOCATIONS) reasons.push('loop_economy_max_model_invocations_invalid');
+  if (!LOOP_EXECUTION_MODES.has(loopAdmissionRouter.executionMode)) reasons.push('loop_admission_execution_mode_invalid');
+  if (!LOOP_ADMISSION_STATUSES.has(loopAdmissionRouter.admissionStatus)) reasons.push('loop_admission_status_invalid');
+  if (!LOOP_NEXT_ACTION_CODES.has(loopAdmissionRouter.nextActionCode)) reasons.push('loop_admission_next_action_invalid');
+  if (loopAdmissionRouter.executionMode === 'protected_routine' && loopAdmissionRouter.protectedExecutorAvailable !== true) reasons.push('loop_admission_protected_executor_required');
+  if (loopAdmissionRouter.admissionStatus === 'admitted' && loopAdmissionRouter.budgetState !== 'within_budget') reasons.push('loop_admission_admitted_requires_budget');
+  if (Number(loopAdmissionRouter.failedNodeCount || 0) !== (Array.isArray(requeue.failedNodeRefs) ? requeue.failedNodeRefs.length : 0)) reasons.push('loop_admission_failed_count_mismatch');
+  if (Number(loopAdmissionRouter.maxIterations || 0) !== MAX_ITERATIONS) reasons.push('loop_admission_max_iterations_invalid');
+  if (Number(loopAdmissionRouter.maxModelInvocations || 0) !== MAX_MODEL_INVOCATIONS) reasons.push('loop_admission_max_model_invocations_invalid');
+  if (loopAdmissionRouter.humanOwnerDecisionRequired === true) reasons.push('loop_admission_human_owner_decision_forbidden');
+  if (loopAdmissionRouter.ownerAuthorityCreated === true || loopAdmissionRouter.sourceActivationAuthorized === true
+    || loopAdmissionRouter.targetRolloutAuthorized === true || loopAdmissionRouter.newP0ArtifactCreated === true) reasons.push('loop_admission_authority_boundary_violation');
+  if (!/^sha256:[a-f0-9]{64}$/.test(String(loopAdmissionRouter.admissionDigest || ''))) reasons.push('loop_admission_digest_required');
   if (failureMemory.storesRawLogs === true || failureMemory.storesFullDiff === true || failureMemory.storesConversation === true) reasons.push('selective_failure_memory_forbidden_payload');
   if (failureMemory.memoryDigest && !/^sha256:[a-f0-9]{64}$/.test(String(failureMemory.memoryDigest))) reasons.push('selective_failure_memory_digest_invalid');
   if (taxonomy.environmentDiagnosticExcludedFromDecisionDigest !== true) reasons.push('environment_diagnostic_must_be_excluded_from_decision_digest');

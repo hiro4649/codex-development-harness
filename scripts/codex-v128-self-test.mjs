@@ -856,6 +856,91 @@ function validationFailureDirectedRequeueAllowsChangedInputDownstream() {
     && plan.failureDirectedRequeue.actualRequeuedNodeRefs.length === 4;
 }
 
+function loopAdmissionRouterDefaultsToBoundedGoal() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    stableContextBytes: 800,
+    deltaContextBytes: 300,
+    fullContextResendCount: 1,
+    modelInvocationCount: 1,
+    nodeResults: validValidationNodeResults(),
+  });
+  return passed(validateV128ValidationExecutionPlan(plan))
+    && plan.loopAdmissionRouter.executionMode === 'bounded_goal'
+    && plan.loopAdmissionRouter.admissionStatus === 'admitted'
+    && plan.loopAdmissionRouter.nextActionCode === 'ACCEPT_CHANGE'
+    && plan.loopAdmissionRouter.humanOwnerDecisionRequired === false;
+}
+
+function loopAdmissionRouterProtectedRequiresExecutor() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    protectedLifecycleRequested: true,
+    protectedExecutorAvailable: true,
+    stableContextBytes: 800,
+    deltaContextBytes: 300,
+    fullContextResendCount: 1,
+    modelInvocationCount: 1,
+    nodeResults: validValidationNodeResults(),
+  });
+  const tampered = {
+    ...plan,
+    loopAdmissionRouter: {
+      ...plan.loopAdmissionRouter,
+      protectedExecutorAvailable: false,
+    },
+  };
+  return plan.loopAdmissionRouter.executionMode === 'protected_routine'
+    && failed(validateV128ValidationExecutionPlan(tampered));
+}
+
+function loopAdmissionRouterStopsNoProgress() {
+  const first = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'fail', 'decision_stable', { reason: 'BROKEN_READER' }),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+      executedNode('aggregate_finalizer', 'fail', 'decision_stable', {
+        upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'],
+      }),
+    ],
+  });
+  const second = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    lastAttemptDigest: first.failureDirectedRequeue.currentAttemptDigest,
+    nodeResults: [
+      executedNode('projection_reader', 'fail', 'decision_stable', { reason: 'BROKEN_READER' }),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+      executedNode('aggregate_finalizer', 'fail', 'decision_stable', {
+        upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'],
+      }),
+    ],
+  });
+  return second.loopAdmissionRouter.admissionStatus === 'blocked'
+    && second.loopAdmissionRouter.nextActionCode === 'STOP_NO_PROGRESS'
+    && second.loopAdmissionRouter.stopReason === 'no_progress_same_failure';
+}
+
 function compactValidationPlanStillValidates() {
   const upstream = [
     executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200, routineDecisionProjection: { sourceBinding: { projectionPayloadDigest: sha256Canonical({ p: true }) } } }),
@@ -2038,6 +2123,9 @@ const cases = [
   ['validation_partial_hit_loop_economy_observed', () => validationPartialHitLoopEconomyObserved()],
   ['validation_failure_directed_requeue_blocks_unaffected_node', () => validationFailureDirectedRequeueBlocksUnaffectedNode()],
   ['validation_failure_directed_requeue_allows_changed_input_downstream', () => validationFailureDirectedRequeueAllowsChangedInputDownstream()],
+  ['loop_admission_router_defaults_to_bounded_goal', () => loopAdmissionRouterDefaultsToBoundedGoal()],
+  ['loop_admission_router_protected_requires_executor', () => loopAdmissionRouterProtectedRequiresExecutor()],
+  ['loop_admission_router_stops_no_progress', () => loopAdmissionRouterStopsNoProgress()],
   ['compact_validation_plan_still_validates', () => compactValidationPlanStillValidates()],
   ['compact_validation_plan_stale_aggregate_digest_fails', () => compactValidationPlanStaleAggregateDigestFails()],
   ['compact_validation_plan_ledger_digest_mismatch_fails', () => compactValidationPlanLedgerDigestMismatchFails()],
@@ -2206,6 +2294,7 @@ const fixtureGroups = [
   'resumable_loop_permission_projection_matrix',
   'failure_directed_requeue_execution',
   'loop_economy_cache_canary_execution',
+  'loop_admission_router_execution',
   'reader_before_writer_migration_matrix',
   'replay_corpus_execution',
   'state_matrix_full_shadow_candidate_execution',
