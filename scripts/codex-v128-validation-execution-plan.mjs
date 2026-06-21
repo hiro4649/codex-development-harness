@@ -27,6 +27,7 @@ const SOURCE_CLOSURE_FILES = [
   'scripts/codex-v128-managed-context-adapter.mjs',
   'scripts/codex-v128-state-matrix-adapter.mjs',
   'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
+  'scripts/codex-v128-invocation-ledger.mjs',
   'scripts/codex-v128-projection-reader.mjs',
   'scripts/codex-v128-managed-context-emitter.mjs',
   'scripts/codex-v128-state-matrix.mjs',
@@ -39,6 +40,7 @@ const REUSE_BINDING_FIELDS = new Set(['sourceHeadOid', 'baseOid', 'testedCommitO
 const NODE_SOURCE_CLOSURE_SEEDS = {
   projection_reader: [
     'scripts/codex-v128-projection-reader-adapter.mjs',
+    'scripts/codex-v128-invocation-ledger.mjs',
     'scripts/codex-v128-projection-reader.mjs',
     'scripts/codex-v128-integrity-lib.mjs',
     'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
@@ -46,17 +48,20 @@ const NODE_SOURCE_CLOSURE_SEEDS = {
   ],
   managed_context_emitter: [
     'scripts/codex-v128-managed-context-adapter.mjs',
+    'scripts/codex-v128-invocation-ledger.mjs',
     'scripts/codex-v128-managed-context-emitter.mjs',
     'docs/process/CODEX_V128_SPEC.md',
   ],
   state_matrix_executor: [
     'scripts/codex-v128-state-matrix-adapter.mjs',
+    'scripts/codex-v128-invocation-ledger.mjs',
     'scripts/codex-v128-state-matrix.mjs',
     'docs/process/CODEX_V128_STATE_MATRIX.json',
     'docs/process/CODEX_V128_SPEC.md',
   ],
   aggregate_finalizer: [
     'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
+    'scripts/codex-v128-invocation-ledger.mjs',
     'scripts/codex-v128-aggregate-finalizer.mjs',
     'scripts/codex-v128-validation-execution-plan.mjs',
     'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',

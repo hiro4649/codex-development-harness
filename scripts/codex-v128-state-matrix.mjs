@@ -99,6 +99,10 @@ export function readAndEvaluateV128StateMatrix(file = 'docs/process/CODEX_V128_S
   return evaluateV128StateMatrix(JSON.parse(fs.readFileSync(file, 'utf8')));
 }
 
+export function buildV128StateMatrixContentDigest(file = 'docs/process/CODEX_V128_STATE_MATRIX.json') {
+  return digestValue(JSON.parse(fs.readFileSync(file, 'utf8')));
+}
+
 if (process.argv[1] && process.argv[1].endsWith('codex-v128-state-matrix.mjs')) {
   const result = readAndEvaluateV128StateMatrix(process.argv[2]);
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

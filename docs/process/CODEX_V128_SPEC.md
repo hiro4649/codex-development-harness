@@ -293,6 +293,13 @@ aggregate_finalizer:
   scripts/codex-v128-aggregate-finalizer-adapter.mjs
 ```
 
+All four adapter entrypoints record through the shared non-authoritative
+process ledger module:
+
+```text
+scripts/codex-v128-invocation-ledger.mjs
+```
+
 Unsupported dynamic import expressions are also reuse blockers. A literal
 dynamic import may be scanned like a static dependency, but a computed import
 expression disables hit and partial-hit reuse until a later implementation can
@@ -368,11 +375,19 @@ A cache hit or partial hit is invalid when nodeInputDigest changes. Reused
 nodes have no local invocation ledger entry; their proof comes from
 sourceRunRef/cache provenance and the node cache key.
 
-The routine Projection may derive `safeNextAction` from provider PR topology
-without embedding a full topology object in the routine read surface. This
-keeps the bounded Projection reader below budget while preventing the routine
-surface from saying `owner_merge_decision_only` when the current PR is still
-stacked on another open/non-main base.
+The routine Projection separates authority and operator actions without
+embedding a full topology object in the routine read surface:
+
+```text
+authorityBoundaryAction:
+  Final Decision / Decision Capsule boundary action
+
+operatorNextActionCode:
+  provider topology derived operator hint
+```
+
+This keeps the bounded Projection reader below budget while preventing the
+operator hint from being confused with Final Decision authority.
 
 ```text
 stacked branch:
@@ -388,8 +403,8 @@ default-branch ready with checks closed:
   owner_merge_decision_only
 ```
 
-This topology-derived next action is non-authoritative and cannot create merge
-authority.
+The topology-derived operator action is non-authoritative and cannot create
+merge authority.
 
 The finalizer payload must be semantically checked:
 

@@ -172,8 +172,9 @@
       }
     },
     "providerPrTopologyNextAction": {
-      "artifactSurface": "qualityGateSafeSummary.routineDecisionProjection.safeNextAction",
+      "artifactSurface": "qualityGateSafeSummary.routineDecisionProjection.operatorNextActionCode",
       "authority": "non_authoritative_projection_next_action_hint",
+      "authorityBoundarySurface": "qualityGateSafeSummary.routineDecisionProjection.authorityBoundaryAction",
       "mergeAuthorityCreated": false,
       "stackedBranchNextAction": "owner_handle_base_pr",
       "fullTopologyEmbeddedInRoutineProjection": false
@@ -182,6 +183,7 @@
       "scripts/codex-v128-validation-execution-plan.mjs",
       "scripts/codex-v128-aggregate-finalizer.mjs",
       "scripts/codex-v128-aggregate-finalizer-adapter.mjs",
+      "scripts/codex-v128-invocation-ledger.mjs",
       "scripts/codex-local-quality-gate.mjs",
       "scripts/codex-orchestration-capsule.mjs",
       "scripts/codex-v128-projection-reader-adapter.mjs",

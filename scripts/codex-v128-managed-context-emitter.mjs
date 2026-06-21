@@ -50,35 +50,7 @@ function firstLine(filePath, fallback = '') {
   }
 }
 
-function finalizeContext(contextBase) {
-  let context = {
-    ...contextBase,
-    managedContextBytes: 0,
-    withinManagedContextBudget: false,
-    status: 'fail',
-    reasonCodes: ['managed_context_unmeasured'],
-  };
-  for (let i = 0; i < 8; i += 1) {
-    const bytes = Buffer.byteLength(canonicalJson(context), 'utf8');
-    const withinBudget = bytes <= MANAGED_CONTEXT_BYTES_MAX;
-    const next = {
-      ...context,
-      managedContextBytes: bytes,
-      withinManagedContextBudget: withinBudget,
-      status: withinBudget ? 'pass' : 'fail',
-      reasonCodes: withinBudget ? [] : ['managed_context_over_budget'],
-    };
-    if (next.managedContextBytes === context.managedContextBytes
-      && next.withinManagedContextBudget === context.withinManagedContextBudget
-      && next.status === context.status) {
-      return next;
-    }
-    context = next;
-  }
-  return context;
-}
-
-export function buildV128ManagedContextEmitter(input = {}) {
+function buildManagedContextInputParts(input = {}) {
   const sourceManifest = readJson('CODEX_SOURCE_HARNESS_MANIFEST.json');
   const targetManifest = readJson('docs/process/CODEX_HARNESS_MANIFEST.json');
   const activePolicyIndex = readJson('docs/process/CODEX_ACTIVE_POLICY_INDEX.json');
@@ -108,6 +80,44 @@ export function buildV128ManagedContextEmitter(input = {}) {
     sourceActivation: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation || 'not_started',
     targetRollout: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.targetRollout || 'not_started',
   };
+  return { sourceManifest, targetManifest, activePolicyIndex, headSha, sourceFiles, instructionCapsule, providerSummary, attestedView };
+}
+
+export function buildV128ManagedInstructionSourceSetDigest(input = {}) {
+  const { sourceFiles, instructionCapsule, providerSummary, attestedView } = buildManagedContextInputParts(input);
+  return digestValue({ sourceFiles, instructionCapsule, providerSummary, attestedView });
+}
+
+function finalizeContext(contextBase) {
+  let context = {
+    ...contextBase,
+    managedContextBytes: 0,
+    withinManagedContextBudget: false,
+    status: 'fail',
+    reasonCodes: ['managed_context_unmeasured'],
+  };
+  for (let i = 0; i < 8; i += 1) {
+    const bytes = Buffer.byteLength(canonicalJson(context), 'utf8');
+    const withinBudget = bytes <= MANAGED_CONTEXT_BYTES_MAX;
+    const next = {
+      ...context,
+      managedContextBytes: bytes,
+      withinManagedContextBudget: withinBudget,
+      status: withinBudget ? 'pass' : 'fail',
+      reasonCodes: withinBudget ? [] : ['managed_context_over_budget'],
+    };
+    if (next.managedContextBytes === context.managedContextBytes
+      && next.withinManagedContextBudget === context.withinManagedContextBudget
+      && next.status === context.status) {
+      return next;
+    }
+    context = next;
+  }
+  return context;
+}
+
+export function buildV128ManagedContextEmitter(input = {}) {
+  const { sourceManifest, targetManifest, sourceFiles, instructionCapsule, providerSummary, attestedView } = buildManagedContextInputParts(input);
   return finalizeContext({
     schemaVersion: '1.2.8',
     contextKind: 'managed_context_emitter_shadow',
@@ -119,7 +129,7 @@ export function buildV128ManagedContextEmitter(input = {}) {
     sourceActivationReady: false,
     managedContextMeasurementSource: 'v128_managed_context_emitter',
     managedContextBytesMax: MANAGED_CONTEXT_BYTES_MAX,
-    activeInstructionSourceSetDigest: digestValue({ sourceFiles, instructionCapsule, providerSummary, attestedView }),
+    activeInstructionSourceSetDigest: buildV128ManagedInstructionSourceSetDigest(input),
     sourceFiles,
     instructionCapsule,
     providerSummary,

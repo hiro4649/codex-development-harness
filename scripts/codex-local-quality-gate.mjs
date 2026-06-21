@@ -65,30 +65,33 @@ import { V119_OPERATOR_STATUS_KEYS as V119_STATUS_KEYS, buildOrchestrationReport
 import { buildWorkerProofReport } from './codex-worker-proof-capsule.mjs';
 import { buildOwnerDecisionBriefReport } from './codex-owner-decision-brief.mjs';
 import {
-  V128_PROJECTION_READER_ADAPTER_ID,
   runV128ProjectionReaderAdapter,
 } from './codex-v128-projection-reader-adapter.mjs';
 import {
-  V128_MANAGED_CONTEXT_ADAPTER_ID,
   runV128ManagedContextAdapter,
 } from './codex-v128-managed-context-adapter.mjs';
+import { buildV128ManagedInstructionSourceSetDigest } from './codex-v128-managed-context-emitter.mjs';
 import {
   buildV128ProjectionSourceDigestBinding,
   validateV128ProjectionIntegrity,
 } from './codex-v128-integrity-lib.mjs';
 import {
-  V128_STATE_MATRIX_ADAPTER_ID,
   runV128StateMatrixAdapter,
 } from './codex-v128-state-matrix-adapter.mjs';
+import { buildV128StateMatrixContentDigest } from './codex-v128-state-matrix.mjs';
 import {
   buildV128ValidationExecutionPlan,
   buildV128NodeCommandDigests,
   validateV128ValidationExecutionPlan,
 } from './codex-v128-validation-execution-plan.mjs';
 import {
-  V128_AGGREGATE_FINALIZER_ADAPTER_ID,
   runV128AggregateFinalizerAdapter,
 } from './codex-v128-aggregate-finalizer-adapter.mjs';
+import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-finalizer.mjs';
+import {
+  getV128InvocationLedgerSnapshot,
+  resetV128InvocationLedger,
+} from './codex-v128-invocation-ledger.mjs';
 
 
 
@@ -400,63 +403,6 @@ function buildV128DecisionInputManifest(input = {}) {
   };
 }
 
-function createV128ExecutionRegistry() {
-  const counts = new Map();
-  const typedResults = {};
-  const nodeResults = [];
-  const invocationLedger = [];
-  let invocationSequence = 0;
-  let completionSequence = 0;
-  return {
-    record(nodeRef, stabilityClass, callback, options = {}) {
-      invocationSequence += 1;
-      const commandOrFunctionDigest = options.commandOrFunctionDigest || sha256Canonical({
-        nodeRef,
-        stabilityClass,
-        adapterId: options.adapterId || 'inline_callback',
-      });
-      const payload = callback();
-      completionSequence += 1;
-      const executionCount = (counts.get(nodeRef) || 0) + 1;
-      counts.set(nodeRef, executionCount);
-      typedResults[nodeRef] = payload;
-      const resultDigest = sha256Canonical(payload);
-      const nodeResult = {
-        nodeRef,
-        executionState: 'executed',
-        executionCount,
-        executionCountSource: 'executor_registry',
-        executionCountObserved: true,
-        status: payload?.status === 'pass' ? 'pass' : 'fail',
-        stabilityClass,
-        typedResultPayload: payload,
-        resultDigest,
-        resultSchemaVersion: payload?.schemaVersion || '1.0.0',
-      };
-      invocationLedger.push({
-        nodeRef,
-        commandOrFunctionDigest,
-        invocationSequence,
-        completionSequence,
-        resultDigest,
-        executionSource: 'v128_local_quality_gate_adapter',
-        adapterId: options.adapterId || payload?.adapterId || null,
-      });
-      nodeResults.push(nodeResult);
-      return { payload, nodeResult };
-    },
-    get nodeResults() {
-      return nodeResults;
-    },
-    get typedResults() {
-      return typedResults;
-    },
-    get invocationLedger() {
-      return invocationLedger;
-    },
-  };
-}
-
 function buildV117ArtifactEntries(head) {
   const artifacts = loadBearingArtifactNames();
   return artifacts.map((artifactName) => {
@@ -542,63 +488,37 @@ function writeV117LoadBearingArtifacts(report = {}) {
   };
   const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head, projectionInputs);
   const stressDecisionProjection = buildV128StressDecisionProjection(report, projectionInputs);
-  const v128ExecutionRegistry = createV128ExecutionRegistry();
+  resetV128InvocationLedger();
   const v128NodeCommandDigests = buildV128NodeCommandDigests();
-  const projectionReaderExecution = v128ExecutionRegistry.record(
-    'projection_reader',
-    'decision_stable',
-    () => runV128ProjectionReaderAdapter(routineDecisionProjection),
-    {
-      adapterId: V128_PROJECTION_READER_ADAPTER_ID,
-      commandOrFunctionDigest: v128NodeCommandDigests.projection_reader,
-    },
-  );
-  const routineProjectionReadSurface = projectionReaderExecution.payload;
+  const projectionInputDigest = routineDecisionProjection.sourceBinding?.projectionPayloadDigest;
+  const managedInputDigest = buildV128ManagedInstructionSourceSetDigest({ headSha: head });
+  const stateMatrixInputDigest = buildV128StateMatrixContentDigest();
+  const routineProjectionReadSurface = runV128ProjectionReaderAdapter(routineDecisionProjection, {
+    commandOrFunctionDigest: v128NodeCommandDigests.projection_reader,
+  });
   const v128ProjectionIntegrityStatus = validateV128ProjectionIntegrity(routineDecisionProjection, {
     ...projectionInputs,
     verifySourceDigest: true,
     verifyInputDigest: true,
   });
-  const managedContextExecution = v128ExecutionRegistry.record(
-    'managed_context_emitter',
-    'cache_stable',
-    () => runV128ManagedContextAdapter({ headSha: head }),
-    {
-      adapterId: V128_MANAGED_CONTEXT_ADAPTER_ID,
-      commandOrFunctionDigest: v128NodeCommandDigests.managed_context_emitter,
-    },
-  );
-  const v128ManagedContextEmitter = managedContextExecution.payload;
-  const stateMatrixExecution = v128ExecutionRegistry.record(
-    'state_matrix_executor',
-    'decision_stable',
-    () => runV128StateMatrixAdapter(),
-    {
-      adapterId: V128_STATE_MATRIX_ADAPTER_ID,
-      commandOrFunctionDigest: v128NodeCommandDigests.state_matrix_executor,
-    },
-  );
-  const v128StateMatrixExecution = stateMatrixExecution.payload;
-  const upstreamNodeResults = [
-    projectionReaderExecution.nodeResult,
-    managedContextExecution.nodeResult,
-    stateMatrixExecution.nodeResult,
-  ];
-  v128ExecutionRegistry.record(
-    'aggregate_finalizer',
-    'decision_stable',
-    () => runV128AggregateFinalizerAdapter({ upstreamNodeResults }),
-    {
-      adapterId: V128_AGGREGATE_FINALIZER_ADAPTER_ID,
-      commandOrFunctionDigest: v128NodeCommandDigests.aggregate_finalizer,
-    },
-  );
-  const aggregatePayload = v128ExecutionRegistry.typedResults.aggregate_finalizer || {};
+  const v128ManagedContextEmitter = runV128ManagedContextAdapter({ headSha: head }, {
+    commandOrFunctionDigest: v128NodeCommandDigests.managed_context_emitter,
+  });
+  const v128StateMatrixExecution = runV128StateMatrixAdapter({
+    commandOrFunctionDigest: v128NodeCommandDigests.state_matrix_executor,
+  });
+  const preAggregateSnapshot = getV128InvocationLedgerSnapshot();
+  const upstreamNodeResults = preAggregateSnapshot.nodeResults;
+  const aggregateInputDigest = buildV128OrderedUpstreamResultSetDigest(upstreamNodeResults);
+  runV128AggregateFinalizerAdapter({ upstreamNodeResults }, {
+    commandOrFunctionDigest: v128NodeCommandDigests.aggregate_finalizer,
+  });
+  const v128ExecutionSnapshot = getV128InvocationLedgerSnapshot();
   const v128NodeInputDigests = {
-    projection_reader: routineProjectionReadSurface.routineDecisionProjection?.sourceBinding?.projectionPayloadDigest,
-    managed_context_emitter: v128ManagedContextEmitter.activeInstructionSourceSetDigest,
-    state_matrix_executor: v128StateMatrixExecution.stateMatrixContentDigest,
-    aggregate_finalizer: aggregatePayload.orderedUpstreamResultSetDigest,
+    projection_reader: projectionInputDigest,
+    managed_context_emitter: managedInputDigest,
+    state_matrix_executor: stateMatrixInputDigest,
+    aggregate_finalizer: aggregateInputDigest,
   };
   const workspaceObservation = observeV128WorkspaceIdentity(head);
   const decisionInputManifest = buildV128DecisionInputManifest(projectionInputs);
@@ -618,10 +538,10 @@ function writeV117LoadBearingArtifacts(report = {}) {
       arch: process.arch,
     }),
     decisionInputManifest,
-    nodeResults: v128ExecutionRegistry.nodeResults,
-    typedResults: v128ExecutionRegistry.typedResults,
+    nodeResults: v128ExecutionSnapshot.nodeResults,
+    typedResults: v128ExecutionSnapshot.typedResults,
     nodeInputDigests: v128NodeInputDigests,
-    runWideInvocationLedger: v128ExecutionRegistry.invocationLedger,
+    runWideInvocationLedger: v128ExecutionSnapshot.invocationLedger,
   });
   const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);
   if (report.orchestrationCapsule) {
@@ -3899,6 +3819,9 @@ function finalizeMeasuredProjection(projectionBase) {
 function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', projectionInputs = {}) {
   const blockingReasons = report.reasonSummaryStatus?.summary?.blockingReasons || [];
   const prTopology = buildV128PrTopologyProjection(process.env, report);
+  const authorityBoundaryAction = report.finalDecision?.safeNextAction
+    || report.decisionCapsule?.safeNextAction
+    || 'owner_merge_decision_only';
   const projectionBase = {
     schemaVersion: '1.2.8',
     projectionKind: 'routine_decision_projection',
@@ -3919,9 +3842,9 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', proje
     productionReadinessClaimed: report.productionReadinessClaimed === true,
     productFilesChanged: report.productCodeChanged === true,
     packageFilesChanged: report.packageOrLockfileChanged === true || report.packageFilesChanged === true,
-    safeNextAction: prTopology.nextActionCode || report.finalDecision?.safeNextAction || report.decisionCapsule?.safeNextAction || 'owner_merge_decision_only',
+    authorityBoundaryAction,
+    operatorNextActionCode: prTopology.nextActionCode || authorityBoundaryAction,
     observed: true,
-    metricsSource: 'runtime_safe_summary_projection',
   };
   projectionBase.sourceBinding = buildV128ProjectionSourceDigestBinding(head || 'unknown', {
     ...projectionInputs,
@@ -3983,9 +3906,9 @@ function buildV128StressDecisionProjection(report = {}, projectionInputs = {}) {
     productionReadinessClaimed: false,
     productFilesChanged: false,
     packageFilesChanged: false,
-    safeNextAction: 'owner_merge_decision_only',
+    authorityBoundaryAction: 'owner_merge_decision_only',
+    operatorNextActionCode: 'owner_merge_decision_only',
     observed: true,
-    metricsSource: 'runtime_safe_summary_projection_stress_fixture',
   };
   projectionBase.sourceBinding = buildV128ProjectionSourceDigestBinding('f'.repeat(40), {
     ...projectionInputs,

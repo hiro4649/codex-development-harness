@@ -14,13 +14,21 @@ function digestValue(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
 }
 
-export function aggregateV128ValidationResults(input = {}) {
-  const upstreamNodeResults = Array.isArray(input.upstreamNodeResults) ? input.upstreamNodeResults : [];
-  const upstreamResultDigests = upstreamNodeResults.map((node) => ({
+function upstreamDigestSet(upstreamNodeResults = []) {
+  return upstreamNodeResults.map((node) => ({
     nodeRef: String(node.nodeRef || 'unknown_node'),
     status: String(node.status || 'fail'),
     resultDigest: String(node.resultDigest || ''),
   }));
+}
+
+export function buildV128OrderedUpstreamResultSetDigest(upstreamNodeResults = []) {
+  return digestValue(upstreamDigestSet(upstreamNodeResults));
+}
+
+export function aggregateV128ValidationResults(input = {}) {
+  const upstreamNodeResults = Array.isArray(input.upstreamNodeResults) ? input.upstreamNodeResults : [];
+  const upstreamResultDigests = upstreamDigestSet(upstreamNodeResults);
   const failed = upstreamNodeResults.filter((node) => node.status !== 'pass');
   return {
     schemaVersion: '1.0.0',
@@ -29,7 +37,7 @@ export function aggregateV128ValidationResults(input = {}) {
     downstreamRespawnAllowed: false,
     upstreamNodeRefs: upstreamNodeResults.map((node) => String(node.nodeRef || 'unknown_node')),
     upstreamResultDigests,
-    orderedUpstreamResultSetDigest: digestValue(upstreamResultDigests),
+    orderedUpstreamResultSetDigest: buildV128OrderedUpstreamResultSetDigest(upstreamNodeResults),
     failedNodeRefs: failed.map((node) => String(node.nodeRef || 'unknown_node')),
     status: failed.length ? 'fail' : 'pass',
     safeSummaryOnly: true,
