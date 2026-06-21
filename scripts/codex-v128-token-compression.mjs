@@ -293,14 +293,6 @@ function compactNodeSourceClosures(closures = {}) {
   return Object.fromEntries(Object.entries(closures || {}).map(([nodeRef, closure = {}]) => [
     nodeRef,
     {
-      seedSourceFileCount: Number(closure.seedSourceFileCount || closure.seedSourceFiles?.length || 0),
-      sourceFileCount: Number(closure.sourceFileCount || 0),
-      relativeImportEdgeCount: Number(closure.relativeImportEdgeCount || 0),
-      transitiveRelativeImportCount: Number(closure.transitiveRelativeImportCount || 0),
-      unresolvedRelativeImportCount: Number(closure.unresolvedRelativeImportCount || 0),
-      unsupportedDynamicImportCount: Number(closure.unsupportedDynamicImportCount || 0),
-      sourceClosureTruncated: closure.sourceClosureTruncated === true,
-      declaredImportScanStatus: closure.declaredImportScanStatus || 'unknown',
       nodeSourceClosureDigest: closure.nodeSourceClosureDigest || null,
     },
   ]));
