@@ -73,6 +73,7 @@ import { V101_STATUS_KEYS } from './codex-v101-gate-lib.mjs';
 import { classifyTargetModeCompatibilityStatus } from './codex-v111-token-hard-cap.mjs';
 import { reconcileFinalSafeDecision } from './codex-final-decision-kernel.mjs';
 import { V119_OPERATOR_STATUS_KEYS } from './codex-orchestration-capsule.mjs';
+import { buildV128CompactQualityGateSafeSummary } from './codex-v128-token-compression.mjs';
 
 
 
@@ -3049,7 +3050,7 @@ function readReport(file) {
 
 
 
-    const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const report = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
 
 
 
@@ -5291,7 +5292,36 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
 
-  if (scanSafeOutput(safeSummary).findings.length || scanSafeOutput(failureReasons).findings.length) {
+  const compactSafeSummary = buildV128CompactQualityGateSafeSummary({
+    report: {
+      ...report,
+      status: failures.length ? 'fail' : (report.status || 'pass'),
+      technicalChecksReady: Boolean(report.technicalChecksReady ?? report.mergeReady),
+      ownerMergeAuthorized: finalDecisionArtifact?.mergeAllowed === true,
+      reasonSummaryStatus: report.reasonSummaryStatus || {
+        status: reasonSummary?.status || 'missing',
+        summary: reasonSummary || null,
+        safeSummaryOnly: true,
+      },
+    },
+    head: report.head || report.headSha || routineDecisionProjection?.headSha || 'unknown',
+    finalDecision: finalDecisionArtifact,
+    routineDecisionProjection,
+    routineProjectionReadSurface,
+    v128ManagedContextEmitter,
+    v128ValidationExecutionPlan: orchestrationCapsule?.validationExecutionPlanAndReuse || null,
+    v128ValidationExecutionPlanStatus: report.validationExecutionPlanReuseInternalStatus || { status: 'missing' },
+    v128TrustClosure,
+    v128TrustClosureStatus,
+    providerSnapshot: v128ProviderSnapshotEvidence,
+    standingAutonomyPolicy: v128StandingAutonomyPolicy,
+    orchestrationCapsule,
+    workerProofCapsule,
+    ownerDecisionBrief,
+    marker,
+  });
+
+  if (scanSafeOutput(compactSafeSummary).findings.length || scanSafeOutput(failureReasons).findings.length) {
 
 
 
@@ -5334,7 +5364,7 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
 
-    safeSummary,
+    safeSummary: compactSafeSummary,
 
 
 

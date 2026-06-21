@@ -45,6 +45,11 @@ import {
   validateV128TrustClosure,
 } from './codex-v128-trust-closure.mjs';
 import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
+import {
+  buildV128CompactQualityGateSafeSummary,
+  compactV128ValidationExecutionPlanForStorage,
+} from './codex-v128-token-compression.mjs';
+import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
 function test(name, fn) {
   try {
@@ -371,10 +376,95 @@ function managedContextEmitterObservesBytes() {
     && context.managedContextMeasurementSource === 'v128_managed_context_emitter'
     && context.managedContextBytes > 0
     && context.managedContextBytes <= 4096
+    && context.compiledContextBytes > 0
+    && context.compiledContextBytes <= 4096
+    && context.routineColdArtifactRead === 0
+    && context.legacyRead === 0
+    && context.foreignProfileRead === 0
+    && context.reviewerFanout === 0
+    && context.routineSelectedSkill === 0
     && context.sourceFiles.length >= 5
     && context.instructionCapsule.llmSummaryUsed === false
     && context.attestedView.projectionAuthority === 'non_authoritative'
     && context.sourceActivationReady === false;
+}
+
+function managedContextEmitterPassesSafeOutputScan() {
+  const context = buildV128ManagedContextEmitter({ headSha: 'f'.repeat(40) });
+  return scanSafeOutput(context).findings.length === 0;
+}
+
+function tokenCompressionCompactsSafeSummary() {
+  const projection = buildBoundV128Projection({
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection',
+    authority: 'non_authoritative_projection',
+    headSha: 'f'.repeat(40),
+    status: 'pass',
+    qualityScore: 100,
+  });
+  const noisyReport = {
+    status: 'pass',
+    qualityScore: 100,
+    mergeReady: true,
+    technicalChecksReady: true,
+    qualityScoreStatus: { status: 'pass', score: 100, safeSummaryOnly: true },
+    finalDecisionStatus: { status: 'pass', reasonCodes: [], safeSummaryOnly: true },
+    decisionCapsuleStatus: { status: 'pass', safeSummaryOnly: true },
+    evidenceCapsuleStatus: { status: 'pass', safeSummaryOnly: true },
+    reasonSummaryStatus: { status: 'pass', summary: { blockingReasons: [] }, safeSummaryOnly: true },
+    v127SelfTestStatus: { status: 'pass', caseCount: 10, failureCount: 0, safeSummaryOnly: true },
+    v128SelfTestStatus: { status: 'pass', caseCount: 84, failureCount: 0, safeSummaryOnly: true },
+    routineDecisionProjection: projection,
+    routineProjectionReadSurface: buildV128RoutineProjectionReadSurface(projection),
+    v128ManagedContextEmitter: buildV128ManagedContextEmitter({ headSha: 'f'.repeat(40) }),
+    v128ValidationExecutionPlan: {
+      profileExecution: {
+        planDigest: sha256Canonical({ plan: true }),
+        runWideInvocationCount: 4,
+        runWideDuplicateExecutionCount: 0,
+        runWideInvocationLedgerStatus: 'pass',
+      },
+      graph: { graphDigest: sha256Canonical({ graph: true }), nodes: [{ nodeRef: 'projection_reader' }] },
+      validationReuseDecision: { reuseDecision: 'miss', cacheKeyDigest: null },
+      typedResults: { projection_reader: { payload: 'x'.repeat(30000) } },
+    },
+    v128ValidationExecutionPlanStatus: { status: 'pass', observationState: 'observed', safeSummaryOnly: true },
+    v128TrustClosure: {
+      trustClosureDigest: sha256Canonical({ trust: true }),
+      closureFileCount: 120,
+      trustDigests: { verifierBundleDigest: sha256Canonical({ verifier: true }) },
+      roleClosures: {
+        top_level: { unresolvedRelativeImportCount: 0, unsupportedDynamicImportCount: 0, executableInvocationCount: 12, files: Array.from({ length: 120 }, (_, index) => `file-${index}`) },
+      },
+    },
+    v128TrustClosureStatus: { status: 'pass', safeSummaryOnly: true },
+    v128StandingAutonomyPolicy: {
+      automationDisposition: 'auto_wait',
+      policyAuthorizationState: 'not_eligible',
+      policyDigest: sha256Canonical({ policy: true }),
+    },
+    v128StandingAutonomyPolicyStatus: { status: 'pass', safeSummaryOnly: true },
+  };
+  const summary = buildV128CompactQualityGateSafeSummary({
+    report: noisyReport,
+    head: 'f'.repeat(40),
+    finalDecision: { terminalAction: 'merge_current_pr', mergeAllowed: false, safeNextAction: 'owner_merge_decision_only' },
+    routineDecisionProjection: projection,
+    routineProjectionReadSurface: noisyReport.routineProjectionReadSurface,
+    v128ManagedContextEmitter: noisyReport.v128ManagedContextEmitter,
+    v128ValidationExecutionPlan: noisyReport.v128ValidationExecutionPlan,
+    v128ValidationExecutionPlanStatus: noisyReport.v128ValidationExecutionPlanStatus,
+    v128TrustClosure: noisyReport.v128TrustClosure,
+    v128TrustClosureStatus: noisyReport.v128TrustClosureStatus,
+    standingAutonomyPolicy: noisyReport.v128StandingAutonomyPolicy,
+  });
+  return summary.tokenCompression.status === 'pass'
+    && summary.tokenCompression.storedSafeSummaryBytes <= 8192
+    && summary.tokenCompression.routineReadSurfaceBytes <= 4096
+    && summary.v128ValidationExecutionPlan.typedResultsDigest
+    && !JSON.stringify(summary).includes('file-119')
+    && !JSON.stringify(summary).includes('xxxxx');
 }
 
 function projectionIntegrityBindingVerifies() {
@@ -586,6 +676,43 @@ function validationExecutionPlanVerifies() {
       }),
     ],
   })));
+}
+
+function compactValidationPlanStillValidates() {
+  const upstream = [
+    executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200, routineDecisionProjection: { sourceBinding: { projectionPayloadDigest: sha256Canonical({ p: true }) } } }),
+    executedNode('managed_context_emitter', 'pass', 'cache_stable', {
+      managedContextBytes: 1800,
+      compiledContext: 'x'.repeat(1200),
+      sourceFiles: Array.from({ length: 30 }, (_, index) => ({ path: `file-${index}.mjs`, digest: sha256Canonical({ index }), bytes: 100 })),
+    }),
+    executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+  ];
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      ...upstream,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+        aggregateOnly: true,
+        downstreamRespawnAllowed: false,
+        upstreamNodeRefs: upstream.map((node) => node.nodeRef),
+        upstreamResultDigests: upstream.map((node) => ({
+          nodeRef: node.nodeRef,
+          resultDigest: sha256Canonical(node.typedResultPayload),
+        })),
+        failedNodeRefs: [],
+      }),
+    ],
+  });
+  const compact = compactV128ValidationExecutionPlanForStorage(plan);
+  return passed(validateV128ValidationExecutionPlan(compact))
+    && Buffer.byteLength(JSON.stringify(compact, null, 2), 'utf8') < Buffer.byteLength(JSON.stringify(plan, null, 2), 'utf8')
+    && !JSON.stringify(compact).includes('file-29.mjs')
+    && !JSON.stringify(compact).includes('xxxxxxxxxx');
 }
 
 function validationExecutionDuplicateNodeFails() {
@@ -1651,6 +1778,7 @@ const cases = [
   ['projection_payload_digest_tamper_fails', () => projectionPayloadDigestTamperFails()],
   ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
   ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
+  ['compact_validation_plan_still_validates', () => compactValidationPlanStillValidates()],
   ['validation_default_is_not_exercised_partial', () => validationDefaultIsNotExercisedPartial()],
   ['validation_execution_duplicate_node_fails', () => validationExecutionDuplicateNodeFails()],
   ['validation_graph_cycle_fails', () => validationGraphCycleFails()],
@@ -1698,6 +1826,8 @@ const cases = [
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
   ['typed_shadow_status_does_not_block_active_gate', () => typedShadowStatusDoesNotBlockActiveGate()],
   ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
+  ['managed_context_emitter_passes_safe_output_scan', () => managedContextEmitterPassesSafeOutputScan()],
+  ['token_compression_compacts_safe_summary', () => tokenCompressionCompactsSafeSummary()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
   }).tokenMinimalReadCompatibilityRouter))],

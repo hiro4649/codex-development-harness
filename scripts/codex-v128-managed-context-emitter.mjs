@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import process from 'node:process';
 
 const MANAGED_CONTEXT_BYTES_MAX = 4096;
+const COMPILED_CONTEXT_BYTES_MAX = 4096;
 const SOURCE_FILES = [
   'AGENTS.md',
   'CODEX_SOURCE_HARNESS_MANIFEST.json',
@@ -83,6 +84,38 @@ function buildManagedContextInputParts(input = {}) {
   return { sourceManifest, targetManifest, activePolicyIndex, headSha, sourceFiles, instructionCapsule, providerSummary, attestedView };
 }
 
+function buildCompiledActiveInstructionCapsule(parts = {}) {
+  const sourceManifest = parts.sourceManifest || {};
+  const targetManifest = parts.targetManifest || {};
+  const providerSummary = parts.providerSummary || {};
+  const attestedView = parts.attestedView || {};
+  const lines = [
+    'CODEX_ACTIVE_CONTEXT v1.2.8 shadow',
+    `active=${sourceManifest.activeHarnessVersion || '1.2.7'}/${sourceManifest.activeSelfTestSuite || 'v127'}`,
+    'candidate=1.2.8/source_shadow_candidate',
+    `head=${providerSummary.headSha || 'unknown'}`,
+    'authority: Final Decision is pass/block/mergeAllowed/exit-code authority.',
+    'authority: Decision Capsule is domain decision authority.',
+    'authority: Projection is non-authoritative routine read surface only.',
+    'evidence: same-head required checks are derived from observed provider heads.',
+    'evidence: PR body is display-only and never machine authority.',
+    'receipt: edit/check/commit/push/create_pr/fix_ci may continue only inside scoped process receipt.',
+    'boundary: no product/package/runtime/workflow/deploy/wallet/RPC/secrets/unredacted transcripts.',
+    'boundary: no self approval, no GitHub approval review, no readiness/legal/YouTube compliance claim.',
+    'routine: one managed artifact, zero cold artifacts, no legacy specs, no foreign profiles, no reviewer fanout.',
+    `target=${targetManifest.targetHarnessVersion || '1.2.7'} sourceActivation=${attestedView.sourceActivation || 'not_started'} targetRollout=${attestedView.targetRollout || 'not_started'}`,
+  ];
+  const text = `${lines.join('\n')}\n`;
+  return {
+    compiledContext: text,
+    compiledContextBytes: Buffer.byteLength(text, 'utf8'),
+    compiledContextBytesMax: COMPILED_CONTEXT_BYTES_MAX,
+    compiledContextDigest: `sha256:${sha256(text)}`,
+    compiledContextSource: 'deterministic_active_instruction_compiler',
+    llmSummaryUsed: false,
+  };
+}
+
 export function buildV128ManagedInstructionSourceSetDigest(input = {}) {
   const { sourceFiles, instructionCapsule, providerSummary, attestedView } = buildManagedContextInputParts(input);
   return digestValue({ sourceFiles, instructionCapsule, providerSummary, attestedView });
@@ -117,7 +150,9 @@ function finalizeContext(contextBase) {
 }
 
 export function buildV128ManagedContextEmitter(input = {}) {
-  const { sourceManifest, targetManifest, sourceFiles, instructionCapsule, providerSummary, attestedView } = buildManagedContextInputParts(input);
+  const parts = buildManagedContextInputParts(input);
+  const { sourceManifest, targetManifest, sourceFiles, instructionCapsule, providerSummary, attestedView } = parts;
+  const compiled = buildCompiledActiveInstructionCapsule(parts);
   return finalizeContext({
     schemaVersion: '1.2.8',
     contextKind: 'managed_context_emitter_shadow',
@@ -130,6 +165,18 @@ export function buildV128ManagedContextEmitter(input = {}) {
     managedContextMeasurementSource: 'v128_managed_context_emitter',
     managedContextBytesMax: MANAGED_CONTEXT_BYTES_MAX,
     activeInstructionSourceSetDigest: buildV128ManagedInstructionSourceSetDigest(input),
+    compiledContext: compiled.compiledContext,
+    compiledContextBytes: compiled.compiledContextBytes,
+    compiledContextBytesMax: compiled.compiledContextBytesMax,
+    compiledContextDigest: compiled.compiledContextDigest,
+    compiledContextSource: compiled.compiledContextSource,
+    routineManagedSafeArtifactRead: 1,
+    routineColdArtifactRead: 0,
+    legacyRead: 0,
+    foreignProfileRead: 0,
+    reviewerFanout: 0,
+    routineSelectedSkill: 0,
+    repeatedSafetyText: 0,
     sourceFiles,
     instructionCapsule,
     providerSummary,
