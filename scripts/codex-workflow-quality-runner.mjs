@@ -3050,7 +3050,7 @@ function readReport(file) {
 
 
 
-    const report = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const report = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
 
 
 

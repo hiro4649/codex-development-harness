@@ -49,6 +49,7 @@ import {
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
 } from './codex-v128-token-compression.mjs';
+import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
 function test(name, fn) {
   try {
@@ -386,6 +387,11 @@ function managedContextEmitterObservesBytes() {
     && context.instructionCapsule.llmSummaryUsed === false
     && context.attestedView.projectionAuthority === 'non_authoritative'
     && context.sourceActivationReady === false;
+}
+
+function managedContextEmitterPassesSafeOutputScan() {
+  const context = buildV128ManagedContextEmitter({ headSha: 'f'.repeat(40) });
+  return scanSafeOutput(context).findings.length === 0;
 }
 
 function tokenCompressionCompactsSafeSummary() {
@@ -1820,6 +1826,7 @@ const cases = [
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
   ['typed_shadow_status_does_not_block_active_gate', () => typedShadowStatusDoesNotBlockActiveGate()],
   ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
+  ['managed_context_emitter_passes_safe_output_scan', () => managedContextEmitterPassesSafeOutputScan()],
   ['token_compression_compacts_safe_summary', () => tokenCompressionCompactsSafeSummary()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
