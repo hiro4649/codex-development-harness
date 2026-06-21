@@ -162,6 +162,415 @@ v127_common_safety_floor
   -> repo-specific delta
 ```
 
+Validation execution is represented inside the existing
+`codex-orchestration-capsule.safe.json`; v1.2.8 does not add a
+`token-validation-state.safe.json` or any other new P0 artifact. The execution
+contract is an observed profile DAG with an aggregate-only finalizer. A missing
+runtime execution packet is `observationState=not_exercised` and may only pass
+as partial Source Shadow Candidate evidence; it is not Activation evidence:
+
+```text
+validation node:
+  executed at most once per run from executor registry observation
+  executionCountSource=executor_registry
+  dependency edges declared by dependsOn
+  graph cycle / missing dependency / duplicate edge fail closed
+  resultDigest binds the actual canonical typed payload, not node metadata
+
+downstream gate:
+  reads typed result
+  must not respawn the upstream command
+
+missing or stale upstream evidence:
+  upstream_evidence_missing
+  do not silently rerun outside the declared plan
+
+required skipped node:
+  blocking
+
+optional skipped node:
+  advisory only
+```
+
+Validation reuse must be content-addressed by at least:
+
+```text
+headSha
+sourceHeadOid
+baseOid
+testedCommitOid
+testedTreeKind
+validationContextDigest
+planDigest
+scriptDigest
+lockfileDigest
+runnerImageDigest
+runnerClassDigest
+runtimeVersion
+taskProfile
+environmentClass
+```
+
+`unknown`, `required`, empty, null, undefined, or placeholder values make the
+reuse key invalid. `not_available` is also invalid. A genuinely not-required
+field must be a typed state with a reason, for example
+`state=not_required_with_reason` and `reasonCode=PROFILE_HAS_NO_LOCKFILE`.
+`runnerImageDigest` must be a real observed runner image identity. If only a
+provider/OS class is available, it is recorded as `runnerClassDigest`;
+`runnerImageDigest` remains `missing`, and validation reuse is forbidden rather
+than guessed. Reuse reports must say both what was reused and what was not
+rerun, and reused nodes must carry a source run reference, result digest,
+source head, cache key, and result schema version. The reuse decision must be
+consistent with node states:
+
+```text
+hit:
+  all nodes reused, no executed nodes
+
+partial_hit:
+  at least one reused node and at least one executed node
+
+miss:
+  no reused nodes
+```
+
+For any reused node, provenance is load-bearing before cache hit or partial hit
+can become an active performance feature:
+
+```text
+node.cacheKeyDigest:
+  must be observed on the reused node and must match the node-scoped
+  validationReuseDecision.nodeCacheKeyDigests entry when present, otherwise
+  validationReuseDecision.cacheKeyDigest. The harness must not backfill this
+  value from the current computed cache key for a reused node.
+
+node.sourceResultDigest:
+  must match the node result digest currently bound under #/typedResults/{nodeRef}
+
+sourceRunRef:
+  required for every reused node as a structured object, not a display string.
+  It must bind provider, run id, provider artifact name, artifact content
+  digest, source head, tested commit, and result schema version.
+
+sourceHeadSha / resultSchemaVersion:
+  required for every reused node and must match the structured sourceRunRef.
+```
+
+For pull request merge-ref validation, cache reuse must bind the source head,
+base commit, tested commit/tree kind, and validation context digest. A source
+head match alone is insufficient because the tested merge tree can change when
+the base branch advances. Missing `baseOid` on a pull request merge-ref prevents
+cache hit or partial hit. A branch-head validation may mark `baseOid` as
+`not_required_with_reason`.
+
+The `scriptDigest` is not a label hash. It is a source-closure digest over the
+declared validation entrypoint, aggregate finalizer, local quality-gate adapter,
+orchestration consumer, node implementations, schema, profile/spec, and
+canonicalizer surface. At minimum this includes the projection reader, managed
+context emitter, state matrix executor, and projection integrity library.
+The source-closure digest must include transitive relative imports reachable
+from that declared seed surface. Unresolved relative imports or closure
+truncation are activation blockers, not Shadow Candidate merge authority. A
+consumer, node implementation, or relative helper change that can alter node
+result construction invalidates the reuse key.
+
+Each validation node has a deterministic invocation adapter. The adapter is
+part of the node-scoped source closure, so a cache key changes when the wrapper
+that constructs the node payload changes. The Source Shadow Candidate adapters
+are:
+
+```text
+projection_reader:
+  scripts/codex-v128-projection-reader-adapter.mjs
+
+managed_context_emitter:
+  scripts/codex-v128-managed-context-adapter.mjs
+
+state_matrix_executor:
+  scripts/codex-v128-state-matrix-adapter.mjs
+
+aggregate_finalizer:
+  scripts/codex-v128-aggregate-finalizer-adapter.mjs
+```
+
+All four adapter entrypoints record through the shared non-authoritative
+process ledger module:
+
+```text
+scripts/codex-v128-invocation-ledger.mjs
+```
+
+Unsupported dynamic import expressions are also reuse blockers. A literal
+dynamic import may be scanned like a static dependency, but a computed import
+expression disables hit and partial-hit reuse until a later implementation can
+prove the reachable source closure without widening the routine read surface.
+
+The expanded source closure is cold diagnostic evidence. It must not enlarge the
+routine model-facing Projection read surface.
+
+To avoid turning the transitive closure into a permanent performance penalty,
+v1.2.8 also emits node-scoped source-closure digests. A node cache key may use
+the node-scoped digest for its implementation surface while the aggregate plan
+keeps the whole closure for cold audit and Activation review. This is a Shadow
+Candidate performance-preparation feature, not a claim that cache hit or
+partial-hit speedup has already been proven.
+
+Decision-stable fields, cache-stable fields, environment diagnostics, owner
+inputs, and forbidden values are separate classes. Environment diagnostics such
+as runner/build metadata may be displayed or used for troubleshooting, but they
+must not enter the merge decision digest. The decision input manifest must
+sanitize diagnostic paths before digest generation, and must emit a sanitized
+decision input digest when any diagnostic path is present. Raw logs, secrets,
+and local absolute paths are forbidden in remote safe artifacts.
+
+The aggregate finalizer is a typed-result reader only. Its source surface must
+not import child_process, execute shell commands, or open network clients. A
+missing upstream result is `upstream_evidence_missing`; it must not be repaired
+by the finalizer rerunning the command.
+
+The validation plan also records a run-wide invocation ledger inside the
+existing orchestration capsule surface. This ledger is non-authoritative and
+does not create owner permission, but it is load-bearing for Shadow Candidate
+performance evidence:
+
+```text
+nodeRef
+commandOrFunctionDigest
+invocationSequence
+completionSequence
+resultDigest
+executionSource
+adapterId
+```
+
+For an observed execution, every executed node must have a matching ledger
+entry and duplicate execution of a required node fails the validation plan.
+Reused nodes are represented by sourceRunRef/cache provenance instead of a
+local invocation entry.
+
+`commandOrFunctionDigest` is the node-scoped source closure digest, not a
+metadata hash of the node name or adapter id. The validator recomputes ledger
+counts, duplicate node executions, sequence uniqueness, and command digest
+bindings from the ledger and node source closures. Reported count/status fields
+are diagnostic only and cannot make a bad ledger pass.
+
+Each node cache key also carries a node input digest. The Source Shadow
+Candidate bindings are:
+
+```text
+projection_reader:
+  routineDecisionProjection.sourceBinding.projectionPayloadDigest
+
+managed_context_emitter:
+  activeInstructionSourceSetDigest
+
+state_matrix_executor:
+  stateMatrixContentDigest
+
+aggregate_finalizer:
+  orderedUpstreamResultSetDigest
+```
+
+A cache hit or partial hit is invalid when nodeInputDigest changes. Reused
+nodes have no local invocation ledger entry; their proof comes from
+sourceRunRef/cache provenance and the node cache key.
+
+The routine Projection separates authority and operator actions without
+embedding a full topology object in the routine read surface:
+
+```text
+authorityBoundaryAction:
+  Final Decision / Decision Capsule boundary action
+
+automationDisposition:
+  provider topology and standing policy derived automation hint
+```
+
+This keeps the bounded Projection reader below budget while preventing the
+operator hint from being confused with Final Decision authority.
+
+```text
+stacked branch:
+  auto_process_base_pr
+
+default-branch draft with technical checks closed:
+  auto_ready
+
+technical checks not closed:
+  auto_wait
+
+default-branch ready with checks closed:
+  auto_merge
+```
+
+The topology-derived automation disposition is non-authoritative and cannot
+create merge authority.
+
+### 5. Standing Autonomy Policy Receipt
+
+v1.2.8 may remove per-PR human merge decisions only through a trusted,
+owner-defined repository standing autonomy policy. AI reviewer output remains
+advisory; the load-bearing decision is deterministic verifier evidence plus a
+base-pinned policy digest. The PR head may contain a candidate policy, but a PR
+must not define the authority used to approve itself. The candidate policy is
+stored at:
+
+```text
+docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json
+```
+
+The trusted policy source must be one of:
+
+```text
+protected default-branch policy
+owner-signed immutable policy bundle
+protected repository variable
+```
+
+If the trusted policy digest, trusted evaluator digest, trusted verifier bundle
+digest, trusted provider adapter digest, trusted scope classifier digest, or
+trusted merge executor digest is absent or does not match, the PR is
+`not_eligible`. The authority epoch and revocation nonce must also match the
+protected trusted values; mere presence is not sufficient. A PR that changes the
+standing policy, evaluator, Final Decision authority, same-head semantics,
+provider adapter, verifier bundle, scope classifier, or merge executor cannot
+authorize itself.
+
+The Source Shadow Candidate trust closure is implemented by:
+
+```text
+scripts/codex-v128-trust-closure.mjs
+```
+
+It emits digest-only bindings for role-specific transitive closures:
+
+```text
+verifier bundle
+provider adapter
+scope classifier
+merge executor
+canonicalizer
+Final Decision authority
+```
+
+Each role closure is calculated from its own seed set and transitive imports,
+not from a fixed seed subset. The closure uses deterministic UTF-8 byte path
+ordering; static imports, re-exports, literal dynamic imports, and literal
+executable config/policy reads are included. These bindings are diagnostic in
+Source Shadow Candidate mode and become load-bearing only after a protected
+default-branch or owner-signed policy source supplies the matching expected
+digests.
+
+The policy can authorize automatic merge execution only when all of these are
+true:
+
+```text
+harness-only scope
+no product/runtime/package/lockfile/workflow/deploy/wallet/RPC changes
+main/default-branch PR
+not draft
+not stacked
+same-head required checks pass
+same-head is derived from PR head, workflow head, artifact head, required-check set digest, and required-check policy digest
+merge-boundary Final Decision is recomputed with terminalAction=merge_current_pr
+Final Decision has decision=allowed, mergeAllowed=true, exitCode=0
+v127 Preservation Matrix pass
+deterministic verifier pass
+scope digest match from a base-pinned scope classifier, not a PR-head boolean
+zero unresolved findings
+expected-head CAS succeeds
+protected automation executor is available
+trusted verifier/provider/classifier/executor digests match protected values
+authority epoch and revocation nonce match protected values
+```
+
+Authority-surface changes such as Source/Harness manifests, active policy index,
+Preservation Matrix, Reason Registry, State Matrix, standing policy, verifier,
+provider adapter, scope classifier, or merge executor changes force
+`auto_quarantine`. This is how v1.2.8 removes per-PR human decisions without
+allowing a PR to approve the authority it changes.
+
+Provider changed-file evidence distinguishes path-set observation from exact
+tuple observation. A path-set match must not be reported as
+`exactTupleDigestMatch`. Exact matching requires the canonical tuple digest for
+`status`, `oldPath`, `newPath`, `oldMode`, `newMode`, `oldContentDigest`, and
+`newContentDigest`.
+
+Every v1.2.8 shadow result that can appear near the active v1.2.7 gate must
+carry typed routing metadata:
+
+```text
+authorityLayer=v128_shadow_candidate
+decisionInfluence=shadow_only
+loadBearingForActiveV127=false
+evidenceEpoch=pre_closure|final_closure
+```
+
+The active v1.2.7 gate must route by these typed fields, not by a hardcoded list
+of stale reason names.
+
+v1.2.8 Shadow Candidate evidence nodes are computed once per unique input epoch.
+Artifact writers serialize already-computed results only; duplicate required node
+execution in one epoch is a validation failure. The invocation ledger is
+append-only at process level: changing the input creates a new epoch and retains
+the previous epoch summary instead of erasing prior evidence.
+
+The policy cannot authorize Source Activation, target rollout, product/runtime
+work, workflow changes, package/lockfile changes, deploy, wallet/RPC access,
+self-approval, or GitHub approval review. If a PR is stacked, draft, missing
+provider evidence, or outside the policy scope, the routine Projection may show
+`humanPerPrDecisionRequired=false` while still keeping
+`automatedMergeExecutionAllowed=false` and an automation disposition such as
+`auto_process_base_pr`, `auto_rebase`, `auto_wait`, `auto_repair`, or
+`auto_revalidate`, `auto_reject`, or `auto_quarantine`.
+
+Routine Projection may expose only the compact policy result:
+
+```text
+policyAuthorizationState
+automationDisposition
+humanPerPrDecisionRequired
+automatedMergeExecutionAllowed
+automationExecutorAvailable
+automationActionStarted
+automationActionCompleted
+automationResultDigest
+```
+
+The full policy and its digest remain diagnostic/cold evidence. The stored
+Projection and AI review must never create owner authority.
+
+Standing autonomy requires a protected trust root outside PR-head code. The
+trusted inputs are the policy digest, evaluator bundle digest, scope classifier
+digest, merge executor digest, repository identity, authority epoch, and
+revocation nonce. A PR-head policy or evaluator may be candidate data only.
+
+Policy/evaluator/Final Decision/same-head/scope-classifier/merge-executor
+changes are self-authorizing changes. They cannot use their own new policy to
+authorize themselves. A stricter policy rotation may be accepted only by the old
+trusted policy; semantic loosening is automatically rejected or quarantined.
+
+The finalizer payload must be semantically checked:
+
+```text
+upstreamNodeRefs:
+  exactly match aggregate_finalizer.dependsOn
+
+upstreamResultDigests:
+  exactly match each upstream node result digest
+
+failed upstream:
+  requires finalizer status=fail and failedNodeRefs entry
+```
+
+The decision input manifest must be actually scanned before
+`decisionInputManifestScanned=true` is emitted. A builder cannot set this field
+only because an observed plan exists. The manifest separates decision-stable
+payload digests from environment diagnostics, recursively scans input paths, and
+fails if a forbidden path enters the decision input manifest. Diagnostic paths
+must be detected, excluded from decision digests, and represented only by safe
+counts/digests.
+
 ### 4. Resumable Loop and Permission Projection
 
 Projection cannot create permission. Permission view is derived from the
@@ -205,6 +614,14 @@ Checkpoint write requires per-worktree exclusive lock, current checkpoint
 reread, sequence/digest recheck, atomic replacement, previous checkpoint
 preservation, gitignore coverage, and upload prohibition. Network-filesystem
 automatic resume is forbidden.
+
+Workspace identity is part of the resume surface. It records repository key,
+remote digest, branch, source branch, checkout ref, tested tree kind, head,
+active harness version, a worktree identity digest, an observation digest, and
+a canonicality state. Pull-request merge refs and source branches are separate
+fields. Raw workspace paths stay local diagnostic only and must not be
+uploaded. `canonicalityState=canonical` is valid only when
+`observationState=observed`; unobserved workspaces are `unknown`.
 
 ## Canonical JSON
 

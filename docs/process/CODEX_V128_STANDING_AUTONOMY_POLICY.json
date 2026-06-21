@@ -1,0 +1,79 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "schemaVersion": "1.2.8",
+  "policyKind": "standing_autonomy_policy_receipt",
+  "policyId": "harness_shadow_auto_merge_v1",
+  "authoritySource": "owner_defined_repository_policy",
+  "repositoryKey": "github.com:hiro4649/codex-development-harness",
+  "trustRoot": {
+    "trustedPolicyDigestSource": [
+      "protected_default_branch_policy",
+      "owner_signed_policy_bundle",
+      "protected_repository_variable"
+    ],
+    "trustedEvaluatorDigestRequired": true,
+    "trustedVerifierBundleDigestRequired": true,
+    "trustedProviderAdapterDigestRequired": true,
+    "trustedScopeClassifierDigestRequired": true,
+    "trustedMergeExecutorDigestRequired": true,
+    "trustedCanonicalizerDigestRequired": true,
+    "trustedFinalDecisionAuthorityDigestRequired": true,
+    "repositoryIdRequired": true,
+    "authorityEpochRequired": true,
+    "revocationNonceRequired": true,
+    "prHeadPolicyMayAuthorizeItself": false
+  },
+  "scope": {
+    "allowedChangeClasses": [
+      "harness_core",
+      "harness_coupled_test",
+      "harness_evidence"
+    ],
+    "forbiddenChangeClasses": [
+      "product_runtime",
+      "package_or_lockfile",
+      "workflow",
+      "migration",
+      "deploy",
+      "wallet_rpc",
+      "source_activation",
+      "target_rollout"
+    ]
+  },
+  "requiredEvidence": [
+    "same_head_required_checks",
+    "final_decision_pass",
+    "v127_preservation_pass",
+    "deterministic_verifier_pass",
+    "scope_digest_match",
+    "zero_unresolved_findings"
+  ],
+  "mergeExecution": {
+    "allowed": true,
+    "expectedHeadCasRequired": true,
+    "mergeBoundaryFinalDecisionRequired": true,
+    "baseMustBeDefaultBranch": true,
+    "stackedPrForbidden": true,
+    "draftForbidden": true
+  },
+  "expiresOn": [
+    "policy_digest_change",
+    "scope_delta",
+    "authority_version_change",
+    "required_check_policy_change",
+    "revocation"
+  ],
+  "forbiddenAuthorizations": [
+    "source_activation",
+    "target_rollout",
+    "product_runtime",
+    "workflow",
+    "package_or_lockfile",
+    "deploy",
+    "wallet_rpc",
+    "github_approval_review",
+    "self_approval"
+  ],
+  "aiAuthorityCreated": false,
+  "safeSummaryOnly": true
+}

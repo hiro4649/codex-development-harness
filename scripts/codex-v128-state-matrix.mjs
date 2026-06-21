@@ -1,8 +1,19 @@
 #!/usr/bin/env node
 // CODEX_QUALITY_HARNESS_FILE v1.2.8
 
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import process from 'node:process';
+
+function canonicalJson(value) {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => canonicalJson(item)).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+}
+
+function digestValue(value) {
+  return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
+}
 
 function keyOf(cell) {
   return `${cell.decisionPhase}|${cell.providerClosureState}|${cell.mergeAuthorityState}`;
@@ -74,6 +85,7 @@ export function evaluateV128StateMatrix(matrix = {}) {
     reasonCodes: reasons,
     coverage: matrix.coverage || 'unknown',
     fullEnumProductExecuted: matrix.fullEnumProductExecuted === true,
+    stateMatrixContentDigest: digestValue(matrix),
     totalCells: cells.length,
     transitionCells: transitionCells.length,
     hardInvalidCells: hardInvalidCells.length,
@@ -85,6 +97,10 @@ export function evaluateV128StateMatrix(matrix = {}) {
 
 export function readAndEvaluateV128StateMatrix(file = 'docs/process/CODEX_V128_STATE_MATRIX.json') {
   return evaluateV128StateMatrix(JSON.parse(fs.readFileSync(file, 'utf8')));
+}
+
+export function buildV128StateMatrixContentDigest(file = 'docs/process/CODEX_V128_STATE_MATRIX.json') {
+  return digestValue(JSON.parse(fs.readFileSync(file, 'utf8')));
 }
 
 if (process.argv[1] && process.argv[1].endsWith('codex-v128-state-matrix.mjs')) {

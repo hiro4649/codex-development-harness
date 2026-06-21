@@ -5,6 +5,10 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import { pass, fail } from './codex-outcome-contract.mjs';
+import {
+  buildV128ValidationExecutionPlan,
+  validateV128ValidationExecutionPlan,
+} from './codex-v128-validation-execution-plan.mjs';
 
 export const V119_OPERATOR_STATUS_KEYS = [
   'orchestrationModeStatus',
@@ -1847,6 +1851,7 @@ export function buildOrchestrationCapsule(input = {}) {
     orthogonalReasonModel: defaultV128OrthogonalReasonModel(input.orthogonalReasonModel || input),
     tokenMinimalReadCompatibilityRouter: defaultV128TokenMinimalReadCompatibilityRouter(input.tokenMinimalReadCompatibilityRouter || input),
     resumableLoopAndPermissionProjection: defaultV128ResumableLoopAndPermissionProjection(input.resumableLoopAndPermissionProjection || input),
+    validationExecutionPlanAndReuse: buildV128ValidationExecutionPlan(input.validationExecutionPlanAndReuse || input),
     authorityBoundary: {
       conflictPrecedence: [
         'v1.1.8_final_decision_over_v1.1.9_v1.2.0_v1.2.1_v1.2.2_v1.2.3_v1.2.4_v1.2.5_v1.2.6_v1.2.7_and_v1.2.8',
@@ -2758,6 +2763,7 @@ export function validateOrchestrationCapsule(capsule = {}) {
     orthogonalReasonModelInternalStatus: validateV128OrthogonalReasonModel(capsule.orthogonalReasonModel || {}),
     tokenMinimalReadCompatibilityRouterInternalStatus: validateV128TokenMinimalReadCompatibilityRouter(capsule.tokenMinimalReadCompatibilityRouter || {}),
     resumableLoopPermissionProjectionInternalStatus: validateV128ResumableLoopAndPermissionProjection(capsule.resumableLoopAndPermissionProjection || {}),
+    validationExecutionPlanReuseInternalStatus: validateV128ValidationExecutionPlan(capsule.validationExecutionPlanAndReuse || {}),
   };
 }
 

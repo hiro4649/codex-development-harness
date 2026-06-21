@@ -25,6 +25,10 @@ function sha256(text) {
   return crypto.createHash('sha256').update(text).digest('hex');
 }
 
+function digestValue(value) {
+  return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
+}
+
 function fileDigest(filePath) {
   const text = fs.readFileSync(filePath, 'utf8');
   return {
@@ -44,6 +48,44 @@ function firstLine(filePath, fallback = '') {
   } catch {
     return fallback;
   }
+}
+
+function buildManagedContextInputParts(input = {}) {
+  const sourceManifest = readJson('CODEX_SOURCE_HARNESS_MANIFEST.json');
+  const targetManifest = readJson('docs/process/CODEX_HARNESS_MANIFEST.json');
+  const activePolicyIndex = readJson('docs/process/CODEX_ACTIVE_POLICY_INDEX.json');
+  const headSha = input.headSha || process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'unknown';
+  const sourceFiles = SOURCE_FILES.map((file) => fileDigest(file));
+  const instructionCapsule = {
+    rootAgentsMarker: firstLine('AGENTS.md'),
+    activeSpecPath: 'docs/process/CODEX_V127_SPEC.md',
+    candidateSpecPath: 'docs/process/CODEX_V128_SPEC.md',
+    profile: activePolicyIndex.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.activationState || 'source_shadow_candidate',
+    llmSummaryUsed: false,
+    forbiddenBoundaryWeakeningAllowed: false,
+  };
+  const providerSummary = {
+    provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
+    headSha,
+    requiredCheckSet: process.env.GITHUB_ACTIONS === 'true' ? 'quality-gate' : 'local_quality_gate',
+    runId: process.env.GITHUB_RUN_ID || '',
+  };
+  const attestedView = {
+    finalAuthority: 'v1.1.8_final_decision_kernel',
+    activeAuthority: `${sourceManifest.activeHarnessVersion || '1.2.7'} / ${sourceManifest.activeSelfTestSuite || 'v127'}`,
+    sourceHarnessVersion: sourceManifest.sourceHarnessVersion || '1.2.8',
+    targetHarnessVersion: targetManifest.targetHarnessVersion || '1.2.7',
+    projectionAuthority: 'non_authoritative',
+    prBodyMachineEvidence: false,
+    sourceActivation: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation || 'not_started',
+    targetRollout: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.targetRollout || 'not_started',
+  };
+  return { sourceManifest, targetManifest, activePolicyIndex, headSha, sourceFiles, instructionCapsule, providerSummary, attestedView };
+}
+
+export function buildV128ManagedInstructionSourceSetDigest(input = {}) {
+  const { sourceFiles, instructionCapsule, providerSummary, attestedView } = buildManagedContextInputParts(input);
+  return digestValue({ sourceFiles, instructionCapsule, providerSummary, attestedView });
 }
 
 function finalizeContext(contextBase) {
@@ -75,10 +117,7 @@ function finalizeContext(contextBase) {
 }
 
 export function buildV128ManagedContextEmitter(input = {}) {
-  const sourceManifest = readJson('CODEX_SOURCE_HARNESS_MANIFEST.json');
-  const targetManifest = readJson('docs/process/CODEX_HARNESS_MANIFEST.json');
-  const activePolicyIndex = readJson('docs/process/CODEX_ACTIVE_POLICY_INDEX.json');
-  const headSha = input.headSha || process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'unknown';
+  const { sourceManifest, targetManifest, sourceFiles, instructionCapsule, providerSummary, attestedView } = buildManagedContextInputParts(input);
   return finalizeContext({
     schemaVersion: '1.2.8',
     contextKind: 'managed_context_emitter_shadow',
@@ -90,31 +129,11 @@ export function buildV128ManagedContextEmitter(input = {}) {
     sourceActivationReady: false,
     managedContextMeasurementSource: 'v128_managed_context_emitter',
     managedContextBytesMax: MANAGED_CONTEXT_BYTES_MAX,
-    sourceFiles: SOURCE_FILES.map((file) => fileDigest(file)),
-    instructionCapsule: {
-      rootAgentsMarker: firstLine('AGENTS.md'),
-      activeSpecPath: 'docs/process/CODEX_V127_SPEC.md',
-      candidateSpecPath: 'docs/process/CODEX_V128_SPEC.md',
-      profile: activePolicyIndex.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.activationState || 'source_shadow_candidate',
-      llmSummaryUsed: false,
-      forbiddenBoundaryWeakeningAllowed: false,
-    },
-    providerSummary: {
-      provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
-      headSha,
-      requiredCheckSet: process.env.GITHUB_ACTIONS === 'true' ? 'quality-gate' : 'local_quality_gate',
-      runId: process.env.GITHUB_RUN_ID || '',
-    },
-    attestedView: {
-      finalAuthority: 'v1.1.8_final_decision_kernel',
-      activeAuthority: `${sourceManifest.activeHarnessVersion || '1.2.7'} / ${sourceManifest.activeSelfTestSuite || 'v127'}`,
-      sourceHarnessVersion: sourceManifest.sourceHarnessVersion || '1.2.8',
-      targetHarnessVersion: targetManifest.targetHarnessVersion || '1.2.7',
-      projectionAuthority: 'non_authoritative',
-      prBodyMachineEvidence: false,
-      sourceActivation: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation || 'not_started',
-      targetRollout: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.targetRollout || 'not_started',
-    },
+    activeInstructionSourceSetDigest: buildV128ManagedInstructionSourceSetDigest(input),
+    sourceFiles,
+    instructionCapsule,
+    providerSummary,
+    attestedView,
     safeSummaryOnly: true,
   });
 }

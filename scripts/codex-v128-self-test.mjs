@@ -14,7 +14,11 @@ import {
   validateV128ResumableLoopAndPermissionProjection,
   validateV128TokenMinimalReadCompatibilityRouter,
 } from './codex-orchestration-capsule.mjs';
-import { classifyV128ShadowCandidateForActiveGate } from './codex-local-quality-gate.mjs';
+import {
+  buildV127ActiveGateReasonSummaryInput,
+  buildV128ProviderChangedFilesEvidence,
+  classifyV128ShadowCandidateForActiveGate,
+} from './codex-local-quality-gate.mjs';
 import {
   buildV128RoutineProjectionReadSurface,
   formatV128ProjectionReaderOutput,
@@ -26,6 +30,20 @@ import {
   validateV128ProjectionIntegrity,
 } from './codex-v128-integrity-lib.mjs';
 import { readAndEvaluateV128StateMatrix } from './codex-v128-state-matrix.mjs';
+import {
+  buildV128ValidationExecutionPlan,
+  validateV128ValidationExecutionPlan,
+} from './codex-v128-validation-execution-plan.mjs';
+import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
+import {
+  digestV128StandingAutonomyPolicy,
+  evaluateV128StandingAutonomyPolicy,
+  validateV128StandingAutonomyPolicyEvaluation,
+} from './codex-v128-standing-autonomy-policy.mjs';
+import {
+  buildV128TrustClosure,
+  validateV128TrustClosure,
+} from './codex-v128-trust-closure.mjs';
 import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
 
 function test(name, fn) {
@@ -56,6 +74,37 @@ function canonicalJson(value) {
 
 function canonicalDigest(value) {
   return crypto.createHash('sha256').update(canonicalJson(value)).digest('hex');
+}
+
+function sha256Canonical(value) {
+  return `sha256:${canonicalDigest(value)}`;
+}
+
+function standingAutonomyTrustInputs(policy) {
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const trustClosure = buildV128TrustClosure();
+  return {
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedVerifierBundleDigest: trustClosure.trustDigests.verifierBundleDigest,
+    verifierBundleDigest: trustClosure.trustDigests.verifierBundleDigest,
+    trustedProviderAdapterDigest: trustClosure.trustDigests.providerAdapterDigest,
+    providerAdapterDigest: trustClosure.trustDigests.providerAdapterDigest,
+    trustedScopeClassifierDigest: trustClosure.trustDigests.scopeClassifierDigest,
+    scopeClassifierDigest: trustClosure.trustDigests.scopeClassifierDigest,
+    trustedMergeExecutorDigest: trustClosure.trustDigests.mergeExecutorDigest,
+    mergeExecutorDigest: trustClosure.trustDigests.mergeExecutorDigest,
+    trustedCanonicalizerDigest: trustClosure.trustDigests.canonicalizerDigest,
+    canonicalizerDigest: trustClosure.trustDigests.canonicalizerDigest,
+    trustedFinalDecisionAuthorityDigest: trustClosure.trustDigests.finalDecisionAuthorityDigest,
+    finalDecisionAuthorityDigest: trustClosure.trustDigests.finalDecisionAuthorityDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    repositoryId: 'repo-123',
+    authorityEpoch: 'epoch-1',
+    trustedAuthorityEpoch: 'epoch-1',
+    revocationNonce: 'nonce-1',
+    trustedRevocationNonce: 'nonce-1',
+  };
 }
 
 function buildBoundV128Projection(base = {}, inputs = {}) {
@@ -274,7 +323,7 @@ function boundedProjectionReaderExecutes() {
     && formatted.outputBytes <= 1600
     && surface.managedSafeArtifactRead === 1
     && surface.coldArtifactRead === 0
-    && surface.managedContextBytesObserved === false;
+    && surface.managedContextBytesObserved !== true;
 }
 
 function evidenceCapsuleDoesNotSubstituteProviderHeads() {
@@ -381,6 +430,1185 @@ function projectionInputDigestTamperFails() {
   }).reasonCodes.includes('projection_input_digest_mismatch');
 }
 
+function executedNode(nodeRef, status = 'pass', stabilityClass = 'decision_stable', payload = {}) {
+  return {
+    nodeRef,
+    executionState: 'executed',
+    executionCount: 1,
+    executionCountSource: 'executor_registry',
+    executionCountObserved: true,
+    status,
+    stabilityClass,
+    typedResultPayload: {
+      schemaVersion: '1.0.0',
+      nodeRef,
+      status,
+      ...payload,
+    },
+  };
+}
+
+function reusedNode(nodeRef, payload = {}) {
+  const typedResultPayload = {
+    schemaVersion: '1.0.0',
+    nodeRef,
+    status: 'pass',
+    reused: true,
+    ...payload,
+  };
+  return {
+    nodeRef,
+    executionState: 'reused',
+    executionCount: 0,
+    executionCountSource: 'executor_registry',
+    executionCountObserved: true,
+    status: 'pass',
+    stabilityClass: 'decision_stable',
+    sourceRunRef: {
+      provider: 'github_actions',
+      runId: '27881777742',
+      attempt: 1,
+      artifactName: `v128-${nodeRef}-typed-result.safe.json`,
+      artifactDigest: sha256Canonical({ nodeRef, typedResultPayload }),
+      sourceHeadSha: 'f'.repeat(40),
+      testedCommitOid: 'f'.repeat(40),
+      resultSchemaVersion: '1.0.0',
+    },
+    sourceResultDigest: sha256Canonical(typedResultPayload),
+    sourceHeadSha: 'f'.repeat(40),
+    resultSchemaVersion: '1.0.0',
+    typedResultPayload,
+  };
+}
+
+function validValidationNodeResults() {
+  const upstream = [
+    executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200 }),
+    executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+    executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+  ];
+  return [
+    ...upstream,
+    executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+      aggregateOnly: true,
+      downstreamRespawnAllowed: false,
+      upstreamNodeRefs: upstream.map((node) => node.nodeRef),
+      upstreamResultDigests: upstream.map((node) => ({
+        nodeRef: node.nodeRef,
+        status: node.status,
+        resultDigest: sha256Canonical(node.typedResultPayload),
+      })),
+      failedNodeRefs: [],
+    }),
+  ];
+}
+
+function buildPlanWithBoundReusedCacheKeys(input = {}) {
+  const stableInput = {
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    ...input,
+  };
+  const draft = buildV128ValidationExecutionPlan(stableInput);
+  const commandDigests = Object.fromEntries(Object.entries(draft.nodeSourceClosures || {}).map(([nodeRef, closure]) => [
+    nodeRef,
+    closure.nodeSourceClosureDigest,
+  ]));
+  const nodeResults = (stableInput.nodeResults || []).map((node) => {
+    if (node.executionState !== 'reused') return node;
+    return {
+      ...node,
+      cacheKeyDigest: draft.validationReuseDecision.nodeCacheKeyDigests[node.nodeRef]
+        || draft.validationReuseDecision.cacheKeyDigest
+        || node.cacheKeyDigest,
+    };
+  });
+  return buildV128ValidationExecutionPlan({
+    ...stableInput,
+    nodeResults,
+    runWideInvocationLedger: stableInput.runWideInvocationLedger || invocationLedgerFor(nodeResults, commandDigests),
+  });
+}
+
+function invocationLedgerFor(nodeResults = [], commandDigests = {}) {
+  let sequence = 0;
+  return nodeResults
+    .filter((node) => node.executionState !== 'reused')
+    .map((node) => {
+      sequence += 1;
+      const payload = node.typedResultPayload || {
+        nodeRef: node.nodeRef,
+        executionState: node.executionState || 'executed',
+        status: node.status || 'pass',
+        stabilityClass: node.stabilityClass || 'decision_stable',
+      };
+      return {
+        nodeRef: node.nodeRef,
+        commandOrFunctionDigest: commandDigests[node.nodeRef] || sha256Canonical({
+          nodeRef: node.nodeRef,
+          adapterId: 'v128_self_test_fixture_adapter',
+          stabilityClass: node.stabilityClass || 'decision_stable',
+        }),
+        invocationSequence: sequence,
+        completionSequence: sequence,
+        resultDigest: sha256Canonical(payload),
+        executionSource: 'v128_self_test_fixture',
+        adapterId: 'v128_self_test_fixture_adapter',
+      };
+    });
+}
+
+function validationExecutionPlanVerifies() {
+  const upstream = [
+    executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200 }),
+    executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+    reusedNode('state_matrix_executor', { totalCells: 96 }),
+  ];
+  return passed(validateV128ValidationExecutionPlan(buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      ...upstream,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+        aggregateOnly: true,
+        downstreamRespawnAllowed: false,
+        upstreamNodeRefs: upstream.map((node) => node.nodeRef),
+        upstreamResultDigests: upstream.map((node) => ({
+          nodeRef: node.nodeRef,
+          status: node.status,
+          resultDigest: sha256Canonical(node.typedResultPayload),
+        })),
+        failedNodeRefs: [],
+      }),
+    ],
+  })));
+}
+
+function validationExecutionDuplicateNodeFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodes: [
+      { nodeRef: 'compile', dependsOn: [], required: true },
+      { nodeRef: 'compile', dependsOn: [], required: true },
+    ],
+    nodeResults: [
+      { nodeRef: 'compile', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationExecutionRespawnFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    downstreamRespawnAllowed: true,
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationReusePlaceholderFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'unknown',
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationExecutionRawWorkspacePathFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    rawWorkspacePathUploaded: true,
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationTypedPayloadTamperFails() {
+  const plan = buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  });
+  plan.typedResults.projection_reader.surfaceCanonicalBytes = 9999;
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('typed_result_payload_digest_mismatch');
+}
+
+function validationAggregateFinalizerBlocksFailedUpstream() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'fail', 'decision_stable', { reason: 'BROKEN_READER' }),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', { upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'] }),
+    ],
+  })));
+}
+
+function validationExecutionCountTwoFails() {
+  const nodes = validValidationNodeResults();
+  nodes[0] = { ...nodes[0], executionCount: 2 };
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: nodes,
+  })));
+}
+
+function validationCacheHitWithExecutedNodeFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    nodeResults: validValidationNodeResults(),
+  })));
+}
+
+function validationCacheMissWithReusedNodeFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'miss',
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reusedNode('state_matrix_executor'),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  })));
+}
+
+function validationReusedNodeSourceDigestMismatchFails() {
+  const reused = reusedNode('state_matrix_executor');
+  reused.sourceResultDigest = `sha256:${'c'.repeat(64)}`;
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reused,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  })).reasonCodes.includes('reused_node_source_result_digest_mismatch');
+}
+
+function validationReusedNodeCacheKeyDigestMismatchFails() {
+  const reused = reusedNode('state_matrix_executor');
+  reused.cacheKeyDigest = `sha256:${'c'.repeat(64)}`;
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reused,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  })).reasonCodes.includes('reused_node_cache_key_digest_mismatch');
+}
+
+function validationReusedNodeMissingCacheKeyDigestFails() {
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reusedNode('state_matrix_executor'),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  })).reasonCodes.includes('reused_node_cache_key_digest_required');
+}
+
+function validationReusedNodeStringSourceRunRefFails() {
+  const reused = reusedNode('state_matrix_executor');
+  reused.sourceRunRef = 'github:run:27881777742:attempt:1';
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reused,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  });
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('reused_node_source_run_ref_must_be_object');
+}
+
+function validationUnsupportedDynamicImportDisablesReuse() {
+  const virtualPath = 'scripts/__v128_virtual_dynamic_import_fixture.mjs';
+  const plan = buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    sourceClosureFiles: [virtualPath],
+    sourceFileTexts: {
+      [virtualPath]: "const selected = './dynamic.js'; await ".concat("import(selected);\n"),
+    },
+    nodeResults: [
+      reusedNode('projection_reader'),
+      reusedNode('managed_context_emitter'),
+      reusedNode('state_matrix_executor'),
+      reusedNode('aggregate_finalizer'),
+    ],
+  });
+  const validation = validateV128ValidationExecutionPlan(plan);
+  return plan.sourceClosure.unsupportedDynamicImportCount === 1
+    && plan.validationReuseDecision.sourceClosureReuseForbidden === true
+    && validation.reasonCodes.includes('validation_reuse_miss_cannot_include_reused_nodes');
+}
+
+function validationWorkspaceUnobservedCannotBeCanonical() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: false,
+    canonicalityState: 'canonical',
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  })));
+}
+
+function validationRunnerImageMissingPreventsReuse() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    nodeResults: [
+      reusedNode('projection_reader'),
+      reusedNode('managed_context_emitter'),
+      reusedNode('state_matrix_executor'),
+      reusedNode('aggregate_finalizer'),
+    ],
+  })));
+}
+
+function validationSourceClosureIncludesConsumers() {
+  const plan = buildV128ValidationExecutionPlan();
+  const paths = new Set(plan.sourceClosure.sourceFiles.map((file) => file.path));
+  return paths.has('scripts/codex-v128-validation-execution-plan.mjs')
+    && paths.has('scripts/codex-v128-aggregate-finalizer.mjs')
+    && paths.has('scripts/codex-local-quality-gate.mjs')
+    && paths.has('scripts/codex-orchestration-capsule.mjs')
+    && paths.has('scripts/codex-v128-projection-reader.mjs')
+    && paths.has('scripts/codex-v128-managed-context-emitter.mjs')
+    && paths.has('scripts/codex-v128-state-matrix.mjs')
+    && paths.has('scripts/codex-v128-integrity-lib.mjs');
+}
+
+function validationSourceClosureResolvesTransitiveImports() {
+  const plan = buildV128ValidationExecutionPlan();
+  return plan.sourceClosure.declaredImportScanStatus === 'pass'
+    && plan.sourceClosure.undeclaredRelativeImportCount === 0
+    && plan.sourceClosure.unresolvedRelativeImportCount === 0
+    && plan.sourceClosure.transitiveRelativeImportCount > 0
+    && Array.isArray(plan.sourceClosure.relativeImportClosureFiles);
+}
+
+function validationNodeScopedSourceClosuresExist() {
+  const plan = buildV128ValidationExecutionPlan();
+  const closures = plan.nodeSourceClosures || {};
+  const requiredAdapters = {
+    projection_reader: 'scripts/codex-v128-projection-reader-adapter.mjs',
+    managed_context_emitter: 'scripts/codex-v128-managed-context-adapter.mjs',
+    state_matrix_executor: 'scripts/codex-v128-state-matrix-adapter.mjs',
+    aggregate_finalizer: 'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
+  };
+  const nodeRefs = Object.keys(requiredAdapters);
+  return nodeRefs.every((nodeRef) => /^sha256:[a-f0-9]{64}$/.test(String(closures[nodeRef]?.nodeSourceClosureDigest || '')))
+    && nodeRefs.every((nodeRef) => closures[nodeRef].sourceFileCount <= plan.sourceClosure.sourceFiles.length)
+    && nodeRefs.every((nodeRef) => (closures[nodeRef].seedSourceFiles || []).includes(requiredAdapters[nodeRef]))
+    && closures.managed_context_emitter.sourceFileCount < plan.sourceClosure.sourceFiles.length;
+}
+
+function validationRunWideDuplicateExecutionFails() {
+  const nodeResults = validValidationNodeResults();
+  const draft = buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults,
+  });
+  const commandDigests = Object.fromEntries(Object.entries(draft.nodeSourceClosures || {}).map(([nodeRef, closure]) => [
+    nodeRef,
+    closure.nodeSourceClosureDigest,
+  ]));
+  const ledger = invocationLedgerFor(nodeResults, commandDigests);
+  ledger.push({
+    ...ledger[0],
+    invocationSequence: ledger.length + 1,
+    completionSequence: ledger.length + 1,
+  });
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults,
+    runWideInvocationLedger: ledger,
+  })).reasonCodes.includes('run_wide_duplicate_execution_detected');
+}
+
+function validationRunWideCommandDigestTamperFails() {
+  const nodeResults = validValidationNodeResults();
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults,
+  });
+  plan.profileExecution.runWideInvocationLedger[0].commandOrFunctionDigest = `sha256:${'e'.repeat(64)}`;
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('run_wide_invocation_command_digest_mismatch');
+}
+
+function validationNodeInputDigestTamperFails() {
+  const nodeResults = validValidationNodeResults();
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults,
+  });
+  plan.profileExecution.nodeResults[0].nodeInputDigest = 'sha256:bad';
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('node_input_digest_required');
+}
+
+function validationPrMergeReuseRequiresBaseOid() {
+  const plan = buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    baseOid: null,
+    testedCommitOid: 'e'.repeat(40),
+    testedTreeKind: 'pull_request_merge_ref',
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    nodeResults: [
+      reusedNode('projection_reader'),
+      reusedNode('managed_context_emitter'),
+      reusedNode('state_matrix_executor'),
+      reusedNode('aggregate_finalizer'),
+    ],
+  });
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('validation_reuse_binding_field_missing');
+}
+
+function validationDiagnosticManifestNeedsSanitizedDigest() {
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifest: {
+      status: 'pass',
+      taxonomyScanStatus: 'pass',
+      taxonomyScan: {
+        scannedPathCount: 1,
+        environmentDiagnosticPathCount: 1,
+        forbiddenPathCount: 0,
+        environmentDiagnosticExcludedFromDecisionDigest: true,
+      },
+    },
+    nodeResults: validValidationNodeResults(),
+  })).reasonCodes.includes('decision_input_manifest_sanitized_digest_required');
+}
+
+function validationFinalizerMissingUpstreamNodeFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable'),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+        upstreamNodeRefs: ['projection_reader', 'managed_context_emitter'],
+        upstreamResultDigests: [],
+      }),
+    ],
+  })));
+}
+
+function validationFinalizerWrongUpstreamDigestFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable'),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+        upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'],
+        upstreamResultDigests: [
+          { nodeRef: 'projection_reader', status: 'pass', resultDigest: `sha256:${'c'.repeat(64)}` },
+          { nodeRef: 'managed_context_emitter', status: 'pass', resultDigest: `sha256:${'c'.repeat(64)}` },
+          { nodeRef: 'state_matrix_executor', status: 'pass', resultDigest: `sha256:${'c'.repeat(64)}` },
+        ],
+      }),
+    ],
+  })));
+}
+
+function validationFinalizerPassWithFailedUpstreamFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'fail', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable'),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+        upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'],
+        upstreamResultDigests: [],
+        failedNodeRefs: [],
+      }),
+    ],
+  })));
+}
+
+function validationDefaultIsNotExercisedPartial() {
+  const plan = buildV128ValidationExecutionPlan();
+  const validation = validateV128ValidationExecutionPlan(plan);
+  return validation.status === 'pass'
+    && validation.observationState === 'not_exercised'
+    && validation.executionStatus === 'partial_shadow_candidate'
+    && plan.profileExecution.nodeResults.length === 0;
+}
+
+function validationGraphCycleFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodes: [
+      { nodeRef: 'a', dependsOn: ['b'], required: true },
+      { nodeRef: 'b', dependsOn: ['a'], required: true },
+    ],
+    nodeResults: [
+      { nodeRef: 'a', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'b', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
+function validationGraphMissingDependencyFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodes: [{ nodeRef: 'a', dependsOn: ['missing'], required: true }],
+    nodeResults: [{ nodeRef: 'a', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' }],
+  })));
+}
+
+function standingAutonomyPolicyAllowsEligibleHarnessPr() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    ...standingAutonomyTrustInputs(policy),
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    automationExecutorAvailable: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+    productCodeChanged: false,
+    packageFilesChanged: false,
+    workflowChanged: false,
+    sourceActivationRequested: false,
+    targetRolloutRequested: false,
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.policyAuthorizationState === 'authorized'
+    && evaluation.automationDisposition === 'auto_merge'
+    && evaluation.automatedMergeExecutionAllowed === true
+    && evaluation.humanPerPrDecisionRequired === false
+    && evaluation.aiAuthorityCreated === false
+    && evaluation.ownerAuthorityCreated === false
+    && evaluation.sourceActivationAuthorized === false
+    && evaluation.targetRolloutAuthorized === false
+    && evaluation.reasonCodes.length === 0;
+}
+
+function standingAutonomyPolicyBlocksStackedDraft() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'stacked_branch',
+      prLifecycleState: 'draft',
+      stackedDependencyState: 'base_branch_open_or_unverified',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.policyAuthorizationState === 'not_eligible'
+    && evaluation.automationDisposition === 'auto_process_base_pr'
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.humanPerPrDecisionRequired === false
+    && evaluation.reasonCodes.includes('standing_policy_default_base_required')
+    && evaluation.reasonCodes.includes('standing_policy_open_pr_required')
+    && evaluation.reasonCodes.includes('standing_policy_stacked_pr_forbidden');
+}
+
+function standingAutonomyPolicyRejectsAiAuthorityForgery() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  return failed(validateV128StandingAutonomyPolicyEvaluation({
+    ...evaluation,
+    aiAuthorityCreated: true,
+  }));
+}
+
+function standingAutonomyPolicyBlocksForbiddenScope() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+    workflowChanged: true,
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_reject'
+    && evaluation.reasonCodes.includes('standing_policy_scope_forbidden');
+}
+
+function standingAutonomyPolicyRequiresTrustedPolicyDigest() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicySource: 'protected_default_branch_policy',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_wait'
+    && evaluation.reasonCodes.includes('standing_policy_trusted_policy_digest_missing');
+}
+
+function standingAutonomyPolicyRequiresProviderSameHead() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    ...standingAutonomyTrustInputs(policy),
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: false,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    automationExecutorAvailable: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  return passed(validateV128StandingAutonomyPolicyEvaluation(evaluation))
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_revalidate'
+    && evaluation.reasonCodes.includes('standing_policy_same_head_required_checks_required');
+}
+
+function standingAutonomyPolicyRequiresExecutor() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    ...standingAutonomyTrustInputs(policy),
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  return passed(validateV128StandingAutonomyPolicyEvaluation(evaluation))
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_wait'
+    && evaluation.reasonCodes.includes('standing_policy_executor_unavailable');
+}
+
+function standingAutonomyPolicyBlocksSelfModification() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+    changedFiles: ['docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json'],
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_quarantine'
+    && evaluation.reasonCodes.includes('standing_policy_self_modification_forbidden');
+}
+
+function trustClosureBuildsCompleteVerifierBundle() {
+  const closure = buildV128TrustClosure();
+  const validation = validateV128TrustClosure(closure);
+  const paths = new Set((closure.fileDigests || []).map((item) => item.path));
+  return passed(validation)
+    && paths.has('scripts/codex-v128-self-test.mjs')
+    && paths.has('scripts/codex-v128-validation-execution-plan.mjs')
+    && paths.has('scripts/codex-v128-trust-closure.mjs')
+    && paths.has('scripts/codex-workflow-quality-runner.mjs')
+    && paths.has('scripts/codex-reason-summary.mjs')
+    && paths.has('scripts/codex-decision-capsule.mjs')
+    && paths.has('scripts/codex-verifier-capsule.mjs')
+    && paths.has('scripts/codex-orchestration-capsule.mjs')
+    && paths.has('scripts/codex-worker-proof-capsule.mjs')
+    && paths.has('scripts/codex-owner-decision-brief.mjs')
+    && closure.transitiveRelativeImportCount > 0
+    && closure.closureCompletenessState === 'complete'
+    && /^sha256:[a-f0-9]{64}$/.test(closure.trustDigests.verifierBundleDigest)
+    && /^sha256:[a-f0-9]{64}$/.test(closure.trustDigests.providerAdapterDigest)
+    && /^sha256:[a-f0-9]{64}$/.test(closure.trustDigests.canonicalizerDigest)
+    && /^sha256:[a-f0-9]{64}$/.test(closure.trustDigests.finalDecisionAuthorityDigest)
+    && Object.keys(closure.roleClosures || {}).length >= 6
+    && closure.roleClosures.provider_adapter.closureCompletenessState === 'complete'
+    && closure.roleClosures.scope_classifier.closureCompletenessState === 'complete'
+    && closure.roleClosures.final_decision_authority.closureCompletenessState === 'complete';
+}
+
+function trustClosureFailsOpaqueDependencies() {
+  const unresolved = buildV128TrustClosure({
+    files: ['scripts/v128-fixture-unresolved.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-unresolved.mjs': 'im'.concat("port './missing-fixture.mjs';\n"),
+    },
+  });
+  const dynamicImport = buildV128TrustClosure({
+    files: ['scripts/v128-fixture-dynamic.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-dynamic.mjs': "const target = './computed-fixture.mjs'; await ".concat("import(target);\n"),
+    },
+  });
+  const loaderUsage = buildV128TrustClosure({
+    files: ['scripts/v128-fixture-loader.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-loader.mjs': 'const resolved = import.meta'.concat(".resolve('./x.mjs');\n"),
+    },
+  });
+  const executablePermissive = buildV128TrustClosure({
+    files: ['scripts/v128-fixture-exec.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-exec.mjs': "spawn('node', ['scripts/example.mjs']);\n",
+    },
+  });
+  const executableFailClosed = buildV128TrustClosure({
+    failOnExecutableScripts: true,
+    files: ['scripts/v128-fixture-exec.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-exec.mjs': "spawn('node', ['scripts/example.mjs']);\n",
+    },
+  });
+  return validateV128TrustClosure(unresolved).reasonCodes.includes('trust_closure_unresolved_relative_imports')
+    && validateV128TrustClosure(dynamicImport).reasonCodes.includes('trust_closure_unsupported_dynamic_imports')
+    && validateV128TrustClosure(loaderUsage).reasonCodes.includes('trust_closure_unsupported_loader_usages')
+    && passed(validateV128TrustClosure(executablePermissive))
+    && validateV128TrustClosure(executableFailClosed).reasonCodes.includes('trust_closure_executable_script_invocations');
+}
+
+function providerChangedFilesPathSetIsNotExactTuple() {
+  const evidence = buildV128ProviderChangedFilesEvidence({
+    sourceHarnessValidationStatus: { changedFiles: ['scripts/example.mjs'] },
+  }, {
+    CODEX_V128_PROVIDER_CHANGED_FILES_JSON: JSON.stringify([
+      { status: 'modified', path: 'scripts/example.mjs' },
+    ]),
+  });
+  return evidence.status === 'pass'
+    && evidence.pathSetDigestMatch === true
+    && evidence.exactTupleDigestMatch === null
+    && evidence.tupleComparisonMode === 'path_set_only_not_exact';
+}
+
+function providerChangedFilesFullTupleDigestMatches() {
+  const tuple = [{
+    status: 'modified',
+    oldPath: 'scripts/example.mjs',
+    newPath: 'scripts/example.mjs',
+    oldMode: '100644',
+    newMode: '100644',
+    oldContentDigest: 'sha256:'.concat('1'.repeat(64)),
+    newContentDigest: 'sha256:'.concat('2'.repeat(64)),
+  }];
+  const evidence = buildV128ProviderChangedFilesEvidence({
+    sourceHarnessValidationStatus: { changedFiles: ['scripts/example.mjs'] },
+  }, {
+    CODEX_V128_PROVIDER_CHANGED_FILES_JSON: JSON.stringify(tuple),
+    CODEX_V128_EXPECTED_CHANGED_FILES_TUPLE_DIGEST: sha256Canonical(tuple),
+  });
+  return evidence.status === 'pass'
+    && evidence.pathSetDigestMatch === true
+    && evidence.exactTupleDigestMatch === true
+    && evidence.tupleComparisonMode === 'full_tuple_digest';
+}
+
+function standingAutonomyPolicyRejectsVerifierBundleMismatch() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const trust = standingAutonomyTrustInputs(policy);
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    ...trust,
+    trustedVerifierBundleDigest: 'sha256:'.concat('0'.repeat(64)),
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    automationExecutorAvailable: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  return passed(validateV128StandingAutonomyPolicyEvaluation(evaluation))
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_quarantine'
+    && evaluation.reasonCodes.includes('standing_policy_trusted_verifier_bundle_mismatch');
+}
+
+function nonAuthoritativeProjectionStatusDoesNotBlockActiveGate() {
+  const summary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput({
+    status: 'pass',
+    qualityScoreStatus: { status: 'pass', score: 100, safeSummaryOnly: true },
+    routineDecisionProjection: {
+      status: 'fail',
+      reasonCodes: ['non_authoritative_projection_status_fail'],
+      authority: 'non_authoritative_projection',
+      safeSummaryOnly: true,
+    },
+    stressDecisionProjection: {
+      status: 'fail',
+      reasonCodes: ['non_authoritative_stress_projection_status_fail'],
+      authority: 'non_authoritative_projection',
+      safeSummaryOnly: true,
+    },
+    reasonSummary: {
+      status: 'fail',
+      blockingReasons: [{ reasonCode: 'stale_reason_summary' }],
+      safeSummaryOnly: true,
+    },
+    routineDecisionProjectionStatus: { status: 'pass', safeSummaryOnly: true },
+    v128SelfTestStatus: {
+      status: 'pass',
+      candidateActivationState: 'source_shadow_candidate',
+      safeSummaryOnly: true,
+    },
+  }));
+  return summary.status === 'pass'
+    && (summary.summary?.blockingReasons || []).length === 0;
+}
+
+function typedShadowStatusDoesNotBlockActiveGate() {
+  const summary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput({
+    status: 'pass',
+    qualityScoreStatus: { status: 'pass', score: 100, safeSummaryOnly: true },
+    routineDecisionProjectionStatus: {
+      status: 'fail',
+      authorityLayer: 'v128_shadow_candidate',
+      decisionInfluence: 'shadow_only',
+      loadBearingForActiveV127: false,
+      evidenceEpoch: 'final_closure',
+      reasonCodes: ['shadow_candidate_fixture_failure'],
+      safeSummaryOnly: true,
+    },
+  }));
+  return summary.status === 'pass'
+    && (summary.summary?.blockingReasons || []).length === 0;
+}
+
+function validationRequiredSkippedFails() {
+  return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      { nodeRef: 'projection_reader', executionState: 'executed', status: 'skipped', stabilityClass: 'decision_stable', skipReasonCode: 'TEST_SKIP' },
+      { nodeRef: 'managed_context_emitter', executionState: 'executed', status: 'pass', stabilityClass: 'cache_stable' },
+      { nodeRef: 'state_matrix_executor', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+      { nodeRef: 'aggregate_finalizer', executionState: 'executed', status: 'pass', stabilityClass: 'decision_stable' },
+    ],
+  })));
+}
+
 const cases = [
   ['v128_self_test_must_pass', () => true],
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -422,6 +1650,53 @@ const cases = [
   ['projection_integrity_binding_verifies_schema_head_and_source_digest', () => projectionIntegrityBindingVerifies()],
   ['projection_payload_digest_tamper_fails', () => projectionPayloadDigestTamperFails()],
   ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
+  ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
+  ['validation_default_is_not_exercised_partial', () => validationDefaultIsNotExercisedPartial()],
+  ['validation_execution_duplicate_node_fails', () => validationExecutionDuplicateNodeFails()],
+  ['validation_graph_cycle_fails', () => validationGraphCycleFails()],
+  ['validation_graph_missing_dependency_fails', () => validationGraphMissingDependencyFails()],
+  ['validation_required_skipped_fails', () => validationRequiredSkippedFails()],
+  ['validation_execution_downstream_respawn_fails', () => validationExecutionRespawnFails()],
+  ['validation_reuse_placeholder_cache_key_fails', () => validationReusePlaceholderFails()],
+  ['validation_execution_raw_workspace_path_fails', () => validationExecutionRawWorkspacePathFails()],
+  ['validation_typed_payload_tamper_fails', () => validationTypedPayloadTamperFails()],
+  ['validation_aggregate_finalizer_blocks_failed_upstream', () => validationAggregateFinalizerBlocksFailedUpstream()],
+  ['validation_execution_count_two_fails', () => validationExecutionCountTwoFails()],
+  ['validation_cache_hit_with_executed_node_fails', () => validationCacheHitWithExecutedNodeFails()],
+  ['validation_cache_miss_with_reused_node_fails', () => validationCacheMissWithReusedNodeFails()],
+  ['validation_reused_node_source_digest_mismatch_fails', () => validationReusedNodeSourceDigestMismatchFails()],
+  ['validation_reused_node_cache_key_digest_mismatch_fails', () => validationReusedNodeCacheKeyDigestMismatchFails()],
+  ['validation_reused_node_missing_cache_key_digest_fails', () => validationReusedNodeMissingCacheKeyDigestFails()],
+  ['validation_reused_node_string_source_run_ref_fails', () => validationReusedNodeStringSourceRunRefFails()],
+  ['validation_unsupported_dynamic_import_disables_reuse', () => validationUnsupportedDynamicImportDisablesReuse()],
+  ['validation_workspace_unobserved_cannot_be_canonical', () => validationWorkspaceUnobservedCannotBeCanonical()],
+  ['validation_runner_image_missing_prevents_reuse', () => validationRunnerImageMissingPreventsReuse()],
+  ['validation_source_closure_includes_consumers', () => validationSourceClosureIncludesConsumers()],
+  ['validation_source_closure_resolves_transitive_imports', () => validationSourceClosureResolvesTransitiveImports()],
+  ['validation_node_scoped_source_closures_exist', () => validationNodeScopedSourceClosuresExist()],
+  ['validation_run_wide_duplicate_execution_fails', () => validationRunWideDuplicateExecutionFails()],
+  ['validation_run_wide_command_digest_tamper_fails', () => validationRunWideCommandDigestTamperFails()],
+  ['validation_node_input_digest_tamper_fails', () => validationNodeInputDigestTamperFails()],
+  ['validation_pr_merge_reuse_requires_base_oid', () => validationPrMergeReuseRequiresBaseOid()],
+  ['validation_diagnostic_manifest_needs_sanitized_digest', () => validationDiagnosticManifestNeedsSanitizedDigest()],
+  ['validation_finalizer_missing_upstream_node_fails', () => validationFinalizerMissingUpstreamNodeFails()],
+  ['validation_finalizer_wrong_upstream_digest_fails', () => validationFinalizerWrongUpstreamDigestFails()],
+  ['validation_finalizer_pass_with_failed_upstream_fails', () => validationFinalizerPassWithFailedUpstreamFails()],
+  ['standing_autonomy_policy_allows_eligible_harness_pr', () => standingAutonomyPolicyAllowsEligibleHarnessPr()],
+  ['standing_autonomy_policy_blocks_stacked_draft', () => standingAutonomyPolicyBlocksStackedDraft()],
+  ['standing_autonomy_policy_rejects_ai_authority_forgery', () => standingAutonomyPolicyRejectsAiAuthorityForgery()],
+  ['standing_autonomy_policy_blocks_forbidden_scope', () => standingAutonomyPolicyBlocksForbiddenScope()],
+  ['standing_autonomy_policy_requires_trusted_policy_digest', () => standingAutonomyPolicyRequiresTrustedPolicyDigest()],
+  ['standing_autonomy_policy_requires_provider_same_head', () => standingAutonomyPolicyRequiresProviderSameHead()],
+  ['standing_autonomy_policy_requires_executor', () => standingAutonomyPolicyRequiresExecutor()],
+  ['standing_autonomy_policy_blocks_self_modification', () => standingAutonomyPolicyBlocksSelfModification()],
+  ['trust_closure_builds_complete_verifier_bundle', () => trustClosureBuildsCompleteVerifierBundle()],
+  ['trust_closure_fails_opaque_dependencies', () => trustClosureFailsOpaqueDependencies()],
+  ['standing_autonomy_policy_rejects_verifier_bundle_mismatch', () => standingAutonomyPolicyRejectsVerifierBundleMismatch()],
+  ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
+  ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
+  ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
+  ['typed_shadow_status_does_not_block_active_gate', () => typedShadowStatusDoesNotBlockActiveGate()],
   ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
@@ -437,6 +1712,19 @@ const cases = [
     return result.applies === true
       && result.blocksActiveGate === false
       && result.effectiveStatus === 'pass_shadow_candidate_fail_non_blocking_active_v127';
+  }],
+  ['v128_shadow_failure_does_not_reenter_reason_summary_as_blocker', () => {
+    const result = buildV127ActiveGateReasonSummaryInput({
+      status: 'pass',
+      v128SelfTestStatus: {
+        status: 'fail',
+        candidateActivationState: 'source_shadow_candidate',
+        safeSummaryOnly: true,
+      },
+    });
+    return result.v128SelfTestStatus.status === 'pass_shadow_candidate_fail_non_blocking_active_v127'
+      && result.v128SelfTestStatus.candidateStatus === 'fail'
+      && result.v128SelfTestStatus.activeGateInfluence === 'non_blocking_shadow_candidate';
   }],
   ['v128_activation_gate_blocks_failed_candidate', () => {
     const result = classifyV128ShadowCandidateForActiveGate('v128SelfTestStatus', {
@@ -517,6 +1805,8 @@ const fixtureGroups = [
   'replay_corpus_execution',
   'state_matrix_full_shadow_candidate_execution',
   'strict_json_and_canonical_digest_execution',
+  'validation_execution_plan_aggregate_finalizer',
+  'standing_autonomy_policy_execution',
   'active_v127_exit_isolation_negative',
 ];
 

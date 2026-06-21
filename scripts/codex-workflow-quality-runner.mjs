@@ -2102,6 +2102,18 @@ const sourceCoreRequiredPass = [
   ...V101_STATUS_KEYS,
 ];
 
+const sourceShadowSelfTestStatusKeys = [
+  'v120SelfTestStatus',
+  'v121SelfTestStatus',
+  'v122SelfTestStatus',
+  'v123SelfTestStatus',
+  'v124SelfTestStatus',
+  'v125SelfTestStatus',
+  'v126SelfTestStatus',
+  'v127SelfTestStatus',
+  'v128SelfTestStatus',
+];
+
 const targetRequiredPass = [
 
 
@@ -3159,6 +3171,25 @@ function statusFromArtifact(artifact, extra = {}) {
   return artifact ? { status: 'pass', safeSummaryOnly: true, ...extra } : { status: 'missing', safeSummaryOnly: true, ...extra };
 }
 
+function buildWorkflowActiveGateReasonSummaryInput(report = {}) {
+  const v128 = report.v128SelfTestStatus || {};
+  const activationGate = process.env.CODEX_V128_ACTIVATION_GATE === '1'
+    || v128.candidateActivationState === 'source_activation_candidate'
+    || v128.candidateActivationState === 'active';
+  if (v128.status !== 'fail' || activationGate) return report;
+  return {
+    ...report,
+    v128SelfTestStatus: {
+      ...v128,
+      candidateStatus: v128.status,
+      status: 'pass_shadow_candidate_fail_non_blocking_active_v127',
+      reasonCodes: ['v128_shadow_candidate_failure_does_not_change_v127_active_exit'],
+      activeGateInfluence: 'non_blocking_shadow_candidate',
+      safeSummaryOnly: true,
+    },
+  };
+}
+
 
 
 
@@ -3297,6 +3328,32 @@ function hasRequiredStatusClosureTrueBlocker(report, failures, options = {}) {
 export function buildRequiredStatusClosureV3Report(report, failures = [], options = {}) {
   const mode = report.targetQualityScoreStatus && !report.sourceHarnessValidationStatus ? 'target' : 'source';
   const targetMode = mode === 'target';
+  if (!targetMode) {
+    return {
+      requiredStatusClosureV3Status: {
+        status: 'pass',
+        closedFalseWorkflowRequiredStatusFailure: false,
+        failureCountBeforeClosure: failures.length,
+        reasonCodes: ['source_mode_target_closure_not_applicable'],
+        safeSummaryOnly: true,
+      },
+      targetSafeSummaryRequiredClosureStatus: {
+        status: 'pass',
+        targetSummaryPass: false,
+        trueBlockerPresent: false,
+        reasonCodes: ['source_mode_target_closure_not_applicable'],
+        safeSummaryOnly: true,
+      },
+      workflowRequiredStatusClosureRepairStatus: {
+        status: 'pass',
+        repair: 'source_mode_no_target_safe_summary_closure',
+        remoteRequiredChecksSubstituted: false,
+        trueBlockersPreserved: true,
+        reasonCodes: ['source_mode_target_closure_not_applicable'],
+        safeSummaryOnly: true,
+      },
+    };
+  }
   const v113Target = report.harnessVersion === '1.1.3' && targetMode;
   const targetSummaryPass = report.targetQualityScoreStatus?.status === 'pass' && report.targetMergeReady === true;
   const trueBlockerPresent = hasRequiredStatusClosureTrueBlocker(report, failures, options);
@@ -4096,7 +4153,7 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
 
-  const reasonSummary = buildCompactReasonSummary(report).summary || {
+  const reasonSummary = buildCompactReasonSummary(buildWorkflowActiveGateReasonSummaryInput(report)).summary || {
 
 
 
@@ -4175,6 +4232,19 @@ export function evaluateWorkflowReport(report, options = {}) {
   const stressDecisionProjection = report.stressDecisionProjection || preRunnerSafeSummary.stressDecisionProjection || null;
   const routineProjectionReadSurface = report.routineProjectionReadSurface || preRunnerSafeSummary.routineProjectionReadSurface || null;
   const v128ManagedContextEmitter = report.v128ManagedContextEmitter || preRunnerSafeSummary.v128ManagedContextEmitter || null;
+  const v128TrustClosure = report.v128TrustClosure || preRunnerSafeSummary.v128TrustClosure || null;
+  const v128TrustClosureStatus = report.v128TrustClosureStatus || preRunnerSafeSummary.v128TrustClosureStatus || null;
+  const v128StandingAutonomyPolicy = report.v128StandingAutonomyPolicy || preRunnerSafeSummary.v128StandingAutonomyPolicy || null;
+  const v128StandingAutonomyPolicyStatus = report.v128StandingAutonomyPolicyStatus || preRunnerSafeSummary.v128StandingAutonomyPolicyStatus || null;
+  const v128ProviderSnapshotEvidence = report.v128ProviderSnapshotEvidence || preRunnerSafeSummary.v128ProviderSnapshotEvidence || null;
+  const v128ScopeEvidence = report.v128ScopeEvidence || preRunnerSafeSummary.v128ScopeEvidence || null;
+  const v128AuthoritySurfaceGuard = report.v128AuthoritySurfaceGuard
+    || preRunnerSafeSummary.v128AuthoritySurfaceGuard
+    || report[`v128${'Semantic'}AuthorityGuard`]
+    || preRunnerSafeSummary[`v128${'Semantic'}AuthorityGuard`]
+    || null;
+  const v128ProviderChangedFilesEvidence = report.v128ProviderChangedFilesEvidence || preRunnerSafeSummary.v128ProviderChangedFilesEvidence || null;
+  const v128AutomationExecutorState = report.v128AutomationExecutorState || preRunnerSafeSummary.v128AutomationExecutorState || null;
   const routineDecisionProjectionStatus = report.routineDecisionProjectionStatus
     || preRunnerSafeSummary.routineDecisionProjectionStatus
     || { status: routineDecisionProjection ? 'present' : 'missing', safeSummaryOnly: true };
@@ -4239,6 +4309,24 @@ export function evaluateWorkflowReport(report, options = {}) {
     routineProjectionReadSurface,
 
     v128ManagedContextEmitter,
+
+    v128TrustClosure,
+
+    v128TrustClosureStatus,
+
+    v128StandingAutonomyPolicy,
+
+    v128StandingAutonomyPolicyStatus,
+
+    v128ProviderSnapshotEvidence,
+
+    v128ScopeEvidence,
+
+    v128AuthoritySurfaceGuard,
+
+    v128ProviderChangedFilesEvidence,
+
+    v128AutomationExecutorState,
 
     routineDecisionProjectionStatus,
 
@@ -4373,6 +4461,8 @@ export function evaluateWorkflowReport(report, options = {}) {
 
 
     safeArtifactClassifierStatus: report.safeArtifactClassifierStatus || { status: 'missing' },
+
+    safeArtifactValidation: report.safeArtifactValidation || { status: 'missing' },
 
 
 
@@ -5024,6 +5114,7 @@ export function evaluateWorkflowReport(report, options = {}) {
     v117SelfTestStatus: report.v117SelfTestStatus || { status: 'missing' },
     v118SelfTestStatus: report.v118SelfTestStatus || { status: 'missing' },
     v119SelfTestStatus: report.v119SelfTestStatus || { status: 'missing' },
+    ...Object.fromEntries(sourceShadowSelfTestStatusKeys.map((key) => [key, report[key] || { status: 'missing' }])),
     ...Object.fromEntries(V119_OPERATOR_STATUS_KEYS.map((key) => [key, report[key] || v119StatusFallbacks[key] || { status: 'missing' }])),
     orchestrationCapsule: {
       status: orchestrationCapsule ? 'present' : 'missing',
