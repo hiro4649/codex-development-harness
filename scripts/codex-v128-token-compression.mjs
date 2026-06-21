@@ -378,7 +378,6 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     cacheKeyDigest: reuse.reuseDecision === 'miss' ? null : (reuse.cacheKeyDigest || null),
     cacheKeyFieldsDigest: reuse.cacheKeyFields ? digestValue(reuse.cacheKeyFields) : null,
     nodeCacheKeyDigestsDigest: reuse.nodeCacheKeyDigests ? digestValue(reuse.nodeCacheKeyDigests) : null,
-    safeSummaryOnly: true,
   };
   const taxonomy = plan.stableDiagnosticTaxonomy || {};
   compact.stableDiagnosticTaxonomy = {
@@ -390,7 +389,6 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     decisionInputManifestTaxonomyStatus: taxonomy.decisionInputManifestTaxonomyStatus || 'unknown',
     decisionInputManifestSanitizedDigest: taxonomy.decisionInputManifestSanitizedDigest || null,
     fieldSetDigest: Array.isArray(taxonomy.fields) ? digestValue(taxonomy.fields) : null,
-    safeSummaryOnly: true,
   };
   const workspace = plan.workspaceIdentity || {};
   compact.workspaceIdentity = {
@@ -401,13 +399,11 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     observationState: workspace.observationState || 'unknown',
     rawWorkspacePathUploaded: workspace.rawWorkspacePathUploaded === true,
     observationDigest: workspace.observationDigest || null,
-    safeSummaryOnly: true,
   };
   const phase = plan.phaseProgress || {};
   compact.phaseProgress = {
     status: phase.status || 'unknown',
     currentPhase: phase.currentPhase || null,
-    safeSummaryOnly: true,
   };
   const originalTypedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
   const typedResults = {};
