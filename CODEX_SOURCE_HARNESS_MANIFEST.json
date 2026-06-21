@@ -105,7 +105,9 @@
     "docs/process/CODEX_V128_REPLAY_CORPUS.json",
     "scripts/codex-v128-self-test.mjs",
     "scripts/codex-v128-projection-reader.mjs",
-    "scripts/codex-v128-managed-context-emitter.mjs"
+    "scripts/codex-v128-managed-context-emitter.mjs",
+    "scripts/codex-v128-integrity-lib.mjs",
+    "scripts/codex-v128-state-matrix.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -570,7 +572,9 @@
     "docs/process/CODEX_V128_REPLAY_CORPUS.json",
     "scripts/codex-v128-self-test.mjs",
     "scripts/codex-v128-projection-reader.mjs",
-    "scripts/codex-v128-managed-context-emitter.mjs"
+    "scripts/codex-v128-managed-context-emitter.mjs",
+    "scripts/codex-v128-integrity-lib.mjs",
+    "scripts/codex-v128-state-matrix.mjs"
   ],
   "scriptNames": [
     "codex-local-quality-gate.mjs",
@@ -1833,6 +1837,9 @@
       "boundedProjectionReaderStdoutBytesMax": 1600,
       "boundedProjectionReaderStrictJson": true,
       "managedContextEmitter": "scripts/codex-v128-managed-context-emitter.mjs",
+      "projectionIntegrityBindingRequired": true,
+      "projectionIntegrityChecks": ["schema", "head", "source_digest"],
+      "stateMatrixExecutor": "scripts/codex-v128-state-matrix.mjs",
       "perTransitionManagedContextBytesMax": 4096,
       "managedContextBytesObserved": true,
       "managedContextObservationSource": "v128_managed_context_emitter",
@@ -1860,7 +1867,8 @@
     "shadowTargetCanary": "not_started",
     "activationReady": false,
     "observedProjectionRequiredForActivation": true,
-    "stateMatrixCoverage": "partial_shadow_candidate",
+    "stateMatrixCoverage": "full_shadow_candidate",
+    "stateMatrixFullEnumProductExecuted": true,
     "postMergeReplayCoverage": "partial_shadow_candidate",
     "placeholderReceiptValid": false
   }

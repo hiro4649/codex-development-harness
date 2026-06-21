@@ -65,6 +65,11 @@ import { buildWorkerProofReport } from './codex-worker-proof-capsule.mjs';
 import { buildOwnerDecisionBriefReport } from './codex-owner-decision-brief.mjs';
 import { buildV128RoutineProjectionReadSurface } from './codex-v128-projection-reader.mjs';
 import { buildV128ManagedContextEmitter } from './codex-v128-managed-context-emitter.mjs';
+import {
+  buildV128ProjectionSourceDigestBinding,
+  validateV128ProjectionIntegrity,
+} from './codex-v128-integrity-lib.mjs';
+import { readAndEvaluateV128StateMatrix } from './codex-v128-state-matrix.mjs';
 
 
 
@@ -255,6 +260,13 @@ function firstKnownHead(...values) {
     const text = String(value || '').trim();
     if (text && text !== 'unknown' && text !== 'null' && text !== 'undefined') return text;
   }
+  try {
+    const result = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: process.cwd(), encoding: 'utf8' });
+    const head = String(result.stdout || '').trim();
+    if (result.status === 0 && /^[a-f0-9]{40}$/.test(head)) return head;
+  } catch {
+    // Keep the explicit unknown sentinel when git metadata is unavailable.
+  }
   return 'unknown';
 }
 
@@ -277,6 +289,33 @@ function buildV117ArtifactEntries(head) {
       head,
     };
   });
+}
+
+function bindEvidenceCapsuleHead(evidenceCapsule = {}, head = 'unknown') {
+  const fillHead = (value) => {
+    const text = String(value || '').trim();
+    return text && text !== 'unknown' && text !== 'null' && text !== 'undefined' ? text : head;
+  };
+  const keepProviderObservation = (value) => {
+    const text = String(value || '').trim();
+    return text && text !== 'unknown' && text !== 'null' && text !== 'undefined' ? text : 'unknown';
+  };
+  return {
+    ...evidenceCapsule,
+    head,
+    headSha: head,
+    currentHeadEvidence: evidenceCapsule.currentHeadEvidence ? {
+      ...evidenceCapsule.currentHeadEvidence,
+      headSha: fillHead(evidenceCapsule.currentHeadEvidence.headSha),
+      prHeadSha: keepProviderObservation(evidenceCapsule.currentHeadEvidence.prHeadSha),
+      workflowHeadSha: keepProviderObservation(evidenceCapsule.currentHeadEvidence.workflowHeadSha),
+      artifactHeadSha: keepProviderObservation(evidenceCapsule.currentHeadEvidence.artifactHeadSha),
+    } : evidenceCapsule.currentHeadEvidence,
+    freshnessTuple: evidenceCapsule.freshnessTuple ? {
+      ...evidenceCapsule.freshnessTuple,
+      headSha: fillHead(evidenceCapsule.freshnessTuple.headSha),
+    } : evidenceCapsule.freshnessTuple,
+  };
 }
 
 function writeV117LoadBearingArtifacts(report = {}) {
@@ -306,10 +345,24 @@ function writeV117LoadBearingArtifacts(report = {}) {
     loadBearing: true,
     safeSummaryOnly: true,
   };
-  const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head);
-  const stressDecisionProjection = buildV128StressDecisionProjection(report);
+  if (report.evidenceCapsule) {
+    report.evidenceCapsule = bindEvidenceCapsuleHead(report.evidenceCapsule, head);
+  }
+  const projectionInputs = {
+    finalDecision: report.finalDecision || null,
+    evidenceCapsule: report.evidenceCapsule || null,
+    decisionCapsule,
+  };
+  const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head, projectionInputs);
+  const stressDecisionProjection = buildV128StressDecisionProjection(report, projectionInputs);
   const routineProjectionReadSurface = buildV128RoutineProjectionReadSurface(routineDecisionProjection);
+  const v128ProjectionIntegrityStatus = validateV128ProjectionIntegrity(routineDecisionProjection, {
+    ...projectionInputs,
+    verifySourceDigest: true,
+    verifyInputDigest: true,
+  });
   const v128ManagedContextEmitter = buildV128ManagedContextEmitter({ headSha: head });
+  const v128StateMatrixExecution = readAndEvaluateV128StateMatrix();
   if (report.orchestrationCapsule?.deterministicDecisionProjection) {
     report.orchestrationCapsule.deterministicDecisionProjection = {
       ...report.orchestrationCapsule.deterministicDecisionProjection,
@@ -370,18 +423,26 @@ function writeV117LoadBearingArtifacts(report = {}) {
   }
   report.routineDecisionProjection = routineDecisionProjection;
   report.routineProjectionReadSurface = routineProjectionReadSurface;
+  report.v128ProjectionIntegrityStatus = v128ProjectionIntegrityStatus;
   report.v128ManagedContextEmitter = v128ManagedContextEmitter;
+  report.v128StateMatrixExecution = v128StateMatrixExecution;
   report.routineDecisionProjectionStatus = {
     status: routineDecisionProjection.projectionCanonicalBytes <= 1600
       && stressDecisionProjection.projectionCanonicalBytes <= 2048
       && routineProjectionReadSurface.status === 'pass'
+      && v128ProjectionIntegrityStatus.status === 'pass'
+      && v128StateMatrixExecution.status === 'pass'
       ? 'pass'
       : 'fail',
     projectionCanonicalBytes: routineDecisionProjection.projectionCanonicalBytes,
     stressProjectionCanonicalBytes: stressDecisionProjection.projectionCanonicalBytes,
     boundedReaderStatus: routineProjectionReadSurface.status,
+    projectionIntegrityStatus: v128ProjectionIntegrityStatus.status,
+    projectionPayloadIntegrityState: v128ProjectionIntegrityStatus.payloadIntegrityState,
+    projectionInputBindingState: v128ProjectionIntegrityStatus.inputBindingState,
+    projectionGeneratorContractState: v128ProjectionIntegrityStatus.generatorContractState,
     boundedReaderSurfaceBytes: routineProjectionReadSurface.surfaceCanonicalBytes,
-    boundedReaderBytesMax: routineProjectionReadSurface.routineReadSurfaceBytesMax,
+    boundedReaderBytesMax: 1600,
     boundedReaderColdArtifactRead: routineProjectionReadSurface.coldArtifactRead,
     boundedReaderManagedSafeArtifactRead: routineProjectionReadSurface.managedSafeArtifactRead,
     boundedReaderManagedContextBytesObserved: routineProjectionReadSurface.managedContextBytesObserved,
@@ -389,6 +450,12 @@ function writeV117LoadBearingArtifacts(report = {}) {
     managedContextBytes: v128ManagedContextEmitter.managedContextBytes,
     managedContextBytesMax: v128ManagedContextEmitter.managedContextBytesMax,
     managedContextMeasurementSource: v128ManagedContextEmitter.managedContextMeasurementSource,
+    stateMatrixStatus: v128StateMatrixExecution.status,
+    stateMatrixCoverage: v128StateMatrixExecution.coverage,
+    stateMatrixTotalCells: v128StateMatrixExecution.totalCells,
+    stateMatrixTransitionCells: v128StateMatrixExecution.transitionCells,
+    stateMatrixHardInvalidCells: v128StateMatrixExecution.hardInvalidCells,
+    stateMatrixUnresolvedCells: v128StateMatrixExecution.unresolvedCells,
     projectionBytesMax: 1600,
     stressProjectionBytesMax: 2048,
     observed: true,
@@ -433,7 +500,9 @@ function writeV117LoadBearingArtifacts(report = {}) {
     routineDecisionProjection,
     stressDecisionProjection,
     routineProjectionReadSurface,
+    v128ProjectionIntegrityStatus,
     v128ManagedContextEmitter,
+    v128StateMatrixExecution,
     routineDecisionProjectionStatus: report.routineDecisionProjectionStatus,
     ...Object.fromEntries(V119_STATUS_KEYS.map((key) => [key, report[key]])),
     orchestrationCapsule: {
@@ -3546,7 +3615,7 @@ function finalizeMeasuredProjection(projectionBase) {
   return projection;
 }
 
-function buildV128RoutineDecisionProjection(report = {}, head = 'unknown') {
+function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', projectionInputs = {}) {
   const blockingReasons = report.reasonSummaryStatus?.summary?.blockingReasons || [];
   const projectionBase = {
     schemaVersion: '1.2.8',
@@ -3572,11 +3641,15 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown') {
     observed: true,
     metricsSource: 'runtime_safe_summary_projection',
   };
+  projectionBase.sourceBinding = buildV128ProjectionSourceDigestBinding(head || 'unknown', {
+    ...projectionInputs,
+    projectionPayload: projectionBase,
+  });
   return finalizeMeasuredProjection(projectionBase);
 }
 
-function buildV128StressDecisionProjection(report = {}) {
-  return finalizeMeasuredProjection({
+function buildV128StressDecisionProjection(report = {}, projectionInputs = {}) {
+  const projectionBase = {
     schemaVersion: '1.2.8',
     projectionKind: 'routine_decision_projection_stress_fixture',
     authority: 'non_authoritative_projection',
@@ -3599,7 +3672,12 @@ function buildV128StressDecisionProjection(report = {}) {
     safeNextAction: 'owner_merge_decision_only',
     observed: true,
     metricsSource: 'runtime_safe_summary_projection_stress_fixture',
+  };
+  projectionBase.sourceBinding = buildV128ProjectionSourceDigestBinding('f'.repeat(40), {
+    ...projectionInputs,
+    projectionPayload: projectionBase,
   });
+  return finalizeMeasuredProjection(projectionBase);
 }
 
 function buildV127RemoteEvidenceContext(env = process.env) {
@@ -3971,7 +4049,7 @@ function runV119Gates(report, gateEnv) {
     worktreeCleanBefore: process.env.CODEX_WORKTREE_CLEAN_BEFORE === 'false' ? false : true,
     worktreeCleanAfter: process.env.CODEX_WORKTREE_CLEAN_AFTER === 'false' ? false : true,
     terminalAction: process.env.CODEX_TERMINAL_ACTION || 'create_pr_only',
-    allowedFiles: ['AGENTS.md', 'README.md', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V128_CONTRACT_SCHEMA.json', 'docs/process/CODEX_V128_REASON_REGISTRY.json', 'docs/process/CODEX_V128_STATE_MATRIX.json', 'docs/process/CODEX_V128_PRESERVATION_MATRIX.json', 'docs/process/CODEX_V128_REPLAY_CORPUS.json', 'scripts/codex-v128-self-test.mjs', 'scripts/codex-v128-projection-reader.mjs', 'scripts/codex-v128-managed-context-emitter.mjs', 'docs/process/CODEX_V127_SPEC.md', 'scripts/codex-v127-self-test.mjs', 'docs/process/CODEX_V126_SPEC.md', 'scripts/codex-v126-self-test.mjs', 'docs/process/CODEX_V125_SPEC.md', 'scripts/codex-v125-self-test.mjs', 'docs/process/CODEX_V124_SPEC.md', 'scripts/codex-v124-self-test.mjs', 'docs/process/CODEX_V123_SPEC.md', 'scripts/codex-v123-self-test.mjs', 'docs/process/CODEX_V122_SPEC.md', 'scripts/codex-v122-self-test.mjs', 'docs/process/CODEX_V121_SPEC.md', 'scripts/codex-v121-self-test.mjs', 'scripts/codex-v107-gate-lib.mjs', 'scripts/codex-orchestration-capsule.mjs', 'scripts/codex-worker-proof-capsule.mjs', 'scripts/codex-owner-decision-brief.mjs', 'scripts/codex-local-quality-gate.mjs', 'scripts/codex-workflow-quality-runner.mjs', 'scripts/codex-harness-version.mjs'],
+    allowedFiles: ['AGENTS.md', 'README.md', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V128_CONTRACT_SCHEMA.json', 'docs/process/CODEX_V128_REASON_REGISTRY.json', 'docs/process/CODEX_V128_STATE_MATRIX.json', 'docs/process/CODEX_V128_PRESERVATION_MATRIX.json', 'docs/process/CODEX_V128_REPLAY_CORPUS.json', 'scripts/codex-v128-self-test.mjs', 'scripts/codex-v128-projection-reader.mjs', 'scripts/codex-v128-managed-context-emitter.mjs', 'scripts/codex-v128-integrity-lib.mjs', 'scripts/codex-v128-state-matrix.mjs', 'docs/process/CODEX_V127_SPEC.md', 'scripts/codex-v127-self-test.mjs', 'docs/process/CODEX_V126_SPEC.md', 'scripts/codex-v126-self-test.mjs', 'docs/process/CODEX_V125_SPEC.md', 'scripts/codex-v125-self-test.mjs', 'docs/process/CODEX_V124_SPEC.md', 'scripts/codex-v124-self-test.mjs', 'docs/process/CODEX_V123_SPEC.md', 'scripts/codex-v123-self-test.mjs', 'docs/process/CODEX_V122_SPEC.md', 'scripts/codex-v122-self-test.mjs', 'docs/process/CODEX_V121_SPEC.md', 'scripts/codex-v121-self-test.mjs', 'scripts/codex-v107-gate-lib.mjs', 'scripts/codex-orchestration-capsule.mjs', 'scripts/codex-worker-proof-capsule.mjs', 'scripts/codex-owner-decision-brief.mjs', 'scripts/codex-local-quality-gate.mjs', 'scripts/codex-workflow-quality-runner.mjs', 'scripts/codex-harness-version.mjs'],
     forbiddenFiles: ['package.json', 'package-lock.json', 'pnpm-lock.yaml', '.github/workflows/quality-gate.yml'],
     acceptanceCriteria: ['three_p0_artifacts_only', 'v118_final_decision_pointer', 'v119_compatibility_preserved', 'v120_compatibility_preserved', 'v121_compatibility_preserved', 'v122_compatibility_preserved', 'v123_compatibility_preserved', 'v124_compatibility_preserved', 'v125_compatibility_preserved', 'v126_compatibility_preserved', 'v127_compatibility_preserved', 'v128_self_test'],
     nonGoals: ['target_rollout', 'product_code', 'workflow_engine'],

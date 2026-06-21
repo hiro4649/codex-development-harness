@@ -239,9 +239,28 @@ Specification PR is allowed. Source Shadow Candidate is conditional on the
 v128 self-test, Preservation Matrix, replay corpus, and active v1.2.7 gate
 impact remaining clean. Source Activation, active target canary, and portfolio
 rollout are not part of this Source body PR unless separately instructed.
-State Matrix and post-merge replay coverage may be `partial_shadow_candidate`
-for this PR only. That partial status blocks Source Activation until the full
-finite enum product and post-merge replay are executed.
+State Matrix coverage is now `full_shadow_candidate` for the declared
+three-axis shadow matrix: the finite enum product is executed by
+`scripts/codex-v128-state-matrix.mjs`, all valid transition cells are unique,
+and all other declared-axis cells fail closed as hard-invalid transition inputs.
+Post-merge replay coverage remains `partial_shadow_candidate`; that
+partial status blocks Source Activation until sentinel, recovery, and verify
+lanes are executed against a real merged main.
+
+The bounded Projection reader verifies the extracted Projection schema, head,
+and Projection payload digest without reading additional cold artifacts. The
+source binding is generated from the v128 Projection/state-matrix contract
+files, reader scripts, and the active local quality-gate Projection generator.
+The quality gate additionally recomputes the Projection input digest from the
+final saved `codex-final-decision.safe.json`, `codex-evidence-capsule.safe.json`,
+and `codex-decision-capsule.safe.json` shapes before marking
+`projectionInputBindingState=verified`. It is not merge authority and does not
+replace the Final Decision or Evidence Capsule.
+
+Provider-observed heads (`prHeadSha`, `workflowHeadSha`, `artifactHeadSha`)
+must remain provider observations. Local git HEAD may populate top-level
+artifact metadata, but it must not substitute for missing provider-observed
+same-head values.
 
 Activation remains NO-GO unless all of the following are proven by machine
 tests, not static defaults:
@@ -256,6 +275,7 @@ bounded Projection reader extracts only routineDecisionProjection
 bounded Projection reader model-facing surface <= 1600 measured canonical UTF-8 bytes
 bounded Projection reader actual stdout <= 1600 measured UTF-8 bytes
 bounded Projection reader duplicate-key rejection pass
+bounded Projection reader schema/head/source digest binding pass
 harnessManagedContextBytesEmitted <= 4096
 source and target deterministic replay pass
 PR body display-only replay pass

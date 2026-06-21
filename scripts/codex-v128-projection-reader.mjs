@@ -4,6 +4,7 @@
 
 import fs from 'node:fs';
 import process from 'node:process';
+import { validateV128ProjectionIntegrity } from './codex-v128-integrity-lib.mjs';
 
 const ROUTINE_READER_OUTPUT_BYTES_MAX = 1600;
 
@@ -122,14 +123,19 @@ function finalizeSurface(surfaceBase) {
   for (let i = 0; i < 8; i += 1) {
     const bytes = canonicalJsonBytes(surface);
     const withinBudget = bytes <= 1600;
+    const integrityPass = surface.projectionIntegrityStatus === 'pass';
     const next = {
       ...surface,
       surfaceCanonicalBytes: bytes,
       withinRoutineReadBudget: withinBudget,
-      status: withinBudget && surface.projectionPresent === true ? 'pass' : 'fail',
-      reasonCodes: withinBudget && surface.projectionPresent === true
+      status: withinBudget && surface.projectionPresent === true && integrityPass ? 'pass' : 'fail',
+      reasonCodes: withinBudget && surface.projectionPresent === true && integrityPass
         ? []
-        : [surface.projectionPresent === true ? 'routine_projection_read_surface_over_budget' : 'routine_projection_missing'],
+        : [
+            surface.projectionPresent !== true
+              ? 'routine_projection_missing'
+              : (integrityPass ? 'routine_projection_read_surface_over_budget' : 'routine_projection_integrity_failed'),
+          ],
     };
     if (next.surfaceCanonicalBytes === surface.surfaceCanonicalBytes
       && next.withinRoutineReadBudget === surface.withinRoutineReadBudget
@@ -144,28 +150,22 @@ function finalizeSurface(surfaceBase) {
 
 export function buildV128RoutineProjectionReadSurface(projection, input = {}) {
   const projectionPresent = projection !== null && typeof projection === 'object' && !Array.isArray(projection);
-  const sourceArtifactBytesObserved = input.sourceArtifactBytesObserved === true;
-  const sourceArtifactBytes = sourceArtifactBytesObserved ? Math.max(0, Number(input.sourceArtifactBytes || 0)) : null;
-  return finalizeSurface({
+  const integrity = projectionPresent
+    ? validateV128ProjectionIntegrity(projection, { verifySourceDigest: input.verifySourceDigest === true })
+    : { status: 'fail', reasonCodes: ['routine_projection_missing'] };
+  const surface = {
     schemaVersion: '1.2.8',
     surfaceKind: 'routine_projection_read_surface',
-    sourceArtifact: input.sourceArtifact || 'codex-quality-gate-safe-summary.json',
-    extractedField: 'routineDecisionProjection',
-    authority: 'non_authoritative_projection',
-    activeHarnessVersion: '1.2.7',
-    candidateHarnessVersion: '1.2.8',
-    candidateActivationState: 'source_shadow_candidate',
     managedSafeArtifactRead: 1,
     coldArtifactRead: 0,
-    routineReadSurfaceBytesMax: 1600,
-    sourceArtifactBytesObserved,
-    sourceArtifactBytes,
     managedContextBytesObserved: false,
-    managedContextMeasurementSource: 'not_observed',
     projectionPresent,
+    projectionIntegrityStatus: integrity.status,
     routineDecisionProjection: projectionPresent ? projection : null,
     safeSummaryOnly: true,
-  });
+  };
+  if (integrity.reasonCodes?.length) surface.projectionIntegrityReasonCodes = integrity.reasonCodes;
+  return finalizeSurface(surface);
 }
 
 function buildReaderFailure(reasonCode, details = {}) {

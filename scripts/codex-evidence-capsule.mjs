@@ -22,6 +22,11 @@ function requiredValue(value) {
   return value || 'needs_run';
 }
 
+function observedProviderHead(value) {
+  const text = String(value || '').trim();
+  return text && text !== 'unknown' && text !== 'null' && text !== 'undefined' ? text : 'unknown';
+}
+
 export function buildEvidenceCapsule(input = {}) {
   const terminalAction = input.terminalAction || 'create_pr_only';
   const separateCiRequired = input.separateRequiredCiCheckExists === true;
@@ -30,9 +35,9 @@ export function buildEvidenceCapsule(input = {}) {
   const artifactPointer = input.artifactPointer || input.artifactName || input.artifactId || '';
   const artifactId = requiredValue(input.artifactId || artifactPointer);
   const artifactName = input.artifactName || null;
-  const prHeadSha = input.prHeadSha || input.prHead || headSha;
-  const workflowHeadSha = input.workflowHeadSha || input.workflowHead || headSha;
-  const artifactHeadSha = input.artifactHeadSha || input.artifactHead || headSha;
+  const prHeadSha = observedProviderHead(input.prHeadSha || input.prHead);
+  const workflowHeadSha = observedProviderHead(input.workflowHeadSha || input.workflowHead);
+  const artifactHeadSha = observedProviderHead(input.artifactHeadSha || input.artifactHead);
   const ciRunId = separateCiRequired ? requiredValue(input.ciRunId) : notRequired('no_separate_required_ci_check');
   const remoteRequired = terminalAction === 'merge_current_pr';
   const fresh = headSha !== 'unknown' &&

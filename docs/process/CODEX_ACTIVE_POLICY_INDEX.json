@@ -191,6 +191,9 @@
       "boundedReaderStdoutBytesMax": 1600,
       "boundedReaderStrictJson": true,
       "managedContextEmitter": "scripts/codex-v128-managed-context-emitter.mjs",
+      "projectionIntegrityBindingRequired": true,
+      "projectionIntegrityChecks": ["schema", "head", "source_digest"],
+      "stateMatrixExecutor": "scripts/codex-v128-state-matrix.mjs",
       "managedContextBytesObserved": true,
       "managedContextObservationSource": "v128_managed_context_emitter",
       "managedContextObservationScope": "source_shadow_candidate",
@@ -202,7 +205,8 @@
     "shadowTargetCanary": "not_started",
     "activationReady": false,
     "observedProjectionRequiredForActivation": true,
-    "stateMatrixCoverage": "partial_shadow_candidate",
+    "stateMatrixCoverage": "full_shadow_candidate",
+    "stateMatrixFullEnumProductExecuted": true,
     "postMergeReplayCoverage": "partial_shadow_candidate",
     "placeholderReceiptValid": false
   }
