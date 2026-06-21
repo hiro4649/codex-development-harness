@@ -6,9 +6,9 @@ import crypto from 'node:crypto';
 import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-finalizer.mjs';
 import { buildV128LoopAdmissionDigest } from './codex-v128-validation-execution-plan.mjs';
 
-export const V128_SAFE_SUMMARY_STORED_BYTES_SOFT_MAX = 6144;
+export const V128_SAFE_SUMMARY_STORED_BYTES_SOFT_MAX = 5600;
 export const V128_SAFE_SUMMARY_ROUTINE_SURFACE_BYTES_MAX = 2560;
-export const V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX = 58000;
+export const V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX = 55000;
 
 export function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -60,22 +60,15 @@ function compactManagedContext(value = {}) {
   return {
     status: value.status || 'missing',
     managedContextEnvelopeBytes: Number(value.managedContextEnvelopeBytes || value.managedContextBytes || 0),
-    managedContextMeasurementSource: value.managedContextMeasurementSource || 'not_observed',
-    activeInstructionSourceSetDigest: value.activeInstructionSourceSetDigest || null,
-    residentContextDigest: value.residentContextDigest || null,
-    residentContextBytes: Number(value.residentContextBytes || 0),
-    deltaPacketDigest: value.deltaPacketDigest || null,
     deltaContextBytes: Number(value.deltaContextBytes || 0),
     fullContextResendCount: Number(value.fullContextResendCount || 0),
     compiledActiveInstructionBytes: Number(value.compiledActiveInstructionBytes || value.compiledContextBytes || 0),
-    compiledContextDigest: value.compiledContextDigest || null,
     routineColdArtifactRead: Number(value.routineColdArtifactRead || 0),
     legacyRead: Number(value.legacyRead || 0),
     foreignProfileRead: Number(value.foreignProfileRead || 0),
     reviewerFanout: Number(value.reviewerFanout || 0),
     routineSelectedSkill: Number(value.routineSelectedSkill || 0),
     repeatedSafetyText: Number(value.repeatedSafetyText || 0),
-    missingBindingCount: Array.isArray(value.missingBindingIds) ? value.missingBindingIds.length : 0,
     safeSummaryOnly: true,
   };
 }
@@ -87,6 +80,7 @@ function compactValidationPlan(plan = {}, status = {}) {
   const requeue = plan.failureDirectedRequeue || {};
   const economy = plan.loopEconomy || {};
   const admission = plan.loopAdmissionRouter || {};
+  const cacheCanary = plan.realCacheCanary || {};
   const summary = {
     status: status.status || 'missing',
     observationState: status.observationState || plan.observationState || 'unknown',
@@ -99,10 +93,12 @@ function compactValidationPlan(plan = {}, status = {}) {
     loopBudgetState: economy.budgetState || 'unknown',
     executionMode: admission.executionMode || 'unknown',
     admissionStatus: admission.admissionStatus || 'unknown',
+    realCacheCanaryStatus: cacheCanary.status || 'unknown',
     loopTransitionCode: admission.loopTransitionCode || 'unknown',
     acceptedChangeState: economy.acceptedChangeState || 'validation_pass',
     residentAndDeltaBytesPerValidatedPass: economy.residentAndDeltaBytesPerValidatedPass ?? null,
     modelInvocationObserved: economy.modelInvocationObserved === true,
+    modelTransportDigest: economy.modelInvocationObserved === true ? (economy.modelTransportDigest || null) : null,
     fullContextResendCount: Number(economy.fullContextResendCount || 0),
     deltaContextBytes: Number(economy.deltaContextBytes || 0),
     safeSummaryOnly: true,
@@ -115,15 +111,9 @@ function compactValidationPlan(plan = {}, status = {}) {
 }
 
 function compactTrustClosure(trustClosure = {}, trustStatus = {}) {
-  const roleClosures = trustClosure.roleClosures || {};
-  const top = roleClosures.top_level || {};
   return {
     status: trustStatus.status || trustClosure.status || 'missing',
     trustClosureDigest: trustClosure.trustClosureDigest || null,
-    closureFileCount: Number(trustClosure.closureFileCount || 0),
-    roleClosureCount: Object.keys(roleClosures).length,
-    unresolvedRelativeImportCount: Number(top.unresolvedRelativeImportCount || 0),
-    unsupportedDynamicImportCount: Number(top.unsupportedDynamicImportCount || 0),
     safeSummaryOnly: true,
   };
 }
@@ -446,6 +436,9 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     validationNodeInvocationCount: Number(economy.validationNodeInvocationCount || 0),
     modelInvocationObserved: economy.modelInvocationObserved === true,
     modelInvocationCount: economy.modelInvocationCount ?? null,
+    modelInputBytes: economy.modelInvocationObserved === true ? Number(economy.modelInputBytes || 0) : null,
+    modelOutputBytes: economy.modelInvocationObserved === true ? Number(economy.modelOutputBytes || 0) : null,
+    modelTransportDigest: economy.modelInvocationObserved === true ? (economy.modelTransportDigest || null) : null,
     fullContextResendCount: Number(economy.fullContextResendCount || 0),
     deltaContextBytes: Number(economy.deltaContextBytes || 0),
     executedNodeCount: Number(economy.executedNodeCount || 0),
@@ -485,6 +478,17 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     storesRawLogs: memory.storesRawLogs === true,
     storesFullDiff: memory.storesFullDiff === true,
     storesConversation: memory.storesConversation === true,
+  };
+  const cacheCanary = plan.realCacheCanary || {};
+  compact.realCacheCanary = {
+    status: cacheCanary.status || 'unknown',
+    observed: cacheCanary.observed === true,
+    coldMissExecutedEligibleNodeCount: Number(cacheCanary.coldMiss?.executedEligibleNodeCount || 0),
+    realHitReusedEligibleNodeCount: Number(cacheCanary.realHit?.reusedEligibleNodeCount || 0),
+    realPartialHitExecutedNodeCount: Array.isArray(cacheCanary.realPartialHit?.executedNodeRefs) ? cacheCanary.realPartialHit.executedNodeRefs.length : 0,
+    unaffectedNodeRerunCount: Number(cacheCanary.realPartialHit?.unaffectedNodeRerunCount || 0),
+    canaryDigest: cacheCanary.canaryDigest || null,
+    canaryTransportDigest: cacheCanary.canaryTransportDigest || null,
   };
   const originalTypedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
   const typedResults = {};

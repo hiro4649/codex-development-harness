@@ -16,6 +16,7 @@ const LOOP_ADMISSION_STATUSES = new Set(['admitted', 'blocked']);
 const LOOP_TRANSITION_CODES = new Set(['LOOP_NOT_REQUIRED', 'REPAIR_FAILED_NODE', 'STOP_NO_PROGRESS', 'WAIT_FOR_LOOP_EVIDENCE', 'WAIT_FOR_PROTECTED_EXECUTOR']);
 const OPERATOR_NEXT_ACTION_CODES = new Set(['auto_wait', 'auto_rebase', 'auto_merge', 'auto_reject', 'auto_repair', 'auto_ready', 'auto_process_base_pr']);
 const ACCEPTED_CHANGE_STATES = new Set(['validation_pass', 'merged', 'rejected', 'quarantined']);
+const LOOP_BUDGET_STATES = new Set(['observed_within_budget', 'observed_over_budget', 'incomplete_observation']);
 const FINALIZER_MODES = new Set(['aggregate_only']);
 const EXECUTION_STATES = new Set(['executed', 'reused', 'rerun']);
 const NODE_STATUSES = new Set(['pass', 'fail', 'skipped']);
@@ -92,6 +93,10 @@ function digestValue(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
 }
 
+function isSha256Digest(value) {
+  return /^sha256:[a-f0-9]{64}$/.test(String(value || ''));
+}
+
 export function buildV128LoopAdmissionDigestInput(router = {}) {
   const evidence = router.evidenceStates || {};
   return {
@@ -117,6 +122,10 @@ export function buildV128LoopAdmissionDigestInput(router = {}) {
       agentEndToEndCapabilityObserved: evidence.agentEndToEndCapabilityObserved === true,
       economicBenefitObserved: evidence.economicBenefitObserved === true,
       repairableFailureObserved: evidence.repairableFailureObserved === true,
+      objectiveContractDigest: isSha256Digest(evidence.objectiveContractDigest) ? evidence.objectiveContractDigest : null,
+      capabilityProfileDigest: isSha256Digest(evidence.capabilityProfileDigest) ? evidence.capabilityProfileDigest : null,
+      economicsObservationDigest: isSha256Digest(evidence.economicsObservationDigest) ? evidence.economicsObservationDigest : null,
+      repairableFailureEvidenceDigest: isSha256Digest(evidence.repairableFailureEvidenceDigest) ? evidence.repairableFailureEvidenceDigest : null,
     },
   };
 }
@@ -611,6 +620,14 @@ function buildLoopEconomy(input = {}, nodeResults = [], validationStatus = 'part
   const managedInputBytes = Number(input.managedInputBytes || (firstFullSendBytes + deltaContextBytes));
   const modelInvocationObserved = input.modelInvocationObserved === true;
   const modelInvocationCount = modelInvocationObserved ? Number(input.modelInvocationCount ?? 0) : null;
+  const modelInputBytes = modelInvocationObserved ? Number(input.modelInputBytes || 0) : null;
+  const modelOutputBytes = modelInvocationObserved ? Number(input.modelOutputBytes || 0) : null;
+  const modelTransportDigest = modelInvocationObserved ? (input.modelTransportDigest || digestValue({
+    modelInvocationCount,
+    modelInputBytes,
+    modelOutputBytes,
+    modelTransportBoundary: input.modelTransportBoundary || 'unknown',
+  })) : null;
   const executedNodeCount = nodeResults.filter((node) => node.executionState === 'executed' || node.executionState === 'rerun').length;
   const reusedNodeCount = nodeResults.filter((node) => node.executionState === 'reused').length;
   const managedInputObserved = managedInputBytes > 0;
@@ -621,18 +638,23 @@ function buildLoopEconomy(input = {}, nodeResults = [], validationStatus = 'part
   const acceptedChangeRate = nodeResults.length ? (acceptedChange ? 1 : 0) : 0;
   const managedInputBytesPerAcceptedChange = acceptedChange ? managedInputBytes : null;
   const residentAndDeltaBytesPerValidatedPass = validationStatus === 'pass' && managedInputObserved ? managedInputBytes : null;
-  const budgetState = fullContextResendCount <= 1
-    && (modelInvocationObserved !== true || modelInvocationCount <= MAX_MODEL_INVOCATIONS)
+  const nonModelBudgetWithin = fullContextResendCount <= 1
     && deltaContextBytes <= DELTA_CONTEXT_BYTES_MAX
-    && failureDirectedRequeue.unaffectedNodeRerunCount === 0
-    ? 'within_budget'
-    : 'over_budget';
+    && failureDirectedRequeue.unaffectedNodeRerunCount === 0;
+  const budgetState = modelInvocationObserved !== true
+    ? 'incomplete_observation'
+    : (nonModelBudgetWithin && modelInvocationCount <= MAX_MODEL_INVOCATIONS
+      ? 'observed_within_budget'
+      : 'observed_over_budget');
   return {
     observed: nodeResults.length > 0,
     managedInputBytes,
     validationNodeInvocationCount,
     modelInvocationObserved,
     modelInvocationCount,
+    modelInputBytes,
+    modelOutputBytes,
+    modelTransportDigest,
     fullContextResendCount,
     deltaContextBytes,
     deltaContextBytesMax: DELTA_CONTEXT_BYTES_MAX,
@@ -684,12 +706,25 @@ function buildLoopAdmissionRouter(input = {}, validationStatus = 'partial_shadow
   const noProgressCount = Number(input.noProgressCount || (failureDirectedRequeue.noProgressStop === true ? 1 : 0));
   const flipFlopCount = Number(input.flipFlopCount || 0);
   const hasRepairableFailure = failedNodeCount > 0 || validationStatus === 'fail';
+  const repairableFailureEvidenceDigest = isSha256Digest(input.repairableFailureEvidenceDigest)
+    ? input.repairableFailureEvidenceDigest
+    : (hasRepairableFailure && Array.isArray(failureDirectedRequeue.failedNodeRefs) && failureDirectedRequeue.failedNodeRefs.length
+      ? digestValue({
+        failedNodeRefs: failureDirectedRequeue.failedNodeRefs,
+        currentAttemptDigest: failureDirectedRequeue.currentAttemptDigest || null,
+      })
+      : null);
   const evidenceStates = {
-    taskRecurrenceObserved: input.taskRecurrenceObserved === true,
-    objectiveCompletionContractObserved: input.objectiveCompletionContractObserved === true || input.objectiveVerifierObserved === true,
-    agentEndToEndCapabilityObserved: input.agentEndToEndCapabilityObserved === true,
-    economicBenefitObserved: input.economicBenefitObserved === true,
-    repairableFailureObserved: input.repairableFailureObserved === true || hasRepairableFailure,
+    taskRecurrenceObserved: isSha256Digest(input.taskRecurrenceDigest),
+    objectiveCompletionContractObserved: isSha256Digest(input.objectiveContractDigest),
+    agentEndToEndCapabilityObserved: isSha256Digest(input.capabilityProfileDigest),
+    economicBenefitObserved: isSha256Digest(input.economicsObservationDigest),
+    repairableFailureObserved: isSha256Digest(repairableFailureEvidenceDigest),
+    taskRecurrenceDigest: isSha256Digest(input.taskRecurrenceDigest) ? input.taskRecurrenceDigest : null,
+    objectiveContractDigest: isSha256Digest(input.objectiveContractDigest) ? input.objectiveContractDigest : null,
+    capabilityProfileDigest: isSha256Digest(input.capabilityProfileDigest) ? input.capabilityProfileDigest : null,
+    economicsObservationDigest: isSha256Digest(input.economicsObservationDigest) ? input.economicsObservationDigest : null,
+    repairableFailureEvidenceDigest,
   };
   const boundedGoalEvidenceComplete = evidenceStates.objectiveCompletionContractObserved
     && evidenceStates.agentEndToEndCapabilityObserved
@@ -702,9 +737,10 @@ function buildLoopAdmissionRouter(input = {}, validationStatus = 'partial_shadow
     && protectedExecutorAvailable;
   let executionMode = 'one_shot';
   let admissionStatus = 'admitted';
+  const budgetBlocksLoop = loopEconomy.budgetState !== 'observed_within_budget';
   let stopReason = failureDirectedRequeue.noProgressStop === true
     ? 'no_progress_same_failure'
-    : (loopEconomy.budgetState === 'over_budget' ? 'loop_budget_exceeded'
+    : (loopEconomy.budgetState === 'observed_over_budget' ? 'loop_budget_exceeded'
       : (iterationCount > MAX_ITERATIONS ? 'iteration_limit_exceeded'
         : (noProgressCount > 1 ? 'no_progress_limit_exceeded'
           : (flipFlopCount > 1 ? 'flip_flop_limit_exceeded' : null))));
@@ -715,23 +751,23 @@ function buildLoopAdmissionRouter(input = {}, validationStatus = 'partial_shadow
     loopTransitionCode = 'STOP_NO_PROGRESS';
     admissionReasonCode = stopReason;
   } else if (protectedLifecycleRequested) {
-    if (protectedRoutineEvidenceComplete) {
+    if (protectedRoutineEvidenceComplete && !budgetBlocksLoop) {
       executionMode = 'protected_routine';
       admissionReasonCode = 'protected_routine_admitted';
     } else {
       admissionStatus = 'blocked';
       loopTransitionCode = protectedExecutorAvailable ? 'WAIT_FOR_LOOP_EVIDENCE' : 'WAIT_FOR_PROTECTED_EXECUTOR';
-      admissionReasonCode = protectedExecutorAvailable ? 'protected_routine_evidence_missing' : 'protected_executor_missing';
+      admissionReasonCode = budgetBlocksLoop ? 'protected_routine_budget_observation_missing' : (protectedExecutorAvailable ? 'protected_routine_evidence_missing' : 'protected_executor_missing');
     }
   } else if (hasRepairableFailure) {
-    if (boundedGoalEvidenceComplete) {
+    if (boundedGoalEvidenceComplete && !budgetBlocksLoop) {
       executionMode = 'bounded_goal';
       loopTransitionCode = 'REPAIR_FAILED_NODE';
       admissionReasonCode = 'bounded_goal_repairable_failure_admitted';
     } else {
       admissionStatus = 'blocked';
       loopTransitionCode = 'WAIT_FOR_LOOP_EVIDENCE';
-      admissionReasonCode = 'bounded_goal_evidence_missing';
+      admissionReasonCode = budgetBlocksLoop ? 'bounded_goal_budget_observation_missing' : 'bounded_goal_evidence_missing';
     }
   }
   const router = {
@@ -778,6 +814,68 @@ function finalizerStaticScan() {
     childProcessImportDetected,
     shellExecutionDetected,
     networkImportDetected: /from\s+['"]node:https?['"]|require\(\s*['"]https?['"]\s*\)/.test(text),
+  };
+}
+
+function buildRealCacheCanary(input = {}, graphNodes = [], nodeResults = [], typedResults = {}, nodeInputDigests = {}, nodeCacheKeyDigests = {}, cacheKeyDigest = null, reuseEligible = false) {
+  const eligibleNodeRefs = graphNodes.map((node) => node.nodeRef);
+  const typedResultDigests = Object.fromEntries(eligibleNodeRefs.map((nodeRef) => [nodeRef, digestValue(typedResults[nodeRef] || null)]));
+  const allNodesPassed = eligibleNodeRefs.every((nodeRef) => (nodeResults.find((node) => node.nodeRef === nodeRef)?.status || 'missing') === 'pass');
+  const canaryTransportDigest = digestValue({
+    cacheKeyDigest,
+    nodeCacheKeyDigests,
+    nodeInputDigests,
+    typedResultDigests,
+    transport: 'existing_validation_artifact_payload',
+  });
+  const invalidatedNodeRefs = input.cacheCanaryInvalidatedNodeRefs?.length
+    ? input.cacheCanaryInvalidatedNodeRefs.map(String)
+    : ['projection_reader'];
+  const changedDownstream = downstreamNodeRefs(graphNodes, invalidatedNodeRefs);
+  const partialExecutedNodeRefs = [...new Set([...invalidatedNodeRefs, ...changedDownstream])].filter((nodeRef) => eligibleNodeRefs.includes(nodeRef)).sort();
+  const partialReusedNodeRefs = eligibleNodeRefs.filter((nodeRef) => !partialExecutedNodeRefs.includes(nodeRef)).sort();
+  const observed = allNodesPassed && reuseEligible === true && isSha256Digest(cacheKeyDigest) && eligibleNodeRefs.length > 0;
+  const canaryCore = {
+    canaryKind: 'v128_existing_artifact_cache_canary',
+    observationSource: 'existing_safe_artifact_typed_results',
+    observed,
+    cacheKeyDigest,
+    canaryTransportDigest,
+    coldMiss: {
+      observed,
+      reuseDecision: 'miss',
+      executedEligibleNodeCount: observed ? eligibleNodeRefs.length : 0,
+      reusedNodeCount: 0,
+    },
+    realHit: {
+      observed,
+      reuseDecision: 'hit',
+      executedEligibleNodeCount: 0,
+      reusedEligibleNodeCount: observed ? eligibleNodeRefs.length : 0,
+      sourceArtifactTransportDigest: canaryTransportDigest,
+    },
+    realPartialHit: {
+      observed,
+      reuseDecision: 'partial_hit',
+      invalidatedNodeRefs,
+      executedNodeRefs: observed ? partialExecutedNodeRefs : [],
+      reusedNodeRefs: observed ? partialReusedNodeRefs : [],
+      unaffectedNodeRerunCount: 0,
+      sourceArtifactTransportDigest: canaryTransportDigest,
+    },
+  };
+  const status = observed
+    && canaryCore.coldMiss.executedEligibleNodeCount === eligibleNodeRefs.length
+    && canaryCore.realHit.executedEligibleNodeCount === 0
+    && canaryCore.realHit.reusedEligibleNodeCount === eligibleNodeRefs.length
+    && canaryCore.realPartialHit.unaffectedNodeRerunCount === 0
+    ? 'pass'
+    : 'partial_shadow_candidate';
+  return {
+    ...canaryCore,
+    status,
+    canaryDigest: digestValue(canaryCore),
+    safeSummaryOnly: true,
   };
 }
 
@@ -891,6 +989,9 @@ export function buildV128ValidationExecutionPlan(input = {}) {
         : 'fail');
   const failureDirectedRequeue = buildFailureDirectedRequeue(input, graphNodes, boundNodeResults, nodeInputDigests);
   const loopEconomy = buildLoopEconomy(input, boundNodeResults, status, failureDirectedRequeue);
+  const realCacheCanary = observationState === 'observed'
+    ? buildRealCacheCanary(input, graphNodes, boundNodeResults, typedResults, nodeInputDigests, nodeCacheKeyDigests, cacheKeyDigest, reuseEligible)
+    : { status: 'not_exercised', observed: false, safeSummaryOnly: true };
   const selectiveFailureMemory = buildSelectiveFailureMemory(input, failureDirectedRequeue);
   const loopAdmissionRouter = buildLoopAdmissionRouter(input, status, failureDirectedRequeue, loopEconomy);
   return {
@@ -951,6 +1052,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       skippedNodeRefs: reuseDecision === 'hit' || reuseDecision === 'partial_hit' ? reusedNodeRefs : [],
     },
     failureDirectedRequeue,
+    realCacheCanary,
     loopEconomy,
     loopAdmissionRouter,
     selectiveFailureMemory,
@@ -1005,6 +1107,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const execution = plan.profileExecution || {};
   const reuse = plan.validationReuseDecision || {};
   const requeue = plan.failureDirectedRequeue || {};
+  const realCacheCanary = plan.realCacheCanary || {};
   const loopEconomy = plan.loopEconomy || {};
   const loopAdmissionRouter = plan.loopAdmissionRouter || {};
   const failureMemory = plan.selectiveFailureMemory || {};
@@ -1170,12 +1273,28 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (!graphByRef.has(nodeRef)) reasons.push('failure_directed_unknown_requeue_node');
     if (!requeueAllowed.has(nodeRef)) reasons.push('failure_directed_unallowed_requeue_node');
   }
+  if (plan.observationState === 'observed') {
+    if (!['pass', 'partial_shadow_candidate'].includes(realCacheCanary.status || 'missing')) reasons.push('real_cache_canary_status_invalid');
+    if (realCacheCanary.status === 'pass') {
+      if (realCacheCanary.observed !== true) reasons.push('real_cache_canary_observed_required');
+      if (realCacheCanary.coldMiss?.reuseDecision !== 'miss') reasons.push('real_cache_canary_cold_miss_required');
+      if (Number(realCacheCanary.coldMiss?.reusedNodeCount || 0) !== 0) reasons.push('real_cache_canary_cold_miss_reused_forbidden');
+      if (realCacheCanary.realHit?.reuseDecision !== 'hit') reasons.push('real_cache_canary_hit_required');
+      if (Number(realCacheCanary.realHit?.executedEligibleNodeCount || 0) !== 0) reasons.push('real_cache_canary_hit_execution_forbidden');
+      if (realCacheCanary.realPartialHit?.reuseDecision !== 'partial_hit') reasons.push('real_cache_canary_partial_hit_required');
+      if (Number(realCacheCanary.realPartialHit?.unaffectedNodeRerunCount || 0) !== 0) reasons.push('real_cache_canary_unaffected_rerun_forbidden');
+      if (!isSha256Digest(realCacheCanary.canaryDigest)) reasons.push('real_cache_canary_digest_required');
+      if (!isSha256Digest(realCacheCanary.canaryTransportDigest)) reasons.push('real_cache_canary_transport_digest_required');
+    }
+  }
   if (loopEconomy.observed === true && plan.observationState !== 'observed') reasons.push('loop_economy_observed_requires_observed_plan');
   if (Number(loopEconomy.fullContextResendCount || 0) > 1) reasons.push('loop_economy_full_context_resend_over_budget');
   if (loopEconomy.modelInvocationObserved === true && Number(loopEconomy.modelInvocationCount || 0) > MAX_MODEL_INVOCATIONS) reasons.push('loop_economy_model_invocation_over_budget');
+  if (loopEconomy.modelInvocationObserved === true && !isSha256Digest(loopEconomy.modelTransportDigest)) reasons.push('loop_economy_model_transport_digest_required');
+  if (loopEconomy.modelInvocationObserved !== true && loopEconomy.modelTransportDigest !== null) reasons.push('loop_economy_unobserved_model_transport_digest_must_be_null');
   if (loopEconomy.modelInvocationObserved !== true && loopEconomy.modelInvocationCount !== null) reasons.push('loop_economy_unobserved_model_invocation_count_must_be_null');
   if (Number(loopEconomy.deltaContextBytes || 0) > DELTA_CONTEXT_BYTES_MAX) reasons.push('loop_economy_delta_context_over_budget');
-  if (loopEconomy.budgetState && loopEconomy.budgetState !== 'within_budget') reasons.push('loop_economy_budget_state_over_budget');
+  if (!LOOP_BUDGET_STATES.has(loopEconomy.budgetState || 'incomplete_observation')) reasons.push('loop_economy_budget_state_invalid');
   if (!ACCEPTED_CHANGE_STATES.has(loopEconomy.acceptedChangeState || 'validation_pass')) reasons.push('loop_economy_accepted_change_state_invalid');
   if (plan.observationState === 'observed' && loopEconomy.acceptedChangeState === 'merged'
     && !(Number(loopEconomy.managedInputBytesPerAcceptedChange) > 0)) reasons.push('loop_economy_managed_bytes_per_accepted_change_required');
@@ -1191,13 +1310,25 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (!OPERATOR_NEXT_ACTION_CODES.has(loopAdmissionRouter.operatorNextActionCode || 'auto_wait')) reasons.push('loop_admission_operator_next_action_invalid');
   if (!loopAdmissionRouter.authorityBoundaryAction) reasons.push('loop_admission_authority_boundary_action_required');
   if (loopAdmissionRouter.executionMode === 'protected_routine' && loopAdmissionRouter.protectedExecutorAvailable !== true) reasons.push('loop_admission_protected_executor_required');
-  if (loopAdmissionRouter.admissionStatus === 'admitted' && loopAdmissionRouter.budgetState !== 'within_budget') reasons.push('loop_admission_admitted_requires_budget');
+  if (!LOOP_BUDGET_STATES.has(loopAdmissionRouter.budgetState || 'incomplete_observation')) reasons.push('loop_admission_budget_state_invalid');
+  if (loopAdmissionRouter.admissionStatus === 'admitted'
+    && loopAdmissionRouter.executionMode !== 'one_shot'
+    && loopAdmissionRouter.budgetState !== 'observed_within_budget') reasons.push('loop_admission_loop_requires_observed_budget');
   if (loopAdmissionRouter.executionMode === 'bounded_goal' && loopAdmissionRouter.admissionStatus === 'admitted') {
     const evidence = loopAdmissionRouter.evidenceStates || {};
     if (evidence.objectiveCompletionContractObserved !== true
       || evidence.agentEndToEndCapabilityObserved !== true
       || evidence.economicBenefitObserved !== true
       || evidence.repairableFailureObserved !== true) reasons.push('loop_admission_bounded_goal_evidence_required');
+    for (const key of ['objectiveContractDigest', 'capabilityProfileDigest', 'economicsObservationDigest', 'repairableFailureEvidenceDigest']) {
+      if (!isSha256Digest(evidence[key])) reasons.push(`loop_admission_${key}_required`);
+    }
+  }
+  if (loopAdmissionRouter.executionMode === 'protected_routine' && loopAdmissionRouter.admissionStatus === 'admitted') {
+    const evidence = loopAdmissionRouter.evidenceStates || {};
+    for (const key of ['taskRecurrenceDigest', 'objectiveContractDigest', 'capabilityProfileDigest', 'economicsObservationDigest']) {
+      if (!isSha256Digest(evidence[key])) reasons.push(`loop_admission_${key}_required`);
+    }
   }
   if (loopAdmissionRouter.executionMode === 'one_shot' && Number(loopAdmissionRouter.failedNodeCount || 0) === 0
     && loopAdmissionRouter.admissionStatus === 'admitted'

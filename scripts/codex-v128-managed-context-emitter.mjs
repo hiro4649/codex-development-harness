@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import process from 'node:process';
 
-const MANAGED_CONTEXT_BYTES_MAX = 4096;
+const MANAGED_CONTEXT_BYTES_MAX = 3600;
 const COMPILED_CONTEXT_BYTES_MAX = 1400;
 const RESIDENT_CONTEXT_BYTES_MAX = 2048;
 const DELTA_CONTEXT_BYTES_MAX = 768;
@@ -344,11 +344,16 @@ export function buildV128ManagedContextEmitter(input = {}) {
     deltaContextBytes: deltaPacket.deltaContextBytes,
     deltaContextBytesMax: deltaPacket.deltaContextBytesMax,
     fullContextResendCount: deltaPacket.fullContextResendCount,
-    residentContext,
-    deltaPacket,
-    bindingIds: compiled.bindingIds,
+    residentContextKind: residentContext.contextKind,
+    deltaPacketKind: deltaPacket.packetKind,
+    bindingIdsDigest: digestValue(compiled.bindingIds),
+    bindingIdCount: compiled.bindingIds.length,
     missingBindingIds: compiled.missingBindingIds,
     sourceFileSetDigest: digestValue(sourceFileDigests),
+    sourceFileCount: sourceFiles.length,
+    instructionCapsuleDigest: digestValue(instructionCapsule),
+    providerSummaryDigest: digestValue(providerSummary),
+    attestedViewDigest: digestValue(attestedView),
     routineManagedSafeArtifactRead: 1,
     routineColdArtifactRead: 0,
     legacyRead: 0,
@@ -356,10 +361,6 @@ export function buildV128ManagedContextEmitter(input = {}) {
     reviewerFanout: 0,
     routineSelectedSkill: 0,
     repeatedSafetyText: 0,
-    sourceFiles,
-    instructionCapsule,
-    providerSummary,
-    attestedView,
     safeSummaryOnly: true,
   });
 }
