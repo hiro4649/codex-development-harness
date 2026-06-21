@@ -4,10 +4,11 @@
 
 import crypto from 'node:crypto';
 import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-finalizer.mjs';
+import { buildV128LoopAdmissionDigest } from './codex-v128-validation-execution-plan.mjs';
 
 export const V128_SAFE_SUMMARY_STORED_BYTES_SOFT_MAX = 6144;
 export const V128_SAFE_SUMMARY_ROUTINE_SURFACE_BYTES_MAX = 2560;
-export const V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX = 60000;
+export const V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX = 58000;
 
 export function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -86,7 +87,7 @@ function compactValidationPlan(plan = {}, status = {}) {
   const requeue = plan.failureDirectedRequeue || {};
   const economy = plan.loopEconomy || {};
   const admission = plan.loopAdmissionRouter || {};
-  return {
+  const summary = {
     status: status.status || 'missing',
     observationState: status.observationState || plan.observationState || 'unknown',
     nodeCount: Array.isArray(graph.nodes) ? graph.nodes.length : 0,
@@ -98,14 +99,19 @@ function compactValidationPlan(plan = {}, status = {}) {
     loopBudgetState: economy.budgetState || 'unknown',
     executionMode: admission.executionMode || 'unknown',
     admissionStatus: admission.admissionStatus || 'unknown',
-    nextActionCode: admission.nextActionCode || 'unknown',
-    admissionDigest: admission.admissionDigest || null,
-    managedInputBytesPerAcceptedChange: economy.managedInputBytesPerAcceptedChange ?? null,
+    loopTransitionCode: admission.loopTransitionCode || 'unknown',
+    acceptedChangeState: economy.acceptedChangeState || 'validation_pass',
+    residentAndDeltaBytesPerValidatedPass: economy.residentAndDeltaBytesPerValidatedPass ?? null,
+    modelInvocationObserved: economy.modelInvocationObserved === true,
     fullContextResendCount: Number(economy.fullContextResendCount || 0),
     deltaContextBytes: Number(economy.deltaContextBytes || 0),
-    typedResultsDigest: plan.typedResults ? digestValue(plan.typedResults) : null,
     safeSummaryOnly: true,
   };
+  if (economy.modelInvocationObserved === true) summary.modelInvocationCount = economy.modelInvocationCount ?? null;
+  if (economy.managedInputBytesPerAcceptedChange !== null && economy.managedInputBytesPerAcceptedChange !== undefined) {
+    summary.managedInputBytesPerAcceptedChange = economy.managedInputBytesPerAcceptedChange;
+  }
+  return summary;
 }
 
 function compactTrustClosure(trustClosure = {}, trustStatus = {}) {
@@ -387,6 +393,15 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   const compact = JSON.parse(JSON.stringify(plan || {}));
   compact.sourceClosure = compactSourceClosure(plan.sourceClosure || {});
   compact.nodeSourceClosures = compactNodeSourceClosures(plan.nodeSourceClosures || {});
+  const graph = plan.graph || {};
+  compact.graph = {
+    status: graph.status || 'unknown',
+    graphDigest: graph.graphDigest || null,
+    topologicalOrderDigest: graph.topologicalOrderDigest || null,
+    nodeCount: Array.isArray(graph.nodes) ? graph.nodes.length : 0,
+    duplicateNodeCount: Array.isArray(graph.duplicateNodeRefs) ? graph.duplicateNodeRefs.length : 0,
+    duplicateEdgeCount: Array.isArray(graph.duplicateEdges) ? graph.duplicateEdges.length : 0,
+  };
   const reuse = plan.validationReuseDecision || {};
   compact.validationReuseDecision = {
     reuseDecision: reuse.reuseDecision || 'miss',
@@ -437,34 +452,40 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   compact.loopEconomy = {
     observed: economy.observed === true,
     managedInputBytes: Number(economy.managedInputBytes || 0),
-    modelInvocationCount: Number(economy.modelInvocationCount || 0),
+    validationNodeInvocationCount: Number(economy.validationNodeInvocationCount || 0),
+    modelInvocationObserved: economy.modelInvocationObserved === true,
+    modelInvocationCount: economy.modelInvocationCount ?? null,
     fullContextResendCount: Number(economy.fullContextResendCount || 0),
     deltaContextBytes: Number(economy.deltaContextBytes || 0),
     executedNodeCount: Number(economy.executedNodeCount || 0),
     reusedNodeCount: Number(economy.reusedNodeCount || 0),
+    acceptedChangeState: economy.acceptedChangeState || 'validation_pass',
+    residentAndDeltaBytesPerValidatedPass: economy.residentAndDeltaBytesPerValidatedPass ?? null,
     managedInputBytesPerAcceptedChange: economy.managedInputBytesPerAcceptedChange ?? null,
     budgetState: economy.budgetState || 'unknown',
   };
   const admission = plan.loopAdmissionRouter || {};
-  compact.loopAdmissionRouter = {
+  const compactAdmission = {
     executionMode: admission.executionMode || 'unknown',
     admissionStatus: admission.admissionStatus || 'unknown',
     admissionReasonCode: admission.admissionReasonCode || null,
     budgetState: admission.budgetState || 'unknown',
     failedNodeCount: Number(admission.failedNodeCount || 0),
     stopReason: admission.stopReason || null,
-    nextActionCode: admission.nextActionCode || 'unknown',
+    loopTransitionCode: admission.loopTransitionCode || 'unknown',
+    operatorNextActionCode: admission.operatorNextActionCode || 'auto_wait',
+    authorityBoundaryAction: admission.authorityBoundaryAction || 'final_decision_authority',
+    evidenceStates: admission.evidenceStates || {},
     protectedExecutorAvailable: admission.protectedExecutorAvailable === true,
-    maxIterations: Number(admission.maxIterations || 3),
-    maxModelInvocations: Number(admission.maxModelInvocations || 4),
-    humanOwnerDecisionRequired: admission.humanOwnerDecisionRequired === true,
-    ownerAuthorityCreated: admission.ownerAuthorityCreated === true,
-    sourceActivationAuthorized: admission.sourceActivationAuthorized === true,
-    targetRolloutAuthorized: admission.targetRolloutAuthorized === true,
-    newP0ArtifactCreated: admission.newP0ArtifactCreated === true,
-    admissionDigest: admission.admissionDigest || null,
-    safeSummaryOnly: true,
+    protectedLifecycleRequested: admission.protectedLifecycleRequested === true,
+    iterationCount: Number(admission.iterationCount || 0),
+    noProgressCount: Number(admission.noProgressCount || 0),
+    flipFlopCount: Number(admission.flipFlopCount || 0),
+    fullContextResendCount: Number(admission.fullContextResendCount || 0),
+    deltaContextBytes: Number(admission.deltaContextBytes || 0),
   };
+  compactAdmission.admissionDigest = buildV128LoopAdmissionDigest(compactAdmission);
+  compact.loopAdmissionRouter = compactAdmission;
   const memory = plan.selectiveFailureMemory || {};
   compact.selectiveFailureMemory = {
     memoryDigest: memory.memoryDigest || null,
@@ -479,27 +500,24 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   const nodeResults = (compact.profileExecution?.nodeResults || []).map((node) => {
     const compactNode = {
       nodeRef: node.nodeRef,
-      required: node.required !== false,
       executionState: node.executionState,
-      executionCount: Number(node.executionCount || 0),
-      executionCountObserved: node.executionCountObserved === true,
       status: node.status,
-      stabilityClass: node.stabilityClass,
-      typedResultRef: node.typedResultRef,
       resultDigest: node.resultDigest,
       nodeInputDigest: node.nodeInputDigest,
-      resultSchemaVersion: node.resultSchemaVersion || '1.0.0',
     };
     if (node.skipReasonCode) compactNode.skipReasonCode = node.skipReasonCode;
     if (node.executionState === 'reused') {
-      compactNode.sourceRunRef = node.sourceRunRef || null;
+      compactNode.sourceRunRefDigest = node.sourceRunRef ? digestValue(node.sourceRunRef) : null;
       compactNode.sourceResultDigest = node.sourceResultDigest || null;
       compactNode.sourceHeadSha = node.sourceHeadSha || null;
       compactNode.cacheKeyDigest = node.cacheKeyDigest || null;
     }
     return compactNode;
   });
-  const ledger = (compact.profileExecution?.runWideInvocationLedger || []).map((entry) => ({ ...entry }));
+  const ledger = (compact.profileExecution?.runWideInvocationLedger || []).map((entry) => ({
+    nodeRef: entry.nodeRef,
+    resultDigest: entry.resultDigest,
+  }));
   const nodeByRef = new Map(nodeResults.map((node) => [node.nodeRef, node]));
   for (const nodeRef of Object.keys(originalTypedResults)) {
     if (nodeRef === 'aggregate_finalizer') continue;
@@ -511,7 +529,9 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     }
   }
   const aggregateOriginal = originalTypedResults.aggregate_finalizer || {};
-  const aggregateDependsOn = (compact.graph?.nodes || []).find((node) => node.nodeRef === 'aggregate_finalizer')?.dependsOn || [];
+  const aggregateDependsOn = aggregateOriginal.upstreamNodeRefs
+    || (graph.nodes || []).find((node) => node.nodeRef === 'aggregate_finalizer')?.dependsOn
+    || [];
   const upstreamResultDigests = aggregateDependsOn.map((nodeRef) => ({
     nodeRef,
     status: nodeByRef.get(nodeRef)?.status || 'missing',
@@ -535,10 +555,17 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   for (const node of nodeResults) {
     node.nodeInputDigest = compactNodeInputDigest(node.nodeRef, typedResults[node.nodeRef] || {});
   }
-  if (compact.profileExecution) {
-    compact.profileExecution.nodeResults = nodeResults;
-    compact.profileExecution.runWideInvocationLedger = ledger;
-  }
+  const profile = plan.profileExecution || {};
+  compact.profileExecution = {
+    status: profile.status || 'unknown',
+    planDigest: profile.planDigest || null,
+    finalizerMode: profile.finalizerMode || 'aggregate_only',
+    runWideInvocationCount: Number(profile.runWideInvocationCount || 0),
+    runWideDuplicateExecutionCount: Number(profile.runWideDuplicateExecutionCount || 0),
+    runWideInvocationLedgerStatus: profile.runWideInvocationLedgerStatus || 'unknown',
+    nodeResults,
+    runWideInvocationLedger: ledger,
+  };
   compact.typedResults = typedResults;
   return compact;
 }

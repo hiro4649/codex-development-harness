@@ -9,6 +9,7 @@ import {
   buildV128ValidationExecutionPlan,
   validateV128ValidationExecutionPlan,
 } from './codex-v128-validation-execution-plan.mjs';
+import { validateV128CompactValidationPlanExact } from './codex-v128-token-compression.mjs';
 
 export const V119_OPERATOR_STATUS_KEYS = [
   'orchestrationModeStatus',
@@ -2719,6 +2720,13 @@ export function validateSkillContextRouting(routing = {}) {
 
 export function validateOrchestrationCapsule(capsule = {}) {
   const modeOk = ORCHESTRATION_MODES.has(capsule.orchestrationMode) && capsule.finalAuthority === 'v1.1.8_final_decision_kernel';
+  const validationPlanReuseInternalStatus = (() => {
+    const compactStatus = validateV128CompactValidationPlanExact(capsule.validationExecutionPlanAndReuse || {});
+    if (compactStatus.status === 'pass') {
+      return { ...compactStatus, validationSurface: 'compact_exact_or_full_shadow_candidate', safeSummaryOnly: true };
+    }
+    return validateV128ValidationExecutionPlan(capsule.validationExecutionPlanAndReuse || {});
+  })();
   return {
     orchestrationModeStatus: status(modeOk, ['orchestration_mode_invalid_or_final_authority_changed'], { orchestrationMode: capsule.orchestrationMode }),
     permissionGrantStatus: validatePermissionGrant(capsule.permissionGrant || {}),
@@ -2763,7 +2771,7 @@ export function validateOrchestrationCapsule(capsule = {}) {
     orthogonalReasonModelInternalStatus: validateV128OrthogonalReasonModel(capsule.orthogonalReasonModel || {}),
     tokenMinimalReadCompatibilityRouterInternalStatus: validateV128TokenMinimalReadCompatibilityRouter(capsule.tokenMinimalReadCompatibilityRouter || {}),
     resumableLoopPermissionProjectionInternalStatus: validateV128ResumableLoopAndPermissionProjection(capsule.resumableLoopAndPermissionProjection || {}),
-    validationExecutionPlanReuseInternalStatus: validateV128ValidationExecutionPlan(capsule.validationExecutionPlanAndReuse || {}),
+    validationExecutionPlanReuseInternalStatus: validationPlanReuseInternalStatus,
   };
 }
 

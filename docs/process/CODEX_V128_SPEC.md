@@ -130,7 +130,7 @@ delta packet <= 768 bytes
 full context resend count <= 1 per task
 stored Safe Summary <= 6144 bytes soft cap
 routine Safe Summary read surface <= 2560 bytes
-Orchestration Capsule <= 60000 bytes soft cap
+Orchestration Capsule <= 58000 bytes soft cap
 routine final report <= 8 lines
 routine owner interrupt = 0
 repeated safety text = 0
@@ -400,21 +400,30 @@ the smallest safe execution mode:
 
 ```text
 one_shot:
-  one implementation pass plus one verification pass
+  normal default when all current nodes pass and no protected lifecycle is requested
 
 bounded_goal:
-  deterministic verifier available
+  repairable failure observed
+  objective completion contract observed
+  agent end-to-end capability observed
+  economic benefit observed
   maxIterations=3
 
 protected_routine:
   repeated safe routine work
   protected executor available
+  task recurrence observed
+  objective contract and economic benefit observed
 ```
 
 The router emits `executionMode`, `admissionStatus`, `budgetState`,
-`failedNodeCount`, `stopReason`, and `nextActionCode`. It must never create
+`failedNodeCount`, `stopReason`, `loopTransitionCode`,
+`operatorNextActionCode`, and `authorityBoundaryAction`. It must never create
 owner authority, Source Activation, target rollout, or a new P0 artifact.
-`protected_routine` is invalid without a protected executor. Individual PR
+`protected_routine` is invalid without a protected executor. A successful
+normal pass emits `executionMode=one_shot` and
+`loopTransitionCode=LOOP_NOT_REQUIRED`; `bounded_goal` is not admitted unless
+the observed failure and loop economy evidence above are present. Individual PR
 human judgment is not required for eligible standing-policy work; deterministic
 verification and protected execution decide pass/reject.
 
@@ -449,19 +458,27 @@ Loop economy metrics are observed separately from declared budgets:
 
 ```text
 managedInputBytes
+validationNodeInvocationCount
+modelInvocationObserved
 modelInvocationCount
 fullContextResendCount
 deltaContextBytes
 executedNodeCount
 reusedNodeCount
+residentAndDeltaBytesPerValidatedPass
 managedInputBytesPerAcceptedChange
+acceptedChangeState
 acceptedChangeRate
 ```
 
 Budgets are `maxIterations=3`, `maxModelInvocations=4`,
 `sameBlockerMax=1`, `noProgressWindow=1`, and `flipFlopMax=1`. Unobserved
-values remain unobserved; declared limits must not be reported as observed
-performance.
+values remain unobserved; if model transport is not observed then
+`modelInvocationObserved=false` and `modelInvocationCount=null`. Validation
+node executions are reported separately and must not be counted as model
+invocations. `residentAndDeltaBytesPerValidatedPass` measures a deterministic
+validation pass; `managedInputBytesPerAcceptedChange` is reserved for an
+observed merge or protected-executor accepted result.
 
 The routine Projection separates authority and operator actions without
 embedding a full topology object in the routine read surface:

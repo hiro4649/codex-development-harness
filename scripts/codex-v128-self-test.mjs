@@ -483,7 +483,7 @@ function tokenCompressionCompactsSafeSummary() {
   return summary.tokenCompression.status === 'pass'
     && summary.tokenCompression.storedSafeSummaryBytes <= 6144
     && summary.tokenCompression.routineReadSurfaceBytes <= 2560
-    && summary.compactDiagnostics.validationPlan.typedResultsDigest
+    && summary.compactDiagnostics.validationPlan.loopTransitionCode
     && !JSON.stringify(summary).includes('file-119')
     && !JSON.stringify(summary).includes('xxxxx');
 }
@@ -717,7 +717,11 @@ function validationColdMissLoopEconomyObserved() {
   });
   return passed(validateV128ValidationExecutionPlan(plan))
     && plan.validationReuseDecision.reuseDecision === 'miss'
-    && plan.loopEconomy.managedInputBytesPerAcceptedChange === 1120
+    && plan.loopEconomy.acceptedChangeState === 'validation_pass'
+    && plan.loopEconomy.residentAndDeltaBytesPerValidatedPass === 1120
+    && plan.loopEconomy.managedInputBytesPerAcceptedChange === null
+    && plan.loopEconomy.modelInvocationObserved === false
+    && plan.loopEconomy.modelInvocationCount === null
     && plan.loopEconomy.budgetState === 'within_budget';
 }
 
@@ -856,7 +860,7 @@ function validationFailureDirectedRequeueAllowsChangedInputDownstream() {
     && plan.failureDirectedRequeue.actualRequeuedNodeRefs.length === 4;
 }
 
-function loopAdmissionRouterDefaultsToBoundedGoal() {
+function loopAdmissionRouterDefaultsToOneShotWhenNoLoopEvidenceRequired() {
   const plan = buildPlanWithBoundReusedCacheKeys({
     headSha: 'f'.repeat(40),
     sourceHeadOid: 'f'.repeat(40),
@@ -871,10 +875,68 @@ function loopAdmissionRouterDefaultsToBoundedGoal() {
     nodeResults: validValidationNodeResults(),
   });
   return passed(validateV128ValidationExecutionPlan(plan))
+    && plan.loopAdmissionRouter.executionMode === 'one_shot'
+    && plan.loopAdmissionRouter.admissionStatus === 'admitted'
+    && plan.loopAdmissionRouter.loopTransitionCode === 'LOOP_NOT_REQUIRED'
+    && plan.loopAdmissionRouter.admissionReasonCode === 'one_shot_loop_not_required'
+    && plan.loopAdmissionRouter.humanOwnerDecisionRequired === false;
+}
+
+function loopAdmissionRouterFailureWithEvidenceSelectsBoundedGoal() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    stableContextBytes: 800,
+    deltaContextBytes: 300,
+    fullContextResendCount: 1,
+    objectiveCompletionContractObserved: true,
+    agentEndToEndCapabilityObserved: true,
+    economicBenefitObserved: true,
+    nodeResults: [
+      executedNode('projection_reader', 'fail', 'decision_stable', { reason: 'BROKEN_READER' }),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+      executedNode('aggregate_finalizer', 'fail', 'decision_stable', {
+        upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'],
+      }),
+    ],
+  });
+  const validation = validateV128ValidationExecutionPlan(plan);
+  return failed(validation)
     && plan.loopAdmissionRouter.executionMode === 'bounded_goal'
     && plan.loopAdmissionRouter.admissionStatus === 'admitted'
-    && plan.loopAdmissionRouter.nextActionCode === 'ACCEPT_CHANGE'
-    && plan.loopAdmissionRouter.humanOwnerDecisionRequired === false;
+    && plan.loopAdmissionRouter.loopTransitionCode === 'REPAIR_FAILED_NODE';
+}
+
+function loopAdmissionRouterFailureWithoutEvidenceBlocks() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    stableContextBytes: 800,
+    deltaContextBytes: 300,
+    fullContextResendCount: 1,
+    nodeResults: [
+      executedNode('projection_reader', 'fail', 'decision_stable', { reason: 'BROKEN_READER' }),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
+      executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+      executedNode('aggregate_finalizer', 'fail', 'decision_stable', {
+        upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'],
+      }),
+    ],
+  });
+  const validation = validateV128ValidationExecutionPlan(plan);
+  return failed(validation)
+    && plan.loopAdmissionRouter.executionMode === 'one_shot'
+    && plan.loopAdmissionRouter.admissionStatus === 'blocked'
+    && plan.loopAdmissionRouter.loopTransitionCode === 'WAIT_FOR_LOOP_EVIDENCE';
 }
 
 function loopAdmissionRouterProtectedRequiresExecutor() {
@@ -887,6 +949,10 @@ function loopAdmissionRouterProtectedRequiresExecutor() {
     decisionInputManifestScanned: true,
     protectedLifecycleRequested: true,
     protectedExecutorAvailable: true,
+    taskRecurrenceObserved: true,
+    objectiveCompletionContractObserved: true,
+    agentEndToEndCapabilityObserved: true,
+    economicBenefitObserved: true,
     stableContextBytes: 800,
     deltaContextBytes: 300,
     fullContextResendCount: 1,
@@ -902,6 +968,31 @@ function loopAdmissionRouterProtectedRequiresExecutor() {
   };
   return plan.loopAdmissionRouter.executionMode === 'protected_routine'
     && failed(validateV128ValidationExecutionPlan(tampered));
+}
+
+function loopAdmissionRouterProtectedWithoutExecutorBlocks() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    protectedLifecycleRequested: true,
+    protectedExecutorAvailable: false,
+    taskRecurrenceObserved: true,
+    objectiveCompletionContractObserved: true,
+    agentEndToEndCapabilityObserved: true,
+    economicBenefitObserved: true,
+    stableContextBytes: 800,
+    deltaContextBytes: 300,
+    fullContextResendCount: 1,
+    nodeResults: validValidationNodeResults(),
+  });
+  return passed(validateV128ValidationExecutionPlan(plan))
+    && plan.loopAdmissionRouter.executionMode === 'one_shot'
+    && plan.loopAdmissionRouter.admissionStatus === 'blocked'
+    && plan.loopAdmissionRouter.loopTransitionCode === 'WAIT_FOR_PROTECTED_EXECUTOR';
 }
 
 function loopAdmissionRouterStopsNoProgress() {
@@ -937,8 +1028,25 @@ function loopAdmissionRouterStopsNoProgress() {
     ],
   });
   return second.loopAdmissionRouter.admissionStatus === 'blocked'
-    && second.loopAdmissionRouter.nextActionCode === 'STOP_NO_PROGRESS'
+    && second.loopAdmissionRouter.loopTransitionCode === 'STOP_NO_PROGRESS'
     && second.loopAdmissionRouter.stopReason === 'no_progress_same_failure';
+}
+
+function loopAdmissionRouterDigestTamperFails() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    stableContextBytes: 800,
+    deltaContextBytes: 300,
+    fullContextResendCount: 1,
+    nodeResults: validValidationNodeResults(),
+  });
+  plan.loopAdmissionRouter.loopTransitionCode = 'REPAIR_FAILED_NODE';
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('loop_admission_digest_mismatch');
 }
 
 function compactValidationPlanStillValidates() {
@@ -973,8 +1081,7 @@ function compactValidationPlanStillValidates() {
   });
   const compact = compactV128ValidationExecutionPlanForStorage(plan);
   const aggregate = compact.typedResults.aggregate_finalizer;
-  return passed(validateV128ValidationExecutionPlan(compact))
-    && passed(validateV128CompactValidationPlanExact(compact))
+  return passed(validateV128CompactValidationPlanExact(compact))
     && aggregate.orderedUpstreamResultSetDigest === buildV128OrderedUpstreamResultSetDigest(aggregate.upstreamResultDigests)
     && aggregate.upstreamResultDigests.every((item) => typeof item.status === 'string')
     && Buffer.byteLength(JSON.stringify(compact, null, 2), 'utf8') < Buffer.byteLength(JSON.stringify(plan, null, 2), 'utf8')
@@ -2123,9 +2230,13 @@ const cases = [
   ['validation_partial_hit_loop_economy_observed', () => validationPartialHitLoopEconomyObserved()],
   ['validation_failure_directed_requeue_blocks_unaffected_node', () => validationFailureDirectedRequeueBlocksUnaffectedNode()],
   ['validation_failure_directed_requeue_allows_changed_input_downstream', () => validationFailureDirectedRequeueAllowsChangedInputDownstream()],
-  ['loop_admission_router_defaults_to_bounded_goal', () => loopAdmissionRouterDefaultsToBoundedGoal()],
+  ['loop_admission_router_defaults_to_one_shot_when_no_loop_evidence_required', () => loopAdmissionRouterDefaultsToOneShotWhenNoLoopEvidenceRequired()],
+  ['loop_admission_router_failure_with_evidence_selects_bounded_goal', () => loopAdmissionRouterFailureWithEvidenceSelectsBoundedGoal()],
+  ['loop_admission_router_failure_without_evidence_blocks', () => loopAdmissionRouterFailureWithoutEvidenceBlocks()],
   ['loop_admission_router_protected_requires_executor', () => loopAdmissionRouterProtectedRequiresExecutor()],
+  ['loop_admission_router_protected_without_executor_blocks', () => loopAdmissionRouterProtectedWithoutExecutorBlocks()],
   ['loop_admission_router_stops_no_progress', () => loopAdmissionRouterStopsNoProgress()],
+  ['loop_admission_router_digest_tamper_fails', () => loopAdmissionRouterDigestTamperFails()],
   ['compact_validation_plan_still_validates', () => compactValidationPlanStillValidates()],
   ['compact_validation_plan_stale_aggregate_digest_fails', () => compactValidationPlanStaleAggregateDigestFails()],
   ['compact_validation_plan_ledger_digest_mismatch_fails', () => compactValidationPlanLedgerDigestMismatchFails()],
@@ -2278,7 +2389,9 @@ const cases = [
     const text = fs.readFileSync('scripts/codex-local-quality-gate.mjs', 'utf8');
     return text.includes('managedInputBytes: Number(v128ManagedContextEmitter.residentContextBytes || 0)')
       && text.includes('deltaContextBytes: v128ManagedContextEmitter.deltaContextBytes')
-      && text.includes('modelInvocationCount: v128ExecutionSnapshot.invocationLedger.length');
+      && text.includes('validationNodeInvocationCount: v128ExecutionSnapshot.invocationLedger.length')
+      && text.includes('modelInvocationObserved: false')
+      && text.includes('modelInvocationCount: null');
   }],
   ['orchestration_capsule_validates_all_v128_internal_blocks', () => Object.values(validateOrchestrationCapsule(buildOrchestrationCapsule())).every((item) => item.status === 'pass')],
 ].map(([name, fn]) => test(name, fn));
