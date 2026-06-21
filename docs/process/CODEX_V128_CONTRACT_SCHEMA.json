@@ -142,11 +142,29 @@
     "scriptDigestSource": "source_closure_manifest",
     "scriptDigestTransitiveRelativeImports": true,
     "scriptDigestNodeScopedClosure": true,
+    "nodeScopedAdapterClosureRequired": true,
+    "nodeScopedAdapterFiles": {
+      "projection_reader": "scripts/codex-v128-projection-reader-adapter.mjs",
+      "managed_context_emitter": "scripts/codex-v128-managed-context-adapter.mjs",
+      "state_matrix_executor": "scripts/codex-v128-state-matrix-adapter.mjs",
+      "aggregate_finalizer": "scripts/codex-v128-aggregate-finalizer-adapter.mjs"
+    },
+    "runWideInvocationLedger": {
+      "artifactSurface": "orchestrationCapsule.validationExecutionPlanAndReuse.profileExecution.runWideInvocationLedger",
+      "newP0Artifact": false,
+      "fields": ["nodeRef", "commandOrFunctionDigest", "invocationSequence", "completionSequence", "resultDigest", "executionSource", "adapterId"],
+      "duplicateRequiredNodeExecutionAllowed": false,
+      "reusedNodesUseSourceRunRefInsteadOfLocalInvocation": true
+    },
     "scriptDigestSourceClosureFiles": [
       "scripts/codex-v128-validation-execution-plan.mjs",
       "scripts/codex-v128-aggregate-finalizer.mjs",
+      "scripts/codex-v128-aggregate-finalizer-adapter.mjs",
       "scripts/codex-local-quality-gate.mjs",
       "scripts/codex-orchestration-capsule.mjs",
+      "scripts/codex-v128-projection-reader-adapter.mjs",
+      "scripts/codex-v128-managed-context-adapter.mjs",
+      "scripts/codex-v128-state-matrix-adapter.mjs",
       "scripts/codex-v128-projection-reader.mjs",
       "scripts/codex-v128-managed-context-emitter.mjs",
       "scripts/codex-v128-state-matrix.mjs",

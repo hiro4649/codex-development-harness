@@ -274,6 +274,25 @@ truncation are activation blockers, not Shadow Candidate merge authority. A
 consumer, node implementation, or relative helper change that can alter node
 result construction invalidates the reuse key.
 
+Each validation node has a deterministic invocation adapter. The adapter is
+part of the node-scoped source closure, so a cache key changes when the wrapper
+that constructs the node payload changes. The Source Shadow Candidate adapters
+are:
+
+```text
+projection_reader:
+  scripts/codex-v128-projection-reader-adapter.mjs
+
+managed_context_emitter:
+  scripts/codex-v128-managed-context-adapter.mjs
+
+state_matrix_executor:
+  scripts/codex-v128-state-matrix-adapter.mjs
+
+aggregate_finalizer:
+  scripts/codex-v128-aggregate-finalizer-adapter.mjs
+```
+
 Unsupported dynamic import expressions are also reuse blockers. A literal
 dynamic import may be scanned like a static dependency, but a computed import
 expression disables hit and partial-hit reuse until a later implementation can
@@ -301,6 +320,26 @@ The aggregate finalizer is a typed-result reader only. Its source surface must
 not import child_process, execute shell commands, or open network clients. A
 missing upstream result is `upstream_evidence_missing`; it must not be repaired
 by the finalizer rerunning the command.
+
+The validation plan also records a run-wide invocation ledger inside the
+existing orchestration capsule surface. This ledger is non-authoritative and
+does not create owner permission, but it is load-bearing for Shadow Candidate
+performance evidence:
+
+```text
+nodeRef
+commandOrFunctionDigest
+invocationSequence
+completionSequence
+resultDigest
+executionSource
+adapterId
+```
+
+For an observed execution, every executed node must have a matching ledger
+entry and duplicate execution of a required node fails the validation plan.
+Reused nodes are represented by sourceRunRef/cache provenance instead of a
+local invocation entry.
 
 The finalizer payload must be semantically checked:
 

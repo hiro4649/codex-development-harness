@@ -481,7 +481,39 @@ function buildPlanWithBoundReusedCacheKeys(input = {}) {
         || node.cacheKeyDigest,
     };
   });
-  return buildV128ValidationExecutionPlan({ ...stableInput, nodeResults });
+  return buildV128ValidationExecutionPlan({
+    ...stableInput,
+    nodeResults,
+    runWideInvocationLedger: stableInput.runWideInvocationLedger || invocationLedgerFor(nodeResults),
+  });
+}
+
+function invocationLedgerFor(nodeResults = []) {
+  let sequence = 0;
+  return nodeResults
+    .filter((node) => node.executionState !== 'reused')
+    .map((node) => {
+      sequence += 1;
+      const payload = node.typedResultPayload || {
+        nodeRef: node.nodeRef,
+        executionState: node.executionState || 'executed',
+        status: node.status || 'pass',
+        stabilityClass: node.stabilityClass || 'decision_stable',
+      };
+      return {
+        nodeRef: node.nodeRef,
+        commandOrFunctionDigest: sha256Canonical({
+          nodeRef: node.nodeRef,
+          adapterId: 'v128_self_test_fixture_adapter',
+          stabilityClass: node.stabilityClass || 'decision_stable',
+        }),
+        invocationSequence: sequence,
+        completionSequence: sequence,
+        resultDigest: sha256Canonical(payload),
+        executionSource: 'v128_self_test_fixture',
+        adapterId: 'v128_self_test_fixture_adapter',
+      };
+    });
 }
 
 function validationExecutionPlanVerifies() {
@@ -806,10 +838,38 @@ function validationSourceClosureResolvesTransitiveImports() {
 function validationNodeScopedSourceClosuresExist() {
   const plan = buildV128ValidationExecutionPlan();
   const closures = plan.nodeSourceClosures || {};
-  const nodeRefs = ['projection_reader', 'managed_context_emitter', 'state_matrix_executor', 'aggregate_finalizer'];
+  const requiredAdapters = {
+    projection_reader: 'scripts/codex-v128-projection-reader-adapter.mjs',
+    managed_context_emitter: 'scripts/codex-v128-managed-context-adapter.mjs',
+    state_matrix_executor: 'scripts/codex-v128-state-matrix-adapter.mjs',
+    aggregate_finalizer: 'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
+  };
+  const nodeRefs = Object.keys(requiredAdapters);
   return nodeRefs.every((nodeRef) => /^sha256:[a-f0-9]{64}$/.test(String(closures[nodeRef]?.nodeSourceClosureDigest || '')))
     && nodeRefs.every((nodeRef) => closures[nodeRef].sourceFileCount <= plan.sourceClosure.sourceFiles.length)
+    && nodeRefs.every((nodeRef) => (closures[nodeRef].seedSourceFiles || []).includes(requiredAdapters[nodeRef]))
     && closures.managed_context_emitter.sourceFileCount < plan.sourceClosure.sourceFiles.length;
+}
+
+function validationRunWideDuplicateExecutionFails() {
+  const nodeResults = validValidationNodeResults();
+  const ledger = invocationLedgerFor(nodeResults);
+  ledger.push({
+    ...ledger[0],
+    invocationSequence: ledger.length + 1,
+    completionSequence: ledger.length + 1,
+  });
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults,
+    runWideInvocationLedger: ledger,
+  })).reasonCodes.includes('run_wide_duplicate_execution_detected');
 }
 
 function validationPrMergeReuseRequiresBaseOid() {
@@ -1033,6 +1093,7 @@ const cases = [
   ['validation_source_closure_includes_consumers', () => validationSourceClosureIncludesConsumers()],
   ['validation_source_closure_resolves_transitive_imports', () => validationSourceClosureResolvesTransitiveImports()],
   ['validation_node_scoped_source_closures_exist', () => validationNodeScopedSourceClosuresExist()],
+  ['validation_run_wide_duplicate_execution_fails', () => validationRunWideDuplicateExecutionFails()],
   ['validation_pr_merge_reuse_requires_base_oid', () => validationPrMergeReuseRequiresBaseOid()],
   ['validation_diagnostic_manifest_needs_sanitized_digest', () => validationDiagnosticManifestNeedsSanitizedDigest()],
   ['validation_finalizer_missing_upstream_node_fails', () => validationFinalizerMissingUpstreamNodeFails()],

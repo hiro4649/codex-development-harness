@@ -23,6 +23,10 @@ const SOURCE_CLOSURE_FILES = [
   'scripts/codex-v128-aggregate-finalizer.mjs',
   'scripts/codex-local-quality-gate.mjs',
   'scripts/codex-orchestration-capsule.mjs',
+  'scripts/codex-v128-projection-reader-adapter.mjs',
+  'scripts/codex-v128-managed-context-adapter.mjs',
+  'scripts/codex-v128-state-matrix-adapter.mjs',
+  'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
   'scripts/codex-v128-projection-reader.mjs',
   'scripts/codex-v128-managed-context-emitter.mjs',
   'scripts/codex-v128-state-matrix.mjs',
@@ -34,21 +38,25 @@ const REQUIRED_CACHE_FIELDS = new Set(['headSha', 'planDigest', 'scriptDigest', 
 const REUSE_BINDING_FIELDS = new Set(['sourceHeadOid', 'baseOid', 'testedCommitOid', 'testedTreeKind', 'validationContextDigest']);
 const NODE_SOURCE_CLOSURE_SEEDS = {
   projection_reader: [
+    'scripts/codex-v128-projection-reader-adapter.mjs',
     'scripts/codex-v128-projection-reader.mjs',
     'scripts/codex-v128-integrity-lib.mjs',
     'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
     'docs/process/CODEX_V128_SPEC.md',
   ],
   managed_context_emitter: [
+    'scripts/codex-v128-managed-context-adapter.mjs',
     'scripts/codex-v128-managed-context-emitter.mjs',
     'docs/process/CODEX_V128_SPEC.md',
   ],
   state_matrix_executor: [
+    'scripts/codex-v128-state-matrix-adapter.mjs',
     'scripts/codex-v128-state-matrix.mjs',
     'docs/process/CODEX_V128_STATE_MATRIX.json',
     'docs/process/CODEX_V128_SPEC.md',
   ],
   aggregate_finalizer: [
+    'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
     'scripts/codex-v128-aggregate-finalizer.mjs',
     'scripts/codex-v128-validation-execution-plan.mjs',
     'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
@@ -183,6 +191,7 @@ function nodeSourceClosureManifest(input = {}, graphNodes = defaultGraphNodes())
       maxSourceClosureFiles: input.maxNodeSourceClosureFiles || 128,
     });
     closures[node.nodeRef] = {
+      seedSourceFiles: seeds,
       seedSourceFileCount: closure.seedSourceFileCount,
       sourceFileCount: closure.sourceFiles.length,
       relativeImportEdgeCount: closure.relativeImportEdgeCount,
@@ -266,6 +275,19 @@ function validateSourceRunRef(sourceRunRef, node = {}) {
   if (node.sourceHeadSha && sourceRunRef.sourceHeadSha !== node.sourceHeadSha) reasons.push('reused_node_source_run_ref_source_head_mismatch');
   if (node.resultSchemaVersion && sourceRunRef.resultSchemaVersion !== node.resultSchemaVersion) reasons.push('reused_node_source_run_ref_schema_mismatch');
   return reasons;
+}
+
+function normalizeInvocationLedger(input = {}) {
+  if (!Array.isArray(input.runWideInvocationLedger)) return [];
+  return input.runWideInvocationLedger.map((entry = {}) => ({
+    nodeRef: safeText(entry.nodeRef, 'unknown_node'),
+    commandOrFunctionDigest: String(entry.commandOrFunctionDigest || ''),
+    invocationSequence: Number(entry.invocationSequence || 0),
+    completionSequence: Number(entry.completionSequence || 0),
+    resultDigest: String(entry.resultDigest || ''),
+    executionSource: safeText(entry.executionSource, 'unknown_execution_source'),
+    adapterId: entry.adapterId ? String(entry.adapterId) : null,
+  }));
 }
 
 function evaluateGraph(graphNodes = []) {
@@ -459,6 +481,12 @@ export function buildV128ValidationExecutionPlan(input = {}) {
   const executedNodeRefs = nodeResults.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef);
   const reusedNodeRefs = nodeResults.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef);
   const rerunNodeRefs = nodeResults.filter((node) => node.executionState === 'rerun').map((node) => node.nodeRef);
+  const runWideInvocationLedger = normalizeInvocationLedger(input);
+  const runWideInvocationCounts = runWideInvocationLedger.reduce((acc, entry) => {
+    acc[entry.nodeRef] = (acc[entry.nodeRef] || 0) + 1;
+    return acc;
+  }, {});
+  const runWideDuplicateExecutionCount = Object.values(runWideInvocationCounts).filter((count) => count > 1).length;
   const failedNode = nodeResults.find((node) => node.status === 'fail') || null;
   const requiredSkippedNode = nodeResults.find((node) => node.required === true && node.status === 'skipped') || null;
   const sourceClosure = sourceClosureManifest(input);
@@ -551,6 +579,10 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       rerunNodeRefs,
       failedNodeRef: failedNode?.nodeRef || null,
       requiredSkippedNodeRef: requiredSkippedNode?.nodeRef || null,
+      runWideInvocationLedger,
+      runWideInvocationCount: runWideInvocationLedger.length,
+      runWideDuplicateExecutionCount,
+      runWideInvocationLedgerStatus: runWideInvocationLedger.length && runWideDuplicateExecutionCount === 0 ? 'pass' : (observationState === 'observed' ? 'fail' : 'not_exercised'),
       finalizerMode: planCore.finalizerMode,
       downstreamRespawnAllowed: planCore.downstreamRespawnAllowed,
       finalizerStaticScan: staticScan,
@@ -649,6 +681,18 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (execution.downstreamRespawnAllowed === true) reasons.push('profile_execution_downstream_respawn_forbidden');
   if (execution.failedNodeRef) reasons.push('profile_execution_failed_node_present');
   if (execution.requiredSkippedNodeRef) reasons.push('profile_execution_required_skipped_node_present');
+  const runWideInvocationLedger = Array.isArray(execution.runWideInvocationLedger) ? execution.runWideInvocationLedger : [];
+  if (plan.observationState === 'observed' && !runWideInvocationLedger.length) reasons.push('run_wide_invocation_ledger_required');
+  if (execution.runWideDuplicateExecutionCount > 0) reasons.push('run_wide_duplicate_execution_detected');
+  const ledgerByNode = new Map();
+  for (const entry of runWideInvocationLedger) {
+    if (!graphByRef.has(entry.nodeRef)) reasons.push('run_wide_invocation_unknown_node');
+    if (!/^sha256:[a-f0-9]{64}$/.test(String(entry.commandOrFunctionDigest || ''))) reasons.push('run_wide_invocation_command_digest_invalid');
+    if (!/^sha256:[a-f0-9]{64}$/.test(String(entry.resultDigest || ''))) reasons.push('run_wide_invocation_result_digest_invalid');
+    if (Number(entry.invocationSequence || 0) < 1 || Number(entry.completionSequence || 0) < 1) reasons.push('run_wide_invocation_sequence_invalid');
+    if (Number(entry.completionSequence || 0) < Number(entry.invocationSequence || 0)) reasons.push('run_wide_invocation_sequence_invalid');
+    ledgerByNode.set(entry.nodeRef, entry);
+  }
   const staticScan = execution.finalizerStaticScan || {};
   if (staticScan.childProcessImportDetected === true) reasons.push('finalizer_child_process_import_forbidden');
   if (staticScan.shellExecutionDetected === true) reasons.push('finalizer_shell_execution_forbidden');
@@ -661,6 +705,11 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (node.typedResultRef !== typedResultRef(node.nodeRef)) reasons.push('typed_result_ref_invalid');
     if (!typedResults[node.nodeRef]) reasons.push('typed_result_payload_missing');
     else if (node.resultDigest !== digestValue(typedResults[node.nodeRef])) reasons.push('typed_result_payload_digest_mismatch');
+    if (plan.observationState === 'observed' && node.executionState === 'executed') {
+      const ledgerEntry = ledgerByNode.get(node.nodeRef);
+      if (!ledgerEntry) reasons.push('run_wide_invocation_missing_for_executed_node');
+      else if (ledgerEntry.resultDigest !== node.resultDigest) reasons.push('run_wide_invocation_result_digest_mismatch');
+    }
     if (plan.observationState === 'observed' && node.executionState === 'executed' && node.executionCountObserved !== true) reasons.push('execution_count_observation_required');
     if (Number(node.executionCount || 0) > 1) reasons.push('profile_execution_node_executed_more_than_once');
     if (node.executionState === 'executed' && Number(node.executionCount) !== 1) reasons.push('executed_node_execution_count_must_be_one');
