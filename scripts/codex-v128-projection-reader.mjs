@@ -148,6 +148,21 @@ function finalizeSurface(surfaceBase) {
   return surface;
 }
 
+function compactProjectionForRoutineSurface(projection = {}) {
+  const {
+    sourceBinding,
+    activeGateInfluence,
+    projectionCanonicalBytes,
+    withinRoutineBudget,
+    ...safeProjection
+  } = projection;
+  return {
+    ...safeProjection,
+    projectionCanonicalBytes,
+    withinRoutineBudget,
+  };
+}
+
 export function buildV128RoutineProjectionReadSurface(projection, input = {}) {
   const projectionPresent = projection !== null && typeof projection === 'object' && !Array.isArray(projection);
   const integrity = projectionPresent
@@ -158,10 +173,10 @@ export function buildV128RoutineProjectionReadSurface(projection, input = {}) {
     surfaceKind: 'routine_projection_read_surface',
     managedSafeArtifactRead: 1,
     coldArtifactRead: 0,
-    managedContextBytesObserved: false,
     projectionPresent,
     projectionIntegrityStatus: integrity.status,
-    routineDecisionProjection: projectionPresent ? projection : null,
+    projectionPayloadDigest: projectionPresent ? projection.sourceBinding?.projectionPayloadDigest || null : null,
+    routineDecisionProjection: projectionPresent ? compactProjectionForRoutineSurface(projection) : null,
     safeSummaryOnly: true,
   };
   if (integrity.reasonCodes?.length) surface.projectionIntegrityReasonCodes = integrity.reasonCodes;

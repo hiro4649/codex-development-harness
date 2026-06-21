@@ -172,11 +172,11 @@
       }
     },
     "providerPrTopologyNextAction": {
-      "artifactSurface": "qualityGateSafeSummary.routineDecisionProjection.operatorNextActionCode",
-      "authority": "non_authoritative_projection_next_action_hint",
+      "artifactSurface": "qualityGateSafeSummary.routineDecisionProjection.automationDisposition",
+      "authority": "non_authoritative_projection_automation_hint",
       "authorityBoundarySurface": "qualityGateSafeSummary.routineDecisionProjection.authorityBoundaryAction",
       "mergeAuthorityCreated": false,
-      "stackedBranchNextAction": "owner_handle_base_pr",
+      "stackedBranchNextAction": "auto_process_base_pr",
       "fullTopologyEmbeddedInRoutineProjection": false
     },
     "scriptDigestSourceClosureFiles": [
@@ -184,6 +184,7 @@
       "scripts/codex-v128-aggregate-finalizer.mjs",
       "scripts/codex-v128-aggregate-finalizer-adapter.mjs",
       "scripts/codex-v128-invocation-ledger.mjs",
+      "scripts/codex-v128-standing-autonomy-policy.mjs",
       "scripts/codex-local-quality-gate.mjs",
       "scripts/codex-orchestration-capsule.mjs",
       "scripts/codex-v128-projection-reader-adapter.mjs",
@@ -193,6 +194,7 @@
       "scripts/codex-v128-managed-context-emitter.mjs",
       "scripts/codex-v128-state-matrix.mjs",
       "scripts/codex-v128-integrity-lib.mjs",
+      "docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json",
       "docs/process/CODEX_V128_CONTRACT_SCHEMA.json",
       "docs/process/CODEX_V128_SPEC.md"
     ],
@@ -212,6 +214,29 @@
   "permission": {
     "projectionCreatesPermission": false,
     "permissionDerivedFromCurrentReceiptWhenHydrated": true,
+    "standingAutonomyPolicy": {
+      "policyPath": "docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json",
+      "policyKind": "standing_autonomy_policy_receipt",
+      "authoritySource": "owner_defined_repository_policy",
+      "trustedPolicySourceRequired": true,
+      "trustedPolicyDigestRequired": true,
+      "trustedEvaluatorDigestRequired": true,
+      "trustedScopeClassifierDigestRequired": true,
+      "trustedMergeExecutorDigestRequired": true,
+      "protectedExecutorRequired": true,
+      "prHeadPolicyMayAuthorizeItself": false,
+      "perPrHumanDecisionRequiredWhenEligible": false,
+      "automatedMergeExecutionAllowedWhenEligible": true,
+      "automationDispositionValues": ["auto_merge", "auto_repair", "auto_wait", "auto_process_base_pr", "auto_rebase", "auto_revalidate", "auto_reject", "auto_quarantine", "auto_ready"],
+      "aiAuthorityCreated": false,
+      "sourceActivationAuthorized": false,
+      "targetRolloutAuthorized": false,
+      "mainBasedPrRequired": true,
+      "draftForbidden": true,
+      "stackedPrForbidden": true,
+      "expectedHeadCasRequired": true,
+      "deterministicVerifierRequired": true
+    },
     "missingReceiptState": "not_available",
     "placeholderReceiptValid": false,
     "allowedContinuationActions": ["edit", "check", "commit", "push", "create_pr", "rerun_ci", "fix_ci"],

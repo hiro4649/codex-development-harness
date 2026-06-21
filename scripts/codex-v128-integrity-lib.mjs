@@ -8,10 +8,23 @@ export const V128_PROJECTION_SOURCE_FILES = [
   'docs/process/CODEX_V128_SPEC.md',
   'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
   'docs/process/CODEX_V128_STATE_MATRIX.json',
+  'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json',
   'scripts/codex-local-quality-gate.mjs',
   'scripts/codex-v128-integrity-lib.mjs',
   'scripts/codex-v128-projection-reader.mjs',
+  'scripts/codex-v128-projection-reader-adapter.mjs',
+  'scripts/codex-v128-managed-context-emitter.mjs',
+  'scripts/codex-v128-managed-context-adapter.mjs',
   'scripts/codex-v128-state-matrix.mjs',
+  'scripts/codex-v128-state-matrix-adapter.mjs',
+  'scripts/codex-v128-validation-execution-plan.mjs',
+  'scripts/codex-v128-aggregate-finalizer.mjs',
+  'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
+  'scripts/codex-v128-invocation-ledger.mjs',
+  'scripts/codex-v128-standing-autonomy-policy.mjs',
+  'scripts/codex-v128-trust-closure.mjs',
+  'scripts/codex-v128-self-test.mjs',
+  'scripts/codex-workflow-quality-runner.mjs',
 ];
 
 export function canonicalJson(value) {

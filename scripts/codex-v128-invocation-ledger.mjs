@@ -14,6 +14,9 @@ const ledgerState = {
   typedResults: {},
   nodeResults: [],
   invocationLedger: [],
+  epochSequence: 0,
+  currentEpochDigest: null,
+  processEpochLedger: [],
 };
 
 function canonicalJson(value) {
@@ -35,7 +38,22 @@ function optionalLedgerAppend(entry) {
   fs.appendFileSync(configuredPath, `${canonicalJson(entry)}\n`, 'utf8');
 }
 
-export function resetV128InvocationLedger() {
+export function resetV128InvocationLedger(meta = {}) {
+  if (ledgerState.invocationLedger.length || ledgerState.nodeResults.length) {
+    ledgerState.processEpochLedger.push({
+      epochSequence: ledgerState.epochSequence,
+      epochDigest: ledgerState.currentEpochDigest,
+      invocationCount: ledgerState.invocationLedger.length,
+      nodeResultCount: ledgerState.nodeResults.length,
+      duplicateNodeCount: Object.values(Object.fromEntries(ledgerState.counts)).filter((count) => count > 1).length,
+      epochResultDigest: digestValue({
+        nodeResults: ledgerState.nodeResults,
+        invocationLedger: ledgerState.invocationLedger,
+      }),
+    });
+  }
+  ledgerState.epochSequence += 1;
+  ledgerState.currentEpochDigest = meta.epochDigest || null;
   ledgerState.invocationSequence = 0;
   ledgerState.completionSequence = 0;
   ledgerState.counts = new Map();
@@ -76,6 +94,8 @@ export function recordV128AdapterInvocation(meta = {}, payload = {}) {
     resultDigest,
     executionSource: meta.executionSource || 'v128_process_wide_adapter_entrypoint',
     adapterId: meta.adapterId || payload?.adapterId || null,
+    epochSequence: ledgerState.epochSequence,
+    epochDigest: ledgerState.currentEpochDigest,
   };
   ledgerState.typedResults[nodeRef] = payload;
   ledgerState.nodeResults.push(nodeResult);
@@ -89,5 +109,8 @@ export function getV128InvocationLedgerSnapshot() {
     nodeResults: [...ledgerState.nodeResults],
     typedResults: { ...ledgerState.typedResults },
     invocationLedger: [...ledgerState.invocationLedger],
+    epochSequence: ledgerState.epochSequence,
+    currentEpochDigest: ledgerState.currentEpochDigest,
+    processEpochLedger: [...ledgerState.processEpochLedger],
   };
 }

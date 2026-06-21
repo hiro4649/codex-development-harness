@@ -382,8 +382,8 @@ embedding a full topology object in the routine read surface:
 authorityBoundaryAction:
   Final Decision / Decision Capsule boundary action
 
-operatorNextActionCode:
-  provider topology derived operator hint
+automationDisposition:
+  provider topology and standing policy derived automation hint
 ```
 
 This keeps the bounded Projection reader below budget while preventing the
@@ -391,20 +391,164 @@ operator hint from being confused with Final Decision authority.
 
 ```text
 stacked branch:
-  owner_handle_base_pr
+  auto_process_base_pr
 
 default-branch draft with technical checks closed:
-  owner_draft_decision
+  auto_ready
 
 technical checks not closed:
-  wait_for_same_head_remote_gate
+  auto_wait
 
 default-branch ready with checks closed:
-  owner_merge_decision_only
+  auto_merge
 ```
 
-The topology-derived operator action is non-authoritative and cannot create
-merge authority.
+The topology-derived automation disposition is non-authoritative and cannot
+create merge authority.
+
+### 5. Standing Autonomy Policy Receipt
+
+v1.2.8 may remove per-PR human merge decisions only through a trusted,
+owner-defined repository standing autonomy policy. AI reviewer output remains
+advisory; the load-bearing decision is deterministic verifier evidence plus a
+base-pinned policy digest. The PR head may contain a candidate policy, but a PR
+must not define the authority used to approve itself. The candidate policy is
+stored at:
+
+```text
+docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json
+```
+
+The trusted policy source must be one of:
+
+```text
+protected default-branch policy
+owner-signed immutable policy bundle
+protected repository variable
+```
+
+If the trusted policy digest, trusted evaluator digest, trusted verifier bundle
+digest, trusted provider adapter digest, trusted scope classifier digest, or
+trusted merge executor digest is absent or does not match, the PR is
+`not_eligible`. The authority epoch and revocation nonce must also match the
+protected trusted values; mere presence is not sufficient. A PR that changes the
+standing policy, evaluator, Final Decision authority, same-head semantics,
+provider adapter, verifier bundle, scope classifier, or merge executor cannot
+authorize itself.
+
+The Source Shadow Candidate trust closure is implemented by:
+
+```text
+scripts/codex-v128-trust-closure.mjs
+```
+
+It emits digest-only bindings for role-specific transitive closures:
+
+```text
+verifier bundle
+provider adapter
+scope classifier
+merge executor
+canonicalizer
+Final Decision authority
+```
+
+Each role closure is calculated from its own seed set and transitive imports,
+not from a fixed seed subset. The closure uses deterministic UTF-8 byte path
+ordering; static imports, re-exports, literal dynamic imports, and literal
+executable config/policy reads are included. These bindings are diagnostic in
+Source Shadow Candidate mode and become load-bearing only after a protected
+default-branch or owner-signed policy source supplies the matching expected
+digests.
+
+The policy can authorize automatic merge execution only when all of these are
+true:
+
+```text
+harness-only scope
+no product/runtime/package/lockfile/workflow/deploy/wallet/RPC changes
+main/default-branch PR
+not draft
+not stacked
+same-head required checks pass
+same-head is derived from PR head, workflow head, artifact head, required-check set digest, and required-check policy digest
+merge-boundary Final Decision is recomputed with terminalAction=merge_current_pr
+Final Decision has decision=allowed, mergeAllowed=true, exitCode=0
+v127 Preservation Matrix pass
+deterministic verifier pass
+scope digest match from a base-pinned scope classifier, not a PR-head boolean
+zero unresolved findings
+expected-head CAS succeeds
+protected automation executor is available
+trusted verifier/provider/classifier/executor digests match protected values
+authority epoch and revocation nonce match protected values
+```
+
+Authority-surface changes such as Source/Harness manifests, active policy index,
+Preservation Matrix, Reason Registry, State Matrix, standing policy, verifier,
+provider adapter, scope classifier, or merge executor changes force
+`auto_quarantine`. This is how v1.2.8 removes per-PR human decisions without
+allowing a PR to approve the authority it changes.
+
+Provider changed-file evidence distinguishes path-set observation from exact
+tuple observation. A path-set match must not be reported as
+`exactTupleDigestMatch`. Exact matching requires the canonical tuple digest for
+`status`, `oldPath`, `newPath`, `oldMode`, `newMode`, `oldContentDigest`, and
+`newContentDigest`.
+
+Every v1.2.8 shadow result that can appear near the active v1.2.7 gate must
+carry typed routing metadata:
+
+```text
+authorityLayer=v128_shadow_candidate
+decisionInfluence=shadow_only
+loadBearingForActiveV127=false
+evidenceEpoch=pre_closure|final_closure
+```
+
+The active v1.2.7 gate must route by these typed fields, not by a hardcoded list
+of stale reason names.
+
+v1.2.8 Shadow Candidate evidence nodes are computed once per unique input epoch.
+Artifact writers serialize already-computed results only; duplicate required node
+execution in one epoch is a validation failure. The invocation ledger is
+append-only at process level: changing the input creates a new epoch and retains
+the previous epoch summary instead of erasing prior evidence.
+
+The policy cannot authorize Source Activation, target rollout, product/runtime
+work, workflow changes, package/lockfile changes, deploy, wallet/RPC access,
+self-approval, or GitHub approval review. If a PR is stacked, draft, missing
+provider evidence, or outside the policy scope, the routine Projection may show
+`humanPerPrDecisionRequired=false` while still keeping
+`automatedMergeExecutionAllowed=false` and an automation disposition such as
+`auto_process_base_pr`, `auto_rebase`, `auto_wait`, `auto_repair`, or
+`auto_revalidate`, `auto_reject`, or `auto_quarantine`.
+
+Routine Projection may expose only the compact policy result:
+
+```text
+policyAuthorizationState
+automationDisposition
+humanPerPrDecisionRequired
+automatedMergeExecutionAllowed
+automationExecutorAvailable
+automationActionStarted
+automationActionCompleted
+automationResultDigest
+```
+
+The full policy and its digest remain diagnostic/cold evidence. The stored
+Projection and AI review must never create owner authority.
+
+Standing autonomy requires a protected trust root outside PR-head code. The
+trusted inputs are the policy digest, evaluator bundle digest, scope classifier
+digest, merge executor digest, repository identity, authority epoch, and
+revocation nonce. A PR-head policy or evaluator may be candidate data only.
+
+Policy/evaluator/Final Decision/same-head/scope-classifier/merge-executor
+changes are self-authorizing changes. They cannot use their own new policy to
+authorize themselves. A stricter policy rotation may be accepted only by the old
+trusted policy; semantic loosening is automatically rejected or quarantined.
 
 The finalizer payload must be semantically checked:
 

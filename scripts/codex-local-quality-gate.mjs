@@ -92,6 +92,14 @@ import {
   getV128InvocationLedgerSnapshot,
   resetV128InvocationLedger,
 } from './codex-v128-invocation-ledger.mjs';
+import {
+  evaluateV128StandingAutonomyPolicy,
+  validateV128StandingAutonomyPolicyEvaluation,
+} from './codex-v128-standing-autonomy-policy.mjs';
+import {
+  buildV128TrustClosure,
+  validateV128TrustClosure,
+} from './codex-v128-trust-closure.mjs';
 
 
 
@@ -296,6 +304,20 @@ function sha256Canonical(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
 }
 
+function compareUtf8Text(a, b) {
+  return Buffer.compare(Buffer.from(String(a), 'utf8'), Buffer.from(String(b), 'utf8'));
+}
+
+function shadowOnlyV128Fields(evidenceEpoch = 'final_closure') {
+  return {
+    authorityLayer: 'v128_shadow_candidate',
+    decisionInfluence: 'shadow_only',
+    loadBearingForActiveV127: false,
+    evidenceEpoch,
+    activeGateInfluence: 'non_blocking_shadow_candidate',
+  };
+}
+
 function gitText(args = []) {
   try {
     const result = spawnSync('git', args, { cwd: process.cwd(), encoding: 'utf8' });
@@ -337,6 +359,219 @@ function observeV128WorkspaceIdentity(head) {
     canonicalityState: observed && repositoryKey !== 'unknown' ? 'canonical' : 'unknown',
     observationDigest: sha256Canonical(observationCore),
     rawWorkspacePathUploaded: false,
+  };
+}
+
+function isKnownSha(value) {
+  return /^[a-f0-9]{40}$/i.test(String(value || '').trim());
+}
+
+function buildV128ProviderSnapshotEvidence(report = {}, head = 'unknown', workspaceObservation = {}, trustClosure = {}) {
+  const currentHeadEvidence = report.evidenceCapsule?.currentHeadEvidence || {};
+  const prHeadSha = String(currentHeadEvidence.prHeadSha || '').trim();
+  const workflowHeadSha = String(currentHeadEvidence.workflowHeadSha || '').trim();
+  const artifactHeadSha = String(currentHeadEvidence.artifactHeadSha || '').trim();
+  const sameHeadObserved = [prHeadSha, workflowHeadSha, artifactHeadSha].every((value) => isKnownSha(value) && value === head);
+  const requiredCheckPolicy = {
+    source: 'v128_shadow_provider_snapshot',
+    requiredCheckModel: 'same_head_quality_gate_artifact',
+    qualityGateStatus: report.status || 'unknown',
+    qualityScoreStatus: report.qualityScoreStatus?.status || 'unknown',
+    technicalChecksReady: report.technicalChecksReady === true,
+    finalDecisionTerminalAction: report.finalDecision?.terminalAction || 'unknown',
+    currentHeadEvidenceRole: currentHeadEvidence.role || 'unknown',
+  };
+  const snapshot = {
+    schemaVersion: '1.2.8',
+    snapshotKind: 'trusted_provider_snapshot_shadow',
+    providerAdapterDigest: trustClosure.trustDigests?.providerAdapterDigest || null,
+    providerSnapshotAuthority: 'pr_head_shadow_candidate',
+    protectedProviderAdapterAvailable: false,
+    repositoryKey: workspaceObservation.repositoryKey || 'unknown',
+    headSha: head || 'unknown',
+    prHeadSha: isKnownSha(prHeadSha) ? prHeadSha : 'unknown',
+    workflowHeadSha: isKnownSha(workflowHeadSha) ? workflowHeadSha : 'unknown',
+    artifactHeadSha: isKnownSha(artifactHeadSha) ? artifactHeadSha : 'unknown',
+    sameHeadObserved,
+    sameHeadRequiredChecksPass: sameHeadObserved && report.technicalChecksReady === true,
+    requiredCheckPolicyDigest: sha256Canonical(requiredCheckPolicy),
+    requiredCheckSetDigest: sha256Canonical({
+      requiredCheckPolicy,
+      runId: currentHeadEvidence.qualityGateRunId || null,
+      artifactPointer: currentHeadEvidence.artifactPointer || currentHeadEvidence.artifactId || null,
+    }),
+    runAttemptObserved: currentHeadEvidence.qualityGateRunId ? true : false,
+    testedTreeKind: workspaceObservation.testedTreeKind || 'unknown',
+    expectedHeadCasReady: false,
+    safeSummaryOnly: true,
+  };
+  return {
+    ...snapshot,
+    providerSnapshotDigest: sha256Canonical(snapshot),
+  };
+}
+
+function buildV128ScopeEvidence(report = {}, trustClosure = {}) {
+  const changed = report.sourceHarnessValidationStatus?.changedFiles || [];
+  const changedFiles = Array.isArray(changed) ? changed.map((file) => String(file).replace(/\\/g, '/')).sort() : [];
+  const classifier = {
+    classifierId: 'v128_shadow_base_pinned_scope_classifier_v1',
+    allowedPrefixes: ['docs/process/', 'scripts/', 'AGENTS.md', 'CODEX_SOURCE_HARNESS_MANIFEST.json'],
+    forbiddenPrefixes: ['src/', 'app/', 'apps/', 'packages/', 'contracts/', '.github/workflows/'],
+    forbiddenFiles: ['package.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'],
+  };
+  const forbiddenFiles = changedFiles.filter((file) => classifier.forbiddenFiles.includes(file)
+    || classifier.forbiddenPrefixes.some((prefix) => file.startsWith(prefix)));
+  const allowedFiles = changedFiles.filter((file) => classifier.allowedPrefixes.some((prefix) => file === prefix || file.startsWith(prefix)));
+  const scopeDigestMatch = changedFiles.length > 0 && forbiddenFiles.length === 0 && allowedFiles.length === changedFiles.length;
+  const scope = {
+    schemaVersion: '1.2.8',
+    scopeEvidenceKind: 'base_pinned_scope_shadow',
+    scopeClassifierDigest: trustClosure.trustDigests?.scopeClassifierDigest || null,
+    changedFileCount: changedFiles.length,
+    forbiddenFileCount: forbiddenFiles.length,
+    harnessOnlyScope: scopeDigestMatch,
+    scopeDigestMatch,
+    changedFilesDigest: sha256Canonical(changedFiles),
+    classificationPolicyDigest: sha256Canonical(classifier),
+    safeSummaryOnly: true,
+  };
+  return {
+    ...scope,
+    scopeContractDigest: sha256Canonical(scope),
+  };
+}
+
+const V128_AUTHORITY_SURFACE_FILES = new Set([
+  'CODEX_SOURCE_HARNESS_MANIFEST.json',
+  'docs/process/CODEX_HARNESS_MANIFEST.json',
+  'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
+  'docs/process/CODEX_V128_PRESERVATION_MATRIX.json',
+  'docs/process/CODEX_V128_REASON_REGISTRY.json',
+  'docs/process/CODEX_V128_STATE_MATRIX.json',
+  'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
+  'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json',
+  'docs/process/CODEX_V128_SPEC.md',
+]);
+
+function normalizedChangedFiles(report = {}) {
+  const changed = report.sourceHarnessValidationStatus?.changedFiles || [];
+  return Array.isArray(changed) ? changed.map((file) => String(file).replace(/\\/g, '/')).sort() : [];
+}
+
+export function buildV128SemanticAuthorityGuard(report = {}) {
+  const changedFiles = normalizedChangedFiles(report);
+  const authorityChangedFiles = changedFiles.filter((file) => V128_AUTHORITY_SURFACE_FILES.has(file));
+  const semanticAuthorityChangeDetected = authorityChangedFiles.length > 0;
+  return {
+    schemaVersion: '1.2.8',
+    guardKind: 'authority_surface_guard_shadow',
+    status: semanticAuthorityChangeDetected ? 'auto_quarantine_required' : 'pass',
+    semanticDiffObserved: false,
+    semanticAuthorityChangeDetected,
+    authorityChangedFileCount: authorityChangedFiles.length,
+    authorityChangedFilesDigest: sha256Canonical(authorityChangedFiles),
+    reasonCodes: semanticAuthorityChangeDetected ? ['authority_surface_changed_requires_quarantine'] : [],
+    ...shadowOnlyV128Fields('final_closure'),
+    safeSummaryOnly: true,
+  };
+}
+
+export function buildV128ProviderChangedFilesEvidence(report = {}, env = process.env) {
+  const harnessChangedFiles = normalizedChangedFiles(report);
+  let providerFiles = null;
+  let expectedProviderTupleDigest = null;
+  let parseState = 'not_observed';
+  try {
+    if (env.CODEX_V128_PROVIDER_CHANGED_FILES_JSON) {
+      const parsed = JSON.parse(env.CODEX_V128_PROVIDER_CHANGED_FILES_JSON);
+      if (Array.isArray(parsed)) {
+        providerFiles = parsed.map((item) => ({
+          status: String(item.status || 'unknown'),
+          oldPath: String(item.oldPath || item.path || item.filename || '').replace(/\\/g, '/'),
+          newPath: String(item.newPath || item.path || item.filename || '').replace(/\\/g, '/'),
+          oldMode: String(item.oldMode || 'unknown'),
+          newMode: String(item.newMode || 'unknown'),
+          oldContentDigest: item.oldContentDigest || null,
+          newContentDigest: item.newContentDigest || null,
+        })).sort((a, b) => compareUtf8Text(
+          `${a.status}\0${a.oldPath}\0${a.newPath}\0${a.oldMode}\0${a.newMode}\0${a.oldContentDigest || ''}\0${a.newContentDigest || ''}`,
+          `${b.status}\0${b.oldPath}\0${b.newPath}\0${b.oldMode}\0${b.newMode}\0${b.oldContentDigest || ''}\0${b.newContentDigest || ''}`,
+        ));
+        parseState = 'observed';
+      } else {
+        parseState = 'invalid';
+      }
+    }
+    if (/^sha256:[a-f0-9]{64}$/.test(String(env.CODEX_V128_EXPECTED_CHANGED_FILES_TUPLE_DIGEST || ''))) {
+      expectedProviderTupleDigest = env.CODEX_V128_EXPECTED_CHANGED_FILES_TUPLE_DIGEST;
+    }
+  } catch {
+    parseState = 'invalid';
+  }
+  const providerPathSet = providerFiles ? providerFiles.map((item) => item.newPath || item.oldPath).filter(Boolean).sort() : [];
+  const providerChangedFilesDigest = providerFiles ? sha256Canonical(providerFiles) : null;
+  const harnessChangedFilesDigest = sha256Canonical(harnessChangedFiles);
+  const providerPathDigest = providerFiles ? sha256Canonical(providerPathSet) : null;
+  const pathSetDigestMatch = providerFiles
+    ? providerPathDigest === harnessChangedFilesDigest && providerPathSet.length === harnessChangedFiles.length
+    : false;
+  const exactTupleDigestMatch = providerFiles && expectedProviderTupleDigest
+    ? providerChangedFilesDigest === expectedProviderTupleDigest
+    : null;
+  const exactTupleObservationState = providerFiles
+    ? (expectedProviderTupleDigest ? 'observed' : 'not_observed')
+    : parseState;
+  const status = parseState === 'not_observed'
+    ? 'not_observed'
+    : (!pathSetDigestMatch ? 'mismatch' : (exactTupleDigestMatch === false ? 'tuple_mismatch' : 'pass'));
+  return {
+    schemaVersion: '1.2.8',
+    evidenceKind: 'provider_pr_changed_files_tuple_shadow',
+    status,
+    providerObservationState: parseState,
+    exactTupleObservationState,
+    providerChangedFileCount: providerFiles ? providerFiles.length : null,
+    harnessChangedFileCount: harnessChangedFiles.length,
+    providerChangedFilesDigest,
+    providerPathDigest,
+    harnessChangedFilesDigest,
+    expectedProviderTupleDigest,
+    pathSetDigestMatch,
+    exactTupleDigestMatch,
+    tupleComparisonMode: expectedProviderTupleDigest ? 'full_tuple_digest' : 'path_set_only_not_exact',
+    loadBearing: false,
+    ...shadowOnlyV128Fields('final_closure'),
+    safeSummaryOnly: true,
+  };
+}
+
+function buildV128AutomationExecutorState(env = process.env, trustClosure = {}) {
+  const automationExecutorAvailable = env.CODEX_V128_AUTOMATION_EXECUTOR_AVAILABLE === '1';
+  const actionStarted = env.CODEX_V128_AUTOMATION_ACTION_STARTED === '1';
+  const actionCompleted = env.CODEX_V128_AUTOMATION_ACTION_COMPLETED === '1';
+  const resultDigest = /^sha256:[a-f0-9]{64}$/.test(String(env.CODEX_V128_AUTOMATION_RESULT_DIGEST || ''))
+    ? env.CODEX_V128_AUTOMATION_RESULT_DIGEST
+    : null;
+  const executor = {
+    schemaVersion: '1.2.8',
+    executorKind: 'protected_lifecycle_executor_shadow',
+    available: automationExecutorAvailable,
+    actionStarted,
+    actionCompleted,
+    resultDigest,
+    authoritySource: automationExecutorAvailable
+      ? (env.CODEX_V128_AUTOMATION_EXECUTOR_SOURCE || 'protected_executor_declared')
+      : 'not_configured',
+    executorImplementationDigest: trustClosure.trustDigests?.mergeExecutorDigest || null,
+    writeAuthorityInPrHeadGate: false,
+    githubApprovalReviewAllowed: false,
+    safeSummaryOnly: true,
+  };
+  return {
+    ...executor,
+    executorStateDigest: sha256Canonical(executor),
+    executorDigest: trustClosure.trustDigests?.mergeExecutorDigest || sha256Canonical(executor),
   };
 }
 
@@ -401,6 +636,102 @@ function buildV128DecisionInputManifest(input = {}) {
     digest: sha256Canonical(fields),
     safeSummaryOnly: true,
   };
+}
+
+let v128ShadowEvidenceCache = null;
+
+function computeV128ShadowEvidence(input = {}) {
+  const {
+    routineDecisionProjection,
+    projectionInputs,
+    workspaceObservation,
+    decisionInputManifest,
+    head,
+  } = input;
+  const v128NodeCommandDigests = buildV128NodeCommandDigests();
+  const projectionInputDigest = routineDecisionProjection.sourceBinding?.projectionPayloadDigest;
+  const managedInputDigest = buildV128ManagedInstructionSourceSetDigest({ headSha: head });
+  const stateMatrixInputDigest = buildV128StateMatrixContentDigest();
+  const cacheKey = sha256Canonical({
+    head,
+    projectionInputDigest,
+    managedInputDigest,
+    stateMatrixInputDigest,
+    nodeCommandDigests: v128NodeCommandDigests,
+    decisionInputManifestDigest: decisionInputManifest?.digest || null,
+  });
+  if (v128ShadowEvidenceCache?.cacheKey === cacheKey) {
+    return {
+      ...v128ShadowEvidenceCache.value,
+      cacheKey,
+      computeOnceReuseState: 'reused',
+    };
+  }
+  resetV128InvocationLedger({ epochDigest: cacheKey });
+  const routineProjectionReadSurface = runV128ProjectionReaderAdapter(routineDecisionProjection, {
+    commandOrFunctionDigest: v128NodeCommandDigests.projection_reader,
+  });
+  const v128ProjectionIntegrityStatus = validateV128ProjectionIntegrity(routineDecisionProjection, {
+    ...projectionInputs,
+    verifySourceDigest: true,
+    verifyInputDigest: true,
+  });
+  const v128ManagedContextEmitter = runV128ManagedContextAdapter({ headSha: head }, {
+    commandOrFunctionDigest: v128NodeCommandDigests.managed_context_emitter,
+  });
+  const v128StateMatrixExecution = runV128StateMatrixAdapter({
+    commandOrFunctionDigest: v128NodeCommandDigests.state_matrix_executor,
+  });
+  const preAggregateSnapshot = getV128InvocationLedgerSnapshot();
+  const upstreamNodeResults = preAggregateSnapshot.nodeResults;
+  const aggregateInputDigest = buildV128OrderedUpstreamResultSetDigest(upstreamNodeResults);
+  runV128AggregateFinalizerAdapter({ upstreamNodeResults }, {
+    commandOrFunctionDigest: v128NodeCommandDigests.aggregate_finalizer,
+  });
+  const v128ExecutionSnapshot = getV128InvocationLedgerSnapshot();
+  const v128NodeInputDigests = {
+    projection_reader: projectionInputDigest,
+    managed_context_emitter: managedInputDigest,
+    state_matrix_executor: stateMatrixInputDigest,
+    aggregate_finalizer: aggregateInputDigest,
+  };
+  const v128ValidationExecutionPlan = buildV128ValidationExecutionPlan({
+    observedExecution: true,
+    workspaceObservation,
+    headSha: head,
+    repositoryKey: workspaceObservation.repositoryKey,
+    remoteDigest: workspaceObservation.remoteDigest,
+    branch: process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || 'unknown',
+    sourceBranch: workspaceObservation.sourceBranch,
+    checkoutRef: workspaceObservation.checkoutRef,
+    testedTreeKind: workspaceObservation.testedTreeKind,
+    runnerClassDigest: sha256Canonical({
+      provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
+      os: process.platform,
+      arch: process.arch,
+    }),
+    decisionInputManifest,
+    nodeResults: v128ExecutionSnapshot.nodeResults,
+    typedResults: v128ExecutionSnapshot.typedResults,
+    nodeInputDigests: v128NodeInputDigests,
+    runWideInvocationLedger: v128ExecutionSnapshot.invocationLedger,
+  });
+  const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);
+  const value = {
+    routineProjectionReadSurface,
+    v128ProjectionIntegrityStatus,
+    v128ManagedContextEmitter,
+    v128StateMatrixExecution,
+    v128ValidationExecutionPlan,
+    v128ValidationExecutionPlanStatus,
+    v128NodeInputDigests,
+    v128ProcessEpochLedger: v128ExecutionSnapshot.processEpochLedger || [],
+    v128ProcessEpochSequence: v128ExecutionSnapshot.epochSequence || null,
+    cacheKey,
+    computeOnceReuseState: 'computed',
+  };
+  v128ShadowEvidenceCache = { cacheKey, value };
+  return value;
 }
 
 function buildV117ArtifactEntries(head) {
@@ -481,69 +812,73 @@ function writeV117LoadBearingArtifacts(report = {}) {
   if (report.evidenceCapsule) {
     report.evidenceCapsule = bindEvidenceCapsuleHead(report.evidenceCapsule, head);
   }
+  const v128TrustClosure = buildV128TrustClosure();
+  const v128TrustClosureStatus = validateV128TrustClosure(v128TrustClosure);
+  const workspaceObservation = observeV128WorkspaceIdentity(head);
+  const providerSnapshot = buildV128ProviderSnapshotEvidence(report, head, workspaceObservation, v128TrustClosure);
+  const scopeEvidence = buildV128ScopeEvidence(report, v128TrustClosure);
+  const semanticAuthorityGuard = buildV128SemanticAuthorityGuard(report);
+  const providerChangedFilesEvidence = buildV128ProviderChangedFilesEvidence(report, process.env);
+  const automationExecutor = buildV128AutomationExecutorState(process.env, v128TrustClosure);
   const projectionInputs = {
     finalDecision: report.finalDecision || null,
     evidenceCapsule: report.evidenceCapsule || null,
     decisionCapsule,
   };
-  const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head, projectionInputs);
-  const stressDecisionProjection = buildV128StressDecisionProjection(report, projectionInputs);
-  resetV128InvocationLedger();
-  const v128NodeCommandDigests = buildV128NodeCommandDigests();
-  const projectionInputDigest = routineDecisionProjection.sourceBinding?.projectionPayloadDigest;
-  const managedInputDigest = buildV128ManagedInstructionSourceSetDigest({ headSha: head });
-  const stateMatrixInputDigest = buildV128StateMatrixContentDigest();
-  const routineProjectionReadSurface = runV128ProjectionReaderAdapter(routineDecisionProjection, {
-    commandOrFunctionDigest: v128NodeCommandDigests.projection_reader,
-  });
-  const v128ProjectionIntegrityStatus = validateV128ProjectionIntegrity(routineDecisionProjection, {
-    ...projectionInputs,
-    verifySourceDigest: true,
-    verifyInputDigest: true,
-  });
-  const v128ManagedContextEmitter = runV128ManagedContextAdapter({ headSha: head }, {
-    commandOrFunctionDigest: v128NodeCommandDigests.managed_context_emitter,
-  });
-  const v128StateMatrixExecution = runV128StateMatrixAdapter({
-    commandOrFunctionDigest: v128NodeCommandDigests.state_matrix_executor,
-  });
-  const preAggregateSnapshot = getV128InvocationLedgerSnapshot();
-  const upstreamNodeResults = preAggregateSnapshot.nodeResults;
-  const aggregateInputDigest = buildV128OrderedUpstreamResultSetDigest(upstreamNodeResults);
-  runV128AggregateFinalizerAdapter({ upstreamNodeResults }, {
-    commandOrFunctionDigest: v128NodeCommandDigests.aggregate_finalizer,
-  });
-  const v128ExecutionSnapshot = getV128InvocationLedgerSnapshot();
-  const v128NodeInputDigests = {
-    projection_reader: projectionInputDigest,
-    managed_context_emitter: managedInputDigest,
-    state_matrix_executor: stateMatrixInputDigest,
-    aggregate_finalizer: aggregateInputDigest,
-  };
-  const workspaceObservation = observeV128WorkspaceIdentity(head);
-  const decisionInputManifest = buildV128DecisionInputManifest(projectionInputs);
-  const v128ValidationExecutionPlan = buildV128ValidationExecutionPlan({
-    observedExecution: true,
-    workspaceObservation,
+  const prTopology = buildV128PrTopologyProjection(process.env, report);
+  const standingAutonomyPolicy = evaluateV128StandingAutonomyPolicy({
+    report,
+    prTopology,
     headSha: head,
-    repositoryKey: workspaceObservation.repositoryKey,
-    remoteDigest: workspaceObservation.remoteDigest,
-    branch: process.env.CODEX_BRANCH || process.env.GITHUB_REF_NAME || 'unknown',
-    sourceBranch: workspaceObservation.sourceBranch,
-    checkoutRef: workspaceObservation.checkoutRef,
-    testedTreeKind: workspaceObservation.testedTreeKind,
-    runnerClassDigest: sha256Canonical({
-      provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
-      os: process.platform,
-      arch: process.arch,
-    }),
-    decisionInputManifest,
-    nodeResults: v128ExecutionSnapshot.nodeResults,
-    typedResults: v128ExecutionSnapshot.typedResults,
-    nodeInputDigests: v128NodeInputDigests,
-    runWideInvocationLedger: v128ExecutionSnapshot.invocationLedger,
+    repositoryKey: providerSnapshot.repositoryKey,
+    scopeEvidence,
+    trustClosure: v128TrustClosure,
+    verifierBundleDigest: v128TrustClosure.trustDigests?.verifierBundleDigest || null,
+    providerAdapterDigest: v128TrustClosure.trustDigests?.providerAdapterDigest || null,
+    scopeClassifierDigest: v128TrustClosure.trustDigests?.scopeClassifierDigest || scopeEvidence.classificationPolicyDigest,
+    mergeExecutorDigest: automationExecutor.executorDigest,
+    technicalChecksReady: report.technicalChecksReady === true,
+    deterministicVerifierPass: report.routineDecisionProjectionStatus?.status === 'pass'
+      || report.v128SelfTestStatus?.status === 'pass',
+    sameHeadRequiredChecksPass: providerSnapshot.sameHeadRequiredChecksPass === true,
+    v127PreservationPass: report.v127SelfTestStatus?.status === 'pass',
+    scopeDigestMatch: scopeEvidence.scopeDigestMatch === true,
+    expectedHeadCasReady: providerSnapshot.expectedHeadCasReady === true,
+    harnessOnlyScope: scopeEvidence.harnessOnlyScope === true,
+    automationExecutor,
+    changedFiles: report.sourceHarnessValidationStatus?.changedFiles || [],
+    blockingCount: report.reasonSummaryStatus?.summary?.blockingReasons?.length || 0,
+    productCodeChanged: report.productCodeChanged === true,
+    packageFilesChanged: report.packageOrLockfileChanged === true || report.packageFilesChanged === true,
+    workflowChanged: report.workflowChanged === true,
+    sourceActivationRequested: false,
+    targetRolloutRequested: false,
+    policySelfModification: semanticAuthorityGuard.semanticAuthorityChangeDetected === true,
   });
-  const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);
+  const standingAutonomyPolicyStatus = validateV128StandingAutonomyPolicyEvaluation(standingAutonomyPolicy);
+  const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head, projectionInputs, {
+    prTopology,
+    standingAutonomyPolicy,
+  });
+  const stressDecisionProjection = buildV128StressDecisionProjection(report, projectionInputs);
+  const decisionInputManifest = buildV128DecisionInputManifest(projectionInputs);
+  const {
+    routineProjectionReadSurface,
+    v128ProjectionIntegrityStatus,
+    v128ManagedContextEmitter,
+    v128StateMatrixExecution,
+    v128ValidationExecutionPlan,
+    v128ValidationExecutionPlanStatus,
+    v128ProcessEpochLedger,
+    v128ProcessEpochSequence,
+    computeOnceReuseState,
+  } = computeV128ShadowEvidence({
+    routineDecisionProjection,
+    projectionInputs,
+    workspaceObservation,
+    decisionInputManifest,
+    head,
+  });
   if (report.orchestrationCapsule) {
     report.orchestrationCapsule.validationExecutionPlanAndReuse = v128ValidationExecutionPlan;
   }
@@ -584,6 +919,20 @@ function writeV117LoadBearingArtifacts(report = {}) {
       candidateActivationState: 'source_shadow_candidate',
       permissionDerivedFromCurrentReceipt: false,
       allowedActionCodes: [],
+      standingAutonomyPolicyBinding: {
+        policyId: standingAutonomyPolicy.policyId,
+        policyDigest: standingAutonomyPolicy.policyDigest,
+        evaluatorDigest: standingAutonomyPolicy.evaluatorDigest,
+        verifierBundleDigest: standingAutonomyPolicy.verifierBundleDigest,
+        providerAdapterDigest: standingAutonomyPolicy.providerAdapterDigest,
+        authorizationContextDigest: standingAutonomyPolicy.authorizationContextDigest,
+        policyAuthorizationState: standingAutonomyPolicy.policyAuthorizationState,
+        automationDisposition: standingAutonomyPolicy.automationDisposition,
+        automatedMergeExecutionAllowed: standingAutonomyPolicy.automatedMergeExecutionAllowed === true,
+        humanPerPrDecisionRequired: standingAutonomyPolicy.humanPerPrDecisionRequired === true,
+        reasonCodeCount: Array.isArray(standingAutonomyPolicy.reasonCodes) ? standingAutonomyPolicy.reasonCodes.length : 0,
+        safeSummaryOnly: true,
+      },
       receiptHydrationBinding: {
         receiptHydrationState: 'not_available',
         receiptDigest: null,
@@ -610,10 +959,23 @@ function writeV117LoadBearingArtifacts(report = {}) {
     };
   }
   report.routineDecisionProjection = routineDecisionProjection;
+  report.v128TrustClosure = v128TrustClosure;
+  report.v128TrustClosureStatus = v128TrustClosureStatus;
+  report.v128StandingAutonomyPolicy = standingAutonomyPolicy;
+  report.v128StandingAutonomyPolicyStatus = standingAutonomyPolicyStatus;
+  report.v128ProviderSnapshotEvidence = providerSnapshot;
+  report.v128ScopeEvidence = scopeEvidence;
+  report.v128SemanticAuthorityGuard = semanticAuthorityGuard;
+  report.v128ProviderChangedFilesEvidence = providerChangedFilesEvidence;
+  report.v128AutomationExecutorState = automationExecutor;
   report.routineProjectionReadSurface = routineProjectionReadSurface;
   report.v128ProjectionIntegrityStatus = v128ProjectionIntegrityStatus;
   report.v128ManagedContextEmitter = v128ManagedContextEmitter;
   report.v128StateMatrixExecution = v128StateMatrixExecution;
+  const projectionSourceConsistencyStatus = report.status === 'pass'
+    && (report.reasonSummaryStatus?.summary?.blockingReasons || []).length > 0
+    ? 'fail'
+    : 'pass';
   report.routineDecisionProjectionStatus = {
     status: routineDecisionProjection.projectionCanonicalBytes <= 1600
       && stressDecisionProjection.projectionCanonicalBytes <= 2048
@@ -621,8 +983,13 @@ function writeV117LoadBearingArtifacts(report = {}) {
       && v128ProjectionIntegrityStatus.status === 'pass'
       && v128StateMatrixExecution.status === 'pass'
       && v128ValidationExecutionPlanStatus.status === 'pass'
+      && v128TrustClosureStatus.status === 'pass'
+      && standingAutonomyPolicyStatus.status === 'pass'
+      && !['mismatch', 'tuple_mismatch'].includes(providerChangedFilesEvidence.status)
+      && projectionSourceConsistencyStatus === 'pass'
       ? 'pass'
       : 'fail',
+    ...shadowOnlyV128Fields('final_closure'),
     projectionCanonicalBytes: routineDecisionProjection.projectionCanonicalBytes,
     stressProjectionCanonicalBytes: stressDecisionProjection.projectionCanonicalBytes,
     boundedReaderStatus: routineProjectionReadSurface.status,
@@ -634,7 +1001,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     boundedReaderBytesMax: 1600,
     boundedReaderColdArtifactRead: routineProjectionReadSurface.coldArtifactRead,
     boundedReaderManagedSafeArtifactRead: routineProjectionReadSurface.managedSafeArtifactRead,
-    boundedReaderManagedContextBytesObserved: routineProjectionReadSurface.managedContextBytesObserved,
+    boundedReaderManagedContextBytesObserved: routineProjectionReadSurface.managedContextBytesObserved === true,
     managedContextEmitterStatus: v128ManagedContextEmitter.status,
     managedContextBytes: v128ManagedContextEmitter.managedContextBytes,
     managedContextBytesMax: v128ManagedContextEmitter.managedContextBytesMax,
@@ -646,14 +1013,41 @@ function writeV117LoadBearingArtifacts(report = {}) {
     stateMatrixHardInvalidCells: v128StateMatrixExecution.hardInvalidCells,
     stateMatrixUnresolvedCells: v128StateMatrixExecution.unresolvedCells,
     validationExecutionPlanStatus: v128ValidationExecutionPlanStatus.status,
+    trustClosureStatus: v128TrustClosureStatus.status,
+    trustClosureDigest: v128TrustClosure.trustClosureDigest,
+    trustClosureFileCount: v128TrustClosure.closureFileCount,
+    verifierBundleDigest: v128TrustClosure.trustDigests?.verifierBundleDigest || null,
+    providerAdapterDigest: v128TrustClosure.trustDigests?.providerAdapterDigest || null,
+    canonicalizerDigest: v128TrustClosure.trustDigests?.canonicalizerDigest || null,
+    finalDecisionAuthorityDigest: v128TrustClosure.trustDigests?.finalDecisionAuthorityDigest || null,
+    roleClosureCount: Object.keys(v128TrustClosure.roleClosures || {}).length,
     validationExecutionObservationState: v128ValidationExecutionPlanStatus.observationState,
     validationExecutionFinalizerMode: v128ValidationExecutionPlan.profileExecution.finalizerMode,
     validationExecutionDownstreamRespawnAllowed: v128ValidationExecutionPlan.profileExecution.downstreamRespawnAllowed,
     validationReuseDecision: v128ValidationExecutionPlan.validationReuseDecision.reuseDecision,
     validationReuseCacheKeyHasPlaceholder: v128ValidationExecutionPlan.validationReuseDecision.cacheKeyHasPlaceholder,
+    computeOnceReuseState,
+    standingAutonomyPolicyStatus: standingAutonomyPolicyStatus.status,
+    standingAutonomyPolicyAuthorizationState: standingAutonomyPolicy.policyAuthorizationState,
+    standingAutonomyAutomationDisposition: standingAutonomyPolicy.automationDisposition,
+    standingAutonomyAutomatedMergeAllowed: standingAutonomyPolicy.automatedMergeExecutionAllowed === true,
+    standingAutonomyHumanPerPrDecisionRequired: standingAutonomyPolicy.humanPerPrDecisionRequired === true,
+    standingAutonomyExecutorAvailable: standingAutonomyPolicy.automationExecutorAvailable === true,
+    standingAutonomyActionStarted: standingAutonomyPolicy.automationActionStarted === true,
+    standingAutonomyActionCompleted: standingAutonomyPolicy.automationActionCompleted === true,
+    providerSnapshotStatus: providerSnapshot.sameHeadRequiredChecksPass === true ? 'pass' : 'not_eligible',
+    providerSnapshotDigest: providerSnapshot.providerSnapshotDigest,
+    scopeEvidenceStatus: scopeEvidence.scopeDigestMatch === true ? 'pass' : 'not_eligible',
+    scopeContractDigest: scopeEvidence.scopeContractDigest,
+    semanticAuthorityGuardStatus: semanticAuthorityGuard.status,
+    providerChangedFilesEvidenceStatus: providerChangedFilesEvidence.status,
+    projectionSourceConsistencyStatus,
     runWideInvocationLedgerStatus: v128ValidationExecutionPlan.profileExecution.runWideInvocationLedgerStatus,
     runWideInvocationCount: v128ValidationExecutionPlan.profileExecution.runWideInvocationCount,
     runWideDuplicateExecutionCount: v128ValidationExecutionPlan.profileExecution.runWideDuplicateExecutionCount,
+    processEpochSequence: v128ProcessEpochSequence,
+    priorProcessEpochCount: Array.isArray(v128ProcessEpochLedger) ? v128ProcessEpochLedger.length : 0,
+    writerPurityState: 'computed_once_per_epoch_writers_serialize_current_epoch',
     workspaceIdentityCanonicalityState: v128ValidationExecutionPlan.workspaceIdentity.canonicalityState,
     projectionBytesMax: 1600,
     stressProjectionBytesMax: 2048,
@@ -704,6 +1098,23 @@ function writeV117LoadBearingArtifacts(report = {}) {
     v128StateMatrixExecution,
     v128ValidationExecutionPlan,
     v128ValidationExecutionPlanStatus,
+    v128TrustClosure: {
+      status: report.v128TrustClosureStatus?.status || 'unknown',
+      trustClosureDigest: report.v128TrustClosure?.trustClosureDigest || null,
+      closureFileCount: report.v128TrustClosure?.closureFileCount || 0,
+      trustDigests: report.v128TrustClosure?.trustDigests || null,
+      roleClosureCount: Object.keys(report.v128TrustClosure?.roleClosures || {}).length,
+      roleClosures: report.v128TrustClosure?.roleClosures || null,
+      safeSummaryOnly: true,
+    },
+    v128TrustClosureStatus: report.v128TrustClosureStatus,
+    v128StandingAutonomyPolicy: report.v128StandingAutonomyPolicy,
+    v128StandingAutonomyPolicyStatus: report.v128StandingAutonomyPolicyStatus,
+    v128ProviderSnapshotEvidence: report.v128ProviderSnapshotEvidence,
+    v128ScopeEvidence: report.v128ScopeEvidence,
+    v128SemanticAuthorityGuard: report.v128SemanticAuthorityGuard,
+    v128ProviderChangedFilesEvidence: report.v128ProviderChangedFilesEvidence,
+    v128AutomationExecutorState: report.v128AutomationExecutorState,
     routineDecisionProjectionStatus: report.routineDecisionProjectionStatus,
     ...Object.fromEntries(V119_STATUS_KEYS.map((key) => [key, report[key]])),
     orchestrationCapsule: {
@@ -3820,18 +4231,23 @@ function finalizeMeasuredProjection(projectionBase) {
   return projection;
 }
 
-function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', projectionInputs = {}) {
-  const blockingReasons = report.status === 'pass' && report.qualityScoreStatus?.status === 'pass'
-    ? []
-    : (report.reasonSummaryStatus?.summary?.blockingReasons || []);
-  const prTopology = buildV128PrTopologyProjection(process.env, report);
+function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', projectionInputs = {}, options = {}) {
+  const blockingReasons = report.reasonSummaryStatus?.summary?.blockingReasons || [];
+  const prTopology = options.prTopology || buildV128PrTopologyProjection(process.env, report);
+  const standingAutonomyPolicy = options.standingAutonomyPolicy || evaluateV128StandingAutonomyPolicy({
+    report,
+    prTopology,
+    headSha: head,
+  });
   const authorityBoundaryAction = report.finalDecision?.safeNextAction
     || report.decisionCapsule?.safeNextAction
     || 'owner_merge_decision_only';
+  const automationDisposition = standingAutonomyPolicy.automationDisposition || prTopology.nextActionCode || 'auto_wait';
   const projectionBase = {
     schemaVersion: '1.2.8',
     projectionKind: 'routine_decision_projection',
     authority: 'non_authoritative_projection',
+    ...shadowOnlyV128Fields('final_closure'),
     finalAuthority: 'v1.1.8_final_decision_kernel',
     activeHarnessVersion: '1.2.7',
     candidateHarnessVersion: '1.2.8',
@@ -3847,7 +4263,10 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', proje
     runtimeReadinessClaimed: report.runtimeReadinessClaimed === true,
     productionReadinessClaimed: report.productionReadinessClaimed === true,
     authorityBoundaryAction,
-    operatorNextActionCode: prTopology.nextActionCode || authorityBoundaryAction,
+    automationDisposition,
+    policyAuthorizationState: standingAutonomyPolicy.policyAuthorizationState,
+    humanPerPrDecisionRequired: standingAutonomyPolicy.humanPerPrDecisionRequired === true,
+    automatedMergeExecutionAllowed: standingAutonomyPolicy.automatedMergeExecutionAllowed === true,
   };
   projectionBase.sourceBinding = buildV128ProjectionSourceDigestBinding(head || 'unknown', {
     ...projectionInputs,
@@ -3876,10 +4295,11 @@ function buildV128PrTopologyProjection(env = process.env, report = {}) {
   const stackedDependencyState = baseRefKind === 'stacked_branch'
     ? 'base_branch_open_or_unverified'
     : 'not_stacked';
-  let nextActionCode = 'owner_merge_decision_only';
-  if (baseRefKind === 'stacked_branch') nextActionCode = 'owner_handle_base_pr';
-  else if (isDraft && report.technicalChecksReady === true) nextActionCode = 'owner_draft_decision';
-  else if (report.technicalChecksReady !== true) nextActionCode = 'wait_for_same_head_remote_gate';
+  let nextActionCode = 'auto_wait';
+  if (baseRefKind === 'stacked_branch') nextActionCode = 'auto_process_base_pr';
+  else if (isDraft && report.technicalChecksReady === true) nextActionCode = 'auto_ready';
+  else if (report.technicalChecksReady !== true) nextActionCode = 'auto_wait';
+  else nextActionCode = 'auto_merge';
   return {
     prLifecycleState: isDraft ? 'draft' : 'open',
     baseRefKind,
@@ -3893,6 +4313,7 @@ function buildV128StressDecisionProjection(report = {}, projectionInputs = {}) {
     schemaVersion: '1.2.8',
     projectionKind: 'routine_decision_projection_stress_fixture',
     authority: 'non_authoritative_projection',
+    ...shadowOnlyV128Fields('final_closure'),
     finalAuthority: 'v1.1.8_final_decision_kernel',
     activeHarnessVersion: '1.2.7',
     candidateHarnessVersion: '1.2.8',
@@ -3908,7 +4329,10 @@ function buildV128StressDecisionProjection(report = {}, projectionInputs = {}) {
     runtimeReadinessClaimed: false,
     productionReadinessClaimed: false,
     authorityBoundaryAction: 'owner_merge_decision_only',
-    operatorNextActionCode: 'owner_merge_decision_only',
+    automationDisposition: 'auto_wait',
+    policyAuthorizationState: 'not_eligible',
+    humanPerPrDecisionRequired: false,
+    automatedMergeExecutionAllowed: false,
   };
   projectionBase.sourceBinding = buildV128ProjectionSourceDigestBinding('f'.repeat(40), {
     ...projectionInputs,
@@ -4012,11 +4436,39 @@ function pushUniqueFailure(failures = [], id, message) {
   failures.push({ id, message: message || id });
 }
 
-export function buildV127ActiveGateReasonSummaryInput(report = {}) {
-  const v128Shadow = classifyV128ShadowCandidateForActiveGate('v128SelfTestStatus', report.v128SelfTestStatus, process.env);
-  if (!v128Shadow.applies || v128Shadow.blocksActiveGate !== false) return report;
+function isTypedNonBlockingV128Shadow(value = {}) {
+  return value
+    && value.authorityLayer === 'v128_shadow_candidate'
+    && value.decisionInfluence === 'shadow_only'
+    && value.loadBearingForActiveV127 === false;
+}
+
+function shadowStatusForActiveV127(key, value = {}) {
   return {
-    ...report,
+    ...(value || {}),
+    candidateStatus: value?.status || 'missing',
+    status: 'pass_shadow_candidate_non_blocking_active_v127',
+    reasonCodes: ['v128_shadow_candidate_status_does_not_change_v127_active_exit'],
+    activeGateInfluence: 'non_blocking_shadow_candidate',
+    originalGate: key,
+    safeSummaryOnly: true,
+  };
+}
+
+export function buildV127ActiveGateReasonSummaryInput(report = {}) {
+  const sanitizedReport = { ...report };
+  delete sanitizedReport.routineDecisionProjection;
+  delete sanitizedReport.stressDecisionProjection;
+  delete sanitizedReport.reasonSummary;
+  for (const [key, value] of Object.entries(sanitizedReport)) {
+    if (isTypedNonBlockingV128Shadow(value) && value.status === 'fail') {
+      sanitizedReport[key] = shadowStatusForActiveV127(key, value);
+    }
+  }
+  const v128Shadow = classifyV128ShadowCandidateForActiveGate('v128SelfTestStatus', report.v128SelfTestStatus, process.env);
+  if (!v128Shadow.applies || v128Shadow.blocksActiveGate !== false) return sanitizedReport;
+  return {
+    ...sanitizedReport,
     v128SelfTestStatus: {
       ...(report.v128SelfTestStatus || {}),
       candidateStatus: report.v128SelfTestStatus?.status || 'missing',
@@ -4036,38 +4488,23 @@ function applyV127PostClosureConsistency(report = {}, outcome = {}) {
   delete report.safeArtifactValidation;
   const firstSummary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput(report));
   const firstBlockingReasons = firstSummary.summary?.blockingReasons || [];
-  const staleV128ShadowReasons = new Set([
-    'routine_projection_read_surface_over_budget',
-    'routineDecisionProjection',
-    'routineProjectionReadSurface',
-    'routineDecisionProjectionStatus',
-    'profile_execution_failed_node_present',
-    'validationExecutionPlanReuseInternalStatus',
-    'safeArtifactValidation',
-    'qualityScoreStatus',
-    'post_closure_validation_blocking_reasons_present',
-  ]);
   const v128Status = report.routineDecisionProjectionStatus || {};
   const v128ShadowClosed = v128Status.status === 'pass'
+    && isTypedNonBlockingV128Shadow(v128Status)
     && (!v128Status.boundedReaderStatus || v128Status.boundedReaderStatus === 'pass')
     && (!v128Status.validationExecutionPlanStatus || v128Status.validationExecutionPlanStatus === 'pass')
     && (!v128Status.runWideInvocationLedgerStatus || v128Status.runWideInvocationLedgerStatus === 'pass');
-  const isStaleV128ShadowFailure = (item = {}) => {
-    const tokens = [
-      item.id,
-      item.reasonCode,
-      item.gate,
-      typeof item.id === 'string' ? item.id.replace(/\.failed$/, '') : null,
-    ];
-    return tokens.some((token) => staleV128ShadowReasons.has(token));
-  };
+  const isTypedShadowFailure = (item = {}) => isTypedNonBlockingV128Shadow(report[item.gate])
+    || isTypedNonBlockingV128Shadow(report[item.reasonCode])
+    || isTypedNonBlockingV128Shadow(report[item.id])
+    || isTypedNonBlockingV128Shadow(report[typeof item.id === 'string' ? item.id.replace(/\.failed$/, '') : '']);
   if (v128ShadowClosed) {
     for (let index = failures.length - 1; index >= 0; index -= 1) {
-      if (isStaleV128ShadowFailure(failures[index])) failures.splice(index, 1);
+      if (isTypedShadowFailure(failures[index])) failures.splice(index, 1);
     }
   }
   const staleV128Only = firstBlockingReasons.length > 0
-    && firstBlockingReasons.every((item) => staleV128ShadowReasons.has(item.reasonCode) || staleV128ShadowReasons.has(item.gate));
+    && firstBlockingReasons.every((item) => isTypedShadowFailure(item));
   if (firstBlockingReasons.length > 0 && !(v128ShadowClosed && staleV128Only)) {
     pushUniqueFailure(
       failures,
@@ -4507,7 +4944,7 @@ function runV128Gates(report, gateEnv) {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
     candidateActivationState: 'source_shadow_candidate',
-    activeGateInfluence: 'non_blocking_shadow_candidate',
+    ...shadowOnlyV128Fields('final_closure'),
   };
 }
 
@@ -4516,7 +4953,19 @@ function initializeV128Statuses(report) {
 }
 
 export function classifyV128ShadowCandidateForActiveGate(key, value = {}, env = process.env) {
+  if (isTypedNonBlockingV128Shadow(value)) {
+    return {
+      applies: true,
+      blocksActiveGate: false,
+      effectiveStatus: value?.status === 'fail'
+        ? 'pass_shadow_candidate_fail_non_blocking_active_v127'
+        : (value?.status || 'missing'),
+      reasonCodes: value?.status === 'fail' ? ['v128_shadow_candidate_failure_does_not_change_v127_active_exit'] : [],
+      safeSummaryOnly: true,
+    };
+  }
   if (key !== 'v128SelfTestStatus') return { applies: false, blocksActiveGate: value?.status === 'fail' };
+  if (!value || !value.status) return { applies: false, blocksActiveGate: false };
   const activationGate = env.CODEX_V128_ACTIVATION_GATE === '1'
     || value.candidateActivationState === 'source_activation_candidate'
     || value.candidateActivationState === 'active';
@@ -10730,7 +11179,7 @@ async function runSourceHarnessGate() {
 
 
 
-  const reasonSummary = buildCompactReasonSummary(report);
+  const reasonSummary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput(report));
 
 
 
@@ -12904,7 +13353,7 @@ async function runTargetHarnessGate() {
 
 
 
-  const reasonSummary = buildCompactReasonSummary(report);
+  const reasonSummary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput(report));
 
 
 
@@ -13994,6 +14443,8 @@ async function runSourceHarnessCoreContractGate() {
   // from carrying stale fail/blocker fields into post-closure validation.
   writeV117LoadBearingArtifacts(report);
   applyV127RemoteEvidenceClosure(report, { failures, warnings }, process.env);
+  writeV117LoadBearingArtifacts(report);
+  applyV127PostClosureConsistency(report, { failures, warnings });
   writeV117LoadBearingArtifacts(report);
 
   if (jsonReport) console.log(JSON.stringify(report, null, 2));

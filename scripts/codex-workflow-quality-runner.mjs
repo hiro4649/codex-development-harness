@@ -4232,6 +4232,15 @@ export function evaluateWorkflowReport(report, options = {}) {
   const stressDecisionProjection = report.stressDecisionProjection || preRunnerSafeSummary.stressDecisionProjection || null;
   const routineProjectionReadSurface = report.routineProjectionReadSurface || preRunnerSafeSummary.routineProjectionReadSurface || null;
   const v128ManagedContextEmitter = report.v128ManagedContextEmitter || preRunnerSafeSummary.v128ManagedContextEmitter || null;
+  const v128TrustClosure = report.v128TrustClosure || preRunnerSafeSummary.v128TrustClosure || null;
+  const v128TrustClosureStatus = report.v128TrustClosureStatus || preRunnerSafeSummary.v128TrustClosureStatus || null;
+  const v128StandingAutonomyPolicy = report.v128StandingAutonomyPolicy || preRunnerSafeSummary.v128StandingAutonomyPolicy || null;
+  const v128StandingAutonomyPolicyStatus = report.v128StandingAutonomyPolicyStatus || preRunnerSafeSummary.v128StandingAutonomyPolicyStatus || null;
+  const v128ProviderSnapshotEvidence = report.v128ProviderSnapshotEvidence || preRunnerSafeSummary.v128ProviderSnapshotEvidence || null;
+  const v128ScopeEvidence = report.v128ScopeEvidence || preRunnerSafeSummary.v128ScopeEvidence || null;
+  const v128SemanticAuthorityGuard = report.v128SemanticAuthorityGuard || preRunnerSafeSummary.v128SemanticAuthorityGuard || null;
+  const v128ProviderChangedFilesEvidence = report.v128ProviderChangedFilesEvidence || preRunnerSafeSummary.v128ProviderChangedFilesEvidence || null;
+  const v128AutomationExecutorState = report.v128AutomationExecutorState || preRunnerSafeSummary.v128AutomationExecutorState || null;
   const routineDecisionProjectionStatus = report.routineDecisionProjectionStatus
     || preRunnerSafeSummary.routineDecisionProjectionStatus
     || { status: routineDecisionProjection ? 'present' : 'missing', safeSummaryOnly: true };
@@ -4296,6 +4305,24 @@ export function evaluateWorkflowReport(report, options = {}) {
     routineProjectionReadSurface,
 
     v128ManagedContextEmitter,
+
+    v128TrustClosure,
+
+    v128TrustClosureStatus,
+
+    v128StandingAutonomyPolicy,
+
+    v128StandingAutonomyPolicyStatus,
+
+    v128ProviderSnapshotEvidence,
+
+    v128ScopeEvidence,
+
+    v128SemanticAuthorityGuard,
+
+    v128ProviderChangedFilesEvidence,
+
+    v128AutomationExecutorState,
 
     routineDecisionProjectionStatus,
 

@@ -16,6 +16,7 @@ import {
 } from './codex-orchestration-capsule.mjs';
 import {
   buildV127ActiveGateReasonSummaryInput,
+  buildV128ProviderChangedFilesEvidence,
   classifyV128ShadowCandidateForActiveGate,
 } from './codex-local-quality-gate.mjs';
 import {
@@ -33,6 +34,16 @@ import {
   buildV128ValidationExecutionPlan,
   validateV128ValidationExecutionPlan,
 } from './codex-v128-validation-execution-plan.mjs';
+import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
+import {
+  digestV128StandingAutonomyPolicy,
+  evaluateV128StandingAutonomyPolicy,
+  validateV128StandingAutonomyPolicyEvaluation,
+} from './codex-v128-standing-autonomy-policy.mjs';
+import {
+  buildV128TrustClosure,
+  validateV128TrustClosure,
+} from './codex-v128-trust-closure.mjs';
 import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
 
 function test(name, fn) {
@@ -67,6 +78,33 @@ function canonicalDigest(value) {
 
 function sha256Canonical(value) {
   return `sha256:${canonicalDigest(value)}`;
+}
+
+function standingAutonomyTrustInputs(policy) {
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const trustClosure = buildV128TrustClosure();
+  return {
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedVerifierBundleDigest: trustClosure.trustDigests.verifierBundleDigest,
+    verifierBundleDigest: trustClosure.trustDigests.verifierBundleDigest,
+    trustedProviderAdapterDigest: trustClosure.trustDigests.providerAdapterDigest,
+    providerAdapterDigest: trustClosure.trustDigests.providerAdapterDigest,
+    trustedScopeClassifierDigest: trustClosure.trustDigests.scopeClassifierDigest,
+    scopeClassifierDigest: trustClosure.trustDigests.scopeClassifierDigest,
+    trustedMergeExecutorDigest: trustClosure.trustDigests.mergeExecutorDigest,
+    mergeExecutorDigest: trustClosure.trustDigests.mergeExecutorDigest,
+    trustedCanonicalizerDigest: trustClosure.trustDigests.canonicalizerDigest,
+    canonicalizerDigest: trustClosure.trustDigests.canonicalizerDigest,
+    trustedFinalDecisionAuthorityDigest: trustClosure.trustDigests.finalDecisionAuthorityDigest,
+    finalDecisionAuthorityDigest: trustClosure.trustDigests.finalDecisionAuthorityDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    repositoryId: 'repo-123',
+    authorityEpoch: 'epoch-1',
+    trustedAuthorityEpoch: 'epoch-1',
+    revocationNonce: 'nonce-1',
+    trustedRevocationNonce: 'nonce-1',
+  };
 }
 
 function buildBoundV128Projection(base = {}, inputs = {}) {
@@ -285,7 +323,7 @@ function boundedProjectionReaderExecutes() {
     && formatted.outputBytes <= 1600
     && surface.managedSafeArtifactRead === 1
     && surface.coldArtifactRead === 0
-    && surface.managedContextBytesObserved === false;
+    && surface.managedContextBytesObserved !== true;
 }
 
 function evidenceCapsuleDoesNotSubstituteProviderHeads() {
@@ -1063,6 +1101,460 @@ function validationGraphMissingDependencyFails() {
   })));
 }
 
+function standingAutonomyPolicyAllowsEligibleHarnessPr() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    ...standingAutonomyTrustInputs(policy),
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    automationExecutorAvailable: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+    productCodeChanged: false,
+    packageFilesChanged: false,
+    workflowChanged: false,
+    sourceActivationRequested: false,
+    targetRolloutRequested: false,
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.policyAuthorizationState === 'authorized'
+    && evaluation.automationDisposition === 'auto_merge'
+    && evaluation.automatedMergeExecutionAllowed === true
+    && evaluation.humanPerPrDecisionRequired === false
+    && evaluation.aiAuthorityCreated === false
+    && evaluation.ownerAuthorityCreated === false
+    && evaluation.sourceActivationAuthorized === false
+    && evaluation.targetRolloutAuthorized === false
+    && evaluation.reasonCodes.length === 0;
+}
+
+function standingAutonomyPolicyBlocksStackedDraft() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'stacked_branch',
+      prLifecycleState: 'draft',
+      stackedDependencyState: 'base_branch_open_or_unverified',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.policyAuthorizationState === 'not_eligible'
+    && evaluation.automationDisposition === 'auto_process_base_pr'
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.humanPerPrDecisionRequired === false
+    && evaluation.reasonCodes.includes('standing_policy_default_base_required')
+    && evaluation.reasonCodes.includes('standing_policy_open_pr_required')
+    && evaluation.reasonCodes.includes('standing_policy_stacked_pr_forbidden');
+}
+
+function standingAutonomyPolicyRejectsAiAuthorityForgery() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  return failed(validateV128StandingAutonomyPolicyEvaluation({
+    ...evaluation,
+    aiAuthorityCreated: true,
+  }));
+}
+
+function standingAutonomyPolicyBlocksForbiddenScope() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+    workflowChanged: true,
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_reject'
+    && evaluation.reasonCodes.includes('standing_policy_scope_forbidden');
+}
+
+function standingAutonomyPolicyRequiresTrustedPolicyDigest() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicySource: 'protected_default_branch_policy',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_wait'
+    && evaluation.reasonCodes.includes('standing_policy_trusted_policy_digest_missing');
+}
+
+function standingAutonomyPolicyRequiresProviderSameHead() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    ...standingAutonomyTrustInputs(policy),
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: false,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    automationExecutorAvailable: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  return passed(validateV128StandingAutonomyPolicyEvaluation(evaluation))
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_revalidate'
+    && evaluation.reasonCodes.includes('standing_policy_same_head_required_checks_required');
+}
+
+function standingAutonomyPolicyRequiresExecutor() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    ...standingAutonomyTrustInputs(policy),
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  return passed(validateV128StandingAutonomyPolicyEvaluation(evaluation))
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_wait'
+    && evaluation.reasonCodes.includes('standing_policy_executor_unavailable');
+}
+
+function standingAutonomyPolicyBlocksSelfModification() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const probe = evaluateV128StandingAutonomyPolicy({ policy });
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    trustedPolicyDigest: digestV128StandingAutonomyPolicy(policy),
+    trustedEvaluatorDigest: probe.evaluatorDigest,
+    trustedPolicySource: 'protected_default_branch_policy',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+    changedFiles: ['docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json'],
+  });
+  const validation = validateV128StandingAutonomyPolicyEvaluation(evaluation);
+  return passed(validation)
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_quarantine'
+    && evaluation.reasonCodes.includes('standing_policy_self_modification_forbidden');
+}
+
+function trustClosureBuildsCompleteVerifierBundle() {
+  const closure = buildV128TrustClosure();
+  const validation = validateV128TrustClosure(closure);
+  const paths = new Set((closure.fileDigests || []).map((item) => item.path));
+  return passed(validation)
+    && paths.has('scripts/codex-v128-self-test.mjs')
+    && paths.has('scripts/codex-v128-validation-execution-plan.mjs')
+    && paths.has('scripts/codex-v128-trust-closure.mjs')
+    && paths.has('scripts/codex-workflow-quality-runner.mjs')
+    && paths.has('scripts/codex-reason-summary.mjs')
+    && paths.has('scripts/codex-decision-capsule.mjs')
+    && paths.has('scripts/codex-verifier-capsule.mjs')
+    && paths.has('scripts/codex-orchestration-capsule.mjs')
+    && paths.has('scripts/codex-worker-proof-capsule.mjs')
+    && paths.has('scripts/codex-owner-decision-brief.mjs')
+    && closure.transitiveRelativeImportCount > 0
+    && closure.closureCompletenessState === 'complete'
+    && /^sha256:[a-f0-9]{64}$/.test(closure.trustDigests.verifierBundleDigest)
+    && /^sha256:[a-f0-9]{64}$/.test(closure.trustDigests.providerAdapterDigest)
+    && /^sha256:[a-f0-9]{64}$/.test(closure.trustDigests.canonicalizerDigest)
+    && /^sha256:[a-f0-9]{64}$/.test(closure.trustDigests.finalDecisionAuthorityDigest)
+    && Object.keys(closure.roleClosures || {}).length >= 6
+    && closure.roleClosures.provider_adapter.closureCompletenessState === 'complete'
+    && closure.roleClosures.scope_classifier.closureCompletenessState === 'complete'
+    && closure.roleClosures.final_decision_authority.closureCompletenessState === 'complete';
+}
+
+function providerChangedFilesPathSetIsNotExactTuple() {
+  const evidence = buildV128ProviderChangedFilesEvidence({
+    sourceHarnessValidationStatus: { changedFiles: ['scripts/example.mjs'] },
+  }, {
+    CODEX_V128_PROVIDER_CHANGED_FILES_JSON: JSON.stringify([
+      { status: 'modified', path: 'scripts/example.mjs' },
+    ]),
+  });
+  return evidence.status === 'pass'
+    && evidence.pathSetDigestMatch === true
+    && evidence.exactTupleDigestMatch === null
+    && evidence.tupleComparisonMode === 'path_set_only_not_exact';
+}
+
+function providerChangedFilesFullTupleDigestMatches() {
+  const tuple = [{
+    status: 'modified',
+    oldPath: 'scripts/example.mjs',
+    newPath: 'scripts/example.mjs',
+    oldMode: '100644',
+    newMode: '100644',
+    oldContentDigest: 'sha256:'.concat('1'.repeat(64)),
+    newContentDigest: 'sha256:'.concat('2'.repeat(64)),
+  }];
+  const evidence = buildV128ProviderChangedFilesEvidence({
+    sourceHarnessValidationStatus: { changedFiles: ['scripts/example.mjs'] },
+  }, {
+    CODEX_V128_PROVIDER_CHANGED_FILES_JSON: JSON.stringify(tuple),
+    CODEX_V128_EXPECTED_CHANGED_FILES_TUPLE_DIGEST: sha256Canonical(tuple),
+  });
+  return evidence.status === 'pass'
+    && evidence.pathSetDigestMatch === true
+    && evidence.exactTupleDigestMatch === true
+    && evidence.tupleComparisonMode === 'full_tuple_digest';
+}
+
+function standingAutonomyPolicyRejectsVerifierBundleMismatch() {
+  const policy = readJson('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const trust = standingAutonomyTrustInputs(policy);
+  const evaluation = evaluateV128StandingAutonomyPolicy({
+    policy,
+    ...trust,
+    trustedVerifierBundleDigest: 'sha256:'.concat('0'.repeat(64)),
+    repositoryKey: 'github.com:hiro4649/codex-development-harness',
+    prTopology: {
+      baseRefKind: 'default_branch',
+      prLifecycleState: 'open',
+      stackedDependencyState: 'not_stacked',
+    },
+    finalDecision: {
+      terminalAction: 'merge_current_pr',
+      decision: 'allowed',
+      mergeAllowed: true,
+      exitCode: 0,
+      safeNextAction: 'owner_merge_decision_only',
+    },
+    technicalChecksReady: true,
+    sameHeadRequiredChecksPass: true,
+    deterministicVerifierPass: true,
+    v127PreservationPass: true,
+    scopeDigestMatch: true,
+    expectedHeadCasReady: true,
+    automationExecutorAvailable: true,
+    zeroUnresolvedFindings: true,
+    blockingCount: 0,
+    harnessOnlyScope: true,
+  });
+  return passed(validateV128StandingAutonomyPolicyEvaluation(evaluation))
+    && evaluation.automatedMergeExecutionAllowed === false
+    && evaluation.automationDisposition === 'auto_quarantine'
+    && evaluation.reasonCodes.includes('standing_policy_trusted_verifier_bundle_mismatch');
+}
+
+function nonAuthoritativeProjectionStatusDoesNotBlockActiveGate() {
+  const summary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput({
+    status: 'pass',
+    qualityScoreStatus: { status: 'pass', score: 100, safeSummaryOnly: true },
+    routineDecisionProjection: {
+      status: 'fail',
+      reasonCodes: ['non_authoritative_projection_status_fail'],
+      authority: 'non_authoritative_projection',
+      safeSummaryOnly: true,
+    },
+    stressDecisionProjection: {
+      status: 'fail',
+      reasonCodes: ['non_authoritative_stress_projection_status_fail'],
+      authority: 'non_authoritative_projection',
+      safeSummaryOnly: true,
+    },
+    reasonSummary: {
+      status: 'fail',
+      blockingReasons: [{ reasonCode: 'stale_reason_summary' }],
+      safeSummaryOnly: true,
+    },
+    routineDecisionProjectionStatus: { status: 'pass', safeSummaryOnly: true },
+    v128SelfTestStatus: {
+      status: 'pass',
+      candidateActivationState: 'source_shadow_candidate',
+      safeSummaryOnly: true,
+    },
+  }));
+  return summary.status === 'pass'
+    && (summary.summary?.blockingReasons || []).length === 0;
+}
+
+function typedShadowStatusDoesNotBlockActiveGate() {
+  const summary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput({
+    status: 'pass',
+    qualityScoreStatus: { status: 'pass', score: 100, safeSummaryOnly: true },
+    routineDecisionProjectionStatus: {
+      status: 'fail',
+      authorityLayer: 'v128_shadow_candidate',
+      decisionInfluence: 'shadow_only',
+      loadBearingForActiveV127: false,
+      evidenceEpoch: 'final_closure',
+      reasonCodes: ['shadow_candidate_fixture_failure'],
+      safeSummaryOnly: true,
+    },
+  }));
+  return summary.status === 'pass'
+    && (summary.summary?.blockingReasons || []).length === 0;
+}
+
 function validationRequiredSkippedFails() {
   return failed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
@@ -1151,6 +1643,20 @@ const cases = [
   ['validation_finalizer_missing_upstream_node_fails', () => validationFinalizerMissingUpstreamNodeFails()],
   ['validation_finalizer_wrong_upstream_digest_fails', () => validationFinalizerWrongUpstreamDigestFails()],
   ['validation_finalizer_pass_with_failed_upstream_fails', () => validationFinalizerPassWithFailedUpstreamFails()],
+  ['standing_autonomy_policy_allows_eligible_harness_pr', () => standingAutonomyPolicyAllowsEligibleHarnessPr()],
+  ['standing_autonomy_policy_blocks_stacked_draft', () => standingAutonomyPolicyBlocksStackedDraft()],
+  ['standing_autonomy_policy_rejects_ai_authority_forgery', () => standingAutonomyPolicyRejectsAiAuthorityForgery()],
+  ['standing_autonomy_policy_blocks_forbidden_scope', () => standingAutonomyPolicyBlocksForbiddenScope()],
+  ['standing_autonomy_policy_requires_trusted_policy_digest', () => standingAutonomyPolicyRequiresTrustedPolicyDigest()],
+  ['standing_autonomy_policy_requires_provider_same_head', () => standingAutonomyPolicyRequiresProviderSameHead()],
+  ['standing_autonomy_policy_requires_executor', () => standingAutonomyPolicyRequiresExecutor()],
+  ['standing_autonomy_policy_blocks_self_modification', () => standingAutonomyPolicyBlocksSelfModification()],
+  ['trust_closure_builds_complete_verifier_bundle', () => trustClosureBuildsCompleteVerifierBundle()],
+  ['standing_autonomy_policy_rejects_verifier_bundle_mismatch', () => standingAutonomyPolicyRejectsVerifierBundleMismatch()],
+  ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
+  ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
+  ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
+  ['typed_shadow_status_does_not_block_active_gate', () => typedShadowStatusDoesNotBlockActiveGate()],
   ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
@@ -1260,6 +1766,7 @@ const fixtureGroups = [
   'state_matrix_full_shadow_candidate_execution',
   'strict_json_and_canonical_digest_execution',
   'validation_execution_plan_aggregate_finalizer',
+  'standing_autonomy_policy_execution',
   'active_v127_exit_isolation_negative',
 ];
 

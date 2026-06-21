@@ -14,10 +14,5 @@ export function runV128ProjectionReaderAdapter(routineDecisionProjection, option
     stabilityClass: 'decision_stable',
     adapterId: V128_PROJECTION_READER_ADAPTER_ID,
     commandOrFunctionDigest: options.commandOrFunctionDigest,
-  }, {
-    ...surface,
-    schemaVersion: '1.0.0',
-    nodeRef: 'projection_reader',
-    adapterId: V128_PROJECTION_READER_ADAPTER_ID,
-  });
+  }, surface);
 }

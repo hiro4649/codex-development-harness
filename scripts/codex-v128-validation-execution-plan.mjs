@@ -33,7 +33,11 @@ const SOURCE_CLOSURE_FILES = [
   'scripts/codex-v128-state-matrix.mjs',
   'scripts/codex-v128-integrity-lib.mjs',
   'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
+  'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json',
   'docs/process/CODEX_V128_SPEC.md',
+  'scripts/codex-v128-standing-autonomy-policy.mjs',
+  'scripts/codex-v128-trust-closure.mjs',
+  'scripts/codex-workflow-quality-runner.mjs',
 ];
 const REQUIRED_CACHE_FIELDS = new Set(['headSha', 'planDigest', 'scriptDigest', 'runtimeVersion', 'taskProfile', 'environmentClass']);
 const REUSE_BINDING_FIELDS = new Set(['sourceHeadOid', 'baseOid', 'testedCommitOid', 'testedTreeKind', 'validationContextDigest']);
@@ -43,6 +47,8 @@ const NODE_SOURCE_CLOSURE_SEEDS = {
     'scripts/codex-v128-invocation-ledger.mjs',
     'scripts/codex-v128-projection-reader.mjs',
     'scripts/codex-v128-integrity-lib.mjs',
+    'scripts/codex-v128-standing-autonomy-policy.mjs',
+    'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json',
     'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
     'docs/process/CODEX_V128_SPEC.md',
   ],
