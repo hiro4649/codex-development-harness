@@ -293,20 +293,15 @@ function compactNodeSourceClosures(closures = {}) {
 function compactTypedResult(nodeRef, payload = {}) {
   if (nodeRef === 'projection_reader') {
     return {
-      schemaVersion: payload.schemaVersion || '1.2.8',
-      nodeRef,
       status: payload.status || 'missing',
       surfaceCanonicalBytes: Number(payload.surfaceCanonicalBytes || 0),
       managedSafeArtifactRead: Number(payload.managedSafeArtifactRead || 0),
       coldArtifactRead: Number(payload.coldArtifactRead || 0),
       projectionPayloadDigest: payload.projectionPayloadDigest || payload.routineDecisionProjection?.sourceBinding?.projectionPayloadDigest || null,
-      safeSummaryOnly: true,
     };
   }
   if (nodeRef === 'managed_context_emitter') {
     return {
-      schemaVersion: payload.schemaVersion || '1.2.8',
-      nodeRef,
       status: payload.status || 'missing',
       managedContextBytes: Number(payload.managedContextBytes || 0),
       compiledContextBytes: Number(payload.compiledContextBytes || 0),
@@ -316,13 +311,10 @@ function compactTypedResult(nodeRef, payload = {}) {
       legacyRead: Number(payload.legacyRead || 0),
       foreignProfileRead: Number(payload.foreignProfileRead || 0),
       reviewerFanout: Number(payload.reviewerFanout || 0),
-      safeSummaryOnly: true,
     };
   }
   if (nodeRef === 'state_matrix_executor') {
     return {
-      schemaVersion: payload.schemaVersion || '1.2.8',
-      nodeRef,
       status: payload.status || 'missing',
       coverage: payload.coverage || 'unknown',
       totalCells: Number(payload.totalCells || 0),
@@ -330,7 +322,6 @@ function compactTypedResult(nodeRef, payload = {}) {
       hardInvalidCells: Number(payload.hardInvalidCells || 0),
       unresolvedCells: Number(payload.unresolvedCells || 0),
       stateMatrixContentDigest: payload.stateMatrixContentDigest || null,
-      safeSummaryOnly: true,
     };
   }
   return {
@@ -538,14 +529,9 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     resultDigest: nodeByRef.get(nodeRef)?.resultDigest || digestValue(typedResults[nodeRef] || null),
   }));
   typedResults.aggregate_finalizer = {
-    schemaVersion: aggregateOriginal.schemaVersion || '1.2.8',
-    nodeRef: 'aggregate_finalizer',
     status: aggregateOriginal.status || 'pass',
-    upstreamNodeRefs: aggregateDependsOn,
     upstreamResultDigests,
-    failedNodeRefs: Array.isArray(aggregateOriginal.failedNodeRefs) ? aggregateOriginal.failedNodeRefs : [],
     orderedUpstreamResultSetDigest: buildV128OrderedUpstreamResultSetDigest(upstreamResultDigests),
-    safeSummaryOnly: true,
   };
   const aggregateDigest = digestValue(typedResults.aggregate_finalizer);
   if (nodeByRef.has('aggregate_finalizer')) nodeByRef.get('aggregate_finalizer').resultDigest = aggregateDigest;
