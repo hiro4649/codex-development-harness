@@ -171,6 +171,13 @@
         "aggregate_finalizer": "orderedUpstreamResultSetDigest"
       }
     },
+    "providerPrTopologyNextAction": {
+      "artifactSurface": "qualityGateSafeSummary.routineDecisionProjection.safeNextAction",
+      "authority": "non_authoritative_projection_next_action_hint",
+      "mergeAuthorityCreated": false,
+      "stackedBranchNextAction": "owner_handle_base_pr",
+      "fullTopologyEmbeddedInRoutineProjection": false
+    },
     "scriptDigestSourceClosureFiles": [
       "scripts/codex-v128-validation-execution-plan.mjs",
       "scripts/codex-v128-aggregate-finalizer.mjs",

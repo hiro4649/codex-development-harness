@@ -3898,6 +3898,7 @@ function finalizeMeasuredProjection(projectionBase) {
 
 function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', projectionInputs = {}) {
   const blockingReasons = report.reasonSummaryStatus?.summary?.blockingReasons || [];
+  const prTopology = buildV128PrTopologyProjection(process.env, report);
   const projectionBase = {
     schemaVersion: '1.2.8',
     projectionKind: 'routine_decision_projection',
@@ -3918,7 +3919,7 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', proje
     productionReadinessClaimed: report.productionReadinessClaimed === true,
     productFilesChanged: report.productCodeChanged === true,
     packageFilesChanged: report.packageOrLockfileChanged === true || report.packageFilesChanged === true,
-    safeNextAction: report.finalDecision?.safeNextAction || report.decisionCapsule?.safeNextAction || 'owner_merge_decision_only',
+    safeNextAction: prTopology.nextActionCode || report.finalDecision?.safeNextAction || report.decisionCapsule?.safeNextAction || 'owner_merge_decision_only',
     observed: true,
     metricsSource: 'runtime_safe_summary_projection',
   };
@@ -3927,6 +3928,38 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', proje
     projectionPayload: projectionBase,
   });
   return finalizeMeasuredProjection(projectionBase);
+}
+
+function buildV128PrTopologyProjection(env = process.env, report = {}) {
+  const defaultBranches = new Set(['main', 'master']);
+  let eventPr = null;
+  try {
+    if (env.GITHUB_EVENT_PATH && fs.existsSync(env.GITHUB_EVENT_PATH)) {
+      eventPr = JSON.parse(fs.readFileSync(env.GITHUB_EVENT_PATH, 'utf8')).pull_request || null;
+    }
+  } catch {
+    eventPr = null;
+  }
+  const baseRef = String(env.CODEX_PR_BASE_REF || env.GITHUB_BASE_REF || eventPr?.base?.ref || '').trim();
+  const headRef = String(env.CODEX_BRANCH || env.GITHUB_HEAD_REF || eventPr?.head?.ref || env.GITHUB_REF_NAME || '').trim();
+  const isDraft = String(env.CODEX_PR_IS_DRAFT || '').trim().toLowerCase() === 'true'
+    || eventPr?.draft === true;
+  const baseRefKind = baseRef
+    ? (defaultBranches.has(baseRef) ? 'default_branch' : 'stacked_branch')
+    : 'unknown';
+  const stackedDependencyState = baseRefKind === 'stacked_branch'
+    ? 'base_branch_open_or_unverified'
+    : 'not_stacked';
+  let nextActionCode = 'owner_merge_decision_only';
+  if (baseRefKind === 'stacked_branch') nextActionCode = 'owner_handle_base_pr';
+  else if (isDraft && report.technicalChecksReady === true) nextActionCode = 'owner_draft_decision';
+  else if (report.technicalChecksReady !== true) nextActionCode = 'wait_for_same_head_remote_gate';
+  return {
+    prLifecycleState: isDraft ? 'draft' : 'open',
+    baseRefKind,
+    stackedDependencyState,
+    nextActionCode,
+  };
 }
 
 function buildV128StressDecisionProjection(report = {}, projectionInputs = {}) {

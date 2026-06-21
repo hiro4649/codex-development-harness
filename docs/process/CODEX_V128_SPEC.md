@@ -368,6 +368,29 @@ A cache hit or partial hit is invalid when nodeInputDigest changes. Reused
 nodes have no local invocation ledger entry; their proof comes from
 sourceRunRef/cache provenance and the node cache key.
 
+The routine Projection may derive `safeNextAction` from provider PR topology
+without embedding a full topology object in the routine read surface. This
+keeps the bounded Projection reader below budget while preventing the routine
+surface from saying `owner_merge_decision_only` when the current PR is still
+stacked on another open/non-main base.
+
+```text
+stacked branch:
+  owner_handle_base_pr
+
+default-branch draft with technical checks closed:
+  owner_draft_decision
+
+technical checks not closed:
+  wait_for_same_head_remote_gate
+
+default-branch ready with checks closed:
+  owner_merge_decision_only
+```
+
+This topology-derived next action is non-authoritative and cannot create merge
+authority.
+
 The finalizer payload must be semantically checked:
 
 ```text
