@@ -48,6 +48,7 @@ import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
 import {
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
+  validateV128CompactValidationPlanExact,
 } from './codex-v128-token-compression.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
@@ -376,8 +377,12 @@ function managedContextEmitterObservesBytes() {
     && context.managedContextMeasurementSource === 'v128_managed_context_emitter'
     && context.managedContextBytes > 0
     && context.managedContextBytes <= 4096
+    && context.compiledActiveInstructionBytes > 0
+    && context.compiledActiveInstructionBytes <= 1400
     && context.compiledContextBytes > 0
-    && context.compiledContextBytes <= 4096
+    && context.compiledContextBytes <= 1400
+    && Array.isArray(context.missingBindingIds)
+    && context.missingBindingIds.length === 0
     && context.routineColdArtifactRead === 0
     && context.legacyRead === 0
     && context.foreignProfileRead === 0
@@ -460,9 +465,9 @@ function tokenCompressionCompactsSafeSummary() {
     standingAutonomyPolicy: noisyReport.v128StandingAutonomyPolicy,
   });
   return summary.tokenCompression.status === 'pass'
-    && summary.tokenCompression.storedSafeSummaryBytes <= 8192
-    && summary.tokenCompression.routineReadSurfaceBytes <= 4096
-    && summary.v128ValidationExecutionPlan.typedResultsDigest
+    && summary.tokenCompression.storedSafeSummaryBytes <= 6144
+    && summary.tokenCompression.routineReadSurfaceBytes <= 2560
+    && summary.compactDiagnostics.validationPlan.typedResultsDigest
     && !JSON.stringify(summary).includes('file-119')
     && !JSON.stringify(summary).includes('xxxxx');
 }
@@ -710,9 +715,49 @@ function compactValidationPlanStillValidates() {
   });
   const compact = compactV128ValidationExecutionPlanForStorage(plan);
   return passed(validateV128ValidationExecutionPlan(compact))
+    && passed(validateV128CompactValidationPlanExact(compact))
     && Buffer.byteLength(JSON.stringify(compact, null, 2), 'utf8') < Buffer.byteLength(JSON.stringify(plan, null, 2), 'utf8')
     && !JSON.stringify(compact).includes('file-29.mjs')
     && !JSON.stringify(compact).includes('xxxxxxxxxx');
+}
+
+function compactValidationPlanStaleAggregateDigestFails() {
+  const compact = compactV128ValidationExecutionPlanForStorage(buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  }));
+  compact.typedResults.aggregate_finalizer.orderedUpstreamResultSetDigest = sha256Canonical({ stale: true });
+  return failed(validateV128CompactValidationPlanExact(compact));
+}
+
+function compactValidationPlanLedgerDigestMismatchFails() {
+  const compact = compactV128ValidationExecutionPlanForStorage(buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  }));
+  compact.profileExecution.runWideInvocationLedger[0].resultDigest = sha256Canonical({ wrong: true });
+  return failed(validateV128CompactValidationPlanExact(compact));
+}
+
+function compactValidationPlanUpstreamDigestMismatchFails() {
+  const compact = compactV128ValidationExecutionPlanForStorage(buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  }));
+  compact.typedResults.aggregate_finalizer.upstreamResultDigests[0].resultDigest = sha256Canonical({ wrong: true });
+  return failed(validateV128CompactValidationPlanExact(compact));
 }
 
 function validationExecutionDuplicateNodeFails() {
@@ -1779,6 +1824,9 @@ const cases = [
   ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
   ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
   ['compact_validation_plan_still_validates', () => compactValidationPlanStillValidates()],
+  ['compact_validation_plan_stale_aggregate_digest_fails', () => compactValidationPlanStaleAggregateDigestFails()],
+  ['compact_validation_plan_ledger_digest_mismatch_fails', () => compactValidationPlanLedgerDigestMismatchFails()],
+  ['compact_validation_plan_upstream_digest_mismatch_fails', () => compactValidationPlanUpstreamDigestMismatchFails()],
   ['validation_default_is_not_exercised_partial', () => validationDefaultIsNotExercisedPartial()],
   ['validation_execution_duplicate_node_fails', () => validationExecutionDuplicateNodeFails()],
   ['validation_graph_cycle_fails', () => validationGraphCycleFails()],

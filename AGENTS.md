@@ -3,6 +3,21 @@
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
 CODEX_QUALITY_HARNESS_FILE v1.2.7
 
+<!-- CODEX_ACTIVE_BLOCK_BEGIN -->
+machineBindingId=FD_AUTH: Final Decision is pass/block/mergeAllowed/exit-code authority.
+machineBindingId=DC_AUTH: Decision Capsule is domain decision authority.
+machineBindingId=SAME_HEAD: Same-head required checks must bind observed provider heads.
+machineBindingId=SOURCE_TARGET_MODE: Source/target deterministic mode must not infer Source from target files.
+machineBindingId=PROCESS_RECEIPT: Process receipt permits edit/check/commit/push/PR/fix_ci only inside scoped owner provenance.
+machineBindingId=PR_BODY_DISPLAY: PR body is human display, never machine evidence.
+machineBindingId=RAWLOG_BLOCK: Unredacted command transcripts are forbidden; use safe artifacts only.
+machineBindingId=NO_SELF_APPROVAL: AI must not self-approve.
+machineBindingId=NO_GH_APPROVAL_REVIEW: AI must not submit GitHub approval review.
+machineBindingId=RUNTIME_DEPLOY_WALLET_BOUNDARY: Product/runtime/workflow/deploy/wallet/RPC/secret scope is separate.
+machineBindingId=STOP_CIRCUIT: repeated architectural blocker stops expansion.
+machineBindingId=PROJECTION_NONAUTH: v1.2.8 Projection is non-authoritative Source Shadow Candidate surface.
+<!-- CODEX_ACTIVE_BLOCK_END -->
+
 ## Prime Directive
 
 Ship the smallest correct change that increases product value without weakening
