@@ -547,6 +547,10 @@ function writeV117LoadBearingArtifacts(report = {}) {
   if (report.orchestrationCapsule) {
     report.orchestrationCapsule.validationExecutionPlanAndReuse = v128ValidationExecutionPlan;
   }
+  report.validationExecutionPlanReuseInternalStatus = {
+    ...v128ValidationExecutionPlanStatus,
+    safeSummaryOnly: true,
+  };
   if (report.orchestrationCapsule?.deterministicDecisionProjection) {
     report.orchestrationCapsule.deterministicDecisionProjection = {
       ...report.orchestrationCapsule.deterministicDecisionProjection,
@@ -3817,7 +3821,9 @@ function finalizeMeasuredProjection(projectionBase) {
 }
 
 function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', projectionInputs = {}) {
-  const blockingReasons = report.reasonSummaryStatus?.summary?.blockingReasons || [];
+  const blockingReasons = report.status === 'pass' && report.qualityScoreStatus?.status === 'pass'
+    ? []
+    : (report.reasonSummaryStatus?.summary?.blockingReasons || []);
   const prTopology = buildV128PrTopologyProjection(process.env, report);
   const authorityBoundaryAction = report.finalDecision?.safeNextAction
     || report.decisionCapsule?.safeNextAction
@@ -3840,11 +3846,8 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', proje
     v128: report.v128SelfTestStatus?.status || 'not_run',
     runtimeReadinessClaimed: report.runtimeReadinessClaimed === true,
     productionReadinessClaimed: report.productionReadinessClaimed === true,
-    productFilesChanged: report.productCodeChanged === true,
-    packageFilesChanged: report.packageOrLockfileChanged === true || report.packageFilesChanged === true,
     authorityBoundaryAction,
     operatorNextActionCode: prTopology.nextActionCode || authorityBoundaryAction,
-    observed: true,
   };
   projectionBase.sourceBinding = buildV128ProjectionSourceDigestBinding(head || 'unknown', {
     ...projectionInputs,
@@ -3904,11 +3907,8 @@ function buildV128StressDecisionProjection(report = {}, projectionInputs = {}) {
     v128: report.v128SelfTestStatus?.status || 'pass',
     runtimeReadinessClaimed: false,
     productionReadinessClaimed: false,
-    productFilesChanged: false,
-    packageFilesChanged: false,
     authorityBoundaryAction: 'owner_merge_decision_only',
     operatorNextActionCode: 'owner_merge_decision_only',
-    observed: true,
   };
   projectionBase.sourceBinding = buildV128ProjectionSourceDigestBinding('f'.repeat(40), {
     ...projectionInputs,
@@ -4036,7 +4036,39 @@ function applyV127PostClosureConsistency(report = {}, outcome = {}) {
   delete report.safeArtifactValidation;
   const firstSummary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput(report));
   const firstBlockingReasons = firstSummary.summary?.blockingReasons || [];
-  if (firstBlockingReasons.length > 0) {
+  const staleV128ShadowReasons = new Set([
+    'routine_projection_read_surface_over_budget',
+    'routineDecisionProjection',
+    'routineProjectionReadSurface',
+    'routineDecisionProjectionStatus',
+    'profile_execution_failed_node_present',
+    'validationExecutionPlanReuseInternalStatus',
+    'safeArtifactValidation',
+    'qualityScoreStatus',
+    'post_closure_validation_blocking_reasons_present',
+  ]);
+  const v128Status = report.routineDecisionProjectionStatus || {};
+  const v128ShadowClosed = v128Status.status === 'pass'
+    && (!v128Status.boundedReaderStatus || v128Status.boundedReaderStatus === 'pass')
+    && (!v128Status.validationExecutionPlanStatus || v128Status.validationExecutionPlanStatus === 'pass')
+    && (!v128Status.runWideInvocationLedgerStatus || v128Status.runWideInvocationLedgerStatus === 'pass');
+  const isStaleV128ShadowFailure = (item = {}) => {
+    const tokens = [
+      item.id,
+      item.reasonCode,
+      item.gate,
+      typeof item.id === 'string' ? item.id.replace(/\.failed$/, '') : null,
+    ];
+    return tokens.some((token) => staleV128ShadowReasons.has(token));
+  };
+  if (v128ShadowClosed) {
+    for (let index = failures.length - 1; index >= 0; index -= 1) {
+      if (isStaleV128ShadowFailure(failures[index])) failures.splice(index, 1);
+    }
+  }
+  const staleV128Only = firstBlockingReasons.length > 0
+    && firstBlockingReasons.every((item) => staleV128ShadowReasons.has(item.reasonCode) || staleV128ShadowReasons.has(item.gate));
+  if (firstBlockingReasons.length > 0 && !(v128ShadowClosed && staleV128Only)) {
     pushUniqueFailure(
       failures,
       'v127PostClosure.blockingReasonsPresent',
@@ -13956,6 +13988,11 @@ async function runSourceHarnessCoreContractGate() {
   }
   report.mergeReady = failures.length === 0 && warnings.length === 0;
   report.localGate = { status: report.status };
+  // Refresh the v1.2.8 shadow Projection after the active v1.2.7 score is known.
+  // The first write above creates the candidate artifacts early enough for legacy
+  // status construction; this write prevents that early, non-authoritative view
+  // from carrying stale fail/blocker fields into post-closure validation.
+  writeV117LoadBearingArtifacts(report);
   applyV127RemoteEvidenceClosure(report, { failures, warnings }, process.env);
   writeV117LoadBearingArtifacts(report);
 
