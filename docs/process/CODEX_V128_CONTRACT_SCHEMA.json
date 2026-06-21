@@ -176,6 +176,16 @@
         "aggregate_finalizer": "orderedUpstreamResultSetDigest"
       }
     },
+    "aggregateFinalizerDigestSemantics": {
+      "orderedDigestHelper": "buildV128OrderedUpstreamResultSetDigest",
+      "upstreamTupleFields": [
+        "nodeRef",
+        "status",
+        "resultDigest"
+      ],
+      "compactStorageMustPreserveTupleSemantics": true,
+      "statusStrippedDigestAllowed": false
+    },
     "providerPrTopologyNextAction": {
       "artifactSurface": "qualityGateSafeSummary.routineDecisionProjection.automationDisposition",
       "authority": "non_authoritative_projection_automation_hint",

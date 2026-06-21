@@ -3,6 +3,7 @@
 // CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import crypto from 'node:crypto';
+import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-finalizer.mjs';
 
 export const V128_SAFE_SUMMARY_STORED_BYTES_SOFT_MAX = 6144;
 export const V128_SAFE_SUMMARY_ROUTINE_SURFACE_BYTES_MAX = 2560;
@@ -353,11 +354,13 @@ export function validateV128CompactValidationPlanExact(plan = {}) {
   }
   const aggregate = typedResults.aggregate_finalizer;
   if (aggregate) {
-    const expectedOrdered = digestValue(aggregate.upstreamResultDigests || []);
+    const expectedOrdered = buildV128OrderedUpstreamResultSetDigest(aggregate.upstreamResultDigests || []);
     if (aggregate.orderedUpstreamResultSetDigest !== expectedOrdered) reasons.push('compact_aggregate_ordered_digest_mismatch');
     const byRef = new Map(nodeResults.map((node) => [node.nodeRef, node.resultDigest]));
+    const statusByRef = new Map(nodeResults.map((node) => [node.nodeRef, node.status]));
     for (const item of aggregate.upstreamResultDigests || []) {
       if (byRef.get(item.nodeRef) !== item.resultDigest) reasons.push(`compact_aggregate_upstream_digest_mismatch_${item.nodeRef}`);
+      if (statusByRef.get(item.nodeRef) !== item.status) reasons.push(`compact_aggregate_upstream_status_mismatch_${item.nodeRef}`);
     }
   }
   return reasons.length ? { status: 'fail', reasonCodes: [...new Set(reasons)], safeSummaryOnly: true } : { status: 'pass', safeSummaryOnly: true };
@@ -446,6 +449,7 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   const aggregateDependsOn = (compact.graph?.nodes || []).find((node) => node.nodeRef === 'aggregate_finalizer')?.dependsOn || [];
   const upstreamResultDigests = aggregateDependsOn.map((nodeRef) => ({
     nodeRef,
+    status: nodeByRef.get(nodeRef)?.status || 'missing',
     resultDigest: nodeByRef.get(nodeRef)?.resultDigest || digestValue(typedResults[nodeRef] || null),
   }));
   typedResults.aggregate_finalizer = {
@@ -455,7 +459,7 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     upstreamNodeRefs: aggregateDependsOn,
     upstreamResultDigests,
     failedNodeRefs: Array.isArray(aggregateOriginal.failedNodeRefs) ? aggregateOriginal.failedNodeRefs : [],
-    orderedUpstreamResultSetDigest: digestValue(upstreamResultDigests),
+    orderedUpstreamResultSetDigest: buildV128OrderedUpstreamResultSetDigest(upstreamResultDigests),
     safeSummaryOnly: true,
   };
   const aggregateDigest = digestValue(typedResults.aggregate_finalizer);

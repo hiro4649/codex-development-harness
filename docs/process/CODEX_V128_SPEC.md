@@ -573,7 +573,12 @@ upstreamNodeRefs:
   exactly match aggregate_finalizer.dependsOn
 
 upstreamResultDigests:
-  exactly match each upstream node result digest
+  exactly match each upstream node nodeRef/status/resultDigest tuple
+
+orderedUpstreamResultSetDigest:
+  must be produced by the same buildV128OrderedUpstreamResultSetDigest helper
+  used by aggregate_finalizer; compact storage must not reuse the field name
+  with status-stripped or otherwise changed digest semantics.
 
 failed upstream:
   requires finalizer status=fail and failedNodeRefs entry
