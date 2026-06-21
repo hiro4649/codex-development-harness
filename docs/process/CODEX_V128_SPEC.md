@@ -404,16 +404,22 @@ one_shot:
 
 bounded_goal:
   repairable failure observed
-  objective completion contract observed
-  agent end-to-end capability observed
-  economic benefit observed
+  objectiveContractDigest observed
+  capabilityProfileDigest observed
+  economicsObservationDigest observed
+  repairableFailureEvidenceDigest observed
+  budgetState=observed_within_budget
   maxIterations=3
 
 protected_routine:
   repeated safe routine work
   protected executor available
   task recurrence observed
-  objective contract and economic benefit observed
+  taskRecurrenceDigest observed
+  objectiveContractDigest observed
+  capabilityProfileDigest observed
+  economicsObservationDigest observed
+  budgetState=observed_within_budget
 ```
 
 The router emits `executionMode`, `admissionStatus`, `budgetState`,
@@ -426,6 +432,31 @@ normal pass emits `executionMode=one_shot` and
 the observed failure and loop economy evidence above are present. Individual PR
 human judgment is not required for eligible standing-policy work; deterministic
 verification and protected execution decide pass/reject.
+
+Admission observation is digest-based. Boolean fields such as
+`objectiveCompletionContractObserved`, `agentEndToEndCapabilityObserved`, and
+`economicBenefitObserved` are not allowed to default to true. They are derived
+only from `objectiveContractDigest`, `capabilityProfileDigest`,
+`economicsObservationDigest`, and, for repair loops,
+`repairableFailureEvidenceDigest`. Missing digests remain false.
+
+`budgetState` is tri-state:
+
+```text
+observed_within_budget:
+  model transport and deterministic validation budgets are measured and within budget
+
+observed_over_budget:
+  model transport or deterministic validation budgets are measured and over budget
+
+incomplete_observation:
+  deterministic validation may have run, but model transport cost is not observed
+```
+
+`one_shot` may proceed with `incomplete_observation` when all nodes pass.
+`bounded_goal` and `protected_routine` require `observed_within_budget`.
+Model invocation counts are measured at the model transport boundary only; they
+must not be inferred from validation node executions.
 
 `commandOrFunctionDigest` is the node-scoped source closure digest, not a
 metadata hash of the node name or adapter id. The validator recomputes ledger
@@ -480,6 +511,25 @@ invocations. `residentAndDeltaBytesPerValidatedPass` measures a deterministic
 validation pass; `managedInputBytesPerAcceptedChange` is reserved for an
 observed merge or protected-executor accepted result.
 
+Real cache canary is required in Source Shadow Candidate without adding a new
+P0 artifact. It uses existing validation artifacts to exercise:
+
+```text
+cold_miss:
+  all eligible nodes execute once
+
+real_hit:
+  eligible nodes reuse prior sourceRunRef/cache provenance
+
+real_partial_hit:
+  only failed, changed-input downstream, or invalidated-cache nodes execute
+  unaffectedNodeRerunCount=0
+```
+
+The canary is shadow-only until Activation, but its digest and status are
+included in the compact validation plan so repeated validation work is reduced
+without weakening v1.2.7 authority.
+
 The routine Projection separates authority and operator actions without
 embedding a full topology object in the routine read surface:
 
@@ -506,6 +556,9 @@ technical checks not closed:
 
 default-branch ready with checks closed:
   auto_merge
+
+post-merge main workflow_dispatch:
+  post_merge_verify
 ```
 
 The topology-derived automation disposition is non-authoritative and cannot
@@ -803,7 +856,11 @@ bounded Projection reader model-facing surface <= 1600 measured canonical UTF-8 
 bounded Projection reader actual stdout <= 1600 measured UTF-8 bytes
 bounded Projection reader duplicate-key rejection pass
 bounded Projection reader schema/head/source digest binding pass
-harnessManagedContextBytesEmitted <= 4096
+managedContextEnvelope <= 3600 measured UTF-8 bytes
+Safe Summary <= 5600 stored UTF-8 bytes
+Orchestration Capsule <= 55000 stored UTF-8 bytes
+routine Projection <= 1536 preferred, 1600 hard max
+routine model-facing surface <= 2560 stored UTF-8 bytes
 source and target deterministic replay pass
 PR body display-only replay pass
 receipt provenance and expiry replay pass

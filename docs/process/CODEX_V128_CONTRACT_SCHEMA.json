@@ -214,7 +214,10 @@
       "sameBlockerMax": 1,
       "noProgressWindow": 1,
       "flipFlopMax": 1,
-      "declaredBudgetAsObservedAllowed": false
+      "declaredBudgetAsObservedAllowed": false,
+      "budgetStates": ["observed_within_budget", "observed_over_budget", "incomplete_observation"],
+      "modelInvocationCountSource": "model_transport_boundary_only",
+      "validationNodeCountAsModelInvocationAllowed": false
     },
     "loopAdmissionRouter": {
       "artifactSurface": "orchestrationCapsule.validationExecutionPlanAndReuse.loopAdmissionRouter",
@@ -224,15 +227,19 @@
       "progression": ["one_shot", "bounded_goal", "protected_routine"],
       "protectedRoutineRequiresExecutor": true,
       "boundedGoalRequiresObservedRepairableFailure": true,
-      "boundedGoalRequiresObjectiveCompletionContract": true,
-      "boundedGoalRequiresAgentEndToEndCapability": true,
-      "boundedGoalRequiresEconomicBenefit": true,
+      "boundedGoalRequiresObjectiveContractDigest": true,
+      "boundedGoalRequiresCapabilityProfileDigest": true,
+      "boundedGoalRequiresEconomicsObservationDigest": true,
+      "boundedGoalRequiresRepairableFailureEvidenceDigest": true,
+      "boundedGoalRequiresBudgetState": "observed_within_budget",
+      "protectedRoutineRequiresTaskRecurrenceDigest": true,
+      "protectedRoutineRequiresBudgetState": "observed_within_budget",
       "humanOwnerDecisionRequired": false,
       "ownerAuthorityCreated": false,
       "sourceActivationAuthorized": false,
       "targetRolloutAuthorized": false,
       "allowedLoopTransitionCodes": ["LOOP_NOT_REQUIRED", "REPAIR_FAILED_NODE", "STOP_NO_PROGRESS", "WAIT_FOR_LOOP_EVIDENCE", "WAIT_FOR_PROTECTED_EXECUTOR"],
-      "allowedOperatorNextActionCodes": ["auto_wait", "auto_rebase", "auto_merge", "auto_reject", "auto_repair", "auto_ready", "auto_process_base_pr"],
+      "allowedOperatorNextActionCodes": ["auto_wait", "auto_rebase", "auto_merge", "auto_reject", "auto_repair", "auto_ready", "auto_process_base_pr", "post_merge_verify"],
       "authorityBoundaryActionSource": "Final Decision",
       "maxIterations": 3,
       "maxModelInvocations": 4,
@@ -250,6 +257,24 @@
         "state_matrix_executor": "stateMatrixContentDigest",
         "aggregate_finalizer": "orderedUpstreamResultSetDigest"
       }
+    },
+    "realCacheCanary": {
+      "newP0Artifact": false,
+      "artifactSurface": "orchestrationCapsule.validationExecutionPlanAndReuse.realCacheCanary",
+      "requiredModes": ["cold_miss", "real_hit", "real_partial_hit"],
+      "unaffectedNodeRerunCountMax": 0,
+      "sourceRunRefRequiredForReuse": true,
+      "cacheHitWithExecutedEligibleNodeAllowed": false
+    },
+    "tokenCompressionBudgets": {
+      "managedContextEnvelopeBytesMax": 3600,
+      "safeSummaryStoredBytesMax": 5600,
+      "orchestrationCapsuleStoredBytesMax": 55000,
+      "projectionPreferredBytesMax": 1536,
+      "projectionHardBytesMax": 1600,
+      "routineReadSurfaceBytesMax": 2560,
+      "compiledActiveInstructionBytesMax": 1400,
+      "deltaContextBytesMax": 768
     },
     "aggregateFinalizerDigestSemantics": {
       "orderedDigestHelper": "buildV128OrderedUpstreamResultSetDigest",

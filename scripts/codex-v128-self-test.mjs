@@ -377,7 +377,7 @@ function managedContextEmitterObservesBytes() {
   return context.status === 'pass'
     && context.managedContextMeasurementSource === 'v128_managed_context_emitter'
     && context.managedContextBytes > 0
-    && context.managedContextBytes <= 4096
+    && context.managedContextBytes <= 3600
     && context.residentContextBytes > 0
     && context.residentContextBytes <= 2048
     && context.deltaContextBytes > 0
@@ -395,9 +395,9 @@ function managedContextEmitterObservesBytes() {
     && context.foreignProfileRead === 0
     && context.reviewerFanout === 0
     && context.routineSelectedSkill === 0
-    && context.sourceFiles.length >= 5
-    && context.instructionCapsule.llmSummaryUsed === false
-    && context.attestedView.projectionAuthority === 'non_authoritative'
+    && context.sourceFileCount >= 5
+    && /^sha256:[a-f0-9]{64}$/.test(context.instructionCapsuleDigest)
+    && /^sha256:[a-f0-9]{64}$/.test(context.attestedViewDigest)
     && context.sourceActivationReady === false;
 }
 
@@ -481,7 +481,7 @@ function tokenCompressionCompactsSafeSummary() {
     standingAutonomyPolicy: noisyReport.v128StandingAutonomyPolicy,
   });
   return summary.tokenCompression.status === 'pass'
-    && summary.tokenCompression.storedSafeSummaryBytes <= 6144
+    && summary.tokenCompression.storedSafeSummaryBytes <= 5600
     && summary.tokenCompression.routineReadSurfaceBytes <= 2560
     && summary.compactDiagnostics.validationPlan.loopTransitionCode
     && !JSON.stringify(summary).includes('file-119')
@@ -722,7 +722,7 @@ function validationColdMissLoopEconomyObserved() {
     && plan.loopEconomy.managedInputBytesPerAcceptedChange === null
     && plan.loopEconomy.modelInvocationObserved === false
     && plan.loopEconomy.modelInvocationCount === null
-    && plan.loopEconomy.budgetState === 'within_budget';
+    && plan.loopEconomy.budgetState === 'incomplete_observation';
 }
 
 function validationRealCacheHitLoopEconomyObserved() {
@@ -883,6 +883,9 @@ function loopAdmissionRouterDefaultsToOneShotWhenNoLoopEvidenceRequired() {
 }
 
 function loopAdmissionRouterFailureWithEvidenceSelectsBoundedGoal() {
+  const objectiveContractDigest = sha256Canonical({ objective: 'repair_failed_projection_reader' });
+  const capabilityProfileDigest = sha256Canonical({ capability: 'failed_node_repair' });
+  const economicsObservationDigest = sha256Canonical({ economics: 'observed_within_budget' });
   const plan = buildPlanWithBoundReusedCacheKeys({
     headSha: 'f'.repeat(40),
     sourceHeadOid: 'f'.repeat(40),
@@ -893,9 +896,13 @@ function loopAdmissionRouterFailureWithEvidenceSelectsBoundedGoal() {
     stableContextBytes: 800,
     deltaContextBytes: 300,
     fullContextResendCount: 1,
-    objectiveCompletionContractObserved: true,
-    agentEndToEndCapabilityObserved: true,
-    economicBenefitObserved: true,
+    modelInvocationObserved: true,
+    modelInvocationCount: 1,
+    modelInputBytes: 100,
+    modelOutputBytes: 50,
+    objectiveContractDigest,
+    capabilityProfileDigest,
+    economicsObservationDigest,
     nodeResults: [
       executedNode('projection_reader', 'fail', 'decision_stable', { reason: 'BROKEN_READER' }),
       executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
@@ -909,7 +916,9 @@ function loopAdmissionRouterFailureWithEvidenceSelectsBoundedGoal() {
   return failed(validation)
     && plan.loopAdmissionRouter.executionMode === 'bounded_goal'
     && plan.loopAdmissionRouter.admissionStatus === 'admitted'
-    && plan.loopAdmissionRouter.loopTransitionCode === 'REPAIR_FAILED_NODE';
+    && plan.loopAdmissionRouter.loopTransitionCode === 'REPAIR_FAILED_NODE'
+    && plan.loopAdmissionRouter.budgetState === 'observed_within_budget'
+    && plan.loopAdmissionRouter.evidenceStates.objectiveContractDigest === objectiveContractDigest;
 }
 
 function loopAdmissionRouterFailureWithoutEvidenceBlocks() {
@@ -940,6 +949,10 @@ function loopAdmissionRouterFailureWithoutEvidenceBlocks() {
 }
 
 function loopAdmissionRouterProtectedRequiresExecutor() {
+  const taskRecurrenceDigest = sha256Canonical({ recurrence: 'three_successful_bounded_goals' });
+  const objectiveContractDigest = sha256Canonical({ objective: 'protected_routine' });
+  const capabilityProfileDigest = sha256Canonical({ capability: 'protected_executor' });
+  const economicsObservationDigest = sha256Canonical({ economics: 'observed_within_budget' });
   const plan = buildPlanWithBoundReusedCacheKeys({
     headSha: 'f'.repeat(40),
     sourceHeadOid: 'f'.repeat(40),
@@ -949,14 +962,17 @@ function loopAdmissionRouterProtectedRequiresExecutor() {
     decisionInputManifestScanned: true,
     protectedLifecycleRequested: true,
     protectedExecutorAvailable: true,
-    taskRecurrenceObserved: true,
-    objectiveCompletionContractObserved: true,
-    agentEndToEndCapabilityObserved: true,
-    economicBenefitObserved: true,
+    taskRecurrenceDigest,
+    objectiveContractDigest,
+    capabilityProfileDigest,
+    economicsObservationDigest,
     stableContextBytes: 800,
     deltaContextBytes: 300,
     fullContextResendCount: 1,
+    modelInvocationObserved: true,
     modelInvocationCount: 1,
+    modelInputBytes: 100,
+    modelOutputBytes: 50,
     nodeResults: validValidationNodeResults(),
   });
   const tampered = {
@@ -971,6 +987,10 @@ function loopAdmissionRouterProtectedRequiresExecutor() {
 }
 
 function loopAdmissionRouterProtectedWithoutExecutorBlocks() {
+  const taskRecurrenceDigest = sha256Canonical({ recurrence: 'three_successful_bounded_goals' });
+  const objectiveContractDigest = sha256Canonical({ objective: 'protected_routine' });
+  const capabilityProfileDigest = sha256Canonical({ capability: 'protected_executor' });
+  const economicsObservationDigest = sha256Canonical({ economics: 'observed_within_budget' });
   const plan = buildPlanWithBoundReusedCacheKeys({
     headSha: 'f'.repeat(40),
     sourceHeadOid: 'f'.repeat(40),
@@ -980,13 +1000,17 @@ function loopAdmissionRouterProtectedWithoutExecutorBlocks() {
     decisionInputManifestScanned: true,
     protectedLifecycleRequested: true,
     protectedExecutorAvailable: false,
-    taskRecurrenceObserved: true,
-    objectiveCompletionContractObserved: true,
-    agentEndToEndCapabilityObserved: true,
-    economicBenefitObserved: true,
+    taskRecurrenceDigest,
+    objectiveContractDigest,
+    capabilityProfileDigest,
+    economicsObservationDigest,
     stableContextBytes: 800,
     deltaContextBytes: 300,
     fullContextResendCount: 1,
+    modelInvocationObserved: true,
+    modelInvocationCount: 1,
+    modelInputBytes: 100,
+    modelOutputBytes: 50,
     nodeResults: validValidationNodeResults(),
   });
   return passed(validateV128ValidationExecutionPlan(plan))
@@ -2217,6 +2241,24 @@ const cases = [
     orthogonalReasonModel: { reasons: [{ reasonCode: 'required_check_pending', state: 'awaiting', evidenceRef: 'provider.requiredChecks' }] },
   }).orthogonalReasonModel))],
   ['routine_cold_artifact_read_is_zero', () => passed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule().tokenMinimalReadCompatibilityRouter))],
+  ['post_merge_lane_uses_post_merge_verify_phase', () => {
+    const capsule = buildOrchestrationCapsule({
+      terminalAction: 'preserve_only',
+      evidenceLaneAndQGLaneSemantics: {
+        qgLaneSemantics: {
+          currentLane: 'post_merge_sentinel',
+          terminalPhase: 'post_merge_verify',
+          postMergeRequiresMarkerManifestDriftCheck: true,
+        },
+        evidenceLaneSafeNextAction: 'post_merge_verify',
+      },
+    });
+    const validation = validateOrchestrationCapsule(capsule);
+    return capsule.workerContract.terminalAction === 'preserve_only'
+      && capsule.evidenceLaneAndQGLaneSemantics.qgLaneSemantics.currentLane === 'post_merge_sentinel'
+      && capsule.evidenceLaneAndQGLaneSemantics.qgLaneSemantics.terminalPhase === 'post_merge_verify'
+      && validation.evidenceLaneQGInternalStatus.status === 'pass';
+  }],
   ['bounded_projection_reader_extracts_projection_only', () => boundedProjectionReaderExecutes()],
   ['bounded_projection_reader_rejects_duplicate_keys', () => boundedProjectionReaderRejectsDuplicateKeys()],
   ['bounded_projection_reader_compacts_over_budget_failure', () => boundedProjectionReaderCompactsOverBudgetFailure()],
@@ -2391,7 +2433,11 @@ const cases = [
       && text.includes('deltaContextBytes: v128ManagedContextEmitter.deltaContextBytes')
       && text.includes('validationNodeInvocationCount: v128ExecutionSnapshot.invocationLedger.length')
       && text.includes('modelInvocationObserved: false')
-      && text.includes('modelInvocationCount: null');
+      && text.includes('modelInvocationCount: null')
+      && text.includes('objectiveContractDigest')
+      && text.includes('capabilityProfileDigest')
+      && text.includes('economicsObservationDigest')
+      && text.includes('repairableFailureEvidenceDigest');
   }],
   ['orchestration_capsule_validates_all_v128_internal_blocks', () => Object.values(validateOrchestrationCapsule(buildOrchestrationCapsule())).every((item) => item.status === 'pass')],
 ].map(([name, fn]) => test(name, fn));

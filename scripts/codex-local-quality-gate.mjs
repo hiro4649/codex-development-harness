@@ -121,6 +121,25 @@ const PROFILE_TEMPLATE_VERSION = '0.7.0';
 
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
 
+function isPostMergeMainWorkflow(env = process.env) {
+  const eventName = String(env.GITHUB_EVENT_NAME || env.CODEX_EVENT_NAME || '').trim();
+  const refName = String(env.GITHUB_REF_NAME || env.CODEX_BRANCH || '').trim();
+  return env.GITHUB_ACTIONS === 'true'
+    && eventName === 'workflow_dispatch'
+    && ['main', 'master'].includes(refName)
+    && !isPullRequestContext(env);
+}
+
+function defaultV118ExecutionMode(env = process.env) {
+  if (env.CODEX_EXECUTION_MODE) return env.CODEX_EXECUTION_MODE;
+  return isPostMergeMainWorkflow(env) ? 'source_main' : 'source_pr';
+}
+
+function defaultV118TerminalAction(env = process.env) {
+  if (env.CODEX_TERMINAL_ACTION) return env.CODEX_TERMINAL_ACTION;
+  return isPostMergeMainWorkflow(env) ? 'preserve_only' : 'create_pr_only';
+}
+
 function mergeCompatReports(report, reports = {}) {
   const { marker, harnessVersion, ...statuses } = reports;
   Object.assign(report, statuses);
@@ -700,6 +719,38 @@ function computeV128ShadowEvidence(input = {}) {
     state_matrix_executor: stateMatrixInputDigest,
     aggregate_finalizer: aggregateInputDigest,
   };
+  const failedV128NodeRefs = v128ExecutionSnapshot.nodeResults
+    .filter((node) => node.status === 'fail')
+    .map((node) => node.nodeRef)
+    .sort();
+  const objectiveContractDigest = sha256Canonical({
+    contractKind: 'v128_source_shadow_validation_objective',
+    requiredNodes: Object.keys(v128NodeInputDigests).sort(),
+    aggregateInputDigest,
+    stateMatrixInputDigest,
+  });
+  const capabilityProfileDigest = sha256Canonical({
+    capabilityKind: 'v128_agent_end_to_end_validation_capability',
+    adapterNodeRefs: v128ExecutionSnapshot.nodeResults.map((node) => node.nodeRef).sort(),
+    invocationLedgerCount: v128ExecutionSnapshot.invocationLedger.length,
+    aggregateFinalizerObserved: v128ExecutionSnapshot.nodeResults.some((node) => node.nodeRef === 'aggregate_finalizer'),
+  });
+  const economicsObservationDigest = sha256Canonical({
+    economicsKind: 'v128_loop_economy_observation',
+    managedInputBytes: Number(v128ManagedContextEmitter.residentContextBytes || 0)
+      + Number(v128ManagedContextEmitter.deltaContextBytes || 0),
+    residentContextBytes: v128ManagedContextEmitter.residentContextBytes,
+    deltaContextBytes: v128ManagedContextEmitter.deltaContextBytes,
+    fullContextResendCount: v128ManagedContextEmitter.fullContextResendCount,
+    validationNodeInvocationCount: v128ExecutionSnapshot.invocationLedger.length,
+  });
+  const repairableFailureEvidenceDigest = failedV128NodeRefs.length
+    ? sha256Canonical({
+      repairableFailureKind: 'v128_failed_validation_nodes',
+      failedNodeRefs: failedV128NodeRefs,
+      nodeInputDigests: Object.fromEntries(failedV128NodeRefs.map((nodeRef) => [nodeRef, v128NodeInputDigests[nodeRef] || null])),
+    })
+    : null;
   const v128ValidationExecutionPlan = buildV128ValidationExecutionPlan({
     observedExecution: true,
     workspaceObservation,
@@ -730,9 +781,10 @@ function computeV128ShadowEvidence(input = {}) {
     validationNodeInvocationCount: v128ExecutionSnapshot.invocationLedger.length,
     modelInvocationObserved: false,
     modelInvocationCount: null,
-    objectiveCompletionContractObserved: true,
-    agentEndToEndCapabilityObserved: true,
-    economicBenefitObserved: true,
+    objectiveContractDigest,
+    capabilityProfileDigest,
+    economicsObservationDigest,
+    repairableFailureEvidenceDigest,
   });
   const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);
   const value = {
@@ -1114,7 +1166,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
       fs.writeFileSync(loadBearingArtifactPath('codex-evidence-capsule.safe.json'), JSON.stringify(report.evidenceCapsule, null, 2));
     }
     if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(HARNESS_VERSION) && report.orchestrationCapsule) {
-      fs.writeFileSync(loadBearingArtifactPath('codex-orchestration-capsule.safe.json'), JSON.stringify(report.orchestrationCapsule, null, 2));
+      fs.writeFileSync(loadBearingArtifactPath('codex-orchestration-capsule.safe.json'), JSON.stringify(report.orchestrationCapsule));
     }
     if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'].includes(HARNESS_VERSION) && report.workerProofCapsule) {
       fs.writeFileSync(loadBearingArtifactPath('codex-worker-proof.safe.json'), JSON.stringify(report.workerProofCapsule, null, 2));
@@ -4211,7 +4263,9 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', proje
   const authorityBoundaryAction = report.finalDecision?.safeNextAction
     || report.decisionCapsule?.safeNextAction
     || 'owner_merge_decision_only';
-  const automationDisposition = standingAutonomyPolicy.automationDisposition || prTopology.nextActionCode || 'auto_wait';
+  const automationDisposition = prTopology.nextActionCode === 'post_merge_verify'
+    ? 'post_merge_verify'
+    : (standingAutonomyPolicy.automationDisposition || prTopology.nextActionCode || 'auto_wait');
   const projectionBase = {
     schemaVersion: '1.2.8',
     projectionKind: 'routine_decision_projection',
@@ -4246,6 +4300,14 @@ function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', proje
 
 function buildV128PrTopologyProjection(env = process.env, report = {}) {
   const defaultBranches = new Set(['main', 'master']);
+  if (isPostMergeMainWorkflow(env)) {
+    return {
+      prLifecycleState: 'post_merge_verify',
+      baseRefKind: 'default_branch',
+      stackedDependencyState: 'not_stacked',
+      nextActionCode: 'post_merge_verify',
+    };
+  }
   let eventPr = null;
   try {
     if (env.GITHUB_EVENT_PATH && fs.existsSync(env.GITHUB_EVENT_PATH)) {
@@ -4600,8 +4662,8 @@ function applyV127RemoteEvidenceClosure(report = {}, outcome = {}, env = process
     });
     report.evidenceCapsuleStatus = validateEvidenceCapsule(report.evidenceCapsule);
     report.finalDecision = reconcileFinalSafeDecision({
-      executionMode: process.env.CODEX_EXECUTION_MODE || 'source_pr',
-      terminalAction: 'create_pr_only',
+      executionMode: defaultV118ExecutionMode(env),
+      terminalAction: defaultV118TerminalAction(env),
       decisionCapsule: report.decisionCapsule,
       evidenceCapsule: report.evidenceCapsule,
       artifactConsistency: report.artifactConsistency || report.artifactConsistencyStatus,
@@ -4657,8 +4719,8 @@ function runV118Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V118_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v118-self-test.mjs', 'v118SelfTestStatus', 'CODEX_V118_SELF_TEST_REPORT', gateEnv);
-  const terminalAction = process.env.CODEX_TERMINAL_ACTION || 'create_pr_only';
-  const executionMode = process.env.CODEX_EXECUTION_MODE || 'source_pr';
+  const terminalAction = defaultV118TerminalAction(process.env);
+  const executionMode = defaultV118ExecutionMode(process.env);
   const evidenceCapsule = buildEvidenceCapsule({
     terminalAction,
     headSha: process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'unknown',
@@ -4731,6 +4793,8 @@ function buildFinalDecisionPointerStatus(report = {}) {
 
 function runV119Gates(report, gateEnv) {
   const context = buildV127RemoteEvidenceContext(process.env);
+  const postMergeMain = isPostMergeMainWorkflow(process.env);
+  const terminalAction = defaultV118TerminalAction(process.env);
   const selfTestStatus = process.env.CODEX_SKIP_V119_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v119-self-test.mjs', 'v119SelfTestStatus', 'CODEX_V119_SELF_TEST_REPORT', gateEnv);
@@ -4741,7 +4805,15 @@ function runV119Gates(report, gateEnv) {
     pullFfOnlyStatus: process.env.CODEX_PULL_FF_ONLY_STATUS || 'not_required_with_reason',
     worktreeCleanBefore: process.env.CODEX_WORKTREE_CLEAN_BEFORE === 'false' ? false : true,
     worktreeCleanAfter: process.env.CODEX_WORKTREE_CLEAN_AFTER === 'false' ? false : true,
-    terminalAction: process.env.CODEX_TERMINAL_ACTION || 'create_pr_only',
+    terminalAction,
+    evidenceLaneAndQGLaneSemantics: postMergeMain ? {
+      qgLaneSemantics: {
+        currentLane: 'post_merge_sentinel',
+        terminalPhase: 'post_merge_verify',
+        postMergeRequiresMarkerManifestDriftCheck: true,
+      },
+      evidenceLaneSafeNextAction: 'post_merge_verify',
+    } : undefined,
     allowedFiles: ['AGENTS.md', 'README.md', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V128_CONTRACT_SCHEMA.json', 'docs/process/CODEX_AUTHORITY_HISTORY.md', 'docs/process/CODEX_V128_REASON_REGISTRY.json', 'docs/process/CODEX_V128_STATE_MATRIX.json', 'docs/process/CODEX_V128_PRESERVATION_MATRIX.json', 'docs/process/CODEX_V128_REPLAY_CORPUS.json', 'scripts/codex-v128-self-test.mjs', 'scripts/codex-v128-projection-reader.mjs', 'scripts/codex-v128-managed-context-emitter.mjs', 'scripts/codex-v128-integrity-lib.mjs', 'scripts/codex-v128-state-matrix.mjs', 'scripts/codex-v128-validation-execution-plan.mjs', 'scripts/codex-v128-token-compression.mjs', 'docs/process/CODEX_V127_SPEC.md', 'scripts/codex-v127-self-test.mjs', 'docs/process/CODEX_V126_SPEC.md', 'scripts/codex-v126-self-test.mjs', 'docs/process/CODEX_V125_SPEC.md', 'scripts/codex-v125-self-test.mjs', 'docs/process/CODEX_V124_SPEC.md', 'scripts/codex-v124-self-test.mjs', 'docs/process/CODEX_V123_SPEC.md', 'scripts/codex-v123-self-test.mjs', 'docs/process/CODEX_V122_SPEC.md', 'scripts/codex-v122-self-test.mjs', 'docs/process/CODEX_V121_SPEC.md', 'scripts/codex-v121-self-test.mjs', 'scripts/codex-v107-gate-lib.mjs', 'scripts/codex-orchestration-capsule.mjs', 'scripts/codex-worker-proof-capsule.mjs', 'scripts/codex-owner-decision-brief.mjs', 'scripts/codex-local-quality-gate.mjs', 'scripts/codex-workflow-quality-runner.mjs', 'scripts/codex-harness-version.mjs'],
     forbiddenFiles: ['package.json', 'package-lock.json', 'pnpm-lock.yaml', '.github/workflows/quality-gate.yml'],
     acceptanceCriteria: ['three_p0_artifacts_only', 'v118_final_decision_pointer', 'v119_compatibility_preserved', 'v120_compatibility_preserved', 'v121_compatibility_preserved', 'v122_compatibility_preserved', 'v123_compatibility_preserved', 'v124_compatibility_preserved', 'v125_compatibility_preserved', 'v126_compatibility_preserved', 'v127_compatibility_preserved', 'v128_self_test'],
