@@ -124,9 +124,10 @@ routine bounded Projection reader surface <= 1600 bytes
 routine bounded Projection reader stdout <= 1600 bytes
 routine bounded Projection reader rejects duplicate JSON keys
 per-transition managed context <= 4096 bytes
-stored Safe Summary <= 8192 bytes soft cap
-routine Safe Summary read surface <= 4096 bytes
-Orchestration Capsule <= 65536 bytes soft cap
+compiled active instruction context <= 1400 bytes
+stored Safe Summary <= 6144 bytes soft cap
+routine Safe Summary read surface <= 2560 bytes
+Orchestration Capsule <= 60000 bytes soft cap
 routine final report <= 8 lines
 routine owner interrupt = 0
 repeated safety text = 0
@@ -160,10 +161,12 @@ must not remove or weaken Final Decision, Decision Capsule, same-head, receipt,
 Stop Circuit, post-merge verification, required-check failure, or PR body
 display-only contracts.
 
-Root AGENTS, applicable nested AGENTS, and the active profile are compiled into
-one deterministic model-facing instruction capsule. The compilation must not
-use LLM summarization. All source fragment digests are retained, conflicts hard
-fail, and forbidden boundaries cannot be removed or weakened.
+Marker-delimited active blocks from applicable AGENTS files and the active
+profile are compiled into one deterministic model-facing instruction capsule.
+The compiler reads `CODEX_ACTIVE_BLOCK_BEGIN` / `CODEX_ACTIVE_BLOCK_END`
+content exactly, must not use LLM summarization, and must fail if required
+v1.2.7 preservation `machineBindingId` values are missing. Historical guidance
+outside active blocks is not part of the routine model-facing surface.
 
 Profile preservation uses inheritance:
 

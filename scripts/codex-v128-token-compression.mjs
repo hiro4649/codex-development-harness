@@ -4,9 +4,9 @@
 
 import crypto from 'node:crypto';
 
-export const V128_SAFE_SUMMARY_STORED_BYTES_SOFT_MAX = 8192;
-export const V128_SAFE_SUMMARY_ROUTINE_SURFACE_BYTES_MAX = 4096;
-export const V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX = 65536;
+export const V128_SAFE_SUMMARY_STORED_BYTES_SOFT_MAX = 6144;
+export const V128_SAFE_SUMMARY_ROUTINE_SURFACE_BYTES_MAX = 2560;
+export const V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX = 60000;
 
 export function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -27,13 +27,8 @@ export function digestValue(value) {
 }
 
 function compactStatus(value = {}) {
-  if (!value || typeof value !== 'object') return { status: 'missing', safeSummaryOnly: true };
-  const output = { status: value.status || 'missing', safeSummaryOnly: true };
-  if (Array.isArray(value.reasonCodes) && value.reasonCodes.length) output.reasonCodes = value.reasonCodes.slice(0, 4);
-  if (typeof value.score === 'number') output.score = value.score;
-  if (typeof value.caseCount === 'number') output.caseCount = value.caseCount;
-  if (typeof value.failureCount === 'number') output.failureCount = value.failureCount;
-  return output;
+  if (!value || typeof value !== 'object') return { status: 'missing' };
+  return { status: value.status || 'missing' };
 }
 
 function compactReasonSummary(value = {}) {
@@ -62,23 +57,18 @@ function compactReadSurface(value = {}) {
 function compactManagedContext(value = {}) {
   return {
     status: value.status || 'missing',
-    managedContextBytes: Number(value.managedContextBytes || 0),
-    managedContextBytesMax: Number(value.managedContextBytesMax || 4096),
+    managedContextEnvelopeBytes: Number(value.managedContextEnvelopeBytes || value.managedContextBytes || 0),
     managedContextMeasurementSource: value.managedContextMeasurementSource || 'not_observed',
     activeInstructionSourceSetDigest: value.activeInstructionSourceSetDigest || null,
-    compiledContextBytes: Number(value.compiledContextBytes || 0),
-    compiledContextBytesMax: Number(value.compiledContextBytesMax || 4096),
+    compiledActiveInstructionBytes: Number(value.compiledActiveInstructionBytes || value.compiledContextBytes || 0),
     compiledContextDigest: value.compiledContextDigest || null,
-    routineManagedSafeArtifactRead: Number(value.routineManagedSafeArtifactRead || 0),
     routineColdArtifactRead: Number(value.routineColdArtifactRead || 0),
     legacyRead: Number(value.legacyRead || 0),
     foreignProfileRead: Number(value.foreignProfileRead || 0),
     reviewerFanout: Number(value.reviewerFanout || 0),
     routineSelectedSkill: Number(value.routineSelectedSkill || 0),
     repeatedSafetyText: Number(value.repeatedSafetyText || 0),
-    sourceFileCount: Array.isArray(value.sourceFiles) ? value.sourceFiles.length : Number(value.sourceFileCount || 0),
-    llmSummaryUsed: value.instructionCapsule?.llmSummaryUsed === true,
-    sourceActivationReady: value.sourceActivationReady === true,
+    missingBindingCount: Array.isArray(value.missingBindingIds) ? value.missingBindingIds.length : 0,
     safeSummaryOnly: true,
   };
 }
@@ -90,16 +80,12 @@ function compactValidationPlan(plan = {}, status = {}) {
   return {
     status: status.status || 'missing',
     observationState: status.observationState || plan.observationState || 'unknown',
-    planDigest: execution.planDigest || status.planDigest || null,
-    graphDigest: graph.graphDigest || null,
     nodeCount: Array.isArray(graph.nodes) ? graph.nodes.length : 0,
     runWideInvocationCount: Number(execution.runWideInvocationCount || 0),
     runWideDuplicateExecutionCount: Number(execution.runWideDuplicateExecutionCount || 0),
     runWideInvocationLedgerStatus: execution.runWideInvocationLedgerStatus || 'unknown',
     reuseDecision: reuse.reuseDecision || 'unknown',
-    cacheKeyDigest: reuse.cacheKeyDigest || null,
     typedResultsDigest: plan.typedResults ? digestValue(plan.typedResults) : null,
-    pointer: '#/codex-orchestration-capsule.safe.json/validationExecutionPlanAndReuse',
     safeSummaryOnly: true,
   };
 }
@@ -114,11 +100,6 @@ function compactTrustClosure(trustClosure = {}, trustStatus = {}) {
     roleClosureCount: Object.keys(roleClosures).length,
     unresolvedRelativeImportCount: Number(top.unresolvedRelativeImportCount || 0),
     unsupportedDynamicImportCount: Number(top.unsupportedDynamicImportCount || 0),
-    executableInvocationCount: Number(top.executableInvocationCount || 0),
-    verifierBundleDigest: trustClosure.trustDigests?.verifierBundleDigest || null,
-    providerAdapterDigest: trustClosure.trustDigests?.providerAdapterDigest || null,
-    canonicalizerDigest: trustClosure.trustDigests?.canonicalizerDigest || null,
-    finalDecisionAuthorityDigest: trustClosure.trustDigests?.finalDecisionAuthorityDigest || null,
     safeSummaryOnly: true,
   };
 }
@@ -144,16 +125,19 @@ function finalizeCompression(summaryBase) {
   for (let i = 0; i < 8; i += 1) {
     const routineSurface = {
       routineDecisionProjection: summary.routineDecisionProjection,
-      routineProjectionReadSurface: summary.routineProjectionReadSurface,
-      compactStatus: summary.compactStatus,
+      compactIntegrityStatus: summary.compactIntegrityStatus,
       finalDecisionPointer: summary.finalDecisionPointer,
       sameHead: summary.sameHead,
+      blockerState: summary.blockerState,
       nextActionCode: summary.nextActionCode,
+      coldEvidencePointers: summary.coldEvidencePointers,
     };
     const tokenCompression = {
       ...summary.tokenCompression,
       storedSafeSummaryBytes: prettyBytes(summary),
       routineReadSurfaceBytes: canonicalBytes(routineSurface),
+      compiledActiveInstructionBytes: Number(summary.compactDiagnostics?.managedContext?.compiledActiveInstructionBytes || 0),
+      managedContextEnvelopeBytes: Number(summary.compactDiagnostics?.managedContext?.managedContextEnvelopeBytes || 0),
     };
     tokenCompression.status = tokenCompression.storedSafeSummaryBytes <= tokenCompression.storedSafeSummaryBytesMax
       && tokenCompression.routineReadSurfaceBytes <= tokenCompression.routineReadSurfaceBytesMax
@@ -189,7 +173,6 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
   const orchestrationCapsule = input.orchestrationCapsule || report.orchestrationCapsule || null;
   const workerProofCapsule = input.workerProofCapsule || report.workerProofCapsule || null;
   const ownerDecisionBrief = input.ownerDecisionBrief || report.ownerDecisionBrief || null;
-  const projectionStatus = input.routineDecisionProjectionStatus || report.routineDecisionProjectionStatus || {};
   const providerSnapshot = input.providerSnapshot || report.v128ProviderSnapshotEvidence || {};
   const standingAutonomy = input.standingAutonomyPolicy || report.v128StandingAutonomyPolicy || {};
   const nextActionCode = routineDecisionProjection?.automationDisposition
@@ -202,16 +185,6 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
     loadBearing: true,
     status: report.status || 'unknown',
     qualityScore: report.qualityScore ?? report.qualityScoreStatus?.score ?? null,
-    activeHarnessVersion: '1.2.7',
-    activeSelfTestSuite: 'v127',
-    candidateHarnessVersion: '1.2.8',
-    candidateActivationState: 'source_shadow_candidate',
-    sourceActivationReady: false,
-    targetRolloutReady: false,
-    head,
-    mergeReady: report.mergeReady === true,
-    technicalChecksReady: report.technicalChecksReady === true || report.mergeReady === true,
-    ownerMergeAuthorized: finalDecision.mergeAllowed === true,
     nextActionCode,
     sameHead: {
       status: providerSnapshot.status || report.decisionEvidenceEnvelopeSameHeadInternalStatus?.status || 'unknown',
@@ -220,29 +193,19 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
       safeSummaryOnly: true,
     },
     routineDecisionProjection,
-    routineProjectionReadSurface: compactReadSurface(input.routineProjectionReadSurface || report.routineProjectionReadSurface || {}),
-    compactStatus: {
+    compactIntegrityStatus: {
       qualityScoreStatus: compactStatus(report.qualityScoreStatus),
       finalDecisionStatus: compactStatus(report.finalDecisionStatus),
-      decisionCapsuleStatus: compactStatus(report.decisionCapsuleStatus),
-      evidenceCapsuleStatus: compactStatus(report.evidenceCapsuleStatus),
       reasonSummaryStatus: compactReasonSummary(reasonSummaryStatus),
       v127SelfTestStatus: compactStatus(report.v127SelfTestStatus),
       v128SelfTestStatus: compactStatus(report.v128SelfTestStatus),
-      routineDecisionProjectionStatus: compactStatus(projectionStatus),
       safeArtifactValidation: compactStatus(report.safeArtifactValidation),
       safeSummaryOnly: true,
     },
-    v128ManagedContextEmitter: compactManagedContext(input.v128ManagedContextEmitter || report.v128ManagedContextEmitter || {}),
-    v128ValidationExecutionPlan: compactValidationPlan(v128ValidationExecutionPlan, v128ValidationExecutionPlanStatus),
-    v128TrustClosure: compactTrustClosure(v128TrustClosure, v128TrustClosureStatus),
-    v128StandingAutonomyPolicy: {
-      status: report.v128StandingAutonomyPolicyStatus?.status || 'missing',
-      automationDisposition: standingAutonomy.automationDisposition || null,
-      policyAuthorizationState: standingAutonomy.policyAuthorizationState || null,
-      humanPerPrDecisionRequired: standingAutonomy.humanPerPrDecisionRequired === true,
-      automatedMergeExecutionAllowed: standingAutonomy.automatedMergeExecutionAllowed === true,
-      policyDigest: standingAutonomy.policyDigest || null,
+    compactDiagnostics: {
+      managedContext: compactManagedContext(input.v128ManagedContextEmitter || report.v128ManagedContextEmitter || {}),
+      validationPlan: compactValidationPlan(v128ValidationExecutionPlan, v128ValidationExecutionPlanStatus),
+      trustClosure: compactTrustClosure(v128TrustClosure, v128TrustClosureStatus),
       safeSummaryOnly: true,
     },
     finalDecisionPointer: {
@@ -251,6 +214,11 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
       safeNextAction: finalDecision.safeNextAction || report.decisionCapsule?.safeNextAction || null,
       terminalAction: finalDecision.terminalAction || null,
       mergeAllowed: finalDecision.mergeAllowed === true,
+      safeSummaryOnly: true,
+    },
+    blockerState: {
+      blockingCount: Array.isArray(reasonSummaryStatus?.summary?.blockingReasons) ? reasonSummaryStatus.summary.blockingReasons.length : 0,
+      awaitingCount: Array.isArray(reasonSummaryStatus?.summary?.manualReasons) ? reasonSummaryStatus.summary.manualReasons.length : 0,
       safeSummaryOnly: true,
     },
     coldEvidencePointers: {
@@ -348,6 +316,53 @@ function compactTypedResult(nodeRef, payload = {}) {
   };
 }
 
+function compactNodeInputDigest(nodeRef, payload = {}) {
+  if (nodeRef === 'projection_reader') {
+    return payload.projectionPayloadDigest || digestValue(payload);
+  }
+  if (nodeRef === 'managed_context_emitter') {
+    return payload.activeInstructionSourceSetDigest || digestValue(payload);
+  }
+  if (nodeRef === 'state_matrix_executor') {
+    return payload.stateMatrixContentDigest || digestValue(payload);
+  }
+  if (nodeRef === 'aggregate_finalizer') {
+    return payload.orderedUpstreamResultSetDigest || digestValue(payload.upstreamResultDigests || []);
+  }
+  return digestValue(payload);
+}
+
+export function validateV128CompactValidationPlanExact(plan = {}) {
+  const typedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
+  const nodeResults = Array.isArray(plan.profileExecution?.nodeResults) ? plan.profileExecution.nodeResults : [];
+  const ledger = Array.isArray(plan.profileExecution?.runWideInvocationLedger) ? plan.profileExecution.runWideInvocationLedger : [];
+  const reasons = [];
+  for (const node of nodeResults) {
+    const payload = typedResults[node.nodeRef];
+    if (!payload) {
+      reasons.push(`compact_typed_result_missing_${node.nodeRef || 'unknown'}`);
+      continue;
+    }
+    const resultDigest = digestValue(payload);
+    if (node.resultDigest !== resultDigest) reasons.push(`compact_result_digest_mismatch_${node.nodeRef}`);
+    if (node.nodeInputDigest !== compactNodeInputDigest(node.nodeRef, payload)) reasons.push(`compact_node_input_digest_mismatch_${node.nodeRef}`);
+  }
+  for (const entry of ledger) {
+    const payload = typedResults[entry.nodeRef];
+    if (payload && entry.resultDigest !== digestValue(payload)) reasons.push(`compact_ledger_result_digest_mismatch_${entry.nodeRef}`);
+  }
+  const aggregate = typedResults.aggregate_finalizer;
+  if (aggregate) {
+    const expectedOrdered = digestValue(aggregate.upstreamResultDigests || []);
+    if (aggregate.orderedUpstreamResultSetDigest !== expectedOrdered) reasons.push('compact_aggregate_ordered_digest_mismatch');
+    const byRef = new Map(nodeResults.map((node) => [node.nodeRef, node.resultDigest]));
+    for (const item of aggregate.upstreamResultDigests || []) {
+      if (byRef.get(item.nodeRef) !== item.resultDigest) reasons.push(`compact_aggregate_upstream_digest_mismatch_${item.nodeRef}`);
+    }
+  }
+  return reasons.length ? { status: 'fail', reasonCodes: [...new Set(reasons)], safeSummaryOnly: true } : { status: 'pass', safeSummaryOnly: true };
+}
+
 export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   const compact = JSON.parse(JSON.stringify(plan || {}));
   compact.sourceClosure = compactSourceClosure(plan.sourceClosure || {});
@@ -390,23 +405,27 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   }
   const aggregateOriginal = originalTypedResults.aggregate_finalizer || {};
   const aggregateDependsOn = (compact.graph?.nodes || []).find((node) => node.nodeRef === 'aggregate_finalizer')?.dependsOn || [];
+  const upstreamResultDigests = aggregateDependsOn.map((nodeRef) => ({
+    nodeRef,
+    resultDigest: nodeByRef.get(nodeRef)?.resultDigest || digestValue(typedResults[nodeRef] || null),
+  }));
   typedResults.aggregate_finalizer = {
     schemaVersion: aggregateOriginal.schemaVersion || '1.2.8',
     nodeRef: 'aggregate_finalizer',
     status: aggregateOriginal.status || 'pass',
     upstreamNodeRefs: aggregateDependsOn,
-    upstreamResultDigests: aggregateDependsOn.map((nodeRef) => ({
-      nodeRef,
-      resultDigest: nodeByRef.get(nodeRef)?.resultDigest || digestValue(typedResults[nodeRef] || null),
-    })),
+    upstreamResultDigests,
     failedNodeRefs: Array.isArray(aggregateOriginal.failedNodeRefs) ? aggregateOriginal.failedNodeRefs : [],
-    orderedUpstreamResultSetDigest: aggregateOriginal.orderedUpstreamResultSetDigest || null,
+    orderedUpstreamResultSetDigest: digestValue(upstreamResultDigests),
     safeSummaryOnly: true,
   };
   const aggregateDigest = digestValue(typedResults.aggregate_finalizer);
   if (nodeByRef.has('aggregate_finalizer')) nodeByRef.get('aggregate_finalizer').resultDigest = aggregateDigest;
   for (const entry of ledger) {
     if (entry.nodeRef === 'aggregate_finalizer') entry.resultDigest = aggregateDigest;
+  }
+  for (const node of nodeResults) {
+    node.nodeInputDigest = compactNodeInputDigest(node.nodeRef, typedResults[node.nodeRef] || {});
   }
   if (compact.profileExecution) {
     compact.profileExecution.nodeResults = nodeResults;
