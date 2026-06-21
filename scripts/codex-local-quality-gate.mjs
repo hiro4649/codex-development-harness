@@ -82,6 +82,7 @@ import {
 } from './codex-v128-state-matrix-adapter.mjs';
 import {
   buildV128ValidationExecutionPlan,
+  buildV128NodeCommandDigests,
   validateV128ValidationExecutionPlan,
 } from './codex-v128-validation-execution-plan.mjs';
 import {
@@ -542,11 +543,15 @@ function writeV117LoadBearingArtifacts(report = {}) {
   const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head, projectionInputs);
   const stressDecisionProjection = buildV128StressDecisionProjection(report, projectionInputs);
   const v128ExecutionRegistry = createV128ExecutionRegistry();
+  const v128NodeCommandDigests = buildV128NodeCommandDigests();
   const projectionReaderExecution = v128ExecutionRegistry.record(
     'projection_reader',
     'decision_stable',
     () => runV128ProjectionReaderAdapter(routineDecisionProjection),
-    { adapterId: V128_PROJECTION_READER_ADAPTER_ID },
+    {
+      adapterId: V128_PROJECTION_READER_ADAPTER_ID,
+      commandOrFunctionDigest: v128NodeCommandDigests.projection_reader,
+    },
   );
   const routineProjectionReadSurface = projectionReaderExecution.payload;
   const v128ProjectionIntegrityStatus = validateV128ProjectionIntegrity(routineDecisionProjection, {
@@ -558,14 +563,20 @@ function writeV117LoadBearingArtifacts(report = {}) {
     'managed_context_emitter',
     'cache_stable',
     () => runV128ManagedContextAdapter({ headSha: head }),
-    { adapterId: V128_MANAGED_CONTEXT_ADAPTER_ID },
+    {
+      adapterId: V128_MANAGED_CONTEXT_ADAPTER_ID,
+      commandOrFunctionDigest: v128NodeCommandDigests.managed_context_emitter,
+    },
   );
   const v128ManagedContextEmitter = managedContextExecution.payload;
   const stateMatrixExecution = v128ExecutionRegistry.record(
     'state_matrix_executor',
     'decision_stable',
     () => runV128StateMatrixAdapter(),
-    { adapterId: V128_STATE_MATRIX_ADAPTER_ID },
+    {
+      adapterId: V128_STATE_MATRIX_ADAPTER_ID,
+      commandOrFunctionDigest: v128NodeCommandDigests.state_matrix_executor,
+    },
   );
   const v128StateMatrixExecution = stateMatrixExecution.payload;
   const upstreamNodeResults = [
@@ -577,8 +588,18 @@ function writeV117LoadBearingArtifacts(report = {}) {
     'aggregate_finalizer',
     'decision_stable',
     () => runV128AggregateFinalizerAdapter({ upstreamNodeResults }),
-    { adapterId: V128_AGGREGATE_FINALIZER_ADAPTER_ID },
+    {
+      adapterId: V128_AGGREGATE_FINALIZER_ADAPTER_ID,
+      commandOrFunctionDigest: v128NodeCommandDigests.aggregate_finalizer,
+    },
   );
+  const aggregatePayload = v128ExecutionRegistry.typedResults.aggregate_finalizer || {};
+  const v128NodeInputDigests = {
+    projection_reader: routineProjectionReadSurface.routineDecisionProjection?.sourceBinding?.projectionPayloadDigest,
+    managed_context_emitter: v128ManagedContextEmitter.activeInstructionSourceSetDigest,
+    state_matrix_executor: v128StateMatrixExecution.stateMatrixContentDigest,
+    aggregate_finalizer: aggregatePayload.orderedUpstreamResultSetDigest,
+  };
   const workspaceObservation = observeV128WorkspaceIdentity(head);
   const decisionInputManifest = buildV128DecisionInputManifest(projectionInputs);
   const v128ValidationExecutionPlan = buildV128ValidationExecutionPlan({
@@ -599,6 +620,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     decisionInputManifest,
     nodeResults: v128ExecutionRegistry.nodeResults,
     typedResults: v128ExecutionRegistry.typedResults,
+    nodeInputDigests: v128NodeInputDigests,
     runWideInvocationLedger: v128ExecutionRegistry.invocationLedger,
   });
   const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);

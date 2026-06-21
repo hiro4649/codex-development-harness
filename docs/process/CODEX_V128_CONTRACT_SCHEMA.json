@@ -153,8 +153,23 @@
       "artifactSurface": "orchestrationCapsule.validationExecutionPlanAndReuse.profileExecution.runWideInvocationLedger",
       "newP0Artifact": false,
       "fields": ["nodeRef", "commandOrFunctionDigest", "invocationSequence", "completionSequence", "resultDigest", "executionSource", "adapterId"],
+      "commandOrFunctionDigestSource": "nodeSourceClosureDigest",
+      "validatorRecomputesCounts": true,
+      "uniqueInvocationSequenceRequired": true,
+      "uniqueCompletionSequenceRequired": true,
       "duplicateRequiredNodeExecutionAllowed": false,
       "reusedNodesUseSourceRunRefInsteadOfLocalInvocation": true
+    },
+    "nodeInputDigestCacheBinding": {
+      "artifactSurface": "orchestrationCapsule.validationExecutionPlanAndReuse.validationReuseDecision.nodeInputDigests",
+      "requiredForObservedNodes": true,
+      "includedInNodeCacheKey": true,
+      "bindings": {
+        "projection_reader": "routineDecisionProjection.sourceBinding.projectionPayloadDigest",
+        "managed_context_emitter": "activeInstructionSourceSetDigest",
+        "state_matrix_executor": "stateMatrixContentDigest",
+        "aggregate_finalizer": "orderedUpstreamResultSetDigest"
+      }
     },
     "scriptDigestSourceClosureFiles": [
       "scripts/codex-v128-validation-execution-plan.mjs",

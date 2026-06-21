@@ -206,6 +206,15 @@ function nodeSourceClosureManifest(input = {}, graphNodes = defaultGraphNodes())
   return closures;
 }
 
+export function buildV128NodeCommandDigests(input = {}) {
+  const graphNodes = (Array.isArray(input.nodes) && input.nodes.length ? input.nodes : defaultGraphNodes()).map(normalizeGraphNode).slice(0, VALIDATION_NODES_MAX);
+  const closures = nodeSourceClosureManifest(input, graphNodes);
+  return Object.fromEntries(graphNodes.map((node) => [
+    node.nodeRef,
+    closures[node.nodeRef]?.nodeSourceClosureDigest || null,
+  ]));
+}
+
 function defaultGraphNodes() {
   return [
     { nodeRef: 'projection_reader', dependsOn: [], required: true },
@@ -257,6 +266,7 @@ function normalizeNodeResult(node = {}, graphNode = {}, typedPayload = null) {
     sourceResultDigest: node.sourceResultDigest || null,
     sourceHeadSha: node.sourceHeadSha || null,
     cacheKeyDigest: node.cacheKeyDigest || null,
+    nodeInputDigest: node.nodeInputDigest || null,
     resultSchemaVersion: node.resultSchemaVersion || '1.0.0',
   };
 }
@@ -288,6 +298,53 @@ function normalizeInvocationLedger(input = {}) {
     executionSource: safeText(entry.executionSource, 'unknown_execution_source'),
     adapterId: entry.adapterId ? String(entry.adapterId) : null,
   }));
+}
+
+function payloadDigest(payload) {
+  return digestValue(payload || null);
+}
+
+function deriveNodeInputDigest(nodeRef, typedPayload = {}) {
+  if (nodeRef === 'projection_reader') {
+    return typedPayload.routineDecisionProjection?.sourceBinding?.projectionPayloadDigest
+      || payloadDigest(typedPayload.routineDecisionProjection || typedPayload);
+  }
+  if (nodeRef === 'managed_context_emitter') {
+    return typedPayload.activeInstructionSourceSetDigest
+      || payloadDigest({
+        sourceFiles: typedPayload.sourceFiles || [],
+        instructionCapsule: typedPayload.instructionCapsule || {},
+        providerSummary: typedPayload.providerSummary || {},
+        attestedView: typedPayload.attestedView || {},
+      });
+  }
+  if (nodeRef === 'state_matrix_executor') {
+    return typedPayload.stateMatrixContentDigest
+      || payloadDigest({
+        coverage: typedPayload.coverage || null,
+        fullEnumProductExecuted: typedPayload.fullEnumProductExecuted === true,
+        totalCells: typedPayload.totalCells ?? null,
+        transitionCells: typedPayload.transitionCells ?? null,
+        hardInvalidCells: typedPayload.hardInvalidCells ?? null,
+      });
+  }
+  if (nodeRef === 'aggregate_finalizer') {
+    return typedPayload.orderedUpstreamResultSetDigest
+      || payloadDigest(typedPayload.upstreamResultDigests || []);
+  }
+  return payloadDigest(typedPayload);
+}
+
+function normalizeNodeInputDigests(input = {}, nodeResults = [], typedResults = {}) {
+  const explicit = input.nodeInputDigests && typeof input.nodeInputDigests === 'object' ? input.nodeInputDigests : {};
+  const digests = {};
+  for (const node of nodeResults) {
+    const explicitDigest = explicit[node.nodeRef] || node.nodeInputDigest;
+    digests[node.nodeRef] = /^sha256:[a-f0-9]{64}$/.test(String(explicitDigest || ''))
+      ? explicitDigest
+      : deriveNodeInputDigest(node.nodeRef, typedResults[node.nodeRef] || node.typedResultPayload || {});
+  }
+  return digests;
 }
 
 function evaluateGraph(graphNodes = []) {
@@ -478,9 +535,14 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       return [node.nodeRef, payload];
     }))
     : {};
-  const executedNodeRefs = nodeResults.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef);
-  const reusedNodeRefs = nodeResults.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef);
-  const rerunNodeRefs = nodeResults.filter((node) => node.executionState === 'rerun').map((node) => node.nodeRef);
+  const nodeInputDigests = normalizeNodeInputDigests(input, nodeResults, typedResults);
+  const boundNodeResults = nodeResults.map((node) => ({
+    ...node,
+    nodeInputDigest: node.nodeInputDigest || nodeInputDigests[node.nodeRef] || null,
+  }));
+  const executedNodeRefs = boundNodeResults.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef);
+  const reusedNodeRefs = boundNodeResults.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef);
+  const rerunNodeRefs = boundNodeResults.filter((node) => node.executionState === 'rerun').map((node) => node.nodeRef);
   const runWideInvocationLedger = normalizeInvocationLedger(input);
   const runWideInvocationCounts = runWideInvocationLedger.reduce((acc, entry) => {
     acc[entry.nodeRef] = (acc[entry.nodeRef] || 0) + 1;
@@ -513,11 +575,11 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     const nodeFields = {
       ...cacheKeyFields,
       scriptDigest: fieldState(nodeSourceDigest),
+      nodeInputDigest: fieldState(nodeInputDigests[node.nodeRef], { reasonCode: 'NODE_INPUT_DIGEST_NOT_OBSERVED' }),
       nodeRef: fieldState(node.nodeRef),
     };
     return [node.nodeRef, cacheReuseEligible(nodeFields) && nodeClosure.declaredImportScanStatus === 'pass' ? digestValue(nodeFields) : null];
   }));
-  const boundNodeResults = nodeResults;
   const staticScan = finalizerStaticScan();
   const workspaceObserved = input.workspaceObserved === true || input.workspaceObservation?.observationState === 'observed';
   const workspaceIdentityCore = {
@@ -597,6 +659,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       cacheKeyDigest,
       cacheKeyFields,
       nodeCacheKeyDigests,
+      nodeInputDigests,
       cacheKeyHasPlaceholder: cacheKeyInvalid,
       sourceClosureReuseForbidden,
       sourceClosureReuseForbiddenReason: sourceClosureReuseForbidden ? 'SOURCE_CLOSURE_IMPORT_SCAN_NOT_PASS' : null,
@@ -659,6 +722,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const typedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
   const nodeResults = Array.isArray(execution.nodeResults) ? execution.nodeResults : [];
   const graphNodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+  const nodeSourceClosures = plan.nodeSourceClosures && typeof plan.nodeSourceClosures === 'object' ? plan.nodeSourceClosures : {};
   const graphByRef = new Map(graphNodes.map((node) => [node.nodeRef, node]));
   const resultByRef = new Map(nodeResults.map((node) => [node.nodeRef, node]));
   if (plan.schemaVersion !== '1.2.8') reasons.push('validation_execution_schema_invalid');
@@ -682,15 +746,34 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (execution.failedNodeRef) reasons.push('profile_execution_failed_node_present');
   if (execution.requiredSkippedNodeRef) reasons.push('profile_execution_required_skipped_node_present');
   const runWideInvocationLedger = Array.isArray(execution.runWideInvocationLedger) ? execution.runWideInvocationLedger : [];
+  const recomputedInvocationCounts = runWideInvocationLedger.reduce((acc, entry) => {
+    acc[entry.nodeRef] = (acc[entry.nodeRef] || 0) + 1;
+    return acc;
+  }, {});
+  const recomputedDuplicateExecutionCount = Object.values(recomputedInvocationCounts).filter((count) => count > 1).length;
+  const expectedLedgerStatus = runWideInvocationLedger.length && recomputedDuplicateExecutionCount === 0
+    ? 'pass'
+    : (plan.observationState === 'observed' ? 'fail' : 'not_exercised');
   if (plan.observationState === 'observed' && !runWideInvocationLedger.length) reasons.push('run_wide_invocation_ledger_required');
-  if (execution.runWideDuplicateExecutionCount > 0) reasons.push('run_wide_duplicate_execution_detected');
+  if (recomputedDuplicateExecutionCount > 0) reasons.push('run_wide_duplicate_execution_detected');
+  if (Number(execution.runWideInvocationCount || 0) !== runWideInvocationLedger.length) reasons.push('run_wide_invocation_count_mismatch');
+  if (Number(execution.runWideDuplicateExecutionCount || 0) !== recomputedDuplicateExecutionCount) reasons.push('run_wide_duplicate_execution_count_mismatch');
+  if ((execution.runWideInvocationLedgerStatus || 'not_exercised') !== expectedLedgerStatus) reasons.push('run_wide_invocation_status_mismatch');
   const ledgerByNode = new Map();
+  const invocationSequences = new Set();
+  const completionSequences = new Set();
   for (const entry of runWideInvocationLedger) {
     if (!graphByRef.has(entry.nodeRef)) reasons.push('run_wide_invocation_unknown_node');
     if (!/^sha256:[a-f0-9]{64}$/.test(String(entry.commandOrFunctionDigest || ''))) reasons.push('run_wide_invocation_command_digest_invalid');
+    else if (nodeSourceClosures[entry.nodeRef]?.nodeSourceClosureDigest
+      && entry.commandOrFunctionDigest !== nodeSourceClosures[entry.nodeRef].nodeSourceClosureDigest) reasons.push('run_wide_invocation_command_digest_mismatch');
     if (!/^sha256:[a-f0-9]{64}$/.test(String(entry.resultDigest || ''))) reasons.push('run_wide_invocation_result_digest_invalid');
     if (Number(entry.invocationSequence || 0) < 1 || Number(entry.completionSequence || 0) < 1) reasons.push('run_wide_invocation_sequence_invalid');
     if (Number(entry.completionSequence || 0) < Number(entry.invocationSequence || 0)) reasons.push('run_wide_invocation_sequence_invalid');
+    if (invocationSequences.has(Number(entry.invocationSequence))) reasons.push('run_wide_invocation_sequence_duplicate');
+    invocationSequences.add(Number(entry.invocationSequence));
+    if (completionSequences.has(Number(entry.completionSequence))) reasons.push('run_wide_completion_sequence_duplicate');
+    completionSequences.add(Number(entry.completionSequence));
     ledgerByNode.set(entry.nodeRef, entry);
   }
   const staticScan = execution.finalizerStaticScan || {};
@@ -705,11 +788,13 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (node.typedResultRef !== typedResultRef(node.nodeRef)) reasons.push('typed_result_ref_invalid');
     if (!typedResults[node.nodeRef]) reasons.push('typed_result_payload_missing');
     else if (node.resultDigest !== digestValue(typedResults[node.nodeRef])) reasons.push('typed_result_payload_digest_mismatch');
+    if (plan.observationState === 'observed' && !/^sha256:[a-f0-9]{64}$/.test(String(node.nodeInputDigest || ''))) reasons.push('node_input_digest_required');
     if (plan.observationState === 'observed' && node.executionState === 'executed') {
       const ledgerEntry = ledgerByNode.get(node.nodeRef);
       if (!ledgerEntry) reasons.push('run_wide_invocation_missing_for_executed_node');
       else if (ledgerEntry.resultDigest !== node.resultDigest) reasons.push('run_wide_invocation_result_digest_mismatch');
     }
+    if (plan.observationState === 'observed' && node.executionState === 'reused' && ledgerByNode.has(node.nodeRef)) reasons.push('run_wide_invocation_for_reused_node_forbidden');
     if (plan.observationState === 'observed' && node.executionState === 'executed' && node.executionCountObserved !== true) reasons.push('execution_count_observation_required');
     if (Number(node.executionCount || 0) > 1) reasons.push('profile_execution_node_executed_more_than_once');
     if (node.executionState === 'executed' && Number(node.executionCount) !== 1) reasons.push('executed_node_execution_count_must_be_one');
@@ -730,6 +815,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
       if (!/^sha256:[a-f0-9]{64}$/.test(String(node.cacheKeyDigest || ''))) reasons.push('reused_node_cache_key_digest_required');
       else if (reuse.nodeCacheKeyDigests?.[node.nodeRef] && node.cacheKeyDigest !== reuse.nodeCacheKeyDigests[node.nodeRef]) reasons.push('reused_node_cache_key_digest_mismatch');
       else if (!reuse.nodeCacheKeyDigests?.[node.nodeRef] && reuse.cacheKeyDigest && node.cacheKeyDigest !== reuse.cacheKeyDigest) reasons.push('reused_node_cache_key_digest_mismatch');
+      if (node.sourceRunRef?.nodeInputDigest && node.sourceRunRef.nodeInputDigest !== node.nodeInputDigest) reasons.push('reused_node_source_run_ref_node_input_digest_mismatch');
       if (!node.resultSchemaVersion) reasons.push('reused_node_result_schema_required');
     }
   }

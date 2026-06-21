@@ -341,6 +341,33 @@ entry and duplicate execution of a required node fails the validation plan.
 Reused nodes are represented by sourceRunRef/cache provenance instead of a
 local invocation entry.
 
+`commandOrFunctionDigest` is the node-scoped source closure digest, not a
+metadata hash of the node name or adapter id. The validator recomputes ledger
+counts, duplicate node executions, sequence uniqueness, and command digest
+bindings from the ledger and node source closures. Reported count/status fields
+are diagnostic only and cannot make a bad ledger pass.
+
+Each node cache key also carries a node input digest. The Source Shadow
+Candidate bindings are:
+
+```text
+projection_reader:
+  routineDecisionProjection.sourceBinding.projectionPayloadDigest
+
+managed_context_emitter:
+  activeInstructionSourceSetDigest
+
+state_matrix_executor:
+  stateMatrixContentDigest
+
+aggregate_finalizer:
+  orderedUpstreamResultSetDigest
+```
+
+A cache hit or partial hit is invalid when nodeInputDigest changes. Reused
+nodes have no local invocation ledger entry; their proof comes from
+sourceRunRef/cache provenance and the node cache key.
+
 The finalizer payload must be semantically checked:
 
 ```text

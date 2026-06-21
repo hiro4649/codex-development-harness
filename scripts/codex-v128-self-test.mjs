@@ -472,6 +472,10 @@ function buildPlanWithBoundReusedCacheKeys(input = {}) {
     ...input,
   };
   const draft = buildV128ValidationExecutionPlan(stableInput);
+  const commandDigests = Object.fromEntries(Object.entries(draft.nodeSourceClosures || {}).map(([nodeRef, closure]) => [
+    nodeRef,
+    closure.nodeSourceClosureDigest,
+  ]));
   const nodeResults = (stableInput.nodeResults || []).map((node) => {
     if (node.executionState !== 'reused') return node;
     return {
@@ -484,11 +488,11 @@ function buildPlanWithBoundReusedCacheKeys(input = {}) {
   return buildV128ValidationExecutionPlan({
     ...stableInput,
     nodeResults,
-    runWideInvocationLedger: stableInput.runWideInvocationLedger || invocationLedgerFor(nodeResults),
+    runWideInvocationLedger: stableInput.runWideInvocationLedger || invocationLedgerFor(nodeResults, commandDigests),
   });
 }
 
-function invocationLedgerFor(nodeResults = []) {
+function invocationLedgerFor(nodeResults = [], commandDigests = {}) {
   let sequence = 0;
   return nodeResults
     .filter((node) => node.executionState !== 'reused')
@@ -502,7 +506,7 @@ function invocationLedgerFor(nodeResults = []) {
       };
       return {
         nodeRef: node.nodeRef,
-        commandOrFunctionDigest: sha256Canonical({
+        commandOrFunctionDigest: commandDigests[node.nodeRef] || sha256Canonical({
           nodeRef: node.nodeRef,
           adapterId: 'v128_self_test_fixture_adapter',
           stabilityClass: node.stabilityClass || 'decision_stable',
@@ -853,7 +857,21 @@ function validationNodeScopedSourceClosuresExist() {
 
 function validationRunWideDuplicateExecutionFails() {
   const nodeResults = validValidationNodeResults();
-  const ledger = invocationLedgerFor(nodeResults);
+  const draft = buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults,
+  });
+  const commandDigests = Object.fromEntries(Object.entries(draft.nodeSourceClosures || {}).map(([nodeRef, closure]) => [
+    nodeRef,
+    closure.nodeSourceClosureDigest,
+  ]));
+  const ledger = invocationLedgerFor(nodeResults, commandDigests);
   ledger.push({
     ...ledger[0],
     invocationSequence: ledger.length + 1,
@@ -870,6 +888,38 @@ function validationRunWideDuplicateExecutionFails() {
     nodeResults,
     runWideInvocationLedger: ledger,
   })).reasonCodes.includes('run_wide_duplicate_execution_detected');
+}
+
+function validationRunWideCommandDigestTamperFails() {
+  const nodeResults = validValidationNodeResults();
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults,
+  });
+  plan.profileExecution.runWideInvocationLedger[0].commandOrFunctionDigest = `sha256:${'e'.repeat(64)}`;
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('run_wide_invocation_command_digest_mismatch');
+}
+
+function validationNodeInputDigestTamperFails() {
+  const nodeResults = validValidationNodeResults();
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults,
+  });
+  plan.profileExecution.nodeResults[0].nodeInputDigest = 'sha256:bad';
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('node_input_digest_required');
 }
 
 function validationPrMergeReuseRequiresBaseOid() {
@@ -1094,6 +1144,8 @@ const cases = [
   ['validation_source_closure_resolves_transitive_imports', () => validationSourceClosureResolvesTransitiveImports()],
   ['validation_node_scoped_source_closures_exist', () => validationNodeScopedSourceClosuresExist()],
   ['validation_run_wide_duplicate_execution_fails', () => validationRunWideDuplicateExecutionFails()],
+  ['validation_run_wide_command_digest_tamper_fails', () => validationRunWideCommandDigestTamperFails()],
+  ['validation_node_input_digest_tamper_fails', () => validationNodeInputDigestTamperFails()],
   ['validation_pr_merge_reuse_requires_base_oid', () => validationPrMergeReuseRequiresBaseOid()],
   ['validation_diagnostic_manifest_needs_sanitized_digest', () => validationDiagnosticManifestNeedsSanitizedDigest()],
   ['validation_finalizer_missing_upstream_node_fails', () => validationFinalizerMissingUpstreamNodeFails()],
