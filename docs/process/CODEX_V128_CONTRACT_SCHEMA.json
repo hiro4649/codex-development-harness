@@ -131,10 +131,14 @@
     "nodeCacheKeyDigestAllowed": true,
     "reuseReportMustListSkippedNodes": true,
     "reusedNodeRequires": ["sourceRunRef", "sourceResultDigest", "sourceHeadSha", "cacheKeyDigest", "resultSchemaVersion"],
+    "reusedNodeCacheKeyBackfillAllowed": false,
+    "sourceRunRefKind": "structured_object",
+    "sourceRunRefRequiredFields": ["provider", "runId", "artifactName", "artifactDigest", "sourceHeadSha", "testedCommitOid", "resultSchemaVersion"],
     "reusedNodeDigestChecks": [
-      "node.cacheKeyDigest == validationReuseDecision.cacheKeyDigest",
+      "node.cacheKeyDigest == validationReuseDecision.nodeCacheKeyDigests[nodeRef] || validationReuseDecision.cacheKeyDigest",
       "node.sourceResultDigest == node.resultDigest"
     ],
+    "unsupportedDynamicImportEffect": "reuse_forbidden_activation_blocker",
     "scriptDigestSource": "source_closure_manifest",
     "scriptDigestTransitiveRelativeImports": true,
     "scriptDigestNodeScopedClosure": true,

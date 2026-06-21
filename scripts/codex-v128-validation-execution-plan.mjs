@@ -17,6 +17,7 @@ const REUSE_DECISIONS = new Set(['hit', 'partial_hit', 'miss']);
 const STABILITY_CLASSES = new Set(['decision_stable', 'cache_stable', 'environment_diagnostic', 'owner_input', 'forbidden']);
 const CANONICALITY_STATES = new Set(['canonical', 'duplicate_candidate', 'repo_mismatch', 'harness_version_mismatch', 'unknown']);
 const PLACEHOLDER_VALUES = new Set(['', 'unknown', 'required', 'null', 'undefined', 'placeholder', 'not_available']);
+const SOURCE_RUN_REF_REQUIRED_FIELDS = ['provider', 'runId', 'artifactName', 'artifactDigest', 'sourceHeadSha', 'testedCommitOid', 'resultSchemaVersion'];
 const SOURCE_CLOSURE_FILES = [
   'scripts/codex-v128-validation-execution-plan.mjs',
   'scripts/codex-v128-aggregate-finalizer.mjs',
@@ -77,14 +78,23 @@ function isPlaceholder(value) {
   return PLACEHOLDER_VALUES.has(String(value ?? '').trim().toLowerCase());
 }
 
-function readFileDigest(filePath) {
-  const text = fs.readFileSync(filePath, 'utf8');
+function readSourceFileDigest(filePath, input = {}) {
+  const normalized = filePath.replace(/\\/g, '/');
+  const text = input.sourceFileTexts && Object.hasOwn(input.sourceFileTexts, normalized)
+    ? String(input.sourceFileTexts[normalized])
+    : fs.readFileSync(filePath, 'utf8');
   return {
-    path: filePath,
+    path: normalized,
     digest: sha256Text(text),
     bytes: Buffer.byteLength(text, 'utf8'),
     text,
   };
+}
+
+function sourceFileExists(filePath, input = {}) {
+  const normalized = filePath.replace(/\\/g, '/');
+  return (input.sourceFileTexts && Object.hasOwn(input.sourceFileTexts, normalized))
+    || fs.existsSync(filePath);
 }
 
 function sourceClosureManifest(input = {}) {
@@ -94,14 +104,16 @@ function sourceClosureManifest(input = {}) {
   const seedFiles = files.map((file) => file.replace(/\\/g, '/'));
   const seedSet = new Set(seedFiles);
   const importPattern = /(?:import\s+(?:[^'"]*?\s+from\s*)?|export\s+[^'"]*?\s+from\s*|import\s*\(\s*|require\(\s*)['"]([^'"]+)['"]/g;
+  const dynamicImportPattern = /\bimport\s*\(\s*([^'"\s][^)]*)\)/g;
   const unresolved = [];
+  const unsupportedDynamicImports = [];
   const edges = [];
   const normalizePath = (filePath) => filePath.replace(/\\/g, '/');
   const resolveRelativePath = (fromPath, specifier) => {
     if (!specifier.startsWith('.')) return null;
     const base = path.posix.normalize(path.posix.join(path.posix.dirname(normalizePath(fromPath)), specifier));
     const candidates = [base, `${base}.mjs`, `${base}.js`, `${base}.json`, path.posix.join(base, 'index.mjs'), path.posix.join(base, 'index.js')];
-    return candidates.find((candidate) => fs.existsSync(candidate)) || null;
+    return candidates.find((candidate) => sourceFileExists(candidate, input)) || null;
   };
   const byPath = new Map();
   const queue = [...seedFiles];
@@ -114,9 +126,17 @@ function sourceClosureManifest(input = {}) {
       truncated = true;
       break;
     }
-    const file = readFileDigest(current);
+    const file = readSourceFileDigest(current, input);
     byPath.set(current, file);
     importPattern.lastIndex = 0;
+    dynamicImportPattern.lastIndex = 0;
+    let dynamicMatch;
+    while ((dynamicMatch = dynamicImportPattern.exec(file.text)) !== null) {
+      unsupportedDynamicImports.push({
+        from: file.path,
+        expression: String(dynamicMatch[1] || '').trim().slice(0, 80),
+      });
+    }
     let match;
     while ((match = importPattern.exec(file.text)) !== null) {
       const specifier = match[1];
@@ -142,10 +162,12 @@ function sourceClosureManifest(input = {}) {
     relativeImportClosureFiles,
     relativeImportEdgeCount: edges.length,
     transitiveRelativeImportCount: relativeImportClosureFiles.length,
-    declaredImportScanStatus: unresolved.length || truncated ? 'activation_blocker' : 'pass',
+    declaredImportScanStatus: unresolved.length || truncated || unsupportedDynamicImports.length ? 'activation_blocker' : 'pass',
     undeclaredRelativeImportCount: 0,
     unresolvedRelativeImportCount: unresolved.length,
     unresolvedRelativeImportSamples: unresolved.slice(0, 12),
+    unsupportedDynamicImportCount: unsupportedDynamicImports.length,
+    unsupportedDynamicImportSamples: unsupportedDynamicImports.slice(0, 12),
     sourceClosureTruncated: truncated,
     sourceClosureDigest: digestValue(sourceFiles),
   };
@@ -166,6 +188,7 @@ function nodeSourceClosureManifest(input = {}, graphNodes = defaultGraphNodes())
       relativeImportEdgeCount: closure.relativeImportEdgeCount,
       transitiveRelativeImportCount: closure.transitiveRelativeImportCount,
       unresolvedRelativeImportCount: closure.unresolvedRelativeImportCount,
+      unsupportedDynamicImportCount: closure.unsupportedDynamicImportCount,
       sourceClosureTruncated: closure.sourceClosureTruncated,
       declaredImportScanStatus: closure.declaredImportScanStatus,
       nodeSourceClosureDigest: closure.sourceClosureDigest,
@@ -227,6 +250,22 @@ function normalizeNodeResult(node = {}, graphNode = {}, typedPayload = null) {
     cacheKeyDigest: node.cacheKeyDigest || null,
     resultSchemaVersion: node.resultSchemaVersion || '1.0.0',
   };
+}
+
+function validateSourceRunRef(sourceRunRef, node = {}) {
+  const reasons = [];
+  if (!sourceRunRef || typeof sourceRunRef !== 'object' || Array.isArray(sourceRunRef)) {
+    return ['reused_node_source_run_ref_must_be_object'];
+  }
+  for (const field of SOURCE_RUN_REF_REQUIRED_FIELDS) {
+    if (isPlaceholder(sourceRunRef[field])) reasons.push(`reused_node_source_run_ref_${field}_required`);
+  }
+  if (!/^sha256:[a-f0-9]{64}$/.test(String(sourceRunRef.artifactDigest || ''))) reasons.push('reused_node_source_run_ref_artifact_digest_invalid');
+  if (!/^[a-f0-9]{40}$/.test(String(sourceRunRef.sourceHeadSha || ''))) reasons.push('reused_node_source_run_ref_source_head_invalid');
+  if (!/^[a-f0-9]{40}$/.test(String(sourceRunRef.testedCommitOid || ''))) reasons.push('reused_node_source_run_ref_tested_commit_invalid');
+  if (node.sourceHeadSha && sourceRunRef.sourceHeadSha !== node.sourceHeadSha) reasons.push('reused_node_source_run_ref_source_head_mismatch');
+  if (node.resultSchemaVersion && sourceRunRef.resultSchemaVersion !== node.resultSchemaVersion) reasons.push('reused_node_source_run_ref_schema_mismatch');
+  return reasons;
 }
 
 function evaluateGraph(graphNodes = []) {
@@ -435,24 +474,22 @@ export function buildV128ValidationExecutionPlan(input = {}) {
   const headForContext = input.headSha || process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA || 'not_available';
   const validationContext = buildValidationContext(input, headForContext);
   const cacheKeyFields = buildCacheKeyFields(input, planDigest, sourceClosure.sourceClosureDigest, validationContext);
-  const cacheKeyInvalid = cacheKeyHasInvalidField(cacheKeyFields);
-  const reuseEligible = cacheReuseEligible(cacheKeyFields);
+  const sourceClosureReuseForbidden = sourceClosure.declaredImportScanStatus !== 'pass';
+  const cacheKeyInvalid = cacheKeyHasInvalidField(cacheKeyFields) || sourceClosureReuseForbidden;
+  const reuseEligible = cacheReuseEligible(cacheKeyFields) && !sourceClosureReuseForbidden;
   const reuseDecision = classifyReuseDecision(nodeResults, input, cacheKeyInvalid);
   const cacheKeyDigest = reuseEligible ? digestValue(cacheKeyFields) : null;
   const nodeCacheKeyDigests = Object.fromEntries(graphNodes.map((node) => {
+    const nodeClosure = nodeSourceClosures[node.nodeRef] || {};
     const nodeSourceDigest = nodeSourceClosures[node.nodeRef]?.nodeSourceClosureDigest || sourceClosure.sourceClosureDigest;
     const nodeFields = {
       ...cacheKeyFields,
       scriptDigest: fieldState(nodeSourceDigest),
       nodeRef: fieldState(node.nodeRef),
     };
-    return [node.nodeRef, cacheReuseEligible(nodeFields) ? digestValue(nodeFields) : null];
+    return [node.nodeRef, cacheReuseEligible(nodeFields) && nodeClosure.declaredImportScanStatus === 'pass' ? digestValue(nodeFields) : null];
   }));
-  const boundNodeResults = nodeResults.map((node) => (
-    node.executionState === 'reused' && !node.cacheKeyDigest
-      ? { ...node, cacheKeyDigest: nodeCacheKeyDigests[node.nodeRef] || cacheKeyDigest }
-      : node
-  ));
+  const boundNodeResults = nodeResults;
   const staticScan = finalizerStaticScan();
   const workspaceObserved = input.workspaceObserved === true || input.workspaceObservation?.observationState === 'observed';
   const workspaceIdentityCore = {
@@ -529,6 +566,8 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       cacheKeyFields,
       nodeCacheKeyDigests,
       cacheKeyHasPlaceholder: cacheKeyInvalid,
+      sourceClosureReuseForbidden,
+      sourceClosureReuseForbiddenReason: sourceClosureReuseForbidden ? 'SOURCE_CLOSURE_IMPORT_SCAN_NOT_PASS' : null,
       cacheReuseEligible: reuseEligible,
       skippedNodeRefs: reuseDecision === 'hit' || reuseDecision === 'partial_hit' ? reusedNodeRefs : [],
     },
@@ -629,6 +668,13 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (node.required === true && node.status === 'skipped') reasons.push('profile_execution_required_skipped_node_present');
     if (node.executionState === 'reused') {
       if (!node.sourceRunRef) reasons.push('reused_node_source_run_ref_required');
+      reasons.push(...validateSourceRunRef(node.sourceRunRef, node));
+      const expectedSourceHead = fieldValue(reuse.cacheKeyFields?.sourceHeadOid);
+      const expectedTestedCommit = fieldValue(reuse.cacheKeyFields?.testedCommitOid);
+      if (/^[a-f0-9]{40}$/.test(String(expectedSourceHead || ''))
+        && node.sourceRunRef?.sourceHeadSha !== expectedSourceHead) reasons.push('reused_node_source_run_ref_source_head_binding_mismatch');
+      if (/^[a-f0-9]{40}$/.test(String(expectedTestedCommit || ''))
+        && node.sourceRunRef?.testedCommitOid !== expectedTestedCommit) reasons.push('reused_node_source_run_ref_tested_commit_binding_mismatch');
       if (!/^sha256:[a-f0-9]{64}$/.test(String(node.sourceResultDigest || ''))) reasons.push('reused_node_source_result_digest_required');
       else if (node.sourceResultDigest !== node.resultDigest) reasons.push('reused_node_source_result_digest_mismatch');
       if (!/^[a-f0-9]{40}$/.test(String(node.sourceHeadSha || ''))) reasons.push('reused_node_source_head_sha_required');
@@ -671,6 +717,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (reuse.reuseDecision === 'hit' && (reusedCount === 0 || executedCount > 0)) reasons.push('validation_reuse_hit_execution_state_mismatch');
   if (reuse.reuseDecision === 'partial_hit' && (reusedCount === 0 || executedCount === 0)) reasons.push('validation_reuse_partial_hit_state_mismatch');
   if (reuse.reuseDecision === 'miss' && reusedCount > 0) reasons.push('validation_reuse_miss_cannot_include_reused_nodes');
+  if (reuse.reuseDecision !== 'miss' && reuse.sourceClosureReuseForbidden === true) reasons.push('validation_source_closure_reuse_forbidden');
   if (plan.observationState === 'observed' && reuse.cacheKeyHasPlaceholder === true) reasons.push('validation_reuse_cache_key_placeholder');
   if (plan.observationState === 'observed' && reuse.reuseDecision !== 'miss' && !/^sha256:[a-f0-9]{64}$/.test(String(reuse.cacheKeyDigest || ''))) reasons.push('validation_reuse_cache_key_digest_invalid');
   for (const [fieldName, field] of Object.entries(reuse.cacheKeyFields || {})) {

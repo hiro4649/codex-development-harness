@@ -239,13 +239,21 @@ can become an active performance feature:
 
 ```text
 node.cacheKeyDigest:
-  must match validationReuseDecision.cacheKeyDigest
+  must be observed on the reused node and must match the node-scoped
+  validationReuseDecision.nodeCacheKeyDigests entry when present, otherwise
+  validationReuseDecision.cacheKeyDigest. The harness must not backfill this
+  value from the current computed cache key for a reused node.
 
 node.sourceResultDigest:
   must match the node result digest currently bound under #/typedResults/{nodeRef}
 
-sourceRunRef / sourceHeadSha / resultSchemaVersion:
-  required for every reused node
+sourceRunRef:
+  required for every reused node as a structured object, not a display string.
+  It must bind provider, run id, provider artifact name, artifact content
+  digest, source head, tested commit, and result schema version.
+
+sourceHeadSha / resultSchemaVersion:
+  required for every reused node and must match the structured sourceRunRef.
 ```
 
 For pull request merge-ref validation, cache reuse must bind the source head,
@@ -265,6 +273,11 @@ from that declared seed surface. Unresolved relative imports or closure
 truncation are activation blockers, not Shadow Candidate merge authority. A
 consumer, node implementation, or relative helper change that can alter node
 result construction invalidates the reuse key.
+
+Unsupported dynamic import expressions are also reuse blockers. A literal
+dynamic import may be scanned like a static dependency, but a computed import
+expression disables hit and partial-hit reuse until a later implementation can
+prove the reachable source closure without widening the routine read surface.
 
 The expanded source closure is cold diagnostic evidence. It must not enlarge the
 routine model-facing Projection read surface.

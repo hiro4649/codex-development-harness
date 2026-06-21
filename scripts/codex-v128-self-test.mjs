@@ -426,7 +426,16 @@ function reusedNode(nodeRef, payload = {}) {
     executionCountObserved: true,
     status: 'pass',
     stabilityClass: 'decision_stable',
-    sourceRunRef: 'github:run:27881777742:attempt:1',
+    sourceRunRef: {
+      provider: 'github_actions',
+      runId: '27881777742',
+      attempt: 1,
+      artifactName: `v128-${nodeRef}-typed-result.safe.json`,
+      artifactDigest: sha256Canonical({ nodeRef, typedResultPayload }),
+      sourceHeadSha: 'f'.repeat(40),
+      testedCommitOid: 'f'.repeat(40),
+      resultSchemaVersion: '1.0.0',
+    },
     sourceResultDigest: sha256Canonical(typedResultPayload),
     sourceHeadSha: 'f'.repeat(40),
     resultSchemaVersion: '1.0.0',
@@ -456,14 +465,29 @@ function validValidationNodeResults() {
   ];
 }
 
+function buildPlanWithBoundReusedCacheKeys(input = {}) {
+  const draft = buildV128ValidationExecutionPlan(input);
+  const nodeResults = (input.nodeResults || []).map((node) => {
+    if (node.executionState !== 'reused') return node;
+    return {
+      ...node,
+      cacheKeyDigest: draft.validationReuseDecision.nodeCacheKeyDigests[node.nodeRef]
+        || draft.validationReuseDecision.cacheKeyDigest
+        || node.cacheKeyDigest,
+    };
+  });
+  return buildV128ValidationExecutionPlan({ ...input, nodeResults });
+}
+
 function validationExecutionPlanVerifies() {
   const upstream = [
     executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200 }),
     executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }),
     reusedNode('state_matrix_executor', { totalCells: 96 }),
   ];
-  return passed(validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+  return passed(validateV128ValidationExecutionPlan(buildPlanWithBoundReusedCacheKeys({
     headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
     runnerImageDigest: `sha256:${'b'.repeat(64)}`,
     observedExecution: true,
     workspaceObserved: true,
@@ -654,6 +678,70 @@ function validationReusedNodeCacheKeyDigestMismatchFails() {
       executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
     ],
   })).reasonCodes.includes('reused_node_cache_key_digest_mismatch');
+}
+
+function validationReusedNodeMissingCacheKeyDigestFails() {
+  return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reusedNode('state_matrix_executor'),
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  })).reasonCodes.includes('reused_node_cache_key_digest_required');
+}
+
+function validationReusedNodeStringSourceRunRefFails() {
+  const reused = reusedNode('state_matrix_executor');
+  reused.sourceRunRef = 'github:run:27881777742:attempt:1';
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'pass', 'decision_stable'),
+      executedNode('managed_context_emitter', 'pass', 'cache_stable'),
+      reused,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable'),
+    ],
+  });
+  return validateV128ValidationExecutionPlan(plan).reasonCodes.includes('reused_node_source_run_ref_must_be_object');
+}
+
+function validationUnsupportedDynamicImportDisablesReuse() {
+  const virtualPath = 'scripts/__v128_virtual_dynamic_import_fixture.mjs';
+  const plan = buildV128ValidationExecutionPlan({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    sourceClosureFiles: [virtualPath],
+    sourceFileTexts: {
+      [virtualPath]: "const selected = './dynamic.js'; await import(selected);\n",
+    },
+    nodeResults: [
+      reusedNode('projection_reader'),
+      reusedNode('managed_context_emitter'),
+      reusedNode('state_matrix_executor'),
+      reusedNode('aggregate_finalizer'),
+    ],
+  });
+  const validation = validateV128ValidationExecutionPlan(plan);
+  return plan.sourceClosure.unsupportedDynamicImportCount === 1
+    && plan.validationReuseDecision.sourceClosureReuseForbidden === true
+    && validation.reasonCodes.includes('validation_reuse_miss_cannot_include_reused_nodes');
 }
 
 function validationWorkspaceUnobservedCannotBeCanonical() {
@@ -928,6 +1016,9 @@ const cases = [
   ['validation_cache_miss_with_reused_node_fails', () => validationCacheMissWithReusedNodeFails()],
   ['validation_reused_node_source_digest_mismatch_fails', () => validationReusedNodeSourceDigestMismatchFails()],
   ['validation_reused_node_cache_key_digest_mismatch_fails', () => validationReusedNodeCacheKeyDigestMismatchFails()],
+  ['validation_reused_node_missing_cache_key_digest_fails', () => validationReusedNodeMissingCacheKeyDigestFails()],
+  ['validation_reused_node_string_source_run_ref_fails', () => validationReusedNodeStringSourceRunRefFails()],
+  ['validation_unsupported_dynamic_import_disables_reuse', () => validationUnsupportedDynamicImportDisablesReuse()],
   ['validation_workspace_unobserved_cannot_be_canonical', () => validationWorkspaceUnobservedCannotBeCanonical()],
   ['validation_runner_image_missing_prevents_reuse', () => validationRunnerImageMissingPreventsReuse()],
   ['validation_source_closure_includes_consumers', () => validationSourceClosureIncludesConsumers()],
