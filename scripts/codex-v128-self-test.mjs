@@ -466,8 +466,13 @@ function validValidationNodeResults() {
 }
 
 function buildPlanWithBoundReusedCacheKeys(input = {}) {
-  const draft = buildV128ValidationExecutionPlan(input);
-  const nodeResults = (input.nodeResults || []).map((node) => {
+  const stableInput = {
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    ...input,
+  };
+  const draft = buildV128ValidationExecutionPlan(stableInput);
+  const nodeResults = (stableInput.nodeResults || []).map((node) => {
     if (node.executionState !== 'reused') return node;
     return {
       ...node,
@@ -476,7 +481,7 @@ function buildPlanWithBoundReusedCacheKeys(input = {}) {
         || node.cacheKeyDigest,
     };
   });
-  return buildV128ValidationExecutionPlan({ ...input, nodeResults });
+  return buildV128ValidationExecutionPlan({ ...stableInput, nodeResults });
 }
 
 function validationExecutionPlanVerifies() {
@@ -650,6 +655,8 @@ function validationReusedNodeSourceDigestMismatchFails() {
   return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
     runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
     observedExecution: true,
     workspaceObserved: true,
     decisionInputManifestScanned: true,
@@ -668,6 +675,8 @@ function validationReusedNodeCacheKeyDigestMismatchFails() {
   return validateV128ValidationExecutionPlan(buildV128ValidationExecutionPlan({
     headSha: 'f'.repeat(40),
     runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
     observedExecution: true,
     workspaceObserved: true,
     decisionInputManifestScanned: true,
