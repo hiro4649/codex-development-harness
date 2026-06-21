@@ -50,6 +50,7 @@ import {
   compactV128ValidationExecutionPlanForStorage,
   validateV128CompactValidationPlanExact,
 } from './codex-v128-token-compression.mjs';
+import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-finalizer.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
 function test(name, fn) {
@@ -714,8 +715,11 @@ function compactValidationPlanStillValidates() {
     ],
   });
   const compact = compactV128ValidationExecutionPlanForStorage(plan);
+  const aggregate = compact.typedResults.aggregate_finalizer;
   return passed(validateV128ValidationExecutionPlan(compact))
     && passed(validateV128CompactValidationPlanExact(compact))
+    && aggregate.orderedUpstreamResultSetDigest === buildV128OrderedUpstreamResultSetDigest(aggregate.upstreamResultDigests)
+    && aggregate.upstreamResultDigests.every((item) => typeof item.status === 'string')
     && Buffer.byteLength(JSON.stringify(compact, null, 2), 'utf8') < Buffer.byteLength(JSON.stringify(plan, null, 2), 'utf8')
     && !JSON.stringify(compact).includes('file-29.mjs')
     && !JSON.stringify(compact).includes('xxxxxxxxxx');
@@ -757,6 +761,40 @@ function compactValidationPlanUpstreamDigestMismatchFails() {
     nodeResults: validValidationNodeResults(),
   }));
   compact.typedResults.aggregate_finalizer.upstreamResultDigests[0].resultDigest = sha256Canonical({ wrong: true });
+  return failed(validateV128CompactValidationPlanExact(compact));
+}
+
+function compactValidationPlanUpstreamStatusMismatchFails() {
+  const compact = compactV128ValidationExecutionPlanForStorage(buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  }));
+  compact.typedResults.aggregate_finalizer.upstreamResultDigests[0].status = 'fail';
+  compact.typedResults.aggregate_finalizer.orderedUpstreamResultSetDigest = buildV128OrderedUpstreamResultSetDigest(
+    compact.typedResults.aggregate_finalizer.upstreamResultDigests,
+  );
+  return failed(validateV128CompactValidationPlanExact(compact));
+}
+
+function compactValidationPlanStatuslessSemanticDigestFails() {
+  const compact = compactV128ValidationExecutionPlanForStorage(buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  }));
+  compact.typedResults.aggregate_finalizer.orderedUpstreamResultSetDigest = sha256Canonical(
+    compact.typedResults.aggregate_finalizer.upstreamResultDigests.map((item) => ({
+      nodeRef: item.nodeRef,
+      resultDigest: item.resultDigest,
+    })),
+  );
   return failed(validateV128CompactValidationPlanExact(compact));
 }
 
@@ -1827,6 +1865,8 @@ const cases = [
   ['compact_validation_plan_stale_aggregate_digest_fails', () => compactValidationPlanStaleAggregateDigestFails()],
   ['compact_validation_plan_ledger_digest_mismatch_fails', () => compactValidationPlanLedgerDigestMismatchFails()],
   ['compact_validation_plan_upstream_digest_mismatch_fails', () => compactValidationPlanUpstreamDigestMismatchFails()],
+  ['compact_validation_plan_upstream_status_mismatch_fails', () => compactValidationPlanUpstreamStatusMismatchFails()],
+  ['compact_validation_plan_statusless_semantic_digest_fails', () => compactValidationPlanStatuslessSemanticDigestFails()],
   ['validation_default_is_not_exercised_partial', () => validationDefaultIsNotExercisedPartial()],
   ['validation_execution_duplicate_node_fails', () => validationExecutionDuplicateNodeFails()],
   ['validation_graph_cycle_fails', () => validationGraphCycleFails()],
