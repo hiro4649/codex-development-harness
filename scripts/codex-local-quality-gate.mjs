@@ -720,6 +720,14 @@ function computeV128ShadowEvidence(input = {}) {
     typedResults: v128ExecutionSnapshot.typedResults,
     nodeInputDigests: v128NodeInputDigests,
     runWideInvocationLedger: v128ExecutionSnapshot.invocationLedger,
+    residentContextBytes: v128ManagedContextEmitter.residentContextBytes,
+    stableContextBytes: v128ManagedContextEmitter.residentContextBytes,
+    deltaContextBytes: v128ManagedContextEmitter.deltaContextBytes,
+    fullContextSendBytes: v128ManagedContextEmitter.residentContextBytes,
+    fullContextResendCount: v128ManagedContextEmitter.fullContextResendCount,
+    managedInputBytes: Number(v128ManagedContextEmitter.residentContextBytes || 0)
+      + Number(v128ManagedContextEmitter.deltaContextBytes || 0),
+    modelInvocationCount: v128ExecutionSnapshot.invocationLedger.length,
   });
   const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);
   const value = {

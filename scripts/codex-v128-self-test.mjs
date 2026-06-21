@@ -378,6 +378,12 @@ function managedContextEmitterObservesBytes() {
     && context.managedContextMeasurementSource === 'v128_managed_context_emitter'
     && context.managedContextBytes > 0
     && context.managedContextBytes <= 4096
+    && context.residentContextBytes > 0
+    && context.residentContextBytes <= 2048
+    && context.deltaContextBytes > 0
+    && context.deltaContextBytes <= 768
+    && context.fullContextResendCount <= 1
+    && context.compiledContextStored === false
     && context.compiledActiveInstructionBytes > 0
     && context.compiledActiveInstructionBytes <= 1400
     && context.compiledContextBytes > 0
@@ -393,6 +399,15 @@ function managedContextEmitterObservesBytes() {
     && context.instructionCapsule.llmSummaryUsed === false
     && context.attestedView.projectionAuthority === 'non_authoritative'
     && context.sourceActivationReady === false;
+}
+
+function managedContextEmitterDeltaBudgetFailsClosed() {
+  const context = buildV128ManagedContextEmitter({
+    headSha: 'f'.repeat(40),
+    newEvidenceRefs: ['x'.repeat(900)],
+  });
+  return context.status === 'fail'
+    && context.reasonCodes.includes('delta_context_over_budget');
 }
 
 function managedContextEmitterPassesSafeOutputScan() {
@@ -682,6 +697,163 @@ function validationExecutionPlanVerifies() {
       }),
     ],
   })));
+}
+
+function validationColdMissLoopEconomyObserved() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    stableContextBytes: 800,
+    deltaContextBytes: 320,
+    fullContextResendCount: 1,
+    modelInvocationCount: 1,
+    nodeResults: validValidationNodeResults(),
+  });
+  return passed(validateV128ValidationExecutionPlan(plan))
+    && plan.validationReuseDecision.reuseDecision === 'miss'
+    && plan.loopEconomy.managedInputBytesPerAcceptedChange === 1120
+    && plan.loopEconomy.budgetState === 'within_budget';
+}
+
+function validationRealCacheHitLoopEconomyObserved() {
+  const upstream = [
+    reusedNode('projection_reader', { surfaceCanonicalBytes: 1200 }),
+    reusedNode('managed_context_emitter', { managedContextBytes: 1800 }),
+    reusedNode('state_matrix_executor', { totalCells: 96 }),
+  ];
+  const aggregate = reusedNode('aggregate_finalizer', {
+    aggregateOnly: true,
+    downstreamRespawnAllowed: false,
+    upstreamNodeRefs: upstream.map((node) => node.nodeRef),
+    upstreamResultDigests: upstream.map((node) => ({
+      nodeRef: node.nodeRef,
+      status: node.status,
+      resultDigest: sha256Canonical(node.typedResultPayload),
+    })),
+    failedNodeRefs: [],
+  });
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'hit',
+    stableContextBytes: 800,
+    deltaContextBytes: 220,
+    fullContextResendCount: 1,
+    modelInvocationCount: 1,
+    nodeResults: [...upstream, aggregate],
+  });
+  return passed(validateV128ValidationExecutionPlan(plan))
+    && plan.validationReuseDecision.reuseDecision === 'hit'
+    && plan.profileExecution.runWideInvocationCount === 0
+    && plan.loopEconomy.executedNodeCount === 0
+    && plan.loopEconomy.reusedNodeCount === 4;
+}
+
+function validationPartialHitLoopEconomyObserved() {
+  const upstream = [
+    executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200 }),
+    reusedNode('managed_context_emitter', { managedContextBytes: 1800 }),
+    reusedNode('state_matrix_executor', { totalCells: 96 }),
+  ];
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    testedTreeKind: 'branch_head',
+    testedCommitOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    reuseDecision: 'partial_hit',
+    stableContextBytes: 800,
+    deltaContextBytes: 260,
+    fullContextResendCount: 1,
+    modelInvocationCount: 1,
+    nodeResults: [
+      ...upstream,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+        aggregateOnly: true,
+        downstreamRespawnAllowed: false,
+        upstreamNodeRefs: upstream.map((node) => node.nodeRef),
+        upstreamResultDigests: upstream.map((node) => ({
+          nodeRef: node.nodeRef,
+          status: node.status,
+          resultDigest: sha256Canonical(node.typedResultPayload),
+        })),
+        failedNodeRefs: [],
+      }),
+    ],
+  });
+  return passed(validateV128ValidationExecutionPlan(plan))
+    && plan.validationReuseDecision.reuseDecision === 'partial_hit'
+    && plan.loopEconomy.executedNodeCount === 2
+    && plan.loopEconomy.reusedNodeCount === 2;
+}
+
+function validationFailureDirectedRequeueBlocksUnaffectedNode() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      executedNode('projection_reader', 'fail', 'decision_stable', { reason: 'BROKEN_READER' }),
+      { ...executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }), executionState: 'rerun' },
+      executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }),
+      executedNode('aggregate_finalizer', 'fail', 'decision_stable', {
+        upstreamNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor'],
+      }),
+    ],
+  });
+  const validation = validateV128ValidationExecutionPlan(plan);
+  return validation.reasonCodes.includes('failure_directed_unaffected_node_rerun_forbidden')
+    || validation.reasonCodes.includes('failure_directed_unallowed_requeue_node');
+}
+
+function validationFailureDirectedRequeueAllowsChangedInputDownstream() {
+  const upstream = [
+    { ...executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200 }), executionState: 'rerun' },
+    { ...executedNode('managed_context_emitter', 'pass', 'cache_stable', { managedContextBytes: 1800 }), executionState: 'rerun' },
+    { ...executedNode('state_matrix_executor', 'pass', 'decision_stable', { totalCells: 96 }), executionState: 'rerun' },
+  ];
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    changedInputNodeRefs: ['projection_reader'],
+    stableContextBytes: 800,
+    deltaContextBytes: 300,
+    nodeResults: [
+      ...upstream,
+      { ...executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+        upstreamNodeRefs: upstream.map((node) => node.nodeRef),
+        upstreamResultDigests: upstream.map((node) => ({
+          nodeRef: node.nodeRef,
+          status: node.status,
+          resultDigest: sha256Canonical(node.typedResultPayload),
+        })),
+        failedNodeRefs: [],
+      }), executionState: 'rerun' },
+    ],
+  });
+  return passed(validateV128ValidationExecutionPlan(plan))
+    && plan.failureDirectedRequeue.unaffectedNodeRerunCount === 0
+    && plan.failureDirectedRequeue.actualRequeuedNodeRefs.length === 4;
 }
 
 function compactValidationPlanStillValidates() {
@@ -1861,6 +2033,11 @@ const cases = [
   ['projection_payload_digest_tamper_fails', () => projectionPayloadDigestTamperFails()],
   ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
   ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
+  ['validation_cold_miss_loop_economy_observed', () => validationColdMissLoopEconomyObserved()],
+  ['validation_real_cache_hit_loop_economy_observed', () => validationRealCacheHitLoopEconomyObserved()],
+  ['validation_partial_hit_loop_economy_observed', () => validationPartialHitLoopEconomyObserved()],
+  ['validation_failure_directed_requeue_blocks_unaffected_node', () => validationFailureDirectedRequeueBlocksUnaffectedNode()],
+  ['validation_failure_directed_requeue_allows_changed_input_downstream', () => validationFailureDirectedRequeueAllowsChangedInputDownstream()],
   ['compact_validation_plan_still_validates', () => compactValidationPlanStillValidates()],
   ['compact_validation_plan_stale_aggregate_digest_fails', () => compactValidationPlanStaleAggregateDigestFails()],
   ['compact_validation_plan_ledger_digest_mismatch_fails', () => compactValidationPlanLedgerDigestMismatchFails()],
@@ -1914,6 +2091,7 @@ const cases = [
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
   ['typed_shadow_status_does_not_block_active_gate', () => typedShadowStatusDoesNotBlockActiveGate()],
   ['managed_context_emitter_observes_bytes', () => managedContextEmitterObservesBytes()],
+  ['managed_context_emitter_delta_budget_fails_closed', () => managedContextEmitterDeltaBudgetFailsClosed()],
   ['managed_context_emitter_passes_safe_output_scan', () => managedContextEmitterPassesSafeOutputScan()],
   ['token_compression_compacts_safe_summary', () => tokenCompressionCompactsSafeSummary()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
@@ -2008,6 +2186,12 @@ const cases = [
     }
   }],
   ['target_mode_does_not_require_source_manifest', () => activeManifestPathsForMode({ CODEX_HARNESS_MODE: 'target' }).join('|') === 'docs/process/CODEX_HARNESS_MANIFEST.json'],
+  ['local_gate_threads_loop_economy_observed_bytes', () => {
+    const text = fs.readFileSync('scripts/codex-local-quality-gate.mjs', 'utf8');
+    return text.includes('managedInputBytes: Number(v128ManagedContextEmitter.residentContextBytes || 0)')
+      && text.includes('deltaContextBytes: v128ManagedContextEmitter.deltaContextBytes')
+      && text.includes('modelInvocationCount: v128ExecutionSnapshot.invocationLedger.length');
+  }],
   ['orchestration_capsule_validates_all_v128_internal_blocks', () => Object.values(validateOrchestrationCapsule(buildOrchestrationCapsule())).every((item) => item.status === 'pass')],
 ].map(([name, fn]) => test(name, fn));
 
@@ -2018,7 +2202,10 @@ const fixtureGroups = [
   'token_minimal_read_router_matrix',
   'bounded_projection_reader_execution',
   'managed_context_emitter_execution',
+  'resident_context_delta_packet_execution',
   'resumable_loop_permission_projection_matrix',
+  'failure_directed_requeue_execution',
+  'loop_economy_cache_canary_execution',
   'reader_before_writer_migration_matrix',
   'replay_corpus_execution',
   'state_matrix_full_shadow_candidate_execution',

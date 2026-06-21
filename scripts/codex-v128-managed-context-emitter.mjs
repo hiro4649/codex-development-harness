@@ -8,6 +8,8 @@ import process from 'node:process';
 
 const MANAGED_CONTEXT_BYTES_MAX = 4096;
 const COMPILED_CONTEXT_BYTES_MAX = 1400;
+const RESIDENT_CONTEXT_BYTES_MAX = 2048;
+const DELTA_CONTEXT_BYTES_MAX = 768;
 const REQUIRED_BINDING_IDS = [
   'FD_AUTH',
   'DC_AUTH',
@@ -44,6 +46,10 @@ function digestValue(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
 }
 
+function canonicalBytes(value) {
+  return Buffer.byteLength(canonicalJson(value), 'utf8');
+}
+
 function fileDigest(filePath) {
   const text = fs.readFileSync(filePath, 'utf8');
   return {
@@ -55,6 +61,11 @@ function fileDigest(filePath) {
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function optionalFileDigest(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  return fileDigest(filePath);
 }
 
 function readText(filePath) {
@@ -147,6 +158,95 @@ function buildCompiledActiveInstructionCapsule(parts = {}) {
   };
 }
 
+function buildV128ResidentContext(parts = {}, compiled = {}) {
+  const standingPolicy = optionalFileDigest('docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json');
+  const sourceManifest = parts.sourceManifest || {};
+  const activePolicyIndex = parts.activePolicyIndex || {};
+  const scopeContract = {
+    activeHarnessVersion: sourceManifest.activeHarnessVersion || '1.2.7',
+    activeSelfTestSuite: sourceManifest.activeSelfTestSuite || 'v127',
+    candidateHarnessVersion: '1.2.8',
+    candidateActivationState: 'source_shadow_candidate',
+    sourceActivation: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation || 'not_started',
+    targetRollout: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.targetRollout || 'not_started',
+    noProductScope: true,
+    noPackageOrLockfile: true,
+    noWorkflowWeakening: true,
+  };
+  const residentCore = {
+    schemaVersion: '1.2.8',
+    contextKind: 'resident_context_shadow',
+    activeInstructionDigest: compiled.compiledContextDigest,
+    activeProfileDigest: digestValue(activePolicyIndex.deterministicDecisionProjectionAndTokenMinimalLoopClosure || {}),
+    scopeContractDigest: digestValue(scopeContract),
+    standingPolicyDigest: standingPolicy ? `sha256:${standingPolicy.sha256}` : null,
+    verifierProfileDigest: digestValue({
+      bindingIds: compiled.bindingIds || [],
+      requiredBindingIds: REQUIRED_BINDING_IDS,
+      finalAuthority: 'v1.1.8_final_decision_kernel',
+    }),
+    fullInstructionTextStored: false,
+    llmSummaryUsed: false,
+  };
+  const residentContextDigest = digestValue(residentCore);
+  const residentContext = {
+    ...residentCore,
+    residentContextDigest,
+    residentContextBytes: 0,
+    residentContextBytesMax: RESIDENT_CONTEXT_BYTES_MAX,
+    withinResidentContextBudget: false,
+  };
+  for (let i = 0; i < 4; i += 1) {
+    const bytes = canonicalBytes(residentContext);
+    const next = {
+      ...residentContext,
+      residentContextBytes: bytes,
+      withinResidentContextBudget: bytes <= RESIDENT_CONTEXT_BYTES_MAX,
+    };
+    if (next.residentContextBytes === residentContext.residentContextBytes
+      && next.withinResidentContextBudget === residentContext.withinResidentContextBudget) {
+      return next;
+    }
+    Object.assign(residentContext, next);
+  }
+  return residentContext;
+}
+
+function buildV128DeltaPacket(input = {}) {
+  const deltaCore = {
+    schemaVersion: '1.2.8',
+    packetKind: 'delta_packet_shadow',
+    failedReasonRefs: Array.isArray(input.failedReasonRefs) ? input.failedReasonRefs.map(String).slice(0, 6) : [],
+    failedNodeRefs: Array.isArray(input.failedNodeRefs) ? input.failedNodeRefs.map(String).slice(0, 6) : [],
+    newEvidenceRefs: Array.isArray(input.newEvidenceRefs) ? input.newEvidenceRefs.map(String).slice(0, 6) : [],
+    lastAttemptDigest: input.lastAttemptDigest || null,
+    nextActionCode: input.nextActionCode || 'AUTO_WAIT',
+    fullContextResendCount: Number(input.fullContextResendCount ?? 1),
+  };
+  const deltaPacketDigest = digestValue(deltaCore);
+  const deltaPacket = {
+    ...deltaCore,
+    deltaPacketDigest,
+    deltaContextBytes: 0,
+    deltaContextBytesMax: DELTA_CONTEXT_BYTES_MAX,
+    withinDeltaContextBudget: false,
+  };
+  for (let i = 0; i < 4; i += 1) {
+    const bytes = canonicalBytes(deltaPacket);
+    const next = {
+      ...deltaPacket,
+      deltaContextBytes: bytes,
+      withinDeltaContextBudget: bytes <= DELTA_CONTEXT_BYTES_MAX,
+    };
+    if (next.deltaContextBytes === deltaPacket.deltaContextBytes
+      && next.withinDeltaContextBudget === deltaPacket.withinDeltaContextBudget) {
+      return next;
+    }
+    Object.assign(deltaPacket, next);
+  }
+  return deltaPacket;
+}
+
 export function buildV128ManagedInstructionSourceSetDigest(input = {}) {
   const {
     sourceFiles,
@@ -170,8 +270,16 @@ function finalizeContext(contextBase) {
     const bytes = Buffer.byteLength(canonicalJson(context), 'utf8');
     const withinBudget = bytes <= MANAGED_CONTEXT_BYTES_MAX;
     const compiledWithinBudget = Number(context.compiledActiveInstructionBytes || context.compiledContextBytes || 0) <= COMPILED_CONTEXT_BYTES_MAX;
+    const residentWithinBudget = Number(context.residentContextBytes || 0) <= RESIDENT_CONTEXT_BYTES_MAX;
+    const deltaWithinBudget = Number(context.deltaContextBytes || 0) <= DELTA_CONTEXT_BYTES_MAX;
+    const fullContextResendWithinBudget = Number(context.fullContextResendCount ?? 0) <= 1;
     const bindingsComplete = Array.isArray(context.missingBindingIds) && context.missingBindingIds.length === 0;
-    const pass = withinBudget && compiledWithinBudget && bindingsComplete;
+    const pass = withinBudget
+      && compiledWithinBudget
+      && residentWithinBudget
+      && deltaWithinBudget
+      && fullContextResendWithinBudget
+      && bindingsComplete;
     const next = {
       ...context,
       managedContextBytes: bytes,
@@ -180,6 +288,9 @@ function finalizeContext(contextBase) {
       reasonCodes: [
         ...(withinBudget ? [] : ['managed_context_over_budget']),
         ...(compiledWithinBudget ? [] : ['compiled_active_instruction_over_budget']),
+        ...(residentWithinBudget ? [] : ['resident_context_over_budget']),
+        ...(deltaWithinBudget ? [] : ['delta_context_over_budget']),
+        ...(fullContextResendWithinBudget ? [] : ['full_context_resend_over_budget']),
         ...(bindingsComplete ? [] : ['compiled_active_instruction_missing_binding']),
       ],
     };
@@ -205,6 +316,8 @@ export function buildV128ManagedContextEmitter(input = {}) {
     attestedView,
   } = parts;
   const compiled = buildCompiledActiveInstructionCapsule(parts);
+  const residentContext = buildV128ResidentContext(parts, compiled);
+  const deltaPacket = buildV128DeltaPacket(input);
   return finalizeContext({
     schemaVersion: '1.2.8',
     contextKind: 'managed_context_emitter_shadow',
@@ -217,13 +330,22 @@ export function buildV128ManagedContextEmitter(input = {}) {
     managedContextMeasurementSource: 'v128_managed_context_emitter',
     managedContextBytesMax: MANAGED_CONTEXT_BYTES_MAX,
     activeInstructionSourceSetDigest: buildV128ManagedInstructionSourceSetDigest(input),
-    compiledContext: compiled.compiledContext,
+    compiledContextStored: false,
     compiledActiveInstructionBytes: compiled.compiledActiveInstructionBytes,
     compiledActiveInstructionBytesMax: compiled.compiledActiveInstructionBytesMax,
     compiledContextBytes: compiled.compiledActiveInstructionBytes,
     compiledContextBytesMax: compiled.compiledActiveInstructionBytesMax,
     compiledContextDigest: compiled.compiledContextDigest,
     compiledContextSource: compiled.compiledContextSource,
+    residentContextDigest: residentContext.residentContextDigest,
+    residentContextBytes: residentContext.residentContextBytes,
+    residentContextBytesMax: residentContext.residentContextBytesMax,
+    deltaPacketDigest: deltaPacket.deltaPacketDigest,
+    deltaContextBytes: deltaPacket.deltaContextBytes,
+    deltaContextBytesMax: deltaPacket.deltaContextBytesMax,
+    fullContextResendCount: deltaPacket.fullContextResendCount,
+    residentContext,
+    deltaPacket,
     bindingIds: compiled.bindingIds,
     missingBindingIds: compiled.missingBindingIds,
     sourceFileSetDigest: digestValue(sourceFileDigests),

@@ -125,6 +125,9 @@ routine bounded Projection reader stdout <= 1600 bytes
 routine bounded Projection reader rejects duplicate JSON keys
 per-transition managed context <= 4096 bytes
 compiled active instruction context <= 1400 bytes
+resident context <= 2048 bytes
+delta packet <= 768 bytes
+full context resend count <= 1 per task
 stored Safe Summary <= 6144 bytes soft cap
 routine Safe Summary read surface <= 2560 bytes
 Orchestration Capsule <= 60000 bytes soft cap
@@ -167,6 +170,28 @@ The compiler reads `CODEX_ACTIVE_BLOCK_BEGIN` / `CODEX_ACTIVE_BLOCK_END`
 content exactly, must not use LLM summarization, and must fail if required
 v1.2.7 preservation `machineBindingId` values are missing. Historical guidance
 outside active blocks is not part of the routine model-facing surface.
+
+Long-running work must not resend stable policy/profile material on every
+iteration. v1.2.8 emits a resident-context digest set and a small delta packet:
+
+```text
+resident context:
+  activeInstructionDigest
+  activeProfileDigest
+  scopeContractDigest
+  standingPolicyDigest
+  verifierProfileDigest
+
+delta packet:
+  failedReasonRefs
+  failedNodeRefs
+  newEvidenceRefs
+  lastAttemptDigest
+  nextActionCode
+```
+
+The full compiled context may be sent once per task. Continuation uses delta
+packets unless head, scope, profile, policy, or trust digest changes.
 
 Profile preservation uses inheritance:
 
@@ -364,6 +389,12 @@ entry and duplicate execution of a required node fails the validation plan.
 Reused nodes are represented by sourceRunRef/cache provenance instead of a
 local invocation entry.
 
+Failure repair is directed by the validation graph. A repair loop may execute
+only failed nodes, downstream nodes whose input digest changed, or nodes with
+invalidated cache evidence. Unchanged, already-passing nodes must not be rerun.
+Repeating the same failed node with the same node input digest and same failure
+class produces `no_progress_same_failure` instead of another model attempt.
+
 `commandOrFunctionDigest` is the node-scoped source closure digest, not a
 metadata hash of the node name or adapter id. The validator recomputes ledger
 counts, duplicate node executions, sequence uniqueness, and command digest
@@ -390,6 +421,24 @@ aggregate_finalizer:
 A cache hit or partial hit is invalid when nodeInputDigest changes. Reused
 nodes have no local invocation ledger entry; their proof comes from
 sourceRunRef/cache provenance and the node cache key.
+
+Loop economy metrics are observed separately from declared budgets:
+
+```text
+managedInputBytes
+modelInvocationCount
+fullContextResendCount
+deltaContextBytes
+executedNodeCount
+reusedNodeCount
+managedInputBytesPerAcceptedChange
+acceptedChangeRate
+```
+
+Budgets are `maxIterations=3`, `maxModelInvocations=4`,
+`sameBlockerMax=1`, `noProgressWindow=1`, and `flipFlopMax=1`. Unobserved
+values remain unobserved; declared limits must not be reported as observed
+performance.
 
 The routine Projection separates authority and operator actions without
 embedding a full topology object in the routine read surface:
