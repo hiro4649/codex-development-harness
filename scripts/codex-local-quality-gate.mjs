@@ -459,19 +459,19 @@ function normalizedChangedFiles(report = {}) {
   return Array.isArray(changed) ? changed.map((file) => String(file).replace(/\\/g, '/')).sort() : [];
 }
 
-export function buildV128SemanticAuthorityGuard(report = {}) {
+export function buildV128AuthoritySurfaceGuard(report = {}) {
   const changedFiles = normalizedChangedFiles(report);
   const authorityChangedFiles = changedFiles.filter((file) => V128_AUTHORITY_SURFACE_FILES.has(file));
-  const semanticAuthorityChangeDetected = authorityChangedFiles.length > 0;
+  const authoritySurfaceChangeDetected = authorityChangedFiles.length > 0;
   return {
     schemaVersion: '1.2.8',
     guardKind: 'authority_surface_guard_shadow',
-    status: semanticAuthorityChangeDetected ? 'auto_quarantine_required' : 'pass',
+    status: authoritySurfaceChangeDetected ? 'auto_quarantine_required' : 'pass',
     semanticDiffObserved: false,
-    semanticAuthorityChangeDetected,
+    authoritySurfaceChangeDetected,
     authorityChangedFileCount: authorityChangedFiles.length,
     authorityChangedFilesDigest: sha256Canonical(authorityChangedFiles),
-    reasonCodes: semanticAuthorityChangeDetected ? ['authority_surface_changed_requires_quarantine'] : [],
+    reasonCodes: authoritySurfaceChangeDetected ? ['authority_surface_changed_requires_quarantine'] : [],
     ...shadowOnlyV128Fields('final_closure'),
     safeSummaryOnly: true,
   };
@@ -817,7 +817,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
   const workspaceObservation = observeV128WorkspaceIdentity(head);
   const providerSnapshot = buildV128ProviderSnapshotEvidence(report, head, workspaceObservation, v128TrustClosure);
   const scopeEvidence = buildV128ScopeEvidence(report, v128TrustClosure);
-  const semanticAuthorityGuard = buildV128SemanticAuthorityGuard(report);
+  const authoritySurfaceGuard = buildV128AuthoritySurfaceGuard(report);
   const providerChangedFilesEvidence = buildV128ProviderChangedFilesEvidence(report, process.env);
   const automationExecutor = buildV128AutomationExecutorState(process.env, v128TrustClosure);
   const projectionInputs = {
@@ -853,7 +853,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     workflowChanged: report.workflowChanged === true,
     sourceActivationRequested: false,
     targetRolloutRequested: false,
-    policySelfModification: semanticAuthorityGuard.semanticAuthorityChangeDetected === true,
+    policySelfModification: authoritySurfaceGuard.authoritySurfaceChangeDetected === true,
   });
   const standingAutonomyPolicyStatus = validateV128StandingAutonomyPolicyEvaluation(standingAutonomyPolicy);
   const routineDecisionProjection = buildV128RoutineDecisionProjection(report, head, projectionInputs, {
@@ -965,7 +965,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
   report.v128StandingAutonomyPolicyStatus = standingAutonomyPolicyStatus;
   report.v128ProviderSnapshotEvidence = providerSnapshot;
   report.v128ScopeEvidence = scopeEvidence;
-  report.v128SemanticAuthorityGuard = semanticAuthorityGuard;
+  report.v128AuthoritySurfaceGuard = authoritySurfaceGuard;
   report.v128ProviderChangedFilesEvidence = providerChangedFilesEvidence;
   report.v128AutomationExecutorState = automationExecutor;
   report.routineProjectionReadSurface = routineProjectionReadSurface;
@@ -1039,7 +1039,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     providerSnapshotDigest: providerSnapshot.providerSnapshotDigest,
     scopeEvidenceStatus: scopeEvidence.scopeDigestMatch === true ? 'pass' : 'not_eligible',
     scopeContractDigest: scopeEvidence.scopeContractDigest,
-    semanticAuthorityGuardStatus: semanticAuthorityGuard.status,
+    authoritySurfaceGuardStatus: authoritySurfaceGuard.status,
     providerChangedFilesEvidenceStatus: providerChangedFilesEvidence.status,
     projectionSourceConsistencyStatus,
     runWideInvocationLedgerStatus: v128ValidationExecutionPlan.profileExecution.runWideInvocationLedgerStatus,
@@ -1112,7 +1112,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     v128StandingAutonomyPolicyStatus: report.v128StandingAutonomyPolicyStatus,
     v128ProviderSnapshotEvidence: report.v128ProviderSnapshotEvidence,
     v128ScopeEvidence: report.v128ScopeEvidence,
-    v128SemanticAuthorityGuard: report.v128SemanticAuthorityGuard,
+    v128AuthoritySurfaceGuard: report.v128AuthoritySurfaceGuard,
     v128ProviderChangedFilesEvidence: report.v128ProviderChangedFilesEvidence,
     v128AutomationExecutorState: report.v128AutomationExecutorState,
     routineDecisionProjectionStatus: report.routineDecisionProjectionStatus,

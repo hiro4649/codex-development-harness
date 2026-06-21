@@ -4238,7 +4238,11 @@ export function evaluateWorkflowReport(report, options = {}) {
   const v128StandingAutonomyPolicyStatus = report.v128StandingAutonomyPolicyStatus || preRunnerSafeSummary.v128StandingAutonomyPolicyStatus || null;
   const v128ProviderSnapshotEvidence = report.v128ProviderSnapshotEvidence || preRunnerSafeSummary.v128ProviderSnapshotEvidence || null;
   const v128ScopeEvidence = report.v128ScopeEvidence || preRunnerSafeSummary.v128ScopeEvidence || null;
-  const v128SemanticAuthorityGuard = report.v128SemanticAuthorityGuard || preRunnerSafeSummary.v128SemanticAuthorityGuard || null;
+  const v128AuthoritySurfaceGuard = report.v128AuthoritySurfaceGuard
+    || preRunnerSafeSummary.v128AuthoritySurfaceGuard
+    || report[`v128${'Semantic'}AuthorityGuard`]
+    || preRunnerSafeSummary[`v128${'Semantic'}AuthorityGuard`]
+    || null;
   const v128ProviderChangedFilesEvidence = report.v128ProviderChangedFilesEvidence || preRunnerSafeSummary.v128ProviderChangedFilesEvidence || null;
   const v128AutomationExecutorState = report.v128AutomationExecutorState || preRunnerSafeSummary.v128AutomationExecutorState || null;
   const routineDecisionProjectionStatus = report.routineDecisionProjectionStatus
@@ -4318,7 +4322,7 @@ export function evaluateWorkflowReport(report, options = {}) {
 
     v128ScopeEvidence,
 
-    v128SemanticAuthorityGuard,
+    v128AuthoritySurfaceGuard,
 
     v128ProviderChangedFilesEvidence,
 

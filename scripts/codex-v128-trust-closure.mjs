@@ -101,11 +101,29 @@ function compareUtf8Path(a, b) {
   return Buffer.compare(Buffer.from(String(a), 'utf8'), Buffer.from(String(b), 'utf8'));
 }
 
-function sourceFileExists(filePath) {
-  return fs.existsSync(String(filePath).replace(/\\/g, '/'));
+function normalizeRepoPath(filePath) {
+  return String(filePath).replace(/\\/g, '/');
 }
 
-function resolveRelativePath(fromPath, specifier) {
+function sourceTextMap(input = {}) {
+  return input && typeof input.sourceFileTexts === 'object' && input.sourceFileTexts
+    ? input.sourceFileTexts
+    : {};
+}
+
+function sourceFileExists(filePath, input = {}) {
+  const normalized = normalizeRepoPath(filePath);
+  return Object.prototype.hasOwnProperty.call(sourceTextMap(input), normalized) || fs.existsSync(normalized);
+}
+
+function readSourceFileText(filePath, input = {}) {
+  const normalized = normalizeRepoPath(filePath);
+  const texts = sourceTextMap(input);
+  if (Object.prototype.hasOwnProperty.call(texts, normalized)) return String(texts[normalized] || '');
+  return fs.readFileSync(normalized, 'utf8');
+}
+
+function resolveRelativePath(fromPath, specifier, input = {}) {
   if (!specifier.startsWith('.')) return null;
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromPath), specifier));
   const candidates = [
@@ -116,17 +134,32 @@ function resolveRelativePath(fromPath, specifier) {
     path.posix.join(base, 'index.mjs'),
     path.posix.join(base, 'index.js'),
   ];
-  return candidates.find((candidate) => sourceFileExists(candidate)) || null;
+  return candidates.find((candidate) => sourceFileExists(candidate, input)) || null;
 }
 
-function discoverRelativeDependencies(file = {}) {
+function stripLiteralTextForTokenScan(text) {
+  return String(text || '')
+    .replace(/\/(?:\\.|[^/\\\r\n])+\/[a-z]*/gi, ' ')
+    .replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/gs, ' ');
+}
+
+function discoverRelativeDependencies(file = {}, input = {}) {
   const dependencies = [];
+  const unresolvedRelativeImports = [];
+  const unsupportedDynamicImports = [];
+  const unsupportedLoaderUsages = [];
+  const executableScriptInvocations = [];
   const text = file.text || '';
   const importPattern = /(?:import\s+(?:[^'"]*?\s+from\s*)?|export\s+[^'"]*?\s+from\s*|import\s*\(\s*|require\(\s*)['"]([^'"]+)['"]/g;
+  const dynamicImportPattern = /\bimport\s*\(\s*([^'"\s][^)]*)\)/g;
   const fsLiteralPattern = /\b(?:readFileSync|readJson|loadPolicy)\(\s*['"]([^'"]+)['"]/g;
+  const loaderPattern = /\b(?:createRequire|require\.extensions|import\.meta\.resolve|SourceTextModule)\b|--loader/g;
+  const executablePattern = /\b(?:spawn|spawnSync|execFile|execFileSync|fork)\s*\(/g;
+  const tokenScanText = stripLiteralTextForTokenScan(text);
   const addDependency = (specifier) => {
-    const resolved = resolveRelativePath(file.path, specifier);
+    const resolved = resolveRelativePath(file.path, specifier, input);
     if (resolved) dependencies.push({ from: file.path, specifier, resolved });
+    else unresolvedRelativeImports.push({ from: file.path, specifier });
   };
   let match;
   while ((match = importPattern.exec(text)) !== null) {
@@ -136,12 +169,27 @@ function discoverRelativeDependencies(file = {}) {
   while ((match = fsLiteralPattern.exec(text)) !== null) {
     const specifier = String(match[1] || '');
     if (specifier.startsWith('.')) addDependency(specifier);
-    else if ((specifier.startsWith('docs/') || specifier.startsWith('scripts/')) && sourceFileExists(specifier)) {
+    else if ((specifier.startsWith('docs/') || specifier.startsWith('scripts/')) && sourceFileExists(specifier, input)) {
       dependencies.push({ from: file.path, specifier, resolved: specifier.replace(/\\/g, '/') });
     }
   }
+  while ((match = dynamicImportPattern.exec(tokenScanText)) !== null) {
+    unsupportedDynamicImports.push({ from: file.path, expression: String(match[1] || '').trim().slice(0, 120) });
+  }
+  while ((match = loaderPattern.exec(tokenScanText)) !== null) {
+    unsupportedLoaderUsages.push({ from: file.path, expression: String(match[0] || '').trim().slice(0, 120) });
+  }
+  while ((match = executablePattern.exec(tokenScanText)) !== null) {
+    executableScriptInvocations.push({ from: file.path, expression: String(match[0] || '').trim().slice(0, 120) });
+  }
   dependencies.sort((a, b) => compareUtf8Path(a.resolved, b.resolved));
-  return dependencies;
+  return {
+    dependencies,
+    unresolvedRelativeImports: unresolvedRelativeImports.sort((a, b) => compareUtf8Path(`${a.from}:${a.specifier}`, `${b.from}:${b.specifier}`)),
+    unsupportedDynamicImports: unsupportedDynamicImports.sort((a, b) => compareUtf8Path(`${a.from}:${a.expression}`, `${b.from}:${b.expression}`)),
+    unsupportedLoaderUsages: unsupportedLoaderUsages.sort((a, b) => compareUtf8Path(`${a.from}:${a.expression}`, `${b.from}:${b.expression}`)),
+    executableScriptInvocations: executableScriptInvocations.sort((a, b) => compareUtf8Path(`${a.from}:${a.expression}`, `${b.from}:${b.expression}`)),
+  };
 }
 
 function buildTransitiveFileDigests(seedFiles = [], input = {}) {
@@ -150,6 +198,9 @@ function buildTransitiveFileDigests(seedFiles = [], input = {}) {
   const byPath = new Map();
   const missingFiles = [];
   const unresolvedImports = [];
+  const unsupportedDynamicImports = [];
+  const unsupportedLoaderUsages = [];
+  const executableScriptInvocations = [];
   const edges = [];
   let truncated = false;
   while (queue.length) {
@@ -160,7 +211,7 @@ function buildTransitiveFileDigests(seedFiles = [], input = {}) {
       break;
     }
     try {
-      const text = fs.readFileSync(current, 'utf8');
+      const text = readSourceFileText(current, input);
       const file = {
         path: current,
         digest: digestText(text),
@@ -168,7 +219,12 @@ function buildTransitiveFileDigests(seedFiles = [], input = {}) {
         text,
       };
       byPath.set(current, file);
-      for (const edge of discoverRelativeDependencies(file)) {
+      const discovered = discoverRelativeDependencies(file, input);
+      unresolvedImports.push(...discovered.unresolvedRelativeImports);
+      unsupportedDynamicImports.push(...discovered.unsupportedDynamicImports);
+      unsupportedLoaderUsages.push(...discovered.unsupportedLoaderUsages);
+      executableScriptInvocations.push(...discovered.executableScriptInvocations);
+      for (const edge of discovered.dependencies) {
         edges.push(edge);
         if (!byPath.has(edge.resolved) && !queue.includes(edge.resolved)) {
           queue.push(edge.resolved);
@@ -185,11 +241,21 @@ function buildTransitiveFileDigests(seedFiles = [], input = {}) {
   return {
     fileDigests,
     missingFiles: missingFiles.sort(compareUtf8Path),
+    unresolvedRelativeImports: unresolvedImports,
+    unsupportedDynamicImports,
+    unsupportedLoaderUsages,
+    executableScriptInvocations,
     edges,
     relativeImportEdgeCount: edges.length,
     transitiveRelativeImportCount: fileDigests.length - new Set(seedFiles).size,
     sourceClosureTruncated: truncated,
-    closureCompletenessState: missingFiles.length || truncated ? 'incomplete' : 'complete',
+    unresolvedRelativeImportCount: unresolvedImports.length,
+    unsupportedDynamicImportCount: unsupportedDynamicImports.length,
+    unsupportedLoaderUsageCount: unsupportedLoaderUsages.length,
+    executableScriptInvocationCount: executableScriptInvocations.length,
+    closureCompletenessState: missingFiles.length || unresolvedImports.length || unsupportedDynamicImports.length || unsupportedLoaderUsages.length || truncated
+      ? 'incomplete'
+      : 'complete',
   };
 }
 
@@ -205,11 +271,20 @@ function roleClosureSummary(role, seedFiles, input = {}) {
     closureCompletenessState: closure.closureCompletenessState,
     missingFileCount: closure.missingFiles.length,
     missingFiles: closure.missingFiles,
+    unresolvedRelativeImportCount: closure.unresolvedRelativeImportCount,
+    unsupportedDynamicImportCount: closure.unsupportedDynamicImportCount,
+    unsupportedLoaderUsageCount: closure.unsupportedLoaderUsageCount,
+    executableScriptInvocationCount: closure.executableScriptInvocationCount,
+    executableScriptFailClosed: input.failOnExecutableScripts === true,
     fileDigests: closure.fileDigests,
     roleClosureDigest: digestValue({
       role,
       fileDigests: closure.fileDigests,
       missingFiles: closure.missingFiles,
+      unresolvedRelativeImports: closure.unresolvedRelativeImports,
+      unsupportedDynamicImports: closure.unsupportedDynamicImports,
+      unsupportedLoaderUsages: closure.unsupportedLoaderUsages,
+      executableScriptInvocationCount: closure.executableScriptInvocationCount,
     }),
   };
 }
@@ -232,6 +307,13 @@ export function buildV128TrustClosure(input = {}) {
     transitiveRelativeImportCount,
     sourceClosureTruncated,
     closureCompletenessState,
+    unresolvedRelativeImportCount,
+    unsupportedDynamicImportCount,
+    unsupportedLoaderUsageCount,
+    executableScriptInvocationCount,
+    unresolvedRelativeImports,
+    unsupportedDynamicImports,
+    unsupportedLoaderUsages,
   } = buildTransitiveFileDigests(files, input);
   const roleClosures = buildRoleClosures(input);
   const trustDigests = {
@@ -253,6 +335,14 @@ export function buildV128TrustClosure(input = {}) {
     closureCompletenessState,
     missingFileCount: missingFiles.length,
     missingFiles,
+    unresolvedRelativeImportCount,
+    unsupportedDynamicImportCount,
+    unsupportedLoaderUsageCount,
+    executableScriptInvocationCount,
+    unresolvedRelativeImports,
+    unsupportedDynamicImports,
+    unsupportedLoaderUsages,
+    executableScriptFailClosed: input.failOnExecutableScripts === true,
     trustDigests,
     roleClosures: Object.fromEntries(Object.entries(roleClosures).map(([role, closure]) => [
       role,
@@ -266,6 +356,11 @@ export function buildV128TrustClosure(input = {}) {
         closureCompletenessState: closure.closureCompletenessState,
         missingFileCount: closure.missingFileCount,
         missingFiles: closure.missingFiles,
+        unresolvedRelativeImportCount: closure.unresolvedRelativeImportCount,
+        unsupportedDynamicImportCount: closure.unsupportedDynamicImportCount,
+        unsupportedLoaderUsageCount: closure.unsupportedLoaderUsageCount,
+        executableScriptInvocationCount: closure.executableScriptInvocationCount,
+        executableScriptFailClosed: closure.executableScriptFailClosed,
         roleClosureDigest: closure.roleClosureDigest,
       },
     ])),
@@ -281,6 +376,10 @@ export function buildV128TrustClosure(input = {}) {
       trustDigests,
       roleClosures: closure.roleClosures,
       missingFiles,
+      unresolvedRelativeImports,
+      unsupportedDynamicImports,
+      unsupportedLoaderUsages,
+      executableScriptInvocationCount,
     }),
   };
 }
@@ -291,6 +390,12 @@ export function validateV128TrustClosure(closure = {}) {
   if (closure.closureKind !== 'v128_trust_closure_shadow') reasons.push('trust_closure_kind_invalid');
   if (closure.prHeadMayAuthorizeItself !== false) reasons.push('trust_closure_self_authorization_forbidden');
   if (Number(closure.missingFileCount || 0) !== 0) reasons.push('trust_closure_missing_files');
+  if (Number(closure.unresolvedRelativeImportCount || 0) !== 0) reasons.push('trust_closure_unresolved_relative_imports');
+  if (Number(closure.unsupportedDynamicImportCount || 0) !== 0) reasons.push('trust_closure_unsupported_dynamic_imports');
+  if (Number(closure.unsupportedLoaderUsageCount || 0) !== 0) reasons.push('trust_closure_unsupported_loader_usages');
+  if (closure.executableScriptFailClosed === true && Number(closure.executableScriptInvocationCount || 0) !== 0) {
+    reasons.push('trust_closure_executable_script_invocations');
+  }
   if (closure.closureCompletenessState !== 'complete') reasons.push('trust_closure_incomplete');
   if (closure.sourceClosureTruncated === true) reasons.push('trust_closure_truncated');
   for (const key of ['verifierBundleDigest', 'providerAdapterDigest', 'scopeClassifierDigest', 'mergeExecutorDigest', 'canonicalizerDigest', 'finalDecisionAuthorityDigest']) {
@@ -302,6 +407,12 @@ export function validateV128TrustClosure(closure = {}) {
     if (roleClosure.closureCompletenessState !== 'complete') reasons.push(`trust_closure_${role}_incomplete`);
     if (roleClosure.sourceClosureTruncated === true) reasons.push(`trust_closure_${role}_truncated`);
     if (Number(roleClosure.missingFileCount || 0) !== 0) reasons.push(`trust_closure_${role}_missing_files`);
+    if (Number(roleClosure.unresolvedRelativeImportCount || 0) !== 0) reasons.push(`trust_closure_${role}_unresolved_relative_imports`);
+    if (Number(roleClosure.unsupportedDynamicImportCount || 0) !== 0) reasons.push(`trust_closure_${role}_unsupported_dynamic_imports`);
+    if (Number(roleClosure.unsupportedLoaderUsageCount || 0) !== 0) reasons.push(`trust_closure_${role}_unsupported_loader_usages`);
+    if (roleClosure.executableScriptFailClosed === true && Number(roleClosure.executableScriptInvocationCount || 0) !== 0) {
+      reasons.push(`trust_closure_${role}_executable_script_invocations`);
+    }
     if (!/^sha256:[a-f0-9]{64}$/.test(String(roleClosure.roleClosureDigest || ''))) reasons.push(`trust_closure_${role}_digest_invalid`);
   }
   if (!/^sha256:[a-f0-9]{64}$/.test(String(closure.trustClosureDigest || ''))) reasons.push('trust_closure_digest_invalid');

@@ -812,7 +812,7 @@ function validationUnsupportedDynamicImportDisablesReuse() {
     reuseDecision: 'hit',
     sourceClosureFiles: [virtualPath],
     sourceFileTexts: {
-      [virtualPath]: "const selected = './dynamic.js'; await import(selected);\n",
+      [virtualPath]: "const selected = './dynamic.js'; await ".concat("import(selected);\n"),
     },
     nodeResults: [
       reusedNode('projection_reader'),
@@ -1432,6 +1432,45 @@ function trustClosureBuildsCompleteVerifierBundle() {
     && closure.roleClosures.final_decision_authority.closureCompletenessState === 'complete';
 }
 
+function trustClosureFailsOpaqueDependencies() {
+  const unresolved = buildV128TrustClosure({
+    files: ['scripts/v128-fixture-unresolved.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-unresolved.mjs': 'im'.concat("port './missing-fixture.mjs';\n"),
+    },
+  });
+  const dynamicImport = buildV128TrustClosure({
+    files: ['scripts/v128-fixture-dynamic.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-dynamic.mjs': "const target = './computed-fixture.mjs'; await ".concat("import(target);\n"),
+    },
+  });
+  const loaderUsage = buildV128TrustClosure({
+    files: ['scripts/v128-fixture-loader.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-loader.mjs': 'const resolved = import.meta'.concat(".resolve('./x.mjs');\n"),
+    },
+  });
+  const executablePermissive = buildV128TrustClosure({
+    files: ['scripts/v128-fixture-exec.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-exec.mjs': "spawn('node', ['scripts/example.mjs']);\n",
+    },
+  });
+  const executableFailClosed = buildV128TrustClosure({
+    failOnExecutableScripts: true,
+    files: ['scripts/v128-fixture-exec.mjs'],
+    sourceFileTexts: {
+      'scripts/v128-fixture-exec.mjs': "spawn('node', ['scripts/example.mjs']);\n",
+    },
+  });
+  return validateV128TrustClosure(unresolved).reasonCodes.includes('trust_closure_unresolved_relative_imports')
+    && validateV128TrustClosure(dynamicImport).reasonCodes.includes('trust_closure_unsupported_dynamic_imports')
+    && validateV128TrustClosure(loaderUsage).reasonCodes.includes('trust_closure_unsupported_loader_usages')
+    && passed(validateV128TrustClosure(executablePermissive))
+    && validateV128TrustClosure(executableFailClosed).reasonCodes.includes('trust_closure_executable_script_invocations');
+}
+
 function providerChangedFilesPathSetIsNotExactTuple() {
   const evidence = buildV128ProviderChangedFilesEvidence({
     sourceHarnessValidationStatus: { changedFiles: ['scripts/example.mjs'] },
@@ -1652,6 +1691,7 @@ const cases = [
   ['standing_autonomy_policy_requires_executor', () => standingAutonomyPolicyRequiresExecutor()],
   ['standing_autonomy_policy_blocks_self_modification', () => standingAutonomyPolicyBlocksSelfModification()],
   ['trust_closure_builds_complete_verifier_bundle', () => trustClosureBuildsCompleteVerifierBundle()],
+  ['trust_closure_fails_opaque_dependencies', () => trustClosureFailsOpaqueDependencies()],
   ['standing_autonomy_policy_rejects_verifier_bundle_mismatch', () => standingAutonomyPolicyRejectsVerifierBundleMismatch()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
