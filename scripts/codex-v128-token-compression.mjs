@@ -61,6 +61,11 @@ function compactManagedContext(value = {}) {
     managedContextEnvelopeBytes: Number(value.managedContextEnvelopeBytes || value.managedContextBytes || 0),
     managedContextMeasurementSource: value.managedContextMeasurementSource || 'not_observed',
     activeInstructionSourceSetDigest: value.activeInstructionSourceSetDigest || null,
+    residentContextDigest: value.residentContextDigest || null,
+    residentContextBytes: Number(value.residentContextBytes || 0),
+    deltaPacketDigest: value.deltaPacketDigest || null,
+    deltaContextBytes: Number(value.deltaContextBytes || 0),
+    fullContextResendCount: Number(value.fullContextResendCount || 0),
     compiledActiveInstructionBytes: Number(value.compiledActiveInstructionBytes || value.compiledContextBytes || 0),
     compiledContextDigest: value.compiledContextDigest || null,
     routineColdArtifactRead: Number(value.routineColdArtifactRead || 0),
@@ -78,6 +83,8 @@ function compactValidationPlan(plan = {}, status = {}) {
   const execution = plan.profileExecution || {};
   const graph = plan.graph || {};
   const reuse = plan.validationReuseDecision || {};
+  const requeue = plan.failureDirectedRequeue || {};
+  const economy = plan.loopEconomy || {};
   return {
     status: status.status || 'missing',
     observationState: status.observationState || plan.observationState || 'unknown',
@@ -86,6 +93,11 @@ function compactValidationPlan(plan = {}, status = {}) {
     runWideDuplicateExecutionCount: Number(execution.runWideDuplicateExecutionCount || 0),
     runWideInvocationLedgerStatus: execution.runWideInvocationLedgerStatus || 'unknown',
     reuseDecision: reuse.reuseDecision || 'unknown',
+    unaffectedNodeRerunCount: Number(requeue.unaffectedNodeRerunCount || 0),
+    loopBudgetState: economy.budgetState || 'unknown',
+    managedInputBytesPerAcceptedChange: economy.managedInputBytesPerAcceptedChange ?? null,
+    fullContextResendCount: Number(economy.fullContextResendCount || 0),
+    deltaContextBytes: Number(economy.deltaContextBytes || 0),
     typedResultsDigest: plan.typedResults ? digestValue(plan.typedResults) : null,
     safeSummaryOnly: true,
   };
@@ -404,6 +416,38 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   compact.phaseProgress = {
     status: phase.status || 'unknown',
     currentPhase: phase.currentPhase || null,
+  };
+  const requeue = plan.failureDirectedRequeue || {};
+  compact.failureDirectedRequeue = {
+    mode: requeue.mode || 'failure_directed_requeue',
+    failedNodeRefs: Array.isArray(requeue.failedNodeRefs) ? requeue.failedNodeRefs.slice(0, 4) : [],
+    allowedRequeueNodeRefs: Array.isArray(requeue.allowedRequeueNodeRefs) ? requeue.allowedRequeueNodeRefs.slice(0, 6) : [],
+    actualRequeuedNodeRefs: Array.isArray(requeue.actualRequeuedNodeRefs) ? requeue.actualRequeuedNodeRefs.slice(0, 6) : [],
+    unaffectedNodeRerunCount: Number(requeue.unaffectedNodeRerunCount || 0),
+    currentAttemptDigest: requeue.currentAttemptDigest || null,
+    lastAttemptDigest: requeue.lastAttemptDigest || null,
+    noProgressStop: requeue.noProgressStop === true,
+  };
+  const economy = plan.loopEconomy || {};
+  compact.loopEconomy = {
+    observed: economy.observed === true,
+    managedInputBytes: Number(economy.managedInputBytes || 0),
+    modelInvocationCount: Number(economy.modelInvocationCount || 0),
+    fullContextResendCount: Number(economy.fullContextResendCount || 0),
+    deltaContextBytes: Number(economy.deltaContextBytes || 0),
+    executedNodeCount: Number(economy.executedNodeCount || 0),
+    reusedNodeCount: Number(economy.reusedNodeCount || 0),
+    managedInputBytesPerAcceptedChange: economy.managedInputBytesPerAcceptedChange ?? null,
+    budgetState: economy.budgetState || 'unknown',
+  };
+  const memory = plan.selectiveFailureMemory || {};
+  compact.selectiveFailureMemory = {
+    memoryDigest: memory.memoryDigest || null,
+    failureClass: memory.failureClass || null,
+    successfulPatternRef: memory.successfulPatternRef || null,
+    storesRawLogs: memory.storesRawLogs === true,
+    storesFullDiff: memory.storesFullDiff === true,
+    storesConversation: memory.storesConversation === true,
   };
   const originalTypedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
   const typedResults = {};

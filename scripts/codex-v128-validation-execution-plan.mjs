@@ -8,6 +8,9 @@ import path from 'node:path';
 import process from 'node:process';
 
 const VALIDATION_NODES_MAX = 12;
+const DELTA_CONTEXT_BYTES_MAX = 768;
+const MAX_ITERATIONS = 3;
+const MAX_MODEL_INVOCATIONS = 4;
 const FINALIZER_MODES = new Set(['aggregate_only']);
 const EXECUTION_STATES = new Set(['executed', 'reused', 'rerun']);
 const NODE_STATUSES = new Set(['pass', 'fail', 'skipped']);
@@ -82,6 +85,10 @@ function canonicalJson(value) {
 
 function digestValue(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
+}
+
+function canonicalBytes(value) {
+  return Buffer.byteLength(canonicalJson(value), 'utf8');
 }
 
 function sha256Text(text) {
@@ -502,6 +509,126 @@ function classifyReuseDecision(nodes = [], input = {}, cacheKeyInvalid = false) 
   return 'miss';
 }
 
+function downstreamNodeRefs(graphNodes = [], startingRefs = []) {
+  const start = new Set(startingRefs.filter(Boolean));
+  const descendants = new Set();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const node of graphNodes) {
+      if (descendants.has(node.nodeRef) || start.has(node.nodeRef)) continue;
+      if ((node.dependsOn || []).some((dependency) => start.has(dependency) || descendants.has(dependency))) {
+        descendants.add(node.nodeRef);
+        changed = true;
+      }
+    }
+  }
+  return [...descendants].sort();
+}
+
+function buildFailureDirectedRequeue(input = {}, graphNodes = [], nodeResults = [], nodeInputDigests = {}) {
+  const failedNodeRefs = nodeResults.filter((node) => node.status === 'fail').map((node) => node.nodeRef).sort();
+  const changedInputNodeRefs = Array.isArray(input.changedInputNodeRefs) ? input.changedInputNodeRefs.map(String).sort() : [];
+  const changedInputDownstreamNodeRefs = downstreamNodeRefs(graphNodes, changedInputNodeRefs);
+  const invalidatedCacheNodeRefs = Array.isArray(input.invalidatedCacheNodeRefs) ? input.invalidatedCacheNodeRefs.map(String).sort() : [];
+  const allowedRequeueNodeRefs = [...new Set([
+    ...failedNodeRefs,
+    ...changedInputNodeRefs,
+    ...changedInputDownstreamNodeRefs,
+    ...invalidatedCacheNodeRefs,
+  ])].sort();
+  const actualRequeuedNodeRefs = nodeResults.filter((node) => node.executionState === 'rerun').map((node) => node.nodeRef).sort();
+  const unaffectedNodeRerunRefs = actualRequeuedNodeRefs.filter((nodeRef) => !allowedRequeueNodeRefs.includes(nodeRef));
+  const currentAttemptDigest = digestValue({
+    failedNodeRefs,
+    nodeInputDigests: Object.fromEntries(failedNodeRefs.map((nodeRef) => [nodeRef, nodeInputDigests[nodeRef] || null])),
+    failureClasses: Object.fromEntries(nodeResults
+      .filter((node) => failedNodeRefs.includes(node.nodeRef))
+      .map((node) => [node.nodeRef, node.skipReasonCode || node.status])),
+  });
+  const sameFailureAsLastAttempt = input.lastAttemptDigest && input.lastAttemptDigest === currentAttemptDigest;
+  return {
+    mode: 'failure_directed_requeue',
+    failedNodeRefs,
+    changedInputNodeRefs,
+    changedInputDownstreamNodeRefs,
+    invalidatedCacheNodeRefs,
+    allowedRequeueNodeRefs,
+    actualRequeuedNodeRefs,
+    unaffectedNodeRerunCount: unaffectedNodeRerunRefs.length,
+    unaffectedNodeRerunRefs,
+    currentAttemptDigest,
+    lastAttemptDigest: input.lastAttemptDigest || null,
+    noProgressStop: sameFailureAsLastAttempt === true,
+    stopReason: sameFailureAsLastAttempt ? 'no_progress_same_failure' : null,
+    safeSummaryOnly: true,
+  };
+}
+
+function buildLoopEconomy(input = {}, nodeResults = [], validationStatus = 'partial_shadow_candidate', failureDirectedRequeue = {}) {
+  const stableContextBytes = Number(input.stableContextBytes || input.residentContextBytes || 0);
+  const deltaContextBytes = Number(input.deltaContextBytes || 0);
+  const firstFullSendBytes = Number(input.fullContextSendBytes || stableContextBytes || 0);
+  const fullContextResendCount = Number(input.fullContextResendCount ?? (firstFullSendBytes > 0 ? 1 : 0));
+  const managedInputBytes = Number(input.managedInputBytes || (firstFullSendBytes + deltaContextBytes));
+  const modelInvocationCount = Number(input.modelInvocationCount || (nodeResults.length ? 1 : 0));
+  const executedNodeCount = nodeResults.filter((node) => node.executionState === 'executed' || node.executionState === 'rerun').length;
+  const reusedNodeCount = nodeResults.filter((node) => node.executionState === 'reused').length;
+  const managedInputObserved = managedInputBytes > 0;
+  const acceptedChange = input.acceptedChange === undefined ? validationStatus === 'pass' && managedInputObserved : input.acceptedChange === true;
+  const acceptedChangeRate = nodeResults.length ? (acceptedChange ? 1 : 0) : 0;
+  const managedInputBytesPerAcceptedChange = acceptedChange ? managedInputBytes : null;
+  const budgetState = fullContextResendCount <= 1
+    && modelInvocationCount <= MAX_MODEL_INVOCATIONS
+    && deltaContextBytes <= DELTA_CONTEXT_BYTES_MAX
+    && failureDirectedRequeue.unaffectedNodeRerunCount === 0
+    ? 'within_budget'
+    : 'over_budget';
+  return {
+    observed: nodeResults.length > 0,
+    managedInputBytes,
+    modelInvocationCount,
+    fullContextResendCount,
+    deltaContextBytes,
+    deltaContextBytesMax: DELTA_CONTEXT_BYTES_MAX,
+    executedNodeCount,
+    reusedNodeCount,
+    reexecutedNodesPerAcceptedChange: acceptedChange ? failureDirectedRequeue.actualRequeuedNodeRefs.length : null,
+    rejectedAttemptCount: Number(input.rejectedAttemptCount || (failureDirectedRequeue.noProgressStop ? 1 : 0)),
+    acceptedChange,
+    acceptedChangeRate,
+    managedInputBytesPerAcceptedChange,
+    maxIterations: MAX_ITERATIONS,
+    maxModelInvocations: MAX_MODEL_INVOCATIONS,
+    sameBlockerMax: 1,
+    noProgressWindow: 1,
+    flipFlopMax: 1,
+    budgetState,
+    safeSummaryOnly: true,
+  };
+}
+
+function buildSelectiveFailureMemory(input = {}, failureDirectedRequeue = {}) {
+  return {
+    memoryKind: 'selective_failure_memory',
+    lastAttemptDigest: failureDirectedRequeue.lastAttemptDigest,
+    currentAttemptDigest: failureDirectedRequeue.currentAttemptDigest,
+    failureClass: input.failureClass || (failureDirectedRequeue.failedNodeRefs.length ? 'validation_node_failure' : null),
+    rejectedApproachRef: input.rejectedApproachRef || (failureDirectedRequeue.unaffectedNodeRerunCount ? 'approach:full_dag_rerun' : null),
+    successfulPatternRef: input.successfulPatternRef || 'repair:failed_nodes_only',
+    storesRawLogs: false,
+    storesFullDiff: false,
+    storesConversation: false,
+    memoryDigest: digestValue({
+      lastAttemptDigest: failureDirectedRequeue.lastAttemptDigest,
+      currentAttemptDigest: failureDirectedRequeue.currentAttemptDigest,
+      failureClass: input.failureClass || null,
+      successfulPatternRef: input.successfulPatternRef || 'repair:failed_nodes_only',
+    }),
+    safeSummaryOnly: true,
+  };
+}
+
 function finalizerStaticScan() {
   const entry = 'scripts/codex-v128-aggregate-finalizer.mjs';
   const text = fs.readFileSync(entry, 'utf8');
@@ -554,6 +681,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
   const executedNodeRefs = boundNodeResults.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef);
   const reusedNodeRefs = boundNodeResults.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef);
   const rerunNodeRefs = boundNodeResults.filter((node) => node.executionState === 'rerun').map((node) => node.nodeRef);
+  const localExecutionNodeCount = executedNodeRefs.length + rerunNodeRefs.length;
   const runWideInvocationLedger = normalizeInvocationLedger(input);
   const runWideInvocationCounts = runWideInvocationLedger.reduce((acc, entry) => {
     acc[entry.nodeRef] = (acc[entry.nodeRef] || 0) + 1;
@@ -622,6 +750,9 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       && staticScan.networkImportDetected === false
         ? 'pass'
         : 'fail');
+  const failureDirectedRequeue = buildFailureDirectedRequeue(input, graphNodes, boundNodeResults, nodeInputDigests);
+  const loopEconomy = buildLoopEconomy(input, boundNodeResults, status, failureDirectedRequeue);
+  const selectiveFailureMemory = buildSelectiveFailureMemory(input, failureDirectedRequeue);
   return {
     schemaVersion: '1.2.8',
     executionKind: 'validation_execution_plan_shadow',
@@ -655,7 +786,9 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       runWideInvocationLedger,
       runWideInvocationCount: runWideInvocationLedger.length,
       runWideDuplicateExecutionCount,
-      runWideInvocationLedgerStatus: runWideInvocationLedger.length && runWideDuplicateExecutionCount === 0 ? 'pass' : (observationState === 'observed' ? 'fail' : 'not_exercised'),
+      runWideInvocationLedgerStatus: runWideInvocationLedger.length && runWideDuplicateExecutionCount === 0
+        ? 'pass'
+        : (observationState === 'observed' && localExecutionNodeCount === 0 ? 'pass' : (observationState === 'observed' ? 'fail' : 'not_exercised')),
       finalizerMode: planCore.finalizerMode,
       downstreamRespawnAllowed: planCore.downstreamRespawnAllowed,
       finalizerStaticScan: staticScan,
@@ -677,6 +810,9 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       cacheReuseEligible: reuseEligible,
       skippedNodeRefs: reuseDecision === 'hit' || reuseDecision === 'partial_hit' ? reusedNodeRefs : [],
     },
+    failureDirectedRequeue,
+    loopEconomy,
+    selectiveFailureMemory,
     stableDiagnosticTaxonomy: {
       decisionStableClasses: ['decision_stable'],
       cacheStableClasses: ['cache_stable'],
@@ -727,6 +863,9 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const reasons = [];
   const execution = plan.profileExecution || {};
   const reuse = plan.validationReuseDecision || {};
+  const requeue = plan.failureDirectedRequeue || {};
+  const loopEconomy = plan.loopEconomy || {};
+  const failureMemory = plan.selectiveFailureMemory || {};
   const taxonomy = plan.stableDiagnosticTaxonomy || {};
   const workspace = plan.workspaceIdentity || {};
   const graph = plan.graph || {};
@@ -757,6 +896,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (execution.failedNodeRef) reasons.push('profile_execution_failed_node_present');
   if (execution.requiredSkippedNodeRef) reasons.push('profile_execution_required_skipped_node_present');
   const runWideInvocationLedger = Array.isArray(execution.runWideInvocationLedger) ? execution.runWideInvocationLedger : [];
+  const localExecutionNodeCount = nodeResults.filter((node) => node.executionState !== 'reused').length;
   const recomputedInvocationCounts = runWideInvocationLedger.reduce((acc, entry) => {
     acc[entry.nodeRef] = (acc[entry.nodeRef] || 0) + 1;
     return acc;
@@ -764,8 +904,8 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const recomputedDuplicateExecutionCount = Object.values(recomputedInvocationCounts).filter((count) => count > 1).length;
   const expectedLedgerStatus = runWideInvocationLedger.length && recomputedDuplicateExecutionCount === 0
     ? 'pass'
-    : (plan.observationState === 'observed' ? 'fail' : 'not_exercised');
-  if (plan.observationState === 'observed' && !runWideInvocationLedger.length) reasons.push('run_wide_invocation_ledger_required');
+    : (plan.observationState === 'observed' && localExecutionNodeCount === 0 ? 'pass' : (plan.observationState === 'observed' ? 'fail' : 'not_exercised'));
+  if (plan.observationState === 'observed' && localExecutionNodeCount > 0 && !runWideInvocationLedger.length) reasons.push('run_wide_invocation_ledger_required');
   if (recomputedDuplicateExecutionCount > 0) reasons.push('run_wide_duplicate_execution_detected');
   if (Number(execution.runWideInvocationCount || 0) !== runWideInvocationLedger.length) reasons.push('run_wide_invocation_count_mismatch');
   if (Number(execution.runWideDuplicateExecutionCount || 0) !== recomputedDuplicateExecutionCount) reasons.push('run_wide_duplicate_execution_count_mismatch');
@@ -877,6 +1017,28 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (!graphByRef.has(nodeRef)) reasons.push('node_cache_key_digest_unknown_node');
     if (reuse.reuseDecision !== 'miss' && !/^sha256:[a-f0-9]{64}$/.test(String(digest || ''))) reasons.push('node_cache_key_digest_invalid');
   }
+  if (requeue.mode && requeue.mode !== 'failure_directed_requeue') reasons.push('failure_directed_requeue_mode_invalid');
+  if (!Array.isArray(requeue.failedNodeRefs)) reasons.push('failure_directed_failed_nodes_required');
+  if (Number(requeue.unaffectedNodeRerunCount || 0) !== (Array.isArray(requeue.unaffectedNodeRerunRefs) ? requeue.unaffectedNodeRerunRefs.length : 0)) reasons.push('failure_directed_unaffected_rerun_count_mismatch');
+  if (Number(requeue.unaffectedNodeRerunCount || 0) > 0) reasons.push('failure_directed_unaffected_node_rerun_forbidden');
+  if (requeue.noProgressStop === true) reasons.push('failure_directed_no_progress_stop_required');
+  if (plan.observationState === 'observed' && !/^sha256:[a-f0-9]{64}$/.test(String(requeue.currentAttemptDigest || ''))) reasons.push('failure_directed_current_attempt_digest_required');
+  const requeueAllowed = new Set(Array.isArray(requeue.allowedRequeueNodeRefs) ? requeue.allowedRequeueNodeRefs : []);
+  for (const nodeRef of requeue.actualRequeuedNodeRefs || []) {
+    if (!graphByRef.has(nodeRef)) reasons.push('failure_directed_unknown_requeue_node');
+    if (!requeueAllowed.has(nodeRef)) reasons.push('failure_directed_unallowed_requeue_node');
+  }
+  if (loopEconomy.observed === true && plan.observationState !== 'observed') reasons.push('loop_economy_observed_requires_observed_plan');
+  if (Number(loopEconomy.fullContextResendCount || 0) > 1) reasons.push('loop_economy_full_context_resend_over_budget');
+  if (Number(loopEconomy.modelInvocationCount || 0) > MAX_MODEL_INVOCATIONS) reasons.push('loop_economy_model_invocation_over_budget');
+  if (Number(loopEconomy.deltaContextBytes || 0) > DELTA_CONTEXT_BYTES_MAX) reasons.push('loop_economy_delta_context_over_budget');
+  if (loopEconomy.budgetState && loopEconomy.budgetState !== 'within_budget') reasons.push('loop_economy_budget_state_over_budget');
+  if (plan.observationState === 'observed' && loopEconomy.acceptedChange === true
+    && !(Number(loopEconomy.managedInputBytesPerAcceptedChange) > 0)) reasons.push('loop_economy_managed_bytes_per_accepted_change_required');
+  if (Number(loopEconomy.maxIterations || MAX_ITERATIONS) !== MAX_ITERATIONS) reasons.push('loop_economy_max_iterations_invalid');
+  if (Number(loopEconomy.maxModelInvocations || MAX_MODEL_INVOCATIONS) !== MAX_MODEL_INVOCATIONS) reasons.push('loop_economy_max_model_invocations_invalid');
+  if (failureMemory.storesRawLogs === true || failureMemory.storesFullDiff === true || failureMemory.storesConversation === true) reasons.push('selective_failure_memory_forbidden_payload');
+  if (failureMemory.memoryDigest && !/^sha256:[a-f0-9]{64}$/.test(String(failureMemory.memoryDigest))) reasons.push('selective_failure_memory_digest_invalid');
   if (taxonomy.environmentDiagnosticExcludedFromDecisionDigest !== true) reasons.push('environment_diagnostic_must_be_excluded_from_decision_digest');
   if (taxonomy.rawLogForbidden !== true || taxonomy.secretForbidden !== true || taxonomy.localAbsolutePathForbidden !== true) reasons.push('stable_diagnostic_forbidden_boundary_missing');
   if (plan.observationState === 'observed' && taxonomy.decisionInputManifestScanned !== true) reasons.push('decision_input_manifest_scan_required');

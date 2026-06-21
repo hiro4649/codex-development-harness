@@ -67,6 +67,23 @@
     "orchestrationCapsuleBytesSoftMax": 60000,
     "compiledActiveInstructionBytesMax": 1400,
     "perTransitionManagedContextBytesMax": 4096,
+    "residentContextBytesMax": 2048,
+    "deltaContextBytesMax": 768,
+    "fullContextResendCountMax": 1,
+    "residentContextFields": [
+      "activeInstructionDigest",
+      "activeProfileDigest",
+      "scopeContractDigest",
+      "standingPolicyDigest",
+      "verifierProfileDigest"
+    ],
+    "deltaPacketFields": [
+      "failedReasonRefs",
+      "failedNodeRefs",
+      "newEvidenceRefs",
+      "lastAttemptDigest",
+      "nextActionCode"
+    ],
     "managedContextBytesObserved": true,
     "managedContextObservationSource": "v128_managed_context_emitter",
     "managedContextObservationScope": "source_shadow_candidate",
@@ -164,6 +181,36 @@
       "uniqueCompletionSequenceRequired": true,
       "duplicateRequiredNodeExecutionAllowed": false,
       "reusedNodesUseSourceRunRefInsteadOfLocalInvocation": true
+    },
+    "failureDirectedRequeue": {
+      "allowedExecutionRefs": [
+        "failed_nodes",
+        "changed_input_downstream_nodes",
+        "invalidated_cache_nodes"
+      ],
+      "unaffectedNodeRerunAllowed": false,
+      "sameFailureNoProgressStop": true,
+      "storesRawLogs": false,
+      "storesFullDiff": false,
+      "storesConversation": false
+    },
+    "loopEconomy": {
+      "observedMetrics": [
+        "managedInputBytes",
+        "modelInvocationCount",
+        "fullContextResendCount",
+        "deltaContextBytes",
+        "executedNodeCount",
+        "reusedNodeCount",
+        "managedInputBytesPerAcceptedChange",
+        "acceptedChangeRate"
+      ],
+      "maxIterations": 3,
+      "maxModelInvocations": 4,
+      "sameBlockerMax": 1,
+      "noProgressWindow": 1,
+      "flipFlopMax": 1,
+      "declaredBudgetAsObservedAllowed": false
     },
     "nodeInputDigestCacheBinding": {
       "artifactSurface": "orchestrationCapsule.validationExecutionPlanAndReuse.validationReuseDecision.nodeInputDigests",
