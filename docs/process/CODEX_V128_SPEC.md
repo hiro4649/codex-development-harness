@@ -124,6 +124,9 @@ routine bounded Projection reader surface <= 1600 bytes
 routine bounded Projection reader stdout <= 1600 bytes
 routine bounded Projection reader rejects duplicate JSON keys
 per-transition managed context <= 4096 bytes
+stored Safe Summary <= 8192 bytes soft cap
+routine Safe Summary read surface <= 4096 bytes
+Orchestration Capsule <= 65536 bytes soft cap
 routine final report <= 8 lines
 routine owner interrupt = 0
 repeated safety text = 0
@@ -146,6 +149,16 @@ managed context bytes as a substitute. The reader CLI emits compact
 canonical JSON, not pretty JSON, and fails closed if the actual emitted UTF-8
 stdout would exceed the same routine reader budget. The reader uses strict JSON
 parsing with duplicate-key rejection.
+
+`scripts/codex-v128-token-compression.mjs` is the Source Shadow Candidate
+compressor for stored safe read surfaces. It keeps the v1.2.7 authority
+artifacts load-bearing, but stores routine-facing summaries as compact
+Projection, digest, status, and next-action surfaces. Full trust closure,
+validation execution topology, cold evidence, reviewer packets, legacy context,
+and foreign repo profile detail remain diagnostic or cold surfaces. Compression
+must not remove or weaken Final Decision, Decision Capsule, same-head, receipt,
+Stop Circuit, post-merge verification, required-check failure, or PR body
+display-only contracts.
 
 Root AGENTS, applicable nested AGENTS, and the active profile are compiled into
 one deterministic model-facing instruction capsule. The compilation must not
