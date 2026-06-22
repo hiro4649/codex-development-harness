@@ -964,6 +964,12 @@ count `0`, and deploy/wallet/RPC/secret/contract mutation count `0`. Raw logs,
 local paths, target writes, Source Activation, target rollout, and deploy or
 wallet/RPC authority are forbidden. Until this contract passes from remote
 target artifacts, the remaining target canary requirement is not complete.
+`scripts/codex-v128-actual-target-canary-runner.mjs` is the Source-side
+read-only runner for assembling that contract from observed target checkout
+state. The runner may read bounded authority files and run the target v127
+self-test entrypoint, but it must not run write-prone target gates, edit target
+files, store raw logs, or store local paths. Its output remains a Shadow
+Candidate artifact and cannot authorize Source Activation or target rollout.
 
 The bounded Projection reader verifies the extracted Projection schema, head,
 and Projection payload digest without reading additional cold artifacts. The

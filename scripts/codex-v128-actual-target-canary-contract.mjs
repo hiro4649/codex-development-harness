@@ -31,7 +31,7 @@ function normalizeRepo(value) {
   return String(value || '').trim();
 }
 
-function targetDigest(target) {
+export function buildV128ActualTargetCanaryTargetDigest(target) {
   return digestValue({
     repositoryFullName: target.repositoryFullName,
     repositoryId: target.repositoryId,
@@ -95,7 +95,7 @@ function validateTarget(target = {}, context = {}) {
   if (target.targetRolloutAuthorized === true) reasonCodes.push('actual_target_canary_rollout_forbidden');
   if (target.deployWalletRpcAuthorized === true) reasonCodes.push('actual_target_canary_deploy_wallet_rpc_forbidden');
 
-  const computedDigest = targetDigest(target);
+  const computedDigest = buildV128ActualTargetCanaryTargetDigest(target);
   if (!isDigest(target.targetResultDigest)) {
     reasonCodes.push('actual_target_canary_target_result_digest_missing');
   } else if (target.targetResultDigest !== computedDigest) {

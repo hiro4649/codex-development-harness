@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import {
   V128_OPERATOR_STATUS_KEYS,
@@ -54,6 +55,7 @@ import {
   buildV128ActualTargetCanaryContract,
   validateV128ActualTargetCanaryContract,
 } from './codex-v128-actual-target-canary-contract.mjs';
+import { runV128ActualTargetCanary } from './codex-v128-actual-target-canary-runner.mjs';
 import {
   buildV128TrustClosure,
   validateV128TrustClosure,
@@ -2681,6 +2683,104 @@ function actualTargetCanaryContractFailsSourceMismatch() {
     && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_source_candidate_mismatch'));
 }
 
+function initGitFixture(root) {
+  execFileSync('git', ['init', '-q'], { cwd: root, stdio: ['ignore', 'ignore', 'ignore'] });
+  execFileSync('git', ['add', '.'], { cwd: root, stdio: ['ignore', 'ignore', 'ignore'] });
+  execFileSync('git', [
+    '-c',
+    'user.email=codex@example.invalid',
+    '-c',
+    'user.name=Codex Fixture',
+    'commit',
+    '-q',
+    '-m',
+    'fixture',
+  ], { cwd: root, stdio: ['ignore', 'ignore', 'ignore'] });
+}
+
+function buildActualTargetRunnerFixture(kind, options = {}) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `codex-v128-actual-target-${kind}-`));
+  const restricted = kind === 'restricted';
+  writeFixtureFile(root, 'AGENTS.md', [
+    'CODEX_QUALITY_HARNESS_FILE v1.2.7',
+    'Active target harness: v1.2.7 / v127.',
+    restricted ? 'Profile ID: VGC_TOKEN_NO_DEPLOY_NO_VALUE_TRANSFER_V1.' : 'Complex target profile.',
+    restricted ? 'Token-only readonly target. No deploy action is allowed.' : 'PR bodies are human-rendered summaries only.',
+    restricted ? 'No wallet access is allowed. No secret or RPC value exposure is allowed.' : 'same-head evidence required.',
+    'PR bodies are human-rendered summaries only.',
+  ].join('\n'));
+  writeFixtureFile(root, 'docs/process/CODEX_HARNESS_MANIFEST.json', JSON.stringify({
+    versioning: {
+      activeHarnessVersion: '1.2.7',
+      activeSelfTestSuite: 'v127',
+    },
+  }));
+  writeFixtureFile(root, 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', JSON.stringify({
+    marker: 'CODEX_ACTIVE_POLICY_INDEX',
+    schemaVersion: '1.2.7',
+    profileIdOnlyMode: true,
+    rawLogsForbidden: true,
+    defaultTaskProfile: restricted ? 'restricted_target' : 'complex_target',
+  }));
+  writeFixtureFile(root, 'docs/process/CODEX_V127_SPEC.md', 'PR body display-only. Active target harness v1.2.7 / v127.');
+  if (!options.missingV127SelfTest) {
+    writeFixtureFile(root, 'scripts/codex-v127-self-test.mjs', '#!/usr/bin/env node\nprocess.exit(0);\n');
+  }
+  initGitFixture(root);
+  return root;
+}
+
+function actualTargetCanaryRunnerBuildsContractFromTwoTargets() {
+  const sourceCandidateSha = 'e'.repeat(40);
+  const candidateBundleDigest = sha256Canonical({ bundle: 'runner-fixture' });
+  const result = runV128ActualTargetCanary({
+    sourceCandidateSha,
+    candidateBundleDigest,
+    targets: [
+      {
+        kind: 'complex',
+        repositoryFullName: 'hiro4649/CRIPTO-TIP',
+        root: buildActualTargetRunnerFixture('complex'),
+      },
+      {
+        kind: 'restricted',
+        repositoryFullName: 'hiro4649/VGC-FUNKY-TOKEN',
+        root: buildActualTargetRunnerFixture('restricted'),
+      },
+    ],
+  });
+  return result.report.status === 'pass'
+    && passed(result.validation)
+    && result.report.sourceCandidateSha === sourceCandidateSha
+    && result.report.candidateBundleDigest === candidateBundleDigest
+    && result.report.targetCount === 2
+    && result.report.passCount === 2
+    && result.report.targetWritesAllowed === false
+    && result.report.localPathsAllowed === false
+    && result.report.rawLogsAllowed === false;
+}
+
+function actualTargetCanaryRunnerFailsMissingV127SelfTest() {
+  const result = runV128ActualTargetCanary({
+    sourceCandidateSha: 'f'.repeat(40),
+    candidateBundleDigest: sha256Canonical({ bundle: 'missing-v127' }),
+    targets: [
+      {
+        kind: 'complex',
+        repositoryFullName: 'hiro4649/CRIPTO-TIP',
+        root: buildActualTargetRunnerFixture('complex', { missingV127SelfTest: true }),
+      },
+      {
+        kind: 'restricted',
+        repositoryFullName: 'hiro4649/VGC-FUNKY-TOKEN',
+        root: buildActualTargetRunnerFixture('restricted'),
+      },
+    ],
+  });
+  return result.report.status === 'fail'
+    && result.report.reasonCodes.some((reason) => reason.includes('actual_target_canary_v127_not_pass'));
+}
+
 function nonAuthoritativeProjectionStatusDoesNotBlockActiveGate() {
   const summary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput({
     status: 'pass',
@@ -2884,6 +2984,8 @@ const cases = [
   ['actual_target_canary_contract_fails_forbidden_capability', () => actualTargetCanaryContractFailsForbiddenCapability()],
   ['actual_target_canary_contract_fails_unsafe_evidence_surface', () => actualTargetCanaryContractFailsUnsafeEvidenceSurface()],
   ['actual_target_canary_contract_fails_source_mismatch', () => actualTargetCanaryContractFailsSourceMismatch()],
+  ['actual_target_canary_runner_builds_contract_from_two_targets', () => actualTargetCanaryRunnerBuildsContractFromTwoTargets()],
+  ['actual_target_canary_runner_fails_missing_v127_self_test', () => actualTargetCanaryRunnerFailsMissingV127SelfTest()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
