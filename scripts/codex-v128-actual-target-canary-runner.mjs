@@ -497,12 +497,38 @@ function manifestPreservesV127Authority(manifest) {
     && (json.activeSelfTestSuite === 'v127' || versioning.activeSelfTestSuite === 'v127');
 }
 
-function buildTargetCandidateReport(targetHeadSha, v127Status) {
-  const targetChecksPass = v127Status === 'pass';
+function targetGateEvidenceDigest(targetHeadSha, v127Status, v127QualityGate = {}) {
+  const safeSummary = v127QualityGate.safeSummary || {};
+  return digestValue({
+    targetHeadSha,
+    v127Status,
+    gateStatus: v127QualityGate.status || 'unknown',
+    gateMode: v127QualityGate.mode || 'unknown',
+    gateExitCode: v127QualityGate.exitCode ?? null,
+    gateDecisionInfluence: v127QualityGate.decisionInfluence || 'unknown',
+    safeStatus: safeSummary.status || 'missing',
+    safeFailureCount: safeSummary.failureCount ?? null,
+    safeQualityScore: safeSummary.qualityScore ?? null,
+    safeNextAction: safeSummary.safeNextAction || null,
+    safeParseMode: safeSummary.parseMode || null,
+  });
+}
+
+function safeQualityScore(v127QualityGate = {}) {
+  const score = Number(v127QualityGate.safeSummary?.qualityScore);
+  return Number.isFinite(score) && score >= 0 ? score : 0;
+}
+
+function buildTargetCandidateReport(targetHeadSha, v127Status, v127QualityGate = {}) {
+  const targetChecksPass = v127Status === 'pass' && v127QualityGate.status === 'pass';
+  const qualityScore = safeQualityScore(v127QualityGate);
+  const targetEvidenceDigest = targetGateEvidenceDigest(targetHeadSha, v127Status, v127QualityGate);
   const blockingReasons = targetChecksPass ? [] : [{ reasonCode: 'target_v127_gate_not_pass' }];
   const finalDecision = {
     finalDecisionVersion: '1',
     executionMode: 'target_shadow_canary',
+    decisionSource: 'target_v127_safe_evidence',
+    decisionSourceDigest: targetEvidenceDigest,
     terminalAction: targetChecksPass ? 'create_pr_only' : 'target_canary_blocked',
     decision: targetChecksPass ? 'allowed' : 'blocked',
     mergeAllowed: false,
@@ -512,6 +538,8 @@ function buildTargetCandidateReport(targetHeadSha, v127Status) {
     safeSummaryOnly: true,
   };
   const decisionCapsule = {
+    decisionSource: 'target_v127_safe_evidence',
+    decisionSourceDigest: targetEvidenceDigest,
     decision: targetChecksPass ? 'allowed' : 'blocked',
     mergeAllowed: false,
     primaryClass: targetChecksPass ? 'none' : 'target_canary_blocker',
@@ -522,14 +550,16 @@ function buildTargetCandidateReport(targetHeadSha, v127Status) {
     headSha: targetHeadSha,
     sameHead: true,
     remoteGate: 'pass',
+    evidenceSource: 'target_v127_safe_evidence',
+    evidenceSourceDigest: targetEvidenceDigest,
     safeSummaryOnly: true,
   };
   const projectionInputs = { finalDecision, evidenceCapsule, decisionCapsule };
   return {
     report: {
       status: targetChecksPass ? 'pass' : 'fail',
-      qualityScore: targetChecksPass ? 100 : 0,
-      qualityScoreStatus: { status: targetChecksPass ? 'pass' : 'fail', score: targetChecksPass ? 100 : 0, safeSummaryOnly: true },
+      qualityScore,
+      qualityScoreStatus: { status: targetChecksPass ? 'pass' : 'fail', score: qualityScore, safeSummaryOnly: true },
       technicalChecksReady: targetChecksPass,
       ownerMergeAuthorized: false,
       finalDecision,
@@ -537,6 +567,10 @@ function buildTargetCandidateReport(targetHeadSha, v127Status) {
       evidenceCapsule,
       reasonSummaryStatus: { status: targetChecksPass ? 'pass' : 'fail', summary: { blockingReasons }, safeSummaryOnly: true },
       v127SelfTestStatus: { status: v127Status, safeSummaryOnly: true },
+      v127QualityGateStatus: { status: v127QualityGate.status || 'missing', safeSummaryOnly: true },
+      v127QualityGateSafeStatus: { status: v127QualityGate.safeSummary?.status || 'missing', safeSummaryOnly: true },
+      targetEvidenceDigest,
+      syntheticPassInput: false,
       v128SelfTestStatus: { status: 'pass', safeSummaryOnly: true },
       runtimeReadinessClaimed: false,
       productionReadinessClaimed: false,
@@ -546,8 +580,8 @@ function buildTargetCandidateReport(targetHeadSha, v127Status) {
 }
 
 function runTargetV128CandidateExecution(sourceRoot, targetInfo = {}) {
-  const { targetHeadSha, repositoryFullName, repositoryId, sourceSha, v127Status } = targetInfo;
-  const { report, projectionInputs } = buildTargetCandidateReport(targetHeadSha, v127Status);
+  const { targetHeadSha, repositoryFullName, repositoryId, sourceSha, v127Status, v127QualityGate } = targetInfo;
+  const { report, projectionInputs } = buildTargetCandidateReport(targetHeadSha, v127Status, v127QualityGate);
   const routineDecisionProjection = buildV128RoutineDecisionProjection(report, targetHeadSha, projectionInputs, {
     prTopology: {
       prLifecycleState: 'target_shadow_canary',
@@ -600,6 +634,10 @@ function runTargetV128CandidateExecution(sourceRoot, targetInfo = {}) {
     validationExecutorStatus: coldRun.status,
     validationCacheState: warmRun.cacheLifecycle?.cacheState || 'unknown',
     validationCacheStatus: warmRun.cacheLifecycle?.status || 'unknown',
+    targetEvidenceDigest: report.targetEvidenceDigest,
+    candidateInputSource: 'target_v127_safe_evidence',
+    syntheticPassInput: false,
+    candidateQualityScore: report.qualityScore,
     executedNodeCount: coldRun.executedNodeRefs?.length || 0,
     reusedNodeCount: warmRun.reusedNodeRefs?.length || 0,
     adapterInvocationCount: (coldRun.adapterInvocationCount || 0) + (warmRun.adapterInvocationCount || 0),
@@ -622,6 +660,7 @@ function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
   const v127SelfTest = runNodeScript(root, 'scripts/codex-v127-self-test.mjs');
   const v127QualityGate = runTargetV127QualityGate(root, kind, repositoryFullName);
   const qgDecisionInfluence = v127QualityGateDecisionInfluence(v127QualityGate);
+  v127QualityGate.decisionInfluence = qgDecisionInfluence;
   const v127Status = v127SelfTest.status === 'pass' && qgDecisionInfluence === 'load_bearing_pass' ? 'pass' : 'fail';
   const targetHeadSha = gitValue(root, ['rev-parse', 'HEAD']) || 'unknown';
   const v128Candidate = runTargetV128CandidateExecution(sourceRoot, {
@@ -630,6 +669,7 @@ function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
     repositoryId,
     sourceSha,
     v127Status,
+    v127QualityGate,
   });
   const dirtyFilesAfter = changedFiles(root);
   const dirtyFiles = [...new Set([...dirtyFilesBefore, ...dirtyFilesAfter])];
@@ -677,6 +717,10 @@ function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
     v128ValidationExecutorStatus: v128Candidate.validationExecutorStatus,
     v128ValidationCacheStatus: v128Candidate.validationCacheStatus,
     v128ProjectionCanonicalBytes: v128Candidate.projectionCanonicalBytes,
+    v128CandidateInputSource: v128Candidate.candidateInputSource,
+    v128CandidateSyntheticPassInput: v128Candidate.syntheticPassInput,
+    v128CandidateTargetEvidenceDigest: v128Candidate.targetEvidenceDigest,
+    v128CandidateQualityScore: v128Candidate.candidateQualityScore,
     v128ValidationExecutedNodeCount: v128Candidate.executedNodeCount,
     v128ValidationReusedNodeCount: v128Candidate.reusedNodeCount,
     v128AdapterInvocationCount: v128Candidate.adapterInvocationCount,
