@@ -39,7 +39,6 @@ function compactReasonSummary(value = {}) {
   return {
     status: value.status || summary.status || 'missing',
     blockingCount: blockingReasons.length,
-    blockingReasonCodes: blockingReasons.slice(0, 4).map((item) => item.reasonCode || item.primaryClass || 'unknown'),
     safeSummaryOnly: true,
   };
 }
@@ -94,19 +93,21 @@ function compactValidationPlan(plan = {}, status = {}) {
     executionMode: admission.executionMode || 'unknown',
     admissionStatus: admission.admissionStatus || 'unknown',
     realCacheCanaryStatus: cacheCanary.status || 'unknown',
-    cacheProofScope: cacheCanary.proofScope || null,
+    cacheProofStatus: cacheCanary.actualCacheProof?.status || 'unknown',
+    cacheProofDigest: cacheCanary.actualCacheProof?.cacheProofDigest || null,
+    cacheProofSampleCount: Number(cacheCanary.actualCacheProof?.sampleCount || 0),
     realHitExecutedCommandCount: Number(cacheCanary.performance?.realHitExecutedCommandCount || cacheCanary.realHit?.executedEligibleNodeCount || 0),
     suppressedCommandCount: Number(cacheCanary.performance?.suppressedCommandCount || 0),
     loopTransitionCode: admission.loopTransitionCode || 'unknown',
     acceptedChangeState: economy.acceptedChangeState || 'validation_pass',
     residentAndDeltaBytesPerValidatedPass: economy.residentAndDeltaBytesPerValidatedPass ?? null,
     modelInvocationObserved: economy.modelInvocationObserved === true,
-    modelTransportDigest: economy.modelInvocationObserved === true ? (economy.modelTransportDigest || null) : null,
     fullContextResendCount: Number(economy.fullContextResendCount || 0),
     deltaContextBytes: Number(economy.deltaContextBytes || 0),
     safeSummaryOnly: true,
   };
   if (economy.modelInvocationObserved === true) summary.modelInvocationCount = economy.modelInvocationCount ?? null;
+  if (economy.modelInvocationObserved === true) summary.modelTransportDigest = economy.modelTransportDigest || null;
   if (economy.managedInputBytesPerAcceptedChange !== null && economy.managedInputBytesPerAcceptedChange !== undefined) {
     summary.managedInputBytesPerAcceptedChange = economy.managedInputBytesPerAcceptedChange;
   }
@@ -494,9 +495,14 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     realPartialHitExecutedNodeCount: Array.isArray(cacheCanary.realPartialHit?.executedNodeRefs) ? cacheCanary.realPartialHit.executedNodeRefs.length : 0,
     unaffectedNodeRerunCount: Number(cacheCanary.realPartialHit?.unaffectedNodeRerunCount || 0),
     suppressedCommandCount: Number(cacheCanary.performance?.suppressedCommandCount || 0),
-    cacheRecordReadbackDigest: cacheCanary.cacheRecordReadbackDigest || null,
-    canaryDigest: cacheCanary.canaryDigest || null,
-    canaryTransportDigest: cacheCanary.canaryTransportDigest || null,
+    actualCacheProofStatus: cacheCanary.actualCacheProof?.status || 'unknown',
+    sampleCount: Number(cacheCanary.actualCacheProof?.sampleCount || 0),
+    p50Pct: Number(cacheCanary.actualCacheProof?.p50ImprovementPercent || 0),
+    p95Pct: Number(cacheCanary.actualCacheProof?.p95ImprovementPercent || 0),
+    hitAdapterCalls: Number(cacheCanary.actualCacheProof?.realHitAdapterInvocationCount || 0),
+    partialUnaffectedAdapterCalls: Number(cacheCanary.actualCacheProof?.partialHitUnaffectedAdapterInvocationCount || 0),
+    resultEquivalenceState: cacheCanary.actualCacheProof?.resultEquivalenceState || 'unknown',
+    cacheProofDigest: cacheCanary.actualCacheProof?.cacheProofDigest || null,
   };
   const cacheSimulation = plan.cacheReuseSimulation || {};
   compact.cacheReuseSimulation = {

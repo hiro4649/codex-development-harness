@@ -1009,6 +1009,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       typedResultDigests,
       nodeInputDigests,
       nodeSourceClosureDigests,
+      actualCacheSampleCount: Number(input.actualCacheSampleCount ?? 0),
     })
     : { status: 'not_exercised', observed: false, safeSummaryOnly: true };
   const cacheReuseSimulation = observationState === 'observed'
@@ -1326,6 +1327,12 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
       if (Number(realCacheCanary.realPartialHit?.unaffectedNodeRerunCount || 0) !== 0) reasons.push('real_cache_canary_unaffected_rerun_forbidden');
       if (realCacheCanary.realPartialHit?.commandSuppressionObserved !== true) reasons.push('real_cache_canary_partial_command_suppression_required');
       if (!isSha256Digest(realCacheCanary.cacheRecordReadbackDigest)) reasons.push('real_cache_canary_cache_readback_digest_required');
+      if (realCacheCanary.actualCacheProof?.status !== 'pass') reasons.push('real_cache_canary_actual_executor_proof_required');
+      if (Number(realCacheCanary.actualCacheProof?.sampleCount || 0) < 20) reasons.push('real_cache_canary_actual_sample_count_required');
+      if (Number(realCacheCanary.actualCacheProof?.realHitAdapterInvocationCount || 0) !== 0) reasons.push('real_cache_canary_actual_hit_adapter_invocation_forbidden');
+      if (Number(realCacheCanary.actualCacheProof?.partialHitUnaffectedAdapterInvocationCount || 0) !== 0) reasons.push('real_cache_canary_actual_partial_unaffected_invocation_forbidden');
+      if (realCacheCanary.actualCacheProof?.resultEquivalenceState !== 'pass') reasons.push('real_cache_canary_actual_result_equivalence_required');
+      if (!isSha256Digest(realCacheCanary.actualCacheProof?.cacheProofDigest)) reasons.push('real_cache_canary_actual_proof_digest_required');
       if (!isSha256Digest(realCacheCanary.canaryDigest)) reasons.push('real_cache_canary_digest_required');
       if (!isSha256Digest(realCacheCanary.canaryTransportDigest)) reasons.push('real_cache_canary_transport_digest_required');
       if (Number(realCacheCanary.performance?.realHitExecutedCommandCount || 0) !== 0) reasons.push('real_cache_canary_hit_performance_execution_forbidden');

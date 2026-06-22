@@ -544,12 +544,54 @@ real_partial_hit:
 Each cache record binds `repositoryId`, `sourceHead`, `baseHead`,
 `testedCommit`, `testedTreeKind`, `validationContextDigest`, `nodeRef`,
 `nodeInputDigest`, `nodeSourceClosureDigest`, `typedResultSchema`,
-`typedResultDigest`, `runnerEnvironmentDigest`, and `cacheRecordDigest`.
-Missing or mismatched fields are misses and cannot become implicit pass. The
-runner environment digest binds Node version, platform, architecture, GitHub
-Actions state, and provider image metadata when available. If provider image
-metadata is incomplete, proof scope is `same_environment_serialized_cache`, not
+`typedResultPayload`, `typedResultDigest`, `runnerEnvironmentDigest`, and
+`cacheRecordDigest`. `typedResultDigest` must equal the digest of
+`typedResultPayload`; digest-only records are not real cache hits. Missing or
+mismatched fields are misses and cannot become implicit pass. The runner
+environment digest binds Node version, platform, architecture, GitHub Actions
+state, and provider image metadata when available. If provider image metadata
+is incomplete, proof scope is `same_environment_serialized_cache`, not
 cross-provider cache portability.
+
+The actual v1.2.8 validation executor must use the same cache protocol before
+calling each real adapter. On a valid hit, it restores `typedResultPayload`,
+emits `executionState=reused`, does not call that node adapter, and does not add
+an execution invocation ledger entry. On a miss, it calls the actual adapter,
+captures the actual typed result payload, and writes the serialized record.
+
+Black-box cache proof runs three separate Node child processes against one
+temporary non-P0 cache directory:
+
+```text
+Child A:
+  cold_miss
+  calls real adapters
+  writes actual typedResultPayload records
+
+Child B:
+  real_hit
+  fresh process
+  restores actual typedResultPayload records
+  eligible adapter invocation count = 0
+  aggregate result digest equals Child A
+
+Child C:
+  real_partial_hit
+  fresh process
+  changes projection_reader input
+  executes projection_reader and aggregate_finalizer
+  reuses managed_context_emitter and state_matrix_executor
+  aggregate reflects the changed projection input
+```
+
+The proof must run at least 20 samples. Acceptance requires real-hit adapter
+invocations = 0, partial-hit unaffected adapter invocations = 0, aggregate
+result equivalence pass, p50 improvement >=25 percent, and p95 improvement >=20
+percent. Only compact proof fields enter routine artifacts:
+`cacheProofStatus`, `sampleCount`, `p50Pct`, `p95Pct`, `hitAdapterCalls`,
+`partialUnaffectedAdapterCalls`, `resultEquivalenceState`, and
+`cacheProofDigest`. `proofScope`, child-run details, and raw duration samples
+remain diagnostic-only.
 
 The canary is shadow-only until Activation, but its digest, read/write counts,
 and command suppression counts are included in the compact validation plan so
