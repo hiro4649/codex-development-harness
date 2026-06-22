@@ -679,6 +679,16 @@ function computeV128ShadowEvidence(input = {}) {
   const projectionInputDigest = routineDecisionProjection.sourceBinding?.projectionPayloadDigest;
   const managedInputDigest = buildV128ManagedInstructionSourceSetDigest({ headSha: head });
   const stateMatrixInputDigest = buildV128StateMatrixContentDigest();
+  const projectionInputSalt = String(process.env.CODEX_V128_PROJECTION_INPUT_SALT || '').trim();
+  const projectionExecutorInputDigest = projectionInputSalt
+    ? sha256Canonical({ projectionInputDigest, projectionInputSalt })
+    : projectionInputDigest;
+  const aggregateInputDigestSeed = sha256Canonical({
+    aggregateInputSchema: 'v128_aggregate_input_with_upstream_input_digests_v1',
+    projectionReaderInputDigest: projectionExecutorInputDigest,
+    managedContextInputDigest: managedInputDigest,
+    stateMatrixInputDigest,
+  });
   const cacheKey = sha256Canonical({
     head,
     projectionInputDigest,
@@ -699,11 +709,27 @@ function computeV128ShadowEvidence(input = {}) {
     verifySourceDigest: true,
     verifyInputDigest: true,
   });
-  const v128ActualCacheDir = path.join(
+  const v128ActualCacheRoot = process.env.CODEX_V128_CACHE_ROOT || path.join(
     process.env.TEMP || process.env.TMP || process.cwd(),
     'codex-v128-validation-cache',
-    cacheKey.replace(/^sha256:/, '').slice(0, 24),
   );
+  const v128ActualCacheRootDigest = sha256Canonical({
+    cacheRootSchema: 'v128_actual_validation_cache_root_v2',
+    repositoryKey: workspaceObservation.repositoryKey,
+    sourceHead: workspaceObservation.sourceHeadOid || head,
+    testedTreeKind: workspaceObservation.testedTreeKind || 'branch_head',
+    runnerClass: {
+      githubActions: process.env.GITHUB_ACTIONS === 'true',
+      runnerOs: process.env.RUNNER_OS || process.platform,
+      arch: process.arch,
+    },
+  });
+  const v128ActualCacheDir = path.join(
+    v128ActualCacheRoot,
+    v128ActualCacheRootDigest.replace(/^sha256:/, '').slice(0, 24),
+  );
+  const v128ActualCacheBenchmarkEnabled = process.env.CODEX_V128_CACHE_BENCHMARK === '1'
+    || process.env.CODEX_V128_ACTIVATION_GATE === '1';
   const v128ActualExecution = runV128ActualValidationExecutorWithCache({
     cacheDir: v128ActualCacheDir,
     repositoryId: workspaceObservation.repositoryKey,
@@ -720,10 +746,12 @@ function computeV128ShadowEvidence(input = {}) {
     routineDecisionProjection,
     managedContextInput: { headSha: head },
     nodeInputDigests: {
-      projection_reader: projectionInputDigest,
+      projection_reader: projectionExecutorInputDigest,
       managed_context_emitter: managedInputDigest,
       state_matrix_executor: stateMatrixInputDigest,
+      aggregate_finalizer: aggregateInputDigestSeed,
     },
+    nodeSourceClosureDigests: v128NodeCommandDigests,
     commandDigests: v128NodeCommandDigests,
   });
   const routineProjectionReadSurface = v128ActualExecution.typedResults.projection_reader;
@@ -738,7 +766,7 @@ function computeV128ShadowEvidence(input = {}) {
   };
   const aggregateInputDigest = v128ActualExecution.nodeInputDigests.aggregate_finalizer;
   const v128NodeInputDigests = {
-    projection_reader: projectionInputDigest,
+    projection_reader: projectionExecutorInputDigest,
     managed_context_emitter: managedInputDigest,
     state_matrix_executor: stateMatrixInputDigest,
     aggregate_finalizer: aggregateInputDigest,
@@ -806,7 +834,7 @@ function computeV128ShadowEvidence(input = {}) {
     validationNodeInvocationCount: v128ExecutionSnapshot.invocationLedger.length,
     modelInvocationObserved: false,
     modelInvocationCount: null,
-    actualCacheSampleCount: 20,
+    actualCacheSampleCount: v128ActualCacheBenchmarkEnabled ? 20 : 0,
     objectiveContractDigest,
     capabilityProfileDigest,
     economicsObservationDigest,

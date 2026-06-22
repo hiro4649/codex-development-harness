@@ -558,6 +558,15 @@ calling each real adapter. On a valid hit, it restores `typedResultPayload`,
 emits `executionState=reused`, does not call that node adapter, and does not add
 an execution invocation ledger entry. On a miss, it calls the actual adapter,
 captures the actual typed result payload, and writes the serialized record.
+Routine cache records are content-addressed per node by the cache binding, node
+input digest, node source closure digest, result schema, and runner environment
+digest. The routine cache root must be stable across projection-only input
+changes inside the same repository/environment/head scope; it must not include a
+single whole-plan digest that hides reusable unaffected node records. Writes use
+a temporary file plus atomic rename, readback digest verification, and bounded
+cleanup. Changing only `projection_reader` input must allow
+`managed_context_emitter` and `state_matrix_executor` to hit while
+`projection_reader` and `aggregate_finalizer` execute.
 
 Black-box cache proof runs three separate Node child processes against one
 temporary non-P0 cache directory:
@@ -584,10 +593,15 @@ Child C:
   aggregate reflects the changed projection input
 ```
 
-The proof must run at least 20 samples. Acceptance requires real-hit adapter
-invocations = 0, partial-hit unaffected adapter invocations = 0, aggregate
-result equivalence pass, p50 improvement >=25 percent, and p95 improvement >=20
-percent. Only compact proof fields enter routine artifacts:
+The 20-sample black-box proof is not a routine quality-gate cost. It runs only
+when Activation/nightly verification explicitly enables it, for example with
+`CODEX_V128_CACHE_BENCHMARK=1` or the Activation gate. Routine quality-gate runs
+must keep `actualCacheSampleCount=0`, emit `cacheProofStatus=partial_shadow_candidate`,
+and rely on the actual executor's observed node reuse state for routine
+evidence. Activation acceptance requires the proof to run at least 20 samples,
+real-hit adapter invocations = 0, partial-hit unaffected adapter invocations =
+0, aggregate result equivalence pass, p50 improvement >=25 percent, and p95
+improvement >=20 percent. Only compact proof fields enter routine artifacts:
 `cacheProofStatus`, `sampleCount`, `p50Pct`, `p95Pct`, `hitAdapterCalls`,
 `partialUnaffectedAdapterCalls`, `resultEquivalenceState`, and
 `cacheProofDigest`. `proofScope`, child-run details, and raw duration samples

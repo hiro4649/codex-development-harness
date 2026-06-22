@@ -3,6 +3,8 @@
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import {
   V128_OPERATOR_STATUS_KEYS,
@@ -34,7 +36,10 @@ import {
   buildV128ValidationExecutionPlan,
   validateV128ValidationExecutionPlan,
 } from './codex-v128-validation-execution-plan.mjs';
-import { runV128SerializedCacheCanary } from './codex-v128-serialized-cache-canary.mjs';
+import {
+  runV128ActualValidationExecutorWithCache,
+  runV128SerializedCacheCanary,
+} from './codex-v128-serialized-cache-canary.mjs';
 import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
 import {
   digestV128StandingAutonomyPolicy,
@@ -734,6 +739,90 @@ function validationSerializedCacheCanaryObservesColdHitPartial() {
     && canary.actualCacheProof.realHitAdapterInvocationCount === 0
     && canary.actualCacheProof.partialHitUnaffectedAdapterInvocationCount === 0
     && canary.actualCacheProof.resultEquivalenceState === 'pass';
+}
+
+function actualValidationExecutorUsesStableContentAddressedCache() {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v128-self-test-actual-cache-'));
+  const sourceHead = 'f'.repeat(40);
+  const sourceDigests = {
+    projection_reader: sha256Canonical({ nodeRef: 'projection_reader', fixture: 'source' }),
+    managed_context_emitter: sha256Canonical({ nodeRef: 'managed_context_emitter', fixture: 'source' }),
+    state_matrix_executor: sha256Canonical({ nodeRef: 'state_matrix_executor', fixture: 'source' }),
+    aggregate_finalizer: sha256Canonical({ nodeRef: 'aggregate_finalizer', fixture: 'source' }),
+  };
+  const routineDecisionProjection = buildBoundV128Projection({
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection',
+    authority: 'non_authoritative_projection',
+    headSha: sourceHead,
+    technicalChecksReady: true,
+    ownerMergeAuthority: false,
+    authorityBoundaryAction: 'final_decision_authority',
+    automationDisposition: 'auto_wait',
+    safeSummaryOnly: true,
+  });
+  const partialDecisionProjection = buildBoundV128Projection({
+    ...routineDecisionProjection,
+    sourceBinding: undefined,
+    partialInputMutation: sha256Canonical({ mutation: 'projection_input_only' }),
+  });
+  const baseInput = {
+    cacheDir,
+    repositoryId: 'github.com:hiro4649/codex-development-harness',
+    sourceHead,
+    baseHead: 'e'.repeat(40),
+    testedCommit: sourceHead,
+    testedTreeKind: 'branch_head',
+    validationContextDigest: sha256Canonical({ test: 'actualValidationExecutorUsesStableContentAddressedCache' }),
+    managedContextInput: { headSha: sourceHead },
+    nodeSourceClosureDigests: sourceDigests,
+  };
+  try {
+    const cold = runV128ActualValidationExecutorWithCache({
+      ...baseInput,
+      routineDecisionProjection,
+      forceExecuteNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor', 'aggregate_finalizer'],
+    });
+    const hit = runV128ActualValidationExecutorWithCache({
+      ...baseInput,
+      routineDecisionProjection,
+    });
+    const partial = runV128ActualValidationExecutorWithCache({
+      ...baseInput,
+      routineDecisionProjection: partialDecisionProjection,
+    });
+    return cold.status === 'pass'
+      && hit.status === 'pass'
+      && partial.status === 'pass'
+      && cold.executedNodeRefs.length === 4
+      && hit.executedNodeRefs.length === 0
+      && hit.adapterInvocationCount === 0
+      && hit.reusedNodeRefs.length === 4
+      && canonicalJson(partial.executedNodeRefs) === canonicalJson(['aggregate_finalizer', 'projection_reader'])
+      && canonicalJson(partial.reusedNodeRefs) === canonicalJson(['managed_context_emitter', 'state_matrix_executor'])
+      && partial.cacheRecordPathSchema === 'v128.actual.validation.cache.record.v2'
+      && partial.cacheCleanup?.status === 'pass';
+  } finally {
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  }
+}
+
+function routineValidationPlanDoesNotRunBenchmarkChildren() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    actualCacheSampleCount: 0,
+    nodeResults: validValidationNodeResults(),
+  });
+  const canary = plan.realCacheCanary || {};
+  return passed(validateV128ValidationExecutionPlan(plan))
+    && canary.status === 'partial_shadow_candidate'
+    && canary.actualCacheProof?.sampleCount === 0
+    && canary.actualCacheProof?.status === 'partial_shadow_candidate';
 }
 
 function validationCacheReuseSimulationCannotPass() {
@@ -2341,6 +2430,8 @@ const cases = [
   ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
   ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
   ['validation_serialized_cache_canary_observes_cold_hit_partial', () => validationSerializedCacheCanaryObservesColdHitPartial()],
+  ['actual_validation_executor_uses_stable_content_addressed_cache', () => actualValidationExecutorUsesStableContentAddressedCache()],
+  ['routine_validation_plan_does_not_run_benchmark_children', () => routineValidationPlanDoesNotRunBenchmarkChildren()],
   ['validation_cache_reuse_simulation_cannot_pass', () => validationCacheReuseSimulationCannotPass()],
   ['serialized_cache_canary_missing_binding_does_not_pass', () => serializedCacheCanaryMissingBindingDoesNotPass()],
   ['validation_cold_miss_loop_economy_observed', () => validationColdMissLoopEconomyObserved()],

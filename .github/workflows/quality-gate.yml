@@ -53,6 +53,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Restore v1.2.8 validation cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/codex-v128-validation-cache
+          key: v128-validation-${{ runner.os }}-${{ github.repository_id }}-${{ github.head_ref || github.ref_name }}
+          restore-keys: |
+            v128-validation-${{ runner.os }}-${{ github.repository_id }}-
       - name: Install root dependencies if present
         shell: bash
         run: |
@@ -155,6 +162,7 @@ jobs:
           CODEX_REPOSITORY: ${{ github.repository }}
           CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
           CODEX_SAFE_ARTIFACT_DIR: ${{ github.workspace }}
+          CODEX_V128_CACHE_ROOT: ${{ runner.temp }}/codex-v128-validation-cache
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
