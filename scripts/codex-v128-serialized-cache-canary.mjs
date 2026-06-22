@@ -31,6 +31,8 @@ const ACTUAL_RESULT_SCHEMA = 'v128.node.typedResult.v1';
 const ACTUAL_CACHE_RECORD_SCHEMA = 'v128.actual.validation.cache.record.v2';
 const ACTUAL_CACHE_MAX_RECORDS = 256;
 const ACTUAL_CACHE_MAX_BYTES = 8 * 1024 * 1024;
+const ACTUAL_CACHE_ROOT_MAX_BYTES = 32 * 1024 * 1024;
+const ACTUAL_CACHE_ROOT_MAX_HEAD_DIRS = 8;
 
 function canonicalJson(value) {
   if (value === undefined) return 'null';
@@ -41,6 +43,10 @@ function canonicalJson(value) {
 
 function digestValue(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
+}
+
+function digestText(value) {
+  return `sha256:${crypto.createHash('sha256').update(String(value), 'utf8').digest('hex')}`;
 }
 
 function isSha256Digest(value) {
@@ -103,13 +109,62 @@ function cacheRecordPath(cacheDir, nodeRef, expected = null) {
   return path.join(cacheDir, safePathSegment(nodeRef), `${digest}.json`);
 }
 
-function writeCanonicalJsonAtomically(filePath, value) {
+function quarantineCacheRecord(filePath, reasonCode = 'CACHE_RECORD_NONDETERMINISM') {
+  let existing = '';
+  try {
+    existing = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return { status: 'quarantine_unavailable', reasonCode, safeSummaryOnly: true };
+  }
+  const existingBytesDigest = digestText(existing);
+  const quarantineDir = path.join(path.dirname(filePath), '.quarantine');
+  fs.mkdirSync(quarantineDir, { recursive: true });
+  const baseName = path.basename(filePath, '.json');
+  const quarantinePath = path.join(quarantineDir, `${baseName}-${existingBytesDigest.replace(/^sha256:/, '').slice(0, 16)}.json`);
+  try {
+    fs.renameSync(filePath, quarantinePath);
+  } catch {
+    try {
+      fs.copyFileSync(filePath, quarantinePath);
+      fs.rmSync(filePath, { force: true });
+    } catch {
+      return {
+        status: 'quarantine_failed',
+        reasonCode,
+        existingBytesDigest,
+        safeSummaryOnly: true,
+      };
+    }
+  }
+  return {
+    status: 'quarantined',
+    reasonCode,
+    existingBytesDigest,
+    quarantineRecordDigest: digestValue({
+      reasonCode,
+      existingBytesDigest,
+      quarantineFileName: path.basename(quarantinePath),
+    }),
+    safeSummaryOnly: true,
+  };
+}
+
+function writeCanonicalCacheRecordAtomically(filePath, value) {
   const payload = `${canonicalJson(value)}\n`;
+  const recordDigest = digestValue(value);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   if (fs.existsSync(filePath)) {
     const existing = fs.readFileSync(filePath, 'utf8');
-    if (existing === payload) return digestValue(value);
-    return digestValue({ status: 'existing_record_content_mismatch', filePath: path.basename(filePath) });
+    if (existing === payload) return { status: 'existing', recordDigest, safeSummaryOnly: true };
+    const quarantine = quarantineCacheRecord(filePath, 'CACHE_RECORD_NONDETERMINISM');
+    return {
+      ...quarantine,
+      status: 'nondeterminism',
+      reasonCode: 'CACHE_RECORD_NONDETERMINISM',
+      recordDigest,
+      payloadBytesDigest: digestText(payload),
+      safeSummaryOnly: true,
+    };
   }
   const tempPath = path.join(
     path.dirname(filePath),
@@ -121,7 +176,11 @@ function writeCanonicalJsonAtomically(filePath, value) {
   if (readback !== payload) {
     throw new Error('codex_v128_cache_atomic_write_readback_mismatch');
   }
-  return digestValue(value);
+  return { status: 'written', recordDigest, safeSummaryOnly: true };
+}
+
+function writeCanonicalJsonAtomically(filePath, value) {
+  return writeCanonicalCacheRecordAtomically(filePath, value).recordDigest;
 }
 
 function listCacheJsonFiles(rootDir) {
@@ -142,10 +201,10 @@ function listCacheJsonFiles(rootDir) {
   return files;
 }
 
-function cleanupActualCacheDir(cacheDir, limits = {}) {
+function cleanupJsonFileSet(rootDir, limits = {}) {
   const maxRecords = Number(limits.maxRecords || ACTUAL_CACHE_MAX_RECORDS);
   const maxBytes = Number(limits.maxBytes || ACTUAL_CACHE_MAX_BYTES);
-  let files = listCacheJsonFiles(cacheDir);
+  let files = listCacheJsonFiles(rootDir);
   let totalBytes = files.reduce((sum, file) => sum + file.size, 0);
   let deletedRecordCount = 0;
   files = files.sort((a, b) => a.mtimeMs - b.mtimeMs);
@@ -163,6 +222,86 @@ function cleanupActualCacheDir(cacheDir, limits = {}) {
     retainedRecordCount: files.length,
     retainedBytes: Math.max(0, totalBytes),
     deletedRecordCount,
+    safeSummaryOnly: true,
+  };
+}
+
+function cleanupActualCacheDir(cacheDir, limits = {}) {
+  if (!fs.existsSync(cacheDir)) {
+    return {
+      status: 'pass',
+      nodeDirectoryCount: 0,
+      retainedRecordCount: 0,
+      retainedBytes: 0,
+      deletedRecordCount: 0,
+      safeSummaryOnly: true,
+    };
+  }
+  const entries = fs.readdirSync(cacheDir, { withFileTypes: true });
+  const nodeDirs = entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map((entry) => path.join(cacheDir, entry.name))
+    .sort();
+  const reports = (nodeDirs.length ? nodeDirs : [cacheDir]).map((dir) => cleanupJsonFileSet(dir, {
+    maxRecords: limits.nodeMaxRecords || limits.maxRecords || ACTUAL_CACHE_MAX_RECORDS,
+    maxBytes: limits.nodeMaxBytes || limits.maxBytes || ACTUAL_CACHE_MAX_BYTES,
+  }));
+  return {
+    status: reports.every((report) => report.status === 'pass') ? 'pass' : 'fail',
+    nodeDirectoryCount: nodeDirs.length,
+    nodeMaxRecords: Number(limits.nodeMaxRecords || limits.maxRecords || ACTUAL_CACHE_MAX_RECORDS),
+    nodeMaxBytes: Number(limits.nodeMaxBytes || limits.maxBytes || ACTUAL_CACHE_MAX_BYTES),
+    retainedRecordCount: reports.reduce((sum, report) => sum + Number(report.retainedRecordCount || 0), 0),
+    retainedBytes: reports.reduce((sum, report) => sum + Number(report.retainedBytes || 0), 0),
+    deletedRecordCount: reports.reduce((sum, report) => sum + Number(report.deletedRecordCount || 0), 0),
+    safeSummaryOnly: true,
+  };
+}
+
+function directoryStats(dir) {
+  const files = listCacheJsonFiles(dir);
+  const stat = fs.statSync(dir);
+  return {
+    dir,
+    bytes: files.reduce((sum, file) => sum + file.size, 0),
+    mtimeMs: stat.mtimeMs,
+  };
+}
+
+function cleanupActualCacheRoot(cacheRoot, limits = {}) {
+  const maxHeadDirectories = Number(limits.rootMaxHeadDirectories || ACTUAL_CACHE_ROOT_MAX_HEAD_DIRS);
+  const maxBytes = Number(limits.rootMaxBytes || ACTUAL_CACHE_ROOT_MAX_BYTES);
+  if (!cacheRoot || !fs.existsSync(cacheRoot)) {
+    return {
+      status: 'pass',
+      maxHeadDirectories,
+      maxBytes,
+      retainedHeadDirectoryCount: 0,
+      retainedBytes: 0,
+      deletedHeadDirectoryCount: 0,
+      safeSummaryOnly: true,
+    };
+  }
+  let dirs = fs.readdirSync(cacheRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => directoryStats(path.join(cacheRoot, entry.name)))
+    .sort((a, b) => (a.mtimeMs - b.mtimeMs) || a.dir.localeCompare(b.dir));
+  let totalBytes = dirs.reduce((sum, dir) => sum + dir.bytes, 0);
+  let deletedHeadDirectoryCount = 0;
+  while (dirs.length > maxHeadDirectories || totalBytes > maxBytes) {
+    const victim = dirs.shift();
+    if (!victim) break;
+    fs.rmSync(victim.dir, { recursive: true, force: true });
+    totalBytes -= victim.bytes;
+    deletedHeadDirectoryCount += 1;
+  }
+  return {
+    status: 'pass',
+    maxHeadDirectories,
+    maxBytes,
+    retainedHeadDirectoryCount: dirs.length,
+    retainedBytes: Math.max(0, totalBytes),
+    deletedHeadDirectoryCount,
     safeSummaryOnly: true,
   };
 }
@@ -278,20 +417,47 @@ function readActualCacheRecord(cacheDir, expected) {
   try {
     record = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   } catch {
-    return { status: 'miss', missReason: 'unreadable_record' };
+    return {
+      ...quarantineCacheRecord(filePath, 'CACHE_RECORD_NONDETERMINISM'),
+      status: 'nondeterminism',
+      missReason: 'unreadable_record',
+      reasonCode: 'CACHE_RECORD_NONDETERMINISM',
+    };
   }
   for (const [key, value] of Object.entries(expected)) {
-    if (record[key] !== value) return { status: 'miss', missReason: `record_${key}_mismatch` };
+    if (record[key] !== value) {
+      return {
+        ...quarantineCacheRecord(filePath, 'CACHE_RECORD_NONDETERMINISM'),
+        status: 'nondeterminism',
+        missReason: `record_${key}_mismatch`,
+        reasonCode: 'CACHE_RECORD_NONDETERMINISM',
+      };
+    }
   }
   if (!record.typedResultPayload || typeof record.typedResultPayload !== 'object') {
-    return { status: 'miss', missReason: 'typed_result_payload_missing' };
+    return {
+      ...quarantineCacheRecord(filePath, 'CACHE_RECORD_NONDETERMINISM'),
+      status: 'nondeterminism',
+      missReason: 'typed_result_payload_missing',
+      reasonCode: 'CACHE_RECORD_NONDETERMINISM',
+    };
   }
   if (digestValue(record.typedResultPayload) !== record.typedResultDigest) {
-    return { status: 'miss', missReason: 'typed_result_digest_mismatch' };
+    return {
+      ...quarantineCacheRecord(filePath, 'CACHE_RECORD_NONDETERMINISM'),
+      status: 'nondeterminism',
+      missReason: 'typed_result_digest_mismatch',
+      reasonCode: 'CACHE_RECORD_NONDETERMINISM',
+    };
   }
   const { cacheRecordDigest, ...recordCore } = record;
   if (cacheRecordDigest !== digestValue(recordCore)) {
-    return { status: 'miss', missReason: 'cache_record_digest_mismatch' };
+    return {
+      ...quarantineCacheRecord(filePath, 'CACHE_RECORD_NONDETERMINISM'),
+      status: 'nondeterminism',
+      missReason: 'cache_record_digest_mismatch',
+      reasonCode: 'CACHE_RECORD_NONDETERMINISM',
+    };
   }
   return {
     status: 'hit',
@@ -302,8 +468,7 @@ function readActualCacheRecord(cacheDir, expected) {
 }
 
 function writeActualCacheRecord(cacheDir, record) {
-  writeCanonicalJsonAtomically(cacheRecordPath(cacheDir, record.nodeRef, record), record);
-  return record.cacheRecordDigest;
+  return writeCanonicalCacheRecordAtomically(cacheRecordPath(cacheDir, record.nodeRef, record), record);
 }
 
 function prepareNodeFacts(input = {}, nodeRefs = CANARY_NODE_REFS) {
@@ -420,6 +585,7 @@ function runCachedNode({
   forceExecute,
   execute,
 }) {
+  const started = performance.now();
   const expected = expectedActualRecordBinding(
     binding,
     nodeRef,
@@ -427,6 +593,7 @@ function runCachedNode({
     nodeSourceClosureDigest,
     runnerEnvironmentDigest,
   );
+  let readNondeterminism = null;
   if (forceExecute !== true) {
     const read = readActualCacheRecord(cacheDir, expected);
     if (read.status === 'hit') {
@@ -440,6 +607,16 @@ function runCachedNode({
         typedResultPayload: read.typedResultPayload,
         recordDigest: read.recordDigest,
         reused: true,
+        durationMs: Math.max(0, Math.round((performance.now() - started) * 1000) / 1000),
+      };
+    }
+    if (read.status === 'nondeterminism') {
+      readNondeterminism = {
+        reasonCode: 'CACHE_RECORD_NONDETERMINISM',
+        nodeRef,
+        missReason: read.missReason || null,
+        quarantineRecordDigest: read.quarantineRecordDigest || null,
+        safeSummaryOnly: true,
       };
     }
   }
@@ -460,11 +637,21 @@ function runCachedNode({
     resultDigest: record.typedResultDigest,
     nodeInputDigest,
   };
+  const writeResult = writeActualCacheRecord(cacheDir, record);
   return {
     nodeResult,
     typedResultPayload: record.typedResultPayload,
-    recordDigest: writeActualCacheRecord(cacheDir, record),
+    recordDigest: record.cacheRecordDigest,
+    cacheWriteStatus: writeResult.status,
+    cacheNondeterminism: readNondeterminism || (writeResult.status === 'nondeterminism' ? {
+      reasonCode: 'CACHE_RECORD_NONDETERMINISM',
+      nodeRef,
+      recordDigest: record.cacheRecordDigest,
+      quarantineRecordDigest: writeResult.quarantineRecordDigest || null,
+      safeSummaryOnly: true,
+    } : null),
     reused: false,
+    durationMs: Math.max(0, Math.round((performance.now() - started) * 1000) / 1000),
   };
 }
 
@@ -580,10 +767,77 @@ export function runV128ActualValidationExecutorWithCache(input = {}) {
   const ledgerSnapshot = getV128InvocationLedgerSnapshot();
   const executedNodeRefs = nodeResults.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef).sort();
   const reusedNodeRefs = nodeResults.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef).sort();
-  const cacheCleanup = cleanupActualCacheDir(cacheDir, input.cacheCleanupLimits || {});
+  const nodeRuns = [projectionRun, managedRun, stateRun, aggregateRun];
+  const cacheNondeterminismEvents = nodeRuns
+    .map((run) => run.cacheNondeterminism)
+    .filter(Boolean);
+  const activationGate = input.activationGate === true || process.env.CODEX_V128_ACTIVATION_GATE === '1';
+  const nodeCacheCleanup = cleanupActualCacheDir(cacheDir, input.cacheCleanupLimits || {});
+  const rootCacheCleanup = input.cacheRoot
+    ? cleanupActualCacheRoot(input.cacheRoot, input.cacheCleanupLimits || {})
+    : {
+      status: 'not_observed',
+      maxHeadDirectories: ACTUAL_CACHE_ROOT_MAX_HEAD_DIRS,
+      maxBytes: ACTUAL_CACHE_ROOT_MAX_BYTES,
+      retainedHeadDirectoryCount: 0,
+      retainedBytes: 0,
+      deletedHeadDirectoryCount: 0,
+      safeSummaryOnly: true,
+    };
+  const cacheCleanup = {
+    status: nodeCacheCleanup.status === 'pass' && ['pass', 'not_observed'].includes(rootCacheCleanup.status) ? 'pass' : 'fail',
+    nodeScope: nodeCacheCleanup,
+    rootScope: rootCacheCleanup,
+    safeSummaryOnly: true,
+  };
+  const cacheState = cacheNondeterminismEvents.length
+    ? 'nondeterminism_shadow_miss'
+    : (reusedNodeRefs.length === nodeResults.length
+      ? 'hit'
+      : (reusedNodeRefs.length > 0 ? 'partial_hit' : 'miss'));
+  const cacheLifecycle = {
+    status: cacheNondeterminismEvents.length && activationGate ? 'fail' : 'pass',
+    cacheState,
+    executedNodeCount: executedNodeRefs.length,
+    reusedNodeCount: reusedNodeRefs.length,
+    cacheNondeterminismCount: cacheNondeterminismEvents.length,
+    reasonCodes: cacheNondeterminismEvents.length ? ['CACHE_RECORD_NONDETERMINISM'] : [],
+    matchedCacheKeyDigest: isSha256Digest(process.env.CODEX_V128_CACHE_MATCHED_KEY_DIGEST)
+      ? process.env.CODEX_V128_CACHE_MATCHED_KEY_DIGEST
+      : null,
+    cacheRestoreState: process.env.CODEX_V128_CACHE_RESTORE_STATE || 'not_observed',
+    cacheSaveState: process.env.CODEX_V128_CACHE_SAVE_STATE || 'not_observed',
+    cacheEvidenceDigest: digestValue({
+      cacheState,
+      readRecordDigests,
+      writtenRecordDigests,
+      cacheNondeterminismCount: cacheNondeterminismEvents.length,
+      matchedCacheKeyDigest: isSha256Digest(process.env.CODEX_V128_CACHE_MATCHED_KEY_DIGEST)
+        ? process.env.CODEX_V128_CACHE_MATCHED_KEY_DIGEST
+        : null,
+    }),
+    safeSummaryOnly: true,
+  };
+  const safeStageTiming = {
+    status: 'cold_evidence_only',
+    stages: nodeRuns.map((run) => ({
+      nodeRef: run.nodeResult.nodeRef,
+      executionState: run.nodeResult.executionState,
+      durationMs: run.durationMs,
+    })),
+    largestDeterministicStages: nodeRuns
+      .map((run) => ({
+        nodeRef: run.nodeResult.nodeRef,
+        durationMs: run.durationMs,
+      }))
+      .sort((a, b) => b.durationMs - a.durationMs)
+      .slice(0, 2),
+    rawLogsRead: false,
+    safeSummaryOnly: true,
+  };
   const durationMs = Math.max(0, Math.round((performance.now() - started) * 1000) / 1000);
   return {
-    status: nodeResults.every((node) => node.status === 'pass') ? 'pass' : 'fail',
+    status: nodeResults.every((node) => node.status === 'pass') && cacheLifecycle.status === 'pass' ? 'pass' : 'fail',
     executionId,
     processIdDigest: digestValue({
       pid: process.pid,
@@ -594,6 +848,8 @@ export function runV128ActualValidationExecutorWithCache(input = {}) {
     cacheDirPersistedInRepo: false,
     cacheRecordPathSchema: ACTUAL_CACHE_RECORD_SCHEMA,
     cacheCleanup,
+    cacheLifecycle,
+    safeStageTiming,
     runnerEnvironmentDigest: environment.runnerEnvironmentDigest,
     proofScope: environment.proofScope,
     typedResults,

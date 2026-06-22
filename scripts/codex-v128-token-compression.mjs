@@ -80,6 +80,7 @@ function compactValidationPlan(plan = {}, status = {}) {
   const economy = plan.loopEconomy || {};
   const admission = plan.loopAdmissionRouter || {};
   const cacheCanary = plan.realCacheCanary || {};
+  const cacheLifecycle = plan.cacheLifecycle || {};
   const summary = {
     status: status.status || 'missing',
     observationState: status.observationState || plan.observationState || 'unknown',
@@ -93,8 +94,8 @@ function compactValidationPlan(plan = {}, status = {}) {
     executionMode: admission.executionMode || 'unknown',
     admissionStatus: admission.admissionStatus || 'unknown',
     realCacheCanaryStatus: cacheCanary.status || 'unknown',
+    cacheState: cacheLifecycle.cacheState || 'not_observed',
     cacheProofStatus: cacheCanary.actualCacheProof?.status || cacheCanary.actualCacheProofStatus || 'unknown',
-    cacheProofDigest: cacheCanary.actualCacheProof?.cacheProofDigest || cacheCanary.cacheProofDigest || null,
     cacheProofSampleCount: Number(cacheCanary.actualCacheProof?.sampleCount || cacheCanary.sampleCount || 0),
     realHitExecutedCommandCount: Number(cacheCanary.performance?.realHitExecutedCommandCount || cacheCanary.realHit?.executedEligibleNodeCount || cacheCanary.realHitExecutedEligibleNodeCount || 0),
     suppressedCommandCount: Number(cacheCanary.performance?.suppressedCommandCount || cacheCanary.suppressedCommandCount || 0),
@@ -106,6 +107,9 @@ function compactValidationPlan(plan = {}, status = {}) {
     deltaContextBytes: Number(economy.deltaContextBytes || 0),
     safeSummaryOnly: true,
   };
+  if (summary.status !== 'pass' && Array.isArray(status.reasonCodes) && status.reasonCodes.length) {
+    summary.reasonCode = String(status.reasonCodes[0] || '').slice(0, 96);
+  }
   if (economy.modelInvocationObserved === true) summary.modelInvocationCount = economy.modelInvocationCount ?? null;
   if (economy.modelInvocationObserved === true) summary.modelTransportDigest = economy.modelTransportDigest || null;
   if (economy.managedInputBytesPerAcceptedChange !== null && economy.managedInputBytesPerAcceptedChange !== undefined) {

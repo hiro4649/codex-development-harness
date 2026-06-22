@@ -807,6 +807,109 @@ function actualValidationExecutorUsesStableContentAddressedCache() {
   }
 }
 
+function workflowCacheUsesRunScopedRestoreSave() {
+  const workflow = fs.readFileSync('.github/workflows/quality-gate.yml', 'utf8');
+  return workflow.includes('actions/cache/restore@v4')
+    && workflow.includes('actions/cache/save@v4')
+    && workflow.includes('v128-validation-v2-${{ runner.os }}-${{ github.repository_id }}-${safe_head}-${{ github.run_id }}')
+    && workflow.includes('v128-validation-v2-${{ runner.os }}-${{ github.repository_id }}-${safe_head}-')
+    && workflow.includes('CODEX_V128_CACHE_RESTORE_STATE')
+    && workflow.includes('CODEX_V128_CACHE_MATCHED_KEY_DIGEST')
+    && workflow.includes('CODEX_V128_CACHE_SAVE_STATE');
+}
+
+function actualCacheBaseInput(cacheDir, sourceHead = 'f'.repeat(40), cacheRoot = null) {
+  const sourceDigests = {
+    projection_reader: sha256Canonical({ nodeRef: 'projection_reader', fixture: 'source' }),
+    managed_context_emitter: sha256Canonical({ nodeRef: 'managed_context_emitter', fixture: 'source' }),
+    state_matrix_executor: sha256Canonical({ nodeRef: 'state_matrix_executor', fixture: 'source' }),
+    aggregate_finalizer: sha256Canonical({ nodeRef: 'aggregate_finalizer', fixture: 'source' }),
+  };
+  const routineDecisionProjection = buildBoundV128Projection({
+    schemaVersion: '1.2.8',
+    projectionKind: 'routine_decision_projection',
+    authority: 'non_authoritative_projection',
+    headSha: sourceHead,
+    technicalChecksReady: true,
+    ownerMergeAuthority: false,
+    authorityBoundaryAction: 'final_decision_authority',
+    automationDisposition: 'auto_wait',
+    safeSummaryOnly: true,
+  });
+  return {
+    cacheDir,
+    cacheRoot,
+    repositoryId: 'github.com:hiro4649/codex-development-harness',
+    sourceHead,
+    baseHead: 'e'.repeat(40),
+    testedCommit: sourceHead,
+    testedTreeKind: 'branch_head',
+    validationContextDigest: sha256Canonical({ test: 'actualCacheBaseInput' }),
+    routineDecisionProjection,
+    managedContextInput: { headSha: sourceHead },
+    nodeSourceClosureDigests: sourceDigests,
+  };
+}
+
+function corruptFirstCacheRecord(cacheDir) {
+  const record = fs.readdirSync(cacheDir, { recursive: true })
+    .map((entry) => path.join(cacheDir, String(entry)))
+    .find((entry) => entry.endsWith('.json') && !entry.includes(`${path.sep}.quarantine${path.sep}`));
+  if (!record) return false;
+  fs.writeFileSync(record, '{"corrupt":true}\n', 'utf8');
+  return true;
+}
+
+function actualValidationCacheCollisionFailsClosed() {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v128-self-test-cache-collision-'));
+  try {
+    const input = actualCacheBaseInput(cacheDir);
+    runV128ActualValidationExecutorWithCache({
+      ...input,
+      forceExecuteNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor', 'aggregate_finalizer'],
+    });
+    if (!corruptFirstCacheRecord(cacheDir)) return false;
+    const shadow = runV128ActualValidationExecutorWithCache(input);
+    if (!corruptFirstCacheRecord(cacheDir)) return false;
+    const activation = runV128ActualValidationExecutorWithCache({ ...input, activationGate: true });
+    return shadow.status === 'pass'
+      && shadow.cacheLifecycle?.cacheState === 'nondeterminism_shadow_miss'
+      && shadow.cacheLifecycle?.reasonCodes?.includes('CACHE_RECORD_NONDETERMINISM')
+      && activation.status === 'fail'
+      && activation.cacheLifecycle?.status === 'fail';
+  } finally {
+    fs.rmSync(cacheDir, { recursive: true, force: true });
+  }
+}
+
+function actualValidationCacheRootCleanupPrunesOldHeadDirs() {
+  const cacheRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v128-self-test-cache-root-'));
+  try {
+    for (let index = 0; index < 10; index += 1) {
+      const dir = path.join(cacheRoot, `old-head-${index}`);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'record.json'), JSON.stringify({ index }), 'utf8');
+      const when = new Date(Date.now() - (10 - index) * 1000);
+      fs.utimesSync(dir, when, when);
+    }
+    const cacheDir = path.join(cacheRoot, 'current-head');
+    const result = runV128ActualValidationExecutorWithCache({
+      ...actualCacheBaseInput(cacheDir, 'a'.repeat(40), cacheRoot),
+      cacheCleanupLimits: {
+        rootMaxHeadDirectories: 3,
+        rootMaxBytes: 32 * 1024 * 1024,
+      },
+      forceExecuteNodeRefs: ['projection_reader', 'managed_context_emitter', 'state_matrix_executor', 'aggregate_finalizer'],
+    });
+    return result.status === 'pass'
+      && result.cacheCleanup?.rootScope?.status === 'pass'
+      && result.cacheCleanup.rootScope.retainedHeadDirectoryCount <= 3
+      && result.cacheCleanup.rootScope.deletedHeadDirectoryCount > 0;
+  } finally {
+    fs.rmSync(cacheRoot, { recursive: true, force: true });
+  }
+}
+
 function routineValidationPlanDoesNotRunBenchmarkChildren() {
   const plan = buildPlanWithBoundReusedCacheKeys({
     headSha: 'f'.repeat(40),
@@ -2465,6 +2568,9 @@ const cases = [
   ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
   ['validation_serialized_cache_canary_observes_cold_hit_partial', () => validationSerializedCacheCanaryObservesColdHitPartial()],
   ['actual_validation_executor_uses_stable_content_addressed_cache', () => actualValidationExecutorUsesStableContentAddressedCache()],
+  ['workflow_cache_uses_run_scoped_restore_save', () => workflowCacheUsesRunScopedRestoreSave()],
+  ['actual_validation_cache_collision_fails_closed', () => actualValidationCacheCollisionFailsClosed()],
+  ['actual_validation_cache_root_cleanup_prunes_old_head_dirs', () => actualValidationCacheRootCleanupPrunesOldHeadDirs()],
   ['routine_validation_plan_does_not_run_benchmark_children', () => routineValidationPlanDoesNotRunBenchmarkChildren()],
   ['validation_cache_reuse_simulation_cannot_pass', () => validationCacheReuseSimulationCannotPass()],
   ['serialized_cache_canary_missing_binding_does_not_pass', () => serializedCacheCanaryMissingBindingDoesNotPass()],

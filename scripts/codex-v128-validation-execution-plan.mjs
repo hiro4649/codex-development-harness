@@ -1077,6 +1077,20 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     failureDirectedRequeue,
     cacheReuseSimulation,
     realCacheCanary,
+    cacheLifecycle: input.cacheLifecycle || {
+      status: 'not_observed',
+      cacheState: 'not_observed',
+      safeSummaryOnly: true,
+    },
+    cacheCleanup: input.cacheCleanup || {
+      status: 'not_observed',
+      safeSummaryOnly: true,
+    },
+    safeStageTiming: input.safeStageTiming || {
+      status: 'not_observed',
+      rawLogsRead: false,
+      safeSummaryOnly: true,
+    },
     loopEconomy,
     loopAdmissionRouter,
     selectiveFailureMemory,
@@ -1138,6 +1152,8 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const failureMemory = plan.selectiveFailureMemory || {};
   const taxonomy = plan.stableDiagnosticTaxonomy || {};
   const workspace = plan.workspaceIdentity || {};
+  const cacheLifecycle = plan.cacheLifecycle || {};
+  const safeStageTiming = plan.safeStageTiming || {};
   const graph = plan.graph || {};
   const typedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
   const nodeResults = Array.isArray(execution.nodeResults) ? execution.nodeResults : [];
@@ -1279,6 +1295,9 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (reuse.reuseDecision !== 'miss' && reuse.sourceClosureReuseForbidden === true) reasons.push('validation_source_closure_reuse_forbidden');
   if (plan.observationState === 'observed' && reuse.cacheKeyHasPlaceholder === true) reasons.push('validation_reuse_cache_key_placeholder');
   if (plan.observationState === 'observed' && reuse.reuseDecision !== 'miss' && !/^sha256:[a-f0-9]{64}$/.test(String(reuse.cacheKeyDigest || ''))) reasons.push('validation_reuse_cache_key_digest_invalid');
+  if (cacheLifecycle.status === 'fail') reasons.push(cacheLifecycle.reasonCodes?.[0] || 'cache_lifecycle_failed');
+  if (cacheLifecycle.matchedCacheKeyDigest && !/^sha256:[a-f0-9]{64}$/.test(String(cacheLifecycle.matchedCacheKeyDigest))) reasons.push('cache_matched_key_digest_invalid');
+  if (safeStageTiming.rawLogsRead === true) reasons.push('safe_stage_timing_raw_logs_forbidden');
   for (const [fieldName, field] of Object.entries(reuse.cacheKeyFields || {})) {
     if (!FIELD_STATES.has(field?.state)) reasons.push('validation_reuse_cache_key_field_state_invalid');
     if (plan.observationState === 'observed' && field?.state === 'invalid') reasons.push('validation_reuse_cache_key_field_missing_or_invalid');

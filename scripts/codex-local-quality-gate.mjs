@@ -369,6 +369,9 @@ function observeV128WorkspaceIdentity(head) {
   const testedTreeKind = String(checkoutRef || '').includes('/pull/') || /^\d+\/merge$/.test(String(process.env.GITHUB_REF_NAME || ''))
     ? 'pull_request_merge_ref'
     : 'branch_head';
+  const sourceHeadOid = process.env.CODEX_PR_HEAD_SHA || head || gitHead || null;
+  const baseOid = process.env.CODEX_PR_BASE_SHA || null;
+  const testedCommitOid = process.env.GITHUB_SHA || gitHead || head || null;
   const observationCore = {
     repositoryKey,
     remoteDigest: remoteUrl ? sha256Canonical({ remoteUrl }) : null,
@@ -377,6 +380,15 @@ function observeV128WorkspaceIdentity(head) {
     sourceBranch: branch,
     checkoutRef,
     testedTreeKind,
+    sourceHeadOid,
+    baseOid,
+    testedCommitOid,
+    validationContextDigest: sha256Canonical({
+      sourceHeadOid,
+      baseOid,
+      testedCommitOid,
+      testedTreeKind,
+    }),
     headSha: gitHead || head || 'unknown',
   };
   return {
@@ -732,6 +744,7 @@ function computeV128ShadowEvidence(input = {}) {
     || process.env.CODEX_V128_ACTIVATION_GATE === '1';
   const v128ActualExecution = runV128ActualValidationExecutorWithCache({
     cacheDir: v128ActualCacheDir,
+    cacheRoot: v128ActualCacheRoot,
     repositoryId: workspaceObservation.repositoryKey,
     sourceHead: workspaceObservation.sourceHeadOid || head,
     baseHead: workspaceObservation.baseOid || sha256Canonical({ testedTreeKind: workspaceObservation.testedTreeKind, baseHead: 'not_applicable' }),
@@ -843,13 +856,22 @@ function computeV128ShadowEvidence(input = {}) {
     capabilityProfileDigest,
     economicsObservationDigest,
     repairableFailureEvidenceDigest,
+    cacheLifecycle: v128ActualExecution.cacheLifecycle,
+    cacheCleanup: v128ActualExecution.cacheCleanup,
+    safeStageTiming: v128ActualExecution.safeStageTiming,
   };
   const v128ValidationExecutionPlanDraft = buildV128ValidationExecutionPlan(validationPlanInput);
   const cacheBoundNodeResults = v128ExecutionSnapshot.nodeResults.map((node) => (
-    node.executionState === 'reused' && v128ValidationExecutionPlanDraft.validationReuseDecision?.nodeCacheKeyDigests?.[node.nodeRef]
+    node.executionState === 'reused'
+      && (
+        v128ValidationExecutionPlanDraft.validationReuseDecision?.nodeCacheKeyDigests?.[node.nodeRef]
+        || v128ValidationExecutionPlanDraft.validationReuseDecision?.cacheKeyDigest
+      )
       ? {
         ...node,
-        cacheKeyDigest: v128ValidationExecutionPlanDraft.validationReuseDecision.nodeCacheKeyDigests[node.nodeRef],
+        physicalCacheKeyDigest: node.cacheKeyDigest || null,
+        cacheKeyDigest: v128ValidationExecutionPlanDraft.validationReuseDecision.nodeCacheKeyDigests[node.nodeRef]
+          || v128ValidationExecutionPlanDraft.validationReuseDecision.cacheKeyDigest,
       }
       : node
   ));
