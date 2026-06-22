@@ -964,6 +964,15 @@ count `0`, and deploy/wallet/RPC/secret/contract mutation count `0`. Raw logs,
 local paths, target writes, Source Activation, target rollout, and deploy or
 wallet/RPC authority are forbidden. Until this contract passes from remote
 target artifacts, the remaining target canary requirement is not complete.
+The v1.2.8 candidate input for each target must be derived from target evidence,
+not synthesized from Source defaults. Required target-derived fields are:
+`v128CandidateInputSource=target_v127_safe_evidence`,
+`v128CandidateSyntheticPassInput=false`,
+`v128CandidateTargetEvidenceDigest`, and
+`v128CandidateQualityScore`. The candidate quality score must equal the observed
+target v127 safe quality score. Source may bind and project the target result,
+but it must not replace a target score, status, Final Decision, or Evidence
+Capsule input with a hard-coded `100`, `allowed`, or `pass` value.
 The target v127 gate is fail-closed: a nonzero target quality-gate exit, missing
 safe summary, unparsed legacy output, nonzero safe failure count, or safe score
 missing from both safe JSON and exact safe line summary is not a pass. The

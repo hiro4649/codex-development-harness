@@ -2583,6 +2583,10 @@ function actualTargetCanaryTargetDigest(target) {
     v127QualityGateSafeFailureCount: target.v127QualityGateSafeFailureCount,
     v127QualityGateSafeQualityScore: target.v127QualityGateSafeQualityScore,
     v127QualityGateExitCode: target.v127QualityGateExitCode,
+    v128CandidateInputSource: target.v128CandidateInputSource,
+    v128CandidateSyntheticPassInput: target.v128CandidateSyntheticPassInput,
+    v128CandidateTargetEvidenceDigest: target.v128CandidateTargetEvidenceDigest,
+    v128CandidateQualityScore: target.v128CandidateQualityScore,
   });
 }
 
@@ -2613,6 +2617,10 @@ function actualTargetCanaryFixture(overrides = {}) {
     v127QualityGateSafeFailureCount: 0,
     v127QualityGateSafeQualityScore: 100,
     v127QualityGateExitCode: 0,
+    v128CandidateInputSource: 'target_v127_safe_evidence',
+    v128CandidateSyntheticPassInput: false,
+    v128CandidateTargetEvidenceDigest: sha256Canonical({ targetEvidence: 'v127-safe' }),
+    v128CandidateQualityScore: 100,
     sourceActivationAuthorized: false,
     targetRolloutAuthorized: false,
     deployWalletRpcAuthorized: false,
@@ -2698,6 +2706,21 @@ function actualTargetCanaryContractFailsSourceMismatch() {
   const report = buildV128ActualTargetCanaryContract(input);
   return report.status === 'fail'
     && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_source_candidate_mismatch'));
+}
+
+function actualTargetCanaryContractFailsSyntheticV128CandidatePass() {
+  const input = actualTargetCanaryFixture();
+  input.targets[0] = {
+    ...input.targets[0],
+    v128CandidateInputSource: 'source_synthetic_pass',
+    v128CandidateSyntheticPassInput: true,
+    v128CandidateQualityScore: 100,
+  };
+  input.targets[0].targetResultDigest = actualTargetCanaryTargetDigest(input.targets[0]);
+  const report = buildV128ActualTargetCanaryContract(input);
+  return report.status === 'fail'
+    && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_v128_candidate_input_source_invalid'))
+    && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_v128_candidate_synthetic_pass_input'));
 }
 
 function initGitFixture(root) {
@@ -2802,6 +2825,25 @@ function actualTargetCanaryRunnerBuildsContractFromTwoTargets() {
     && result.report.targetWritesAllowed === false
     && result.report.localPathsAllowed === false
     && result.report.rawLogsAllowed === false;
+}
+
+function actualTargetCanaryRunnerUsesTargetDerivedV128CandidateInput() {
+  const result = runV128ActualTargetCanaryTargetReport({
+    sourceCandidateSha: 'd'.repeat(40),
+    candidateBundleDigest: sha256Canonical({ bundle: 'target-derived-candidate-input' }),
+    targets: [
+      {
+        kind: 'complex',
+        repositoryFullName: 'hiro4649/CRIPTO-TIP',
+        root: buildActualTargetRunnerFixture('complex'),
+      },
+    ],
+  });
+  return result.status === 'pass'
+    && result.targetReport.v128CandidateInputSource === 'target_v127_safe_evidence'
+    && result.targetReport.v128CandidateSyntheticPassInput === false
+    && /^sha256:[a-f0-9]{64}$/.test(result.targetReport.v128CandidateTargetEvidenceDigest)
+    && result.targetReport.v128CandidateQualityScore === result.targetReport.v127QualityGateSafeQualityScore;
 }
 
 function actualTargetCanaryRunnerFailsMissingV127SelfTest() {
@@ -3106,7 +3148,9 @@ const cases = [
   ['actual_target_canary_contract_fails_forbidden_capability', () => actualTargetCanaryContractFailsForbiddenCapability()],
   ['actual_target_canary_contract_fails_unsafe_evidence_surface', () => actualTargetCanaryContractFailsUnsafeEvidenceSurface()],
   ['actual_target_canary_contract_fails_source_mismatch', () => actualTargetCanaryContractFailsSourceMismatch()],
+  ['actual_target_canary_contract_fails_synthetic_v128_candidate_pass', () => actualTargetCanaryContractFailsSyntheticV128CandidatePass()],
   ['actual_target_canary_runner_builds_contract_from_two_targets', () => actualTargetCanaryRunnerBuildsContractFromTwoTargets()],
+  ['actual_target_canary_runner_uses_target_derived_v128_candidate_input', () => actualTargetCanaryRunnerUsesTargetDerivedV128CandidateInput()],
   ['actual_target_canary_runner_fails_missing_v127_self_test', () => actualTargetCanaryRunnerFailsMissingV127SelfTest()],
   ['actual_target_canary_runner_fails_safe_json_when_exit_differs', () => actualTargetCanaryRunnerFailsSafeJsonWhenExitDiffers()],
   ['actual_target_canary_runner_fails_unparsed_legacy_qg', () => actualTargetCanaryRunnerFailsUnparsedLegacyQG()],

@@ -78,6 +78,10 @@
       "v127QualityGateSafeFailureCount",
       "v127QualityGateSafeQualityScore",
       "v127QualityGateExitCode",
+      "v128CandidateInputSource",
+      "v128CandidateSyntheticPassInput",
+      "v128CandidateTargetEvidenceDigest",
+      "v128CandidateQualityScore",
       "targetResultDigest"
     ],
     "failClosedTargetGateRules": {
@@ -88,6 +92,12 @@
       "requiredV127QualityGateSafeStatus": "pass",
       "requiredV127QualityGateSafeFailureCount": 0,
       "requiredV127QualityGateSafeQualityScoreState": "observed_non_negative"
+    },
+    "targetDerivedV128CandidateRules": {
+      "requiredInputSource": "target_v127_safe_evidence",
+      "syntheticPassInputAllowed": false,
+      "candidateQualityScoreMustEqualTargetV127SafeQualityScore": true,
+      "targetEvidenceDigestRequired": true
     },
     "forbidden": ["raw_logs", "local_paths", "target_writes", "deploy", "wallet_rpc", "secrets", "contract_mutation", "source_activation", "target_rollout"],
     "preflightMaySatisfyActualCanary": false,

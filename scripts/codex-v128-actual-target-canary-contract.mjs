@@ -57,6 +57,10 @@ export function buildV128ActualTargetCanaryTargetDigest(target) {
     v127QualityGateSafeFailureCount: target.v127QualityGateSafeFailureCount,
     v127QualityGateSafeQualityScore: target.v127QualityGateSafeQualityScore,
     v127QualityGateExitCode: target.v127QualityGateExitCode,
+    v128CandidateInputSource: target.v128CandidateInputSource,
+    v128CandidateSyntheticPassInput: target.v128CandidateSyntheticPassInput,
+    v128CandidateTargetEvidenceDigest: target.v128CandidateTargetEvidenceDigest,
+    v128CandidateQualityScore: target.v128CandidateQualityScore,
   });
 }
 
@@ -108,6 +112,18 @@ function validateTarget(target = {}, context = {}) {
     reasonCodes.push('actual_target_canary_restricted_gate_mode_invalid');
   }
   if (target.v128ShadowStatus !== 'pass') reasonCodes.push('actual_target_canary_v128_shadow_not_pass');
+  if (target.v128CandidateInputSource !== 'target_v127_safe_evidence') {
+    reasonCodes.push('actual_target_canary_v128_candidate_input_source_invalid');
+  }
+  if (target.v128CandidateSyntheticPassInput !== false) {
+    reasonCodes.push('actual_target_canary_v128_candidate_synthetic_pass_input');
+  }
+  if (!isDigest(target.v128CandidateTargetEvidenceDigest)) {
+    reasonCodes.push('actual_target_canary_v128_candidate_target_evidence_digest_invalid');
+  }
+  if (Number(target.v128CandidateQualityScore) !== Number(target.v127QualityGateSafeQualityScore)) {
+    reasonCodes.push('actual_target_canary_v128_candidate_quality_score_mismatch');
+  }
   if (Number(target.preservationMismatchCount || 0) !== 0) reasonCodes.push('actual_target_canary_preservation_mismatch');
   if (Number(target.semanticForeignProfileLoadCount || 0) !== 0) reasonCodes.push('actual_target_canary_foreign_profile_loaded');
   if (Number(target.legacyActiveReadCount || 0) !== 0) reasonCodes.push('actual_target_canary_legacy_active_read');
