@@ -51,6 +51,10 @@ import {
   validateV128TargetShadowPreflight,
 } from './codex-v128-target-shadow-preflight.mjs';
 import {
+  buildV128ActualTargetCanaryContract,
+  validateV128ActualTargetCanaryContract,
+} from './codex-v128-actual-target-canary-contract.mjs';
+import {
   buildV128TrustClosure,
   validateV128TrustClosure,
 } from './codex-v128-trust-closure.mjs';
@@ -2548,6 +2552,135 @@ function targetShadowPreflightHasNoDeprecatedCanaryEntrypoint() {
   return forbidden.every((needle) => !text.includes(needle));
 }
 
+function actualTargetCanaryTargetDigest(target) {
+  return sha256Canonical({
+    repositoryFullName: target.repositoryFullName,
+    repositoryId: target.repositoryId,
+    targetHeadSha: target.targetHeadSha,
+    targetManifestDigest: target.targetManifestDigest,
+    targetProfileDigest: target.targetProfileDigest,
+    targetAgentsActiveBlockDigest: target.targetAgentsActiveBlockDigest,
+    sourceCandidateSha: target.sourceCandidateSha,
+    candidateBundleDigest: target.candidateBundleDigest,
+    v127Status: target.v127Status,
+    v128ShadowStatus: target.v128ShadowStatus,
+    preservationMismatchCount: target.preservationMismatchCount,
+    semanticForeignProfileLoadCount: target.semanticForeignProfileLoadCount,
+    legacyActiveReadCount: target.legacyActiveReadCount,
+    productRuntimeMutationCount: target.productRuntimeMutationCount,
+    deployWalletRpcSecretContractMutationCount: target.deployWalletRpcSecretContractMutationCount,
+    cacheState: target.cacheState,
+    readLedgerDigest: target.readLedgerDigest,
+  });
+}
+
+function actualTargetCanaryFixture(overrides = {}) {
+  const sourceCandidateSha = 'a'.repeat(40);
+  const candidateBundleDigest = sha256Canonical({ bundle: 'v128-candidate', sourceCandidateSha });
+  const baseTarget = {
+    sourceCandidateSha,
+    candidateBundleDigest,
+    targetManifestDigest: sha256Canonical({ manifest: 'v127' }),
+    targetProfileDigest: sha256Canonical({ profile: 'active' }),
+    targetAgentsActiveBlockDigest: sha256Canonical({ agents: 'active-block' }),
+    readLedgerDigest: sha256Canonical({ reads: ['AGENTS.md'] }),
+    v127Status: 'pass',
+    v128ShadowStatus: 'pass',
+    preservationMismatchCount: 0,
+    semanticForeignProfileLoadCount: 0,
+    legacyActiveReadCount: 0,
+    productRuntimeMutationCount: 0,
+    deployWalletRpcSecretContractMutationCount: 0,
+    rawLogStored: false,
+    localPathStored: false,
+    targetWriteAttempted: false,
+    sourceActivationAuthorized: false,
+    targetRolloutAuthorized: false,
+    deployWalletRpcAuthorized: false,
+    cacheState: 'miss_then_hit',
+  };
+  const targets = [
+    {
+      ...baseTarget,
+      kind: 'complex',
+      repositoryFullName: 'hiro4649/CRIPTO-TIP',
+      repositoryId: 'repo-cripto-tip',
+      targetHeadSha: 'b'.repeat(40),
+    },
+    {
+      ...baseTarget,
+      kind: 'restricted',
+      repositoryFullName: 'hiro4649/VGC-FUNKY-TOKEN',
+      repositoryId: 'repo-vgc-funky-token',
+      targetHeadSha: 'c'.repeat(40),
+      targetProfileDigest: sha256Canonical({ profile: 'VGC_TOKEN_NO_DEPLOY_NO_VALUE_TRANSFER_V1' }),
+    },
+  ].map((target) => ({ ...target, targetResultDigest: actualTargetCanaryTargetDigest(target) }));
+  return {
+    sourceCandidateSha,
+    candidateBundleDigest,
+    targets,
+    ...overrides,
+  };
+}
+
+function actualTargetCanaryContractPassesTwoRemoteTargets() {
+  const report = buildV128ActualTargetCanaryContract(actualTargetCanaryFixture());
+  const validation = validateV128ActualTargetCanaryContract(report);
+  return report.status === 'pass'
+    && passed(validation)
+    && report.targetCount === 2
+    && report.passCount === 2
+    && report.sourceActivationAuthorized === false
+    && report.targetRolloutAuthorized === false
+    && report.deployWalletRpcAuthorized === false;
+}
+
+function actualTargetCanaryContractFailsMissingTarget() {
+  const input = actualTargetCanaryFixture();
+  input.targets = input.targets.slice(0, 1);
+  const report = buildV128ActualTargetCanaryContract(input);
+  return failed(validateV128ActualTargetCanaryContract(report))
+    || (report.status === 'fail' && report.reasonCodes.includes('actual_target_canary_restricted_target_missing'));
+}
+
+function actualTargetCanaryContractFailsForbiddenCapability() {
+  const input = actualTargetCanaryFixture();
+  input.targets[1] = {
+    ...input.targets[1],
+    deployWalletRpcSecretContractMutationCount: 1,
+    targetWriteAttempted: true,
+  };
+  const report = buildV128ActualTargetCanaryContract(input);
+  return report.status === 'fail'
+    && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_forbidden_capability_mutation'))
+    && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_target_write_attempted'));
+}
+
+function actualTargetCanaryContractFailsUnsafeEvidenceSurface() {
+  const input = actualTargetCanaryFixture();
+  input.targets[0] = {
+    ...input.targets[0],
+    rawLogStored: true,
+    localPathStored: true,
+  };
+  const report = buildV128ActualTargetCanaryContract(input);
+  return report.status === 'fail'
+    && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_raw_log_stored'))
+    && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_local_path_stored'));
+}
+
+function actualTargetCanaryContractFailsSourceMismatch() {
+  const input = actualTargetCanaryFixture();
+  input.targets[0] = {
+    ...input.targets[0],
+    sourceCandidateSha: 'd'.repeat(40),
+  };
+  const report = buildV128ActualTargetCanaryContract(input);
+  return report.status === 'fail'
+    && report.reasonCodes.some((reason) => reason.includes('actual_target_canary_source_candidate_mismatch'));
+}
+
 function nonAuthoritativeProjectionStatusDoesNotBlockActiveGate() {
   const summary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput({
     status: 'pass',
@@ -2746,6 +2879,11 @@ const cases = [
   ['target_shadow_preflight_does_not_read_node_modules', () => targetShadowPreflightDoesNotReadNodeModules()],
   ['target_shadow_preflight_fails_missing_complex_manifest', () => targetShadowPreflightFailsMissingComplexManifest()],
   ['target_shadow_preflight_has_no_deprecated_canary_entrypoint', () => targetShadowPreflightHasNoDeprecatedCanaryEntrypoint()],
+  ['actual_target_canary_contract_passes_two_remote_targets', () => actualTargetCanaryContractPassesTwoRemoteTargets()],
+  ['actual_target_canary_contract_fails_missing_target', () => actualTargetCanaryContractFailsMissingTarget()],
+  ['actual_target_canary_contract_fails_forbidden_capability', () => actualTargetCanaryContractFailsForbiddenCapability()],
+  ['actual_target_canary_contract_fails_unsafe_evidence_surface', () => actualTargetCanaryContractFailsUnsafeEvidenceSurface()],
+  ['actual_target_canary_contract_fails_source_mismatch', () => actualTargetCanaryContractFailsSourceMismatch()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],

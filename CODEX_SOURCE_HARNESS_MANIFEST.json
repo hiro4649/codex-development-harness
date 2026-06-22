@@ -118,6 +118,7 @@
     "scripts/codex-v128-invocation-ledger.mjs",
     "scripts/codex-v128-standing-autonomy-policy.mjs",
     "scripts/codex-v128-target-shadow-preflight.mjs",
+    "scripts/codex-v128-actual-target-canary-contract.mjs",
     "scripts/codex-v128-token-compression.mjs",
     "scripts/codex-v128-trust-closure.mjs"
   ],
@@ -589,6 +590,7 @@
     "scripts/codex-v128-integrity-lib.mjs",
     "scripts/codex-v128-state-matrix.mjs",
     "scripts/codex-v128-target-shadow-preflight.mjs",
+    "scripts/codex-v128-actual-target-canary-contract.mjs",
     "scripts/codex-v128-token-compression.mjs"
   ],
   "scriptNames": [

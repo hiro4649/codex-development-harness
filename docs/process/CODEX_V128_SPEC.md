@@ -950,6 +950,21 @@ readiness claims. It must not expose canary-named compatibility exports or
 canary-named environment variable entrypoints; callers must use the preflight
 name so a static metadata check cannot be reported as an actual target canary.
 
+Actual Target Canary uses
+`scripts/codex-v128-actual-target-canary-contract.mjs` as the acceptance
+contract for remote target evidence. It is distinct from Target Shadow
+Preflight. A pass requires exactly one complex report for `hiro4649/CRIPTO-TIP`
+and exactly one restricted-token report for `hiro4649/VGC-FUNKY-TOKEN`, both
+bound to the same Source candidate SHA and candidate bundle digest. Each target
+report must include repository identity, target head SHA, active manifest
+digest, active profile digest, active AGENTS block digest, read ledger digest,
+v127 pass, v128 Shadow pass, Preservation mismatch count `0`, semantic foreign
+profile load count `0`, legacy active read count `0`, product/runtime mutation
+count `0`, and deploy/wallet/RPC/secret/contract mutation count `0`. Raw logs,
+local paths, target writes, Source Activation, target rollout, and deploy or
+wallet/RPC authority are forbidden. Until this contract passes from remote
+target artifacts, the remaining target canary requirement is not complete.
+
 The bounded Projection reader verifies the extracted Projection schema, head,
 and Projection payload digest without reading additional cold artifacts. The
 source binding is generated from the v128 Projection/state-matrix contract
