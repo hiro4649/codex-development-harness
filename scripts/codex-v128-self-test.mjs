@@ -65,9 +65,11 @@ import {
 } from './codex-v128-trust-closure.mjs';
 import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
 import {
+  buildV128ReleaseDrillColdEvidence,
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
   validateV128CompactValidationPlanExact,
+  validateV128ReleaseDrillHotColdBinding,
 } from './codex-v128-token-compression.mjs';
 import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-finalizer.mjs';
 import {
@@ -520,16 +522,119 @@ function tokenCompressionCompactsSafeSummary() {
     standingAutonomyPolicy: noisyReport.v128StandingAutonomyPolicy,
     v128ReleaseDrillEvidence: noisyReport.v128ReleaseDrillEvidence,
   });
+  const releaseDrillColdEvidence = buildV128ReleaseDrillColdEvidence(noisyReport.v128ReleaseDrillEvidence);
+  const releaseDrillBinding = validateV128ReleaseDrillHotColdBinding(
+    summary.compactDiagnostics.releaseDrill,
+    releaseDrillColdEvidence,
+  );
   return summary.tokenCompression.status === 'pass'
     && summary.tokenCompression.storedSafeSummaryBytes <= 5600
     && summary.tokenCompression.routineReadSurfaceBytes <= 2500
     && summary.compactDiagnostics.releaseDrill.status === 'pass'
     && String(summary.compactDiagnostics.releaseDrill.proofDigest || '').startsWith('sha256:')
+    && passed(releaseDrillBinding)
     && !('executionMode' in summary.compactDiagnostics.releaseDrill)
     && !('scenarioCount' in summary.compactDiagnostics.releaseDrill)
     && summary.compactDiagnostics.validationPlan.loopTransitionCode
     && !JSON.stringify(summary).includes('file-119')
     && !JSON.stringify(summary).includes('xxxxx');
+}
+
+function releaseDrillHotColdBindingVerifies() {
+  const evidence = {
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  };
+  const cold = buildV128ReleaseDrillColdEvidence(evidence);
+  const hot = {
+    status: cold.status,
+    proofDigest: sha256Canonical(cold),
+    safeNextAction: 'ratify_current_activation',
+  };
+  return passed(validateV128ReleaseDrillHotColdBinding(hot, cold));
+}
+
+function releaseDrillHotColdBindingFailsMissingCold() {
+  const cold = buildV128ReleaseDrillColdEvidence({
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  });
+  const hot = {
+    status: 'pass',
+    proofDigest: sha256Canonical(cold),
+    safeNextAction: 'ratify_current_activation',
+  };
+  return failed(validateV128ReleaseDrillHotColdBinding(hot, {}));
+}
+
+function releaseDrillHotColdBindingFailsModifiedCold() {
+  const cold = buildV128ReleaseDrillColdEvidence({
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  });
+  const hot = {
+    status: cold.status,
+    proofDigest: sha256Canonical(cold),
+    safeNextAction: 'ratify_current_activation',
+  };
+  return failed(validateV128ReleaseDrillHotColdBinding(hot, { ...cold, scenarioCount: 4 }));
+}
+
+function releaseDrillHotColdBindingFailsProofMismatch() {
+  const cold = buildV128ReleaseDrillColdEvidence({
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  });
+  const hot = {
+    status: cold.status,
+    proofDigest: sha256Canonical({ stale: true }),
+    safeNextAction: 'ratify_current_activation',
+  };
+  return failed(validateV128ReleaseDrillHotColdBinding(hot, cold));
+}
+
+function releaseDrillHotSummaryRejectsColdFieldLeakage() {
+  const cold = buildV128ReleaseDrillColdEvidence({
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  });
+  const hot = {
+    status: cold.status,
+    proofDigest: sha256Canonical(cold),
+    safeNextAction: 'ratify_current_activation',
+    executionMode: cold.executionMode,
+  };
+  return failed(validateV128ReleaseDrillHotColdBinding(hot, cold));
 }
 
 function projectionIntegrityBindingVerifies() {
@@ -3282,6 +3387,11 @@ const cases = [
   ['managed_context_emitter_delta_budget_fails_closed', () => managedContextEmitterDeltaBudgetFailsClosed()],
   ['managed_context_emitter_passes_safe_output_scan', () => managedContextEmitterPassesSafeOutputScan()],
   ['token_compression_compacts_safe_summary', () => tokenCompressionCompactsSafeSummary()],
+  ['release_drill_hot_cold_binding_verifies', () => releaseDrillHotColdBindingVerifies()],
+  ['release_drill_hot_cold_binding_fails_missing_cold', () => releaseDrillHotColdBindingFailsMissingCold()],
+  ['release_drill_hot_cold_binding_fails_modified_cold', () => releaseDrillHotColdBindingFailsModifiedCold()],
+  ['release_drill_hot_cold_binding_fails_proof_mismatch', () => releaseDrillHotColdBindingFailsProofMismatch()],
+  ['release_drill_hot_summary_rejects_cold_field_leakage', () => releaseDrillHotSummaryRejectsColdFieldLeakage()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
   }).tokenMinimalReadCompatibilityRouter))],

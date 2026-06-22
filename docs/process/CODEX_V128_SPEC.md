@@ -995,8 +995,14 @@ Local routine gates default to `not_run` unless explicitly forced. This keeps
 routine token cost low while making activation integrity visible in remote
 machine evidence instead of relying on PR body text or local-only claims.
 The detailed release drill fields (`executionMode`, `trustedBaseCommit`,
-`scenarioSetDigest`, `scenarioCount`, and `reasonCodes`) remain cold evidence
-behind the proof digest and are not repeated in the hot safe summary.
+`scenarioSetDigest`, `scenarioCount`, `status`, `reasonCodes`,
+`observedInRemoteSameHeadJob`, and `loadBearingForActivationIntegrity`) remain
+cold evidence behind the proof digest and are not repeated in the hot safe
+summary. The cold evidence is persisted at
+`codex-orchestration-capsule.safe.json#v128ReleaseDrillEvidence`; independent
+audits recompute `compactDiagnostics.releaseDrill.proofDigest` from that object.
+If the cold object is missing, modified, or leaks into the hot summary, the
+Source Shadow Candidate quality gate fails closed.
 
 ## Activation Boundary
 

@@ -117,21 +117,43 @@ function compactTrustClosure(trustClosure = {}, trustStatus = {}) {
   };
 }
 
-function compactReleaseDrillEvidence(evidence = {}) {
+export function buildV128ReleaseDrillColdEvidence(evidence = {}) {
   return {
     status: evidence.status || 'not_run',
-    proofDigest: digestValue({
-      executionMode: evidence.executionMode || 'not_observed',
-      trustedBaseCommit: evidence.trustedBaseCommit || null,
-      scenarioSetDigest: evidence.scenarioSetDigest || null,
-      scenarioCount: Number(evidence.scenarioCount || 0),
-      status: evidence.status || 'not_run',
-      reasonCodes: Array.isArray(evidence.reasonCodes) ? evidence.reasonCodes : [],
-      observedInRemoteSameHeadJob: evidence.observedInRemoteSameHeadJob === true,
-      loadBearingForActivationIntegrity: evidence.loadBearingForActivationIntegrity === true,
-    }),
+    executionMode: evidence.executionMode || 'not_observed',
+    trustedBaseCommit: evidence.trustedBaseCommit || null,
+    scenarioSetDigest: evidence.scenarioSetDigest || null,
+    scenarioCount: Number(evidence.scenarioCount || 0),
+    reasonCodes: Array.isArray(evidence.reasonCodes) ? evidence.reasonCodes.map((reason) => String(reason)) : [],
+    observedInRemoteSameHeadJob: evidence.observedInRemoteSameHeadJob === true,
+    loadBearingForActivationIntegrity: evidence.loadBearingForActivationIntegrity === true,
+  };
+}
+
+export function compactReleaseDrillEvidence(evidence = {}) {
+  const coldEvidence = buildV128ReleaseDrillColdEvidence(evidence);
+  return {
+    status: coldEvidence.status,
+    proofDigest: digestValue(coldEvidence),
     safeNextAction: evidence.safeNextAction || 'run_remote_same_head_quality_gate',
   };
+}
+
+export function validateV128ReleaseDrillHotColdBinding(hot = {}, cold = {}) {
+  const reasons = [];
+  if (!hot || typeof hot !== 'object') reasons.push('release_drill_hot_summary_missing');
+  if (!cold || typeof cold !== 'object' || Object.keys(cold).length === 0) reasons.push('release_drill_cold_evidence_missing');
+  const allowedHotFields = new Set(['status', 'proofDigest', 'safeNextAction']);
+  for (const key of Object.keys(hot || {})) {
+    if (!allowedHotFields.has(key)) reasons.push(`release_drill_hot_field_forbidden_${key}`);
+  }
+  const coldEvidence = buildV128ReleaseDrillColdEvidence(cold || {});
+  const expectedProofDigest = digestValue(coldEvidence);
+  if (hot?.proofDigest !== expectedProofDigest) reasons.push('release_drill_proof_digest_mismatch');
+  if ((hot?.status || 'missing') !== coldEvidence.status) reasons.push('release_drill_status_mismatch');
+  return reasons.length
+    ? { status: 'fail', reasonCodes: [...new Set(reasons)], expectedProofDigest, safeSummaryOnly: true }
+    : { status: 'pass', expectedProofDigest, safeSummaryOnly: true };
 }
 
 function finalizeCompression(summaryBase) {
@@ -400,6 +422,30 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
     duplicateNodeCount: Array.isArray(graph.duplicateNodeRefs) ? graph.duplicateNodeRefs.length : 0,
     duplicateEdgeCount: Array.isArray(graph.duplicateEdges) ? graph.duplicateEdges.length : 0,
   };
+  const safeStageTiming = plan.safeStageTiming || {};
+  compact.safeStageTiming = {
+    status: safeStageTiming.status || 'unknown',
+    stageCount: Array.isArray(safeStageTiming.stages) ? safeStageTiming.stages.length : 0,
+    rawLogsRead: safeStageTiming.rawLogsRead === true,
+  };
+  const cacheLifecycle = plan.cacheLifecycle || {};
+  compact.cacheLifecycle = {
+    status: cacheLifecycle.status || 'unknown',
+    cacheState: cacheLifecycle.cacheState || 'unknown',
+    executedNodeCount: Number(cacheLifecycle.executedNodeCount || 0),
+    reusedNodeCount: Number(cacheLifecycle.reusedNodeCount || 0),
+    cacheNondeterminismCount: Number(cacheLifecycle.cacheNondeterminismCount || 0),
+    cacheEvidenceDigest: cacheLifecycle.cacheEvidenceDigest || null,
+  };
+  const cacheCleanup = plan.cacheCleanup || {};
+  compact.cacheCleanup = {
+    status: cacheCleanup.status || 'unknown',
+    nodeScopeStatus: cacheCleanup.nodeScope?.status || 'unknown',
+    rootScopeStatus: cacheCleanup.rootScope?.status || 'unknown',
+    retainedRecordCount: Number(cacheCleanup.nodeScope?.retainedRecordCount || 0),
+    retainedHeadDirectoryCount: Number(cacheCleanup.rootScope?.retainedHeadDirectoryCount || 0),
+    deletedHeadDirectoryCount: Number(cacheCleanup.rootScope?.deletedHeadDirectoryCount || 0),
+  };
   const reuse = plan.validationReuseDecision || {};
   compact.validationReuseDecision = {
     reuseDecision: reuse.reuseDecision || 'miss',
@@ -411,14 +457,11 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   };
   const taxonomy = plan.stableDiagnosticTaxonomy || {};
   compact.stableDiagnosticTaxonomy = {
-    environmentDiagnosticExcludedFromDecisionDigest: taxonomy.environmentDiagnosticExcludedFromDecisionDigest === true,
     rawLogForbidden: taxonomy.rawLogForbidden === true,
     secretForbidden: taxonomy.secretForbidden === true,
-    localAbsolutePathForbidden: taxonomy.localAbsolutePathForbidden === true,
-    decisionInputManifestScanned: taxonomy.decisionInputManifestScanned === true,
-    decisionInputManifestTaxonomyStatus: taxonomy.decisionInputManifestTaxonomyStatus || 'unknown',
-    decisionInputManifestSanitizedDigest: taxonomy.decisionInputManifestSanitizedDigest || null,
-    fieldSetDigest: Array.isArray(taxonomy.fields) ? digestValue(taxonomy.fields) : null,
+    status: taxonomy.decisionInputManifestTaxonomyStatus || 'unknown',
+    sanitizedDigest: taxonomy.decisionInputManifestSanitizedDigest || null,
+    fieldSetDigest: Array.isArray(taxonomy.fields) ? digestValue(taxonomy.fields) : (taxonomy.fieldSetDigest || null),
   };
   const workspace = plan.workspaceIdentity || {};
   compact.workspaceIdentity = {
@@ -499,21 +542,9 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   const cacheCanary = plan.realCacheCanary || {};
   compact.realCacheCanary = {
     status: cacheCanary.status || 'unknown',
-    observationClass: cacheCanary.observationClass || 'unknown',
-    proofScope: cacheCanary.proofScope || null,
     observed: cacheCanary.observed === true,
-    coldMissExecutedEligibleNodeCount: Number(cacheCanary.coldMiss?.executedEligibleNodeCount || 0),
-    realHitReusedEligibleNodeCount: Number(cacheCanary.realHit?.reusedEligibleNodeCount || 0),
-    realHitExecutedEligibleNodeCount: Number(cacheCanary.realHit?.executedEligibleNodeCount || 0),
-    realPartialHitExecutedNodeCount: Array.isArray(cacheCanary.realPartialHit?.executedNodeRefs) ? cacheCanary.realPartialHit.executedNodeRefs.length : 0,
-    unaffectedNodeRerunCount: Number(cacheCanary.realPartialHit?.unaffectedNodeRerunCount || 0),
     suppressedCommandCount: Number(cacheCanary.performance?.suppressedCommandCount || 0),
     actualCacheProofStatus: cacheCanary.actualCacheProof?.status || 'unknown',
-    sampleCount: Number(cacheCanary.actualCacheProof?.sampleCount || 0),
-    p50Pct: Number(cacheCanary.actualCacheProof?.p50ImprovementPercent || 0),
-    p95Pct: Number(cacheCanary.actualCacheProof?.p95ImprovementPercent || 0),
-    hitAdapterCalls: Number(cacheCanary.actualCacheProof?.realHitAdapterInvocationCount || 0),
-    partialUnaffectedAdapterCalls: Number(cacheCanary.actualCacheProof?.partialHitUnaffectedAdapterInvocationCount || 0),
     resultEquivalenceState: cacheCanary.actualCacheProof?.resultEquivalenceState || 'unknown',
     cacheProofDigest: cacheCanary.actualCacheProof?.cacheProofDigest || null,
   };

@@ -101,8 +101,10 @@ import {
   validateV128TrustClosure,
 } from './codex-v128-trust-closure.mjs';
 import {
+  buildV128ReleaseDrillColdEvidence,
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
+  validateV128ReleaseDrillHotColdBinding,
 } from './codex-v128-token-compression.mjs';
 import {
   runV128ActualValidationExecutorWithCache,
@@ -1250,6 +1252,10 @@ function writeV117LoadBearingArtifacts(report = {}) {
   report.v128ManagedContextEmitter = v128ManagedContextEmitter;
   report.v128StateMatrixExecution = v128StateMatrixExecution;
   report.v128ReleaseDrillEvidence ||= runV128RemoteReleaseDrillEvidence(process.env);
+  const v128ReleaseDrillColdEvidence = buildV128ReleaseDrillColdEvidence(report.v128ReleaseDrillEvidence);
+  if (report.orchestrationCapsule && typeof report.orchestrationCapsule === 'object') {
+    report.orchestrationCapsule.v128ReleaseDrillEvidence = v128ReleaseDrillColdEvidence;
+  }
   const projectionSourceConsistencyStatus = report.status === 'pass'
     && (report.reasonSummaryStatus?.summary?.blockingReasons || []).length > 0
     ? 'fail'
@@ -1299,6 +1305,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     releaseDrillScenarioCount: report.v128ReleaseDrillEvidence.scenarioCount,
     releaseDrillSafeNextAction: report.v128ReleaseDrillEvidence.safeNextAction,
     releaseDrillRemoteBindingStatus,
+    releaseDrillColdEvidenceStatus: report.orchestrationCapsule?.v128ReleaseDrillEvidence ? 'present' : 'missing',
     validationExecutionPlanStatus: v128ValidationExecutionPlanStatus.status,
     trustClosureStatus: v128TrustClosureStatus.status,
     trustClosureDigest: v128TrustClosure.trustClosureDigest,
@@ -1361,10 +1368,16 @@ function writeV117LoadBearingArtifacts(report = {}) {
     ownerDecisionBrief: report.ownerDecisionBrief,
     marker: MARKER,
   });
+  const releaseDrillHotColdBindingStatus = validateV128ReleaseDrillHotColdBinding(
+    safeSummary.compactDiagnostics?.releaseDrill,
+    report.orchestrationCapsule?.v128ReleaseDrillEvidence,
+  );
+  report.routineDecisionProjectionStatus.releaseDrillHotColdBindingStatus = releaseDrillHotColdBindingStatus.status;
+  report.routineDecisionProjectionStatus.releaseDrillProofDigest = releaseDrillHotColdBindingStatus.expectedProofDigest;
   report.routineDecisionProjectionStatus.tokenCompressionStatus = safeSummary.tokenCompression.status;
   report.routineDecisionProjectionStatus.storedSafeSummaryBytes = safeSummary.tokenCompression.storedSafeSummaryBytes;
   report.routineDecisionProjectionStatus.storedSafeSummaryBytesMax = safeSummary.tokenCompression.storedSafeSummaryBytesMax;
-  if (safeSummary.tokenCompression.status !== 'pass') {
+  if (safeSummary.tokenCompression.status !== 'pass' || releaseDrillHotColdBindingStatus.status !== 'pass') {
     report.routineDecisionProjectionStatus.status = 'fail';
     safeSummary = buildV128CompactQualityGateSafeSummary({
       report,

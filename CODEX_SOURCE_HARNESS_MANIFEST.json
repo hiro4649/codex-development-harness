@@ -1863,7 +1863,7 @@
       "compiledActiveInstructionBytesMax": 1400,
       "storedSafeSummaryBytesSoftMax": 6144,
       "routineReadSurfaceBytesMax": 2560,
-      "orchestrationCapsuleBytesSoftMax": 60000,
+      "orchestrationCapsuleBytesSoftMax": 48000,
       "trustClosure": "scripts/codex-v128-trust-closure.mjs",
       "trustedVerifierBundleDigestRequired": true,
       "trustedProviderAdapterDigestRequired": true,
