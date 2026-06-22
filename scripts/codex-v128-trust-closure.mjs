@@ -29,6 +29,7 @@ export const V128_TRUST_CLOSURE_FILES = [
   'scripts/codex-v128-serialized-cache-canary.mjs',
   'scripts/codex-v128-target-shadow-preflight.mjs',
   'scripts/codex-v128-actual-target-canary-contract.mjs',
+  'scripts/codex-v128-actual-target-canary-runner.mjs',
   'scripts/codex-v128-token-compression.mjs',
   'scripts/codex-local-quality-gate.mjs',
   'scripts/codex-workflow-quality-runner.mjs',
