@@ -3,14 +3,14 @@
   "schemaVersion": "1.2.8",
   "sourceHarnessVersion": "1.2.8",
   "harnessVersion": "1.2.8",
-  "activeHarnessVersion": "1.2.7",
+  "activeHarnessVersion": "1.2.8",
   "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
   "upgradePath": "v127_to_v128_shadow_candidate_then_activation",
-  "activeSelfTestSuite": "v127",
-  "activeSelfTestStatusKey": "v127SelfTestStatus",
+  "activeSelfTestSuite": "v128",
+  "activeSelfTestStatusKey": "v128SelfTestStatus",
   "legacySelfTests": {
     "v126": "blocking_compatibility",
     "v125": "blocking_compatibility",
@@ -27,8 +27,8 @@
     "v114": "blocking_compatibility",
     "v113": "selected_critical",
     "v080_v112": "target_shadow_legacy_count_only",
-    "v127": "blocking_current_active_authority",
-    "v128": "source_shadow_candidate"
+    "v127": "blocking_compatibility_rollback",
+    "v128": "blocking_current_active_authority"
   },
   "sourceOnlyRelease": true,
   "targetRollout": "not_started",
@@ -655,7 +655,7 @@
       "perTransitionManagedContextBytesMax": 4096,
       "managedContextBytesObserved": true,
       "managedContextObservationSource": "v128_managed_context_emitter",
-      "managedContextObservationScope": "source_shadow_candidate",
+      "managedContextObservationScope": "source_activation",
       "managedContextObservationRequiredForActivation": true,
       "routineFinalReportLineMax": 8,
       "routineOwnerInterruptMax": 0
@@ -674,14 +674,14 @@
       "productionReadinessClaimed": false,
       "walletRpcDeployAccess": false
     },
-    "activationState": "source_shadow_candidate",
-    "sourceActivation": "not_started",
-    "shadowTargetCanary": "not_started",
-    "activationReady": false,
+    "activationState": "active",
+    "sourceActivation": "active",
+    "shadowTargetCanary": "passed",
+    "activationReady": true,
     "observedProjectionRequiredForActivation": true,
     "stateMatrixCoverage": "full_shadow_candidate",
     "stateMatrixFullEnumProductExecuted": true,
-    "postMergeReplayCoverage": "partial_shadow_candidate",
+    "postMergeReplayCoverage": "release_drill_passed",
     "placeholderReceiptValid": false
   }
 }

@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.7",
-  "schemaVersion": "1.2.7",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "schemaVersion": "1.2.8",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
   "purpose": "Bound md and skill reads by task profile while preserving active authority.",
@@ -198,18 +198,18 @@
       "releaseDrill": "scripts/codex-v128-release-drill.mjs",
       "managedContextBytesObserved": true,
       "managedContextObservationSource": "v128_managed_context_emitter",
-      "managedContextObservationScope": "source_shadow_candidate",
+      "managedContextObservationScope": "source_activation",
       "managedContextObservationRequiredForActivation": true
     },
     "preservationMatrix": "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
-    "activationState": "source_shadow_candidate",
-    "sourceActivation": "not_started",
-    "shadowTargetCanary": "not_started",
-    "activationReady": false,
+    "activationState": "active",
+    "sourceActivation": "active",
+    "shadowTargetCanary": "passed",
+    "activationReady": true,
     "observedProjectionRequiredForActivation": true,
     "stateMatrixCoverage": "full_shadow_candidate",
     "stateMatrixFullEnumProductExecuted": true,
-    "postMergeReplayCoverage": "partial_shadow_candidate",
+    "postMergeReplayCoverage": "release_drill_passed",
     "placeholderReceiptValid": false
   }
 }

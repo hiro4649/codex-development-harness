@@ -344,6 +344,15 @@ function shadowOnlyV128Fields(evidenceEpoch = 'final_closure') {
   };
 }
 
+function activeV128Fields(evidenceEpoch = 'final_closure') {
+  return {
+    authorityLayer: 'v128_active',
+    decisionInfluence: 'load_bearing',
+    evidenceEpoch,
+    activeGateInfluence: 'blocking_on_fail',
+  };
+}
+
 function gitText(args = []) {
   try {
     const result = spawnSync('git', args, { cwd: process.cwd(), encoding: 'utf8' });
@@ -1048,14 +1057,14 @@ function writeV117LoadBearingArtifacts(report = {}) {
   }
   report.validationExecutionPlanReuseInternalStatus = {
     ...v128ValidationExecutionPlanStatus,
-    ...shadowOnlyV128Fields('final_closure'),
+    ...activeV128Fields('final_closure'),
     safeSummaryOnly: true,
   };
   if (report.orchestrationCapsule?.deterministicDecisionProjection) {
     report.orchestrationCapsule.deterministicDecisionProjection = {
       ...report.orchestrationCapsule.deterministicDecisionProjection,
-      candidateActivationState: 'source_shadow_candidate',
-      activationReady: false,
+      candidateActivationState: 'active',
+      activationReady: true,
       storedProjectionField: 'routineDecisionProjection',
       projectionBytesObserved: true,
       projectionMeasurementSource: 'runtime_safe_summary_projection',
@@ -1066,8 +1075,8 @@ function writeV117LoadBearingArtifacts(report = {}) {
   if (report.orchestrationCapsule?.tokenMinimalReadCompatibilityRouter) {
     report.orchestrationCapsule.tokenMinimalReadCompatibilityRouter = {
       ...report.orchestrationCapsule.tokenMinimalReadCompatibilityRouter,
-      candidateActivationState: 'source_shadow_candidate',
-      activationReady: false,
+      candidateActivationState: 'active',
+      activationReady: true,
       managedBytesObserved: v128ManagedContextEmitter.status === 'pass',
       managedBytesMeasurementSource: v128ManagedContextEmitter.status === 'pass'
         ? 'v128_managed_context_emitter'
@@ -1075,13 +1084,13 @@ function writeV117LoadBearingArtifacts(report = {}) {
       perTransitionManagedBytes: v128ManagedContextEmitter.status === 'pass'
         ? v128ManagedContextEmitter.managedContextBytes
         : null,
-      transitionsPerTaskObserved: false,
+      transitionsPerTaskObserved: v128ManagedContextEmitter.status === 'pass',
     };
   }
   if (report.orchestrationCapsule?.resumableLoopAndPermissionProjection) {
     report.orchestrationCapsule.resumableLoopAndPermissionProjection = {
       ...report.orchestrationCapsule.resumableLoopAndPermissionProjection,
-      candidateActivationState: 'source_shadow_candidate',
+      candidateActivationState: 'active',
       permissionDerivedFromCurrentReceipt: false,
       allowedActionCodes: [],
       standingAutonomyPolicyBinding: {
@@ -4366,9 +4375,9 @@ export function buildV128RoutineDecisionProjection(report = {}, head = 'unknown'
     authority: 'non_authoritative_projection',
     ...shadowOnlyV128Fields('final_closure'),
     finalAuthority: 'v1.1.8_final_decision_kernel',
-    activeHarnessVersion: '1.2.7',
+    activeHarnessVersion: '1.2.8',
     candidateHarnessVersion: '1.2.8',
-    candidateActivationState: 'source_shadow_candidate',
+    candidateActivationState: 'active',
     headSha: head || 'unknown',
     status: report.status || 'unknown',
     qualityScore: report.qualityScore ?? report.qualityScoreStatus?.score ?? null,
@@ -4440,9 +4449,9 @@ function buildV128StressDecisionProjection(report = {}, projectionInputs = {}) {
     authority: 'non_authoritative_projection',
     ...shadowOnlyV128Fields('final_closure'),
     finalAuthority: 'v1.1.8_final_decision_kernel',
-    activeHarnessVersion: '1.2.7',
+    activeHarnessVersion: '1.2.8',
     candidateHarnessVersion: '1.2.8',
-    candidateActivationState: 'source_shadow_candidate',
+    candidateActivationState: 'active',
     headSha: 'f'.repeat(40),
     status: 'manual_confirmation_required',
     qualityScore: 100,
@@ -5075,11 +5084,26 @@ function runV128Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V128_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v128-self-test.mjs', 'v128SelfTestStatus', 'CODEX_V128_SELF_TEST_REPORT', gateEnv);
+  let sourceManifest = {};
+  try {
+    sourceManifest = readJson('CODEX_SOURCE_HARNESS_MANIFEST.json');
+  } catch {
+    sourceManifest = {};
+  }
+  const v128Active = (sourceManifest.activeHarnessVersion === '1.2.8'
+    && sourceManifest.activeSelfTestSuite === 'v128')
+    || (report.sourceHarnessValidationStatus?.activeHarnessVersion === '1.2.8'
+      && report.sourceHarnessValidationStatus?.activeSelfTestSuite === 'v128');
   report.v128SelfTestStatus = {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
-    candidateActivationState: 'source_shadow_candidate',
-    ...shadowOnlyV128Fields('final_closure'),
+    candidateActivationState: v128Active ? 'active' : 'source_shadow_candidate',
+    ...(v128Active ? {
+      authorityLayer: 'v128_active',
+      decisionInfluence: 'load_bearing',
+      activeGateInfluence: 'blocking_on_fail',
+      evidenceEpoch: 'final_closure',
+    } : shadowOnlyV128Fields('final_closure')),
   };
 }
 

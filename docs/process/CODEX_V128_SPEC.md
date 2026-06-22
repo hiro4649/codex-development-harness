@@ -10,18 +10,17 @@ Closure.
 
 ## Supersedes
 
-This file is the only normative v1.2.8 candidate specification. Any earlier
+This file is the only normative v1.2.8 specification. Any earlier
 draft that redefined `codex-decision-capsule.safe.json` as a Projection is
-non-authority archive material. v1.2.8 candidate readers must hard-fail if the
+non-authority archive material. v1.2.8 readers must hard-fail if the
 active surface contains the phrase `Decision Capsule is Projection`.
 
 ## Scope
 
-v1.2.8 is a Source HARNESS body candidate release. In this PR it is a Source
-Shadow Candidate, not Source Activation. Active authority remains v1.2.7 /
-v127 until a separate activation PR proves the required shadow/canary evidence.
-It is a compression and loop-closure release, not an authority expansion. It
-preserves:
+v1.2.8 is a Source HARNESS release. After the release drill and target shadow
+canary have passed, Source Activation may switch the Source active harness to
+v1.2.8 / v128 while keeping target rollout separate. It is a compression and
+loop-closure release, not an authority expansion. It preserves:
 
 - v1.1.8 Final Decision as final pass/block/mergeAllowed/exit-code authority
 - v1.1.9 three P0 safe artifacts and operator-visible status surface
@@ -37,9 +36,9 @@ same-head remote gate bypass, or readiness/legal/YouTube compliance claims.
 
 ## Authority Model
 
-The authority model is unchanged. v1.2.8 candidate tooling must not replace the
-active v1.2.7 writer, active v127 self-test suite, or Final Decision exit
-behavior:
+The authority model is unchanged. Source Activation switches the Source active
+writer/self-test to v1.2.8 / v128 only after the shadow/canary/release-drill
+evidence passes. It must not replace Final Decision exit behavior:
 
 - `codex-decision-capsule.safe.json`: domain decision authority
 - `codex-evidence-capsule.safe.json`: same-head and freshness authority
@@ -50,7 +49,8 @@ behavior:
 The stored Projection never creates merge authority, owner authority, permission
 authority, provider closure, or Final Decision input authority. Source
 Activation requires observed projection bytes, replayed state matrix fixtures,
-and active v1.2.7 gate impact of zero.
+release-drill pass, target shadow canary pass, v127 compatibility, and pre-switch
+active v1.2.7 gate impact of zero.
 
 ## P0 Internal Blocks
 
@@ -949,17 +949,20 @@ changing activation surfaces.
 
 ## Activation Boundary
 
-Specification PR is allowed. Source Shadow Candidate is conditional on the
-v128 self-test, Preservation Matrix, replay corpus, and active v1.2.7 gate
-impact remaining clean. Source Activation, active target canary, and portfolio
-rollout are not part of this Source body PR unless separately instructed.
+Specification PR and Source Shadow Candidate are complete. Source Activation is
+conditional on the v128 self-test, Preservation Matrix, replay corpus, release
+drill, and active v1.2.7 gate impact remaining clean before the activation
+switch. Active target canary and portfolio rollout are not part of Source
+Activation unless separately instructed.
 State Matrix coverage is now `full_shadow_candidate` for the declared
 three-axis shadow matrix: the finite enum product is executed by
 `scripts/codex-v128-state-matrix.mjs`, all valid transition cells are unique,
 and all other declared-axis cells fail closed as hard-invalid transition inputs.
-Post-merge replay coverage remains `partial_shadow_candidate`; that
-partial status blocks Source Activation until sentinel, recovery, and verify
-lanes are executed against a real merged main.
+Post-merge replay coverage is `release_drill_passed` only after the fixed
+release drill proves forced interruption recovery, stale-lock recovery,
+same-blocker stop, duplicate-writer rejection, and v127 rollback dry-run against
+merged Source main. Portfolio target rollout remains blocked until target
+post-merge verification passes separately.
 
 Target Shadow Preflight uses `scripts/codex-v128-target-shadow-preflight.mjs`
 as a bounded verifier. It reads only `AGENTS.md`, the active target manifest,

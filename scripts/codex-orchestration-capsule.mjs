@@ -402,14 +402,14 @@ function normalizeContextSources(input = {}) {
 
 function defaultActiveAuthorityTuple(input = {}) {
   return {
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.7',
-    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.7',
-    activeSelfTestSuite: input.activeSelfTestSuite || 'v127',
-    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V127_SPEC.md',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.8',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.8',
+    activeSelfTestSuite: input.activeSelfTestSuite || 'v128',
+    activeSpecPath: input.activeSpecPath || 'docs/process/CODEX_V128_SPEC.md',
     candidateHarnessVersion: input.candidateHarnessVersion || '1.2.8',
     candidateSelfTestSuite: input.candidateSelfTestSuite || 'v128',
     candidateSpecPath: input.candidateSpecPath || 'docs/process/CODEX_V128_SPEC.md',
-    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    candidateActivationState: input.candidateActivationState || 'active',
     finalAuthorityPointer: input.finalAuthorityPointer || 'v1.1.8_final_decision_kernel',
     sourceOnlyRelease: input.sourceOnlyRelease !== false,
   };
@@ -555,8 +555,8 @@ function defaultWorkspaceIdentityGate(input = {}) {
     defaultBranch: input.defaultBranch || 'main',
     currentBranch: input.currentBranch || input.branch || 'unknown',
     headSha: input.headSha || null,
-    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.7',
-    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.7',
+    agentsMarker: input.agentsMarker || 'CODEX_QUALITY_HARNESS_FILE v1.2.8',
+    manifestActiveHarnessVersion: input.manifestActiveHarnessVersion || '1.2.8',
     mutationTask,
     readOnlyAudit,
     worktreeClean,
@@ -572,7 +572,7 @@ function defaultWorkspaceIdentityGate(input = {}) {
 
 function defaultActivePolicyIndex(input = {}) {
   return {
-    schemaVersion: input.schemaVersion || '1.2.7',
+    schemaVersion: input.schemaVersion || '1.2.8',
     indexPath: input.indexPath || 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
     taskProfile: TASK_PROFILES.has(input.taskProfile) ? input.taskProfile : 'routine',
     requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_V127_SPEC.md'], 8),
@@ -1452,7 +1452,7 @@ function defaultV128DeterministicDecisionProjection(input = {}) {
   return {
     runtimeVersion: '1.2.8',
     name: 'Deterministic Decision Projection',
-    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    candidateActivationState: input.candidateActivationState || 'active',
     activationReady: input.activationReady === true,
     storedProjectionArtifact: input.storedProjectionArtifact || 'codex-quality-gate-safe-summary.json',
     storedProjectionField: input.storedProjectionField || 'routineDecisionProjection',
@@ -1512,7 +1512,7 @@ function defaultV128TokenMinimalReadCompatibilityRouter(input = {}) {
   return {
     runtimeVersion: '1.2.8',
     name: 'Token-Minimal Read and Compatibility Router',
-    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    candidateActivationState: input.candidateActivationState || 'active',
     activationReady: input.activationReady === true,
     profileBaselines: truncateList(input.profileBaselines || ['v127_common_safety_floor', 'v127_source_baseline', 'v127_full_target_baseline', 'v127_restricted_token_target_baseline'], 8),
     profileBaselineInheritance: input.profileBaselineInheritance !== false,
@@ -1554,7 +1554,7 @@ function defaultV128ResumableLoopAndPermissionProjection(input = {}) {
   return {
     runtimeVersion: '1.2.8',
     name: 'Resumable Loop and Permission Projection',
-    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    candidateActivationState: input.candidateActivationState || 'active',
     projectionCreatesPermission: input.projectionCreatesPermission === true,
     permissionDerivedFromCurrentReceipt: input.permissionDerivedFromCurrentReceipt === true,
     allowedActionCodes: truncateList(input.allowedActionCodes || [], 12),
@@ -1794,9 +1794,9 @@ export function buildOrchestrationCapsule(input = {}) {
   return {
     orchestrationVersion: '1',
     sourceHarnessVersion: input.sourceHarnessVersion || '1.2.8',
-    activeHarnessVersion: input.activeHarnessVersion || '1.2.7',
+    activeHarnessVersion: input.activeHarnessVersion || '1.2.8',
     candidateHarnessVersion: input.candidateHarnessVersion || '1.2.8',
-    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    candidateActivationState: input.candidateActivationState || 'active',
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,

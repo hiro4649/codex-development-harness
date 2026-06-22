@@ -20,7 +20,7 @@
     "qualityGateSafeSummary": "non_authoritative_projection"
   },
   "projection": {
-    "activationState": "source_shadow_candidate",
+    "activationState": "active",
     "activationReady": false,
     "routineBytesMax": 1600,
     "stressBytesMax": 2048,
@@ -175,7 +175,7 @@
     ],
     "managedContextBytesObserved": true,
     "managedContextObservationSource": "v128_managed_context_emitter",
-    "managedContextObservationScope": "source_shadow_candidate",
+    "managedContextObservationScope": "source_activation",
     "managedContextObservationRequiredForActivation": true,
     "routineFinalReportLineMax": 8,
     "routineOwnerInterruptMax": 0,

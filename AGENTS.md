@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.7
+CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 <!-- CODEX_ACTIVE_BLOCK_BEGIN -->
 machineBindingId=FD_AUTH: Final Decision is pass/block/mergeAllowed/exit-code authority.
@@ -15,7 +15,7 @@ machineBindingId=NO_SELF_APPROVAL: AI must not self-approve.
 machineBindingId=NO_GH_APPROVAL_REVIEW: AI must not submit GitHub approval review.
 machineBindingId=RUNTIME_DEPLOY_WALLET_BOUNDARY: Product/runtime/workflow/deploy/wallet/RPC/secret scope is separate.
 machineBindingId=STOP_CIRCUIT: repeated architectural blocker stops expansion.
-machineBindingId=PROJECTION_NONAUTH: v1.2.8 Projection is non-authoritative Source Shadow Candidate surface.
+machineBindingId=PROJECTION_NONAUTH: v1.2.8 Projection is non-authoritative active routine surface.
 <!-- CODEX_ACTIVE_BLOCK_END -->
 
 ## Prime Directive
