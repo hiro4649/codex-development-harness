@@ -44,6 +44,37 @@
     "expectedHardInvalidCount": 90,
     "implicitTransitionFallbackAllowed": false
   },
+  "actualTargetCanary": {
+    "contractScript": "scripts/codex-v128-actual-target-canary-contract.mjs",
+    "canaryKind": "v128_actual_remote_target_canary",
+    "executionAuthority": "remote_read_only",
+    "requiredTargets": [
+      { "kind": "complex", "repositoryFullName": "hiro4649/CRIPTO-TIP" },
+      { "kind": "restricted", "repositoryFullName": "hiro4649/VGC-FUNKY-TOKEN" }
+    ],
+    "requiredPerTargetFields": [
+      "repositoryId",
+      "repositoryFullName",
+      "targetHeadSha",
+      "targetManifestDigest",
+      "targetProfileDigest",
+      "targetAgentsActiveBlockDigest",
+      "sourceCandidateSha",
+      "candidateBundleDigest",
+      "v127Status",
+      "v128ShadowStatus",
+      "preservationMismatchCount",
+      "semanticForeignProfileLoadCount",
+      "legacyActiveReadCount",
+      "productRuntimeMutationCount",
+      "deployWalletRpcSecretContractMutationCount",
+      "readLedgerDigest",
+      "targetResultDigest"
+    ],
+    "forbidden": ["raw_logs", "local_paths", "target_writes", "deploy", "wallet_rpc", "secrets", "contract_mutation", "source_activation", "target_rollout"],
+    "preflightMaySatisfyActualCanary": false,
+    "sourceActivationBlockedUntilPass": true
+  },
   "reason": {
     "states": ["none", "observed", "pending", "missing", "failed", "valid", "invalid", "stale", "blocked"],
     "effects": ["none", "awaiting", "blocking", "advisory", "display_only", "compatibility_shadow"],
@@ -350,6 +381,7 @@
       "scripts/codex-v128-serialized-cache-canary.mjs",
       "scripts/codex-v128-standing-autonomy-policy.mjs",
       "scripts/codex-v128-target-shadow-preflight.mjs",
+      "scripts/codex-v128-actual-target-canary-contract.mjs",
       "scripts/codex-local-quality-gate.mjs",
       "scripts/codex-orchestration-capsule.mjs",
       "scripts/codex-v128-projection-reader-adapter.mjs",
