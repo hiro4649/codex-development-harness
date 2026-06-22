@@ -619,6 +619,7 @@ function buildPlanWithBoundReusedCacheKeys(input = {}) {
   const stableInput = {
     testedTreeKind: 'branch_head',
     testedCommitOid: 'f'.repeat(40),
+    actualCacheSampleCount: 0,
     ...input,
   };
   const draft = buildV128ValidationExecutionPlan(stableInput);
@@ -708,6 +709,7 @@ function validationSerializedCacheCanaryObservesColdHitPartial() {
     observedExecution: true,
     workspaceObserved: true,
     decisionInputManifestScanned: true,
+    actualCacheSampleCount: 20,
     nodeResults: validValidationNodeResults(),
   });
   const canary = plan.realCacheCanary || {};
@@ -726,7 +728,12 @@ function validationSerializedCacheCanaryObservesColdHitPartial() {
     && canonicalJson(canary.realPartialHit.reusedNodeRefs) === canonicalJson(['managed_context_emitter', 'state_matrix_executor'])
     && canary.realPartialHit.unaffectedNodeRerunCount === 0
     && canary.realHit.commandSuppressionObserved === true
-    && canary.realPartialHit.commandSuppressionObserved === true;
+    && canary.realPartialHit.commandSuppressionObserved === true
+    && canary.actualCacheProof?.status === 'pass'
+    && canary.actualCacheProof.sampleCount >= 20
+    && canary.actualCacheProof.realHitAdapterInvocationCount === 0
+    && canary.actualCacheProof.partialHitUnaffectedAdapterInvocationCount === 0
+    && canary.actualCacheProof.resultEquivalenceState === 'pass';
 }
 
 function validationCacheReuseSimulationCannotPass() {

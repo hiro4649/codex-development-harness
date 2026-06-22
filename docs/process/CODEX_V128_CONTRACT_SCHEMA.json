@@ -283,6 +283,18 @@
         "runnerEnvironmentDigest",
         "cacheRecordDigest"
       ],
+      "typedResultPayloadRequired": true,
+      "typedResultPayloadDigestMustMatch": true,
+      "actualExecutorIntegrationRequired": true,
+      "blackBoxProcessProof": {
+        "distinctProcessMinimum": 3,
+        "sampleCountMinimum": 20,
+        "realHitAdapterInvocationCountMax": 0,
+        "partialHitUnaffectedAdapterInvocationCountMax": 0,
+        "resultEquivalenceRequired": true,
+        "p50ImprovementPercentMinimum": 25,
+        "p95ImprovementPercentMinimum": 20
+      },
       "coldMiss": {
         "serializedCacheReadWriteRequired": true,
         "executesAllEligibleNodes": true

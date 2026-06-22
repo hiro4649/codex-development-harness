@@ -104,6 +104,9 @@ import {
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
 } from './codex-v128-token-compression.mjs';
+import {
+  runV128ActualValidationExecutorWithCache,
+} from './codex-v128-serialized-cache-canary.mjs';
 
 
 
@@ -691,28 +694,49 @@ function computeV128ShadowEvidence(input = {}) {
       computeOnceReuseState: 'reused',
     };
   }
-  resetV128InvocationLedger({ epochDigest: cacheKey });
-  const routineProjectionReadSurface = runV128ProjectionReaderAdapter(routineDecisionProjection, {
-    commandOrFunctionDigest: v128NodeCommandDigests.projection_reader,
-  });
   const v128ProjectionIntegrityStatus = validateV128ProjectionIntegrity(routineDecisionProjection, {
     ...projectionInputs,
     verifySourceDigest: true,
     verifyInputDigest: true,
   });
-  const v128ManagedContextEmitter = runV128ManagedContextAdapter({ headSha: head }, {
-    commandOrFunctionDigest: v128NodeCommandDigests.managed_context_emitter,
+  const v128ActualCacheDir = path.join(
+    process.env.TEMP || process.env.TMP || process.cwd(),
+    'codex-v128-validation-cache',
+    cacheKey.replace(/^sha256:/, '').slice(0, 24),
+  );
+  const v128ActualExecution = runV128ActualValidationExecutorWithCache({
+    cacheDir: v128ActualCacheDir,
+    repositoryId: workspaceObservation.repositoryKey,
+    sourceHead: workspaceObservation.sourceHeadOid || head,
+    baseHead: workspaceObservation.baseOid || sha256Canonical({ testedTreeKind: workspaceObservation.testedTreeKind, baseHead: 'not_applicable' }),
+    testedCommit: workspaceObservation.testedCommitOid || head,
+    testedTreeKind: workspaceObservation.testedTreeKind || 'branch_head',
+    validationContextDigest: sha256Canonical({
+      sourceHeadOid: workspaceObservation.sourceHeadOid || head,
+      baseOid: workspaceObservation.baseOid || null,
+      testedCommitOid: workspaceObservation.testedCommitOid || head,
+      testedTreeKind: workspaceObservation.testedTreeKind || 'branch_head',
+    }),
+    routineDecisionProjection,
+    managedContextInput: { headSha: head },
+    nodeInputDigests: {
+      projection_reader: projectionInputDigest,
+      managed_context_emitter: managedInputDigest,
+      state_matrix_executor: stateMatrixInputDigest,
+    },
+    commandDigests: v128NodeCommandDigests,
   });
-  const v128StateMatrixExecution = runV128StateMatrixAdapter({
-    commandOrFunctionDigest: v128NodeCommandDigests.state_matrix_executor,
-  });
-  const preAggregateSnapshot = getV128InvocationLedgerSnapshot();
-  const upstreamNodeResults = preAggregateSnapshot.nodeResults;
-  const aggregateInputDigest = buildV128OrderedUpstreamResultSetDigest(upstreamNodeResults);
-  runV128AggregateFinalizerAdapter({ upstreamNodeResults }, {
-    commandOrFunctionDigest: v128NodeCommandDigests.aggregate_finalizer,
-  });
-  const v128ExecutionSnapshot = getV128InvocationLedgerSnapshot();
+  const routineProjectionReadSurface = v128ActualExecution.typedResults.projection_reader;
+  const v128ManagedContextEmitter = v128ActualExecution.typedResults.managed_context_emitter;
+  const v128StateMatrixExecution = v128ActualExecution.typedResults.state_matrix_executor;
+  const v128ExecutionSnapshot = {
+    nodeResults: v128ActualExecution.nodeResults,
+    typedResults: v128ActualExecution.typedResults,
+    invocationLedger: v128ActualExecution.invocationLedger,
+    processEpochLedger: [],
+    epochSequence: null,
+  };
+  const aggregateInputDigest = v128ActualExecution.nodeInputDigests.aggregate_finalizer;
   const v128NodeInputDigests = {
     projection_reader: projectionInputDigest,
     managed_context_emitter: managedInputDigest,
@@ -751,7 +775,7 @@ function computeV128ShadowEvidence(input = {}) {
       nodeInputDigests: Object.fromEntries(failedV128NodeRefs.map((nodeRef) => [nodeRef, v128NodeInputDigests[nodeRef] || null])),
     })
     : null;
-  const v128ValidationExecutionPlan = buildV128ValidationExecutionPlan({
+  const validationPlanInput = {
     observedExecution: true,
     workspaceObservation,
     headSha: head,
@@ -761,6 +785,7 @@ function computeV128ShadowEvidence(input = {}) {
     sourceBranch: workspaceObservation.sourceBranch,
     checkoutRef: workspaceObservation.checkoutRef,
     testedTreeKind: workspaceObservation.testedTreeKind,
+    runnerImageDigest: v128ActualExecution.runnerEnvironmentDigest,
     runnerClassDigest: sha256Canonical({
       provider: process.env.GITHUB_ACTIONS === 'true' ? 'github_actions' : 'local',
       os: process.platform,
@@ -781,10 +806,24 @@ function computeV128ShadowEvidence(input = {}) {
     validationNodeInvocationCount: v128ExecutionSnapshot.invocationLedger.length,
     modelInvocationObserved: false,
     modelInvocationCount: null,
+    actualCacheSampleCount: 20,
     objectiveContractDigest,
     capabilityProfileDigest,
     economicsObservationDigest,
     repairableFailureEvidenceDigest,
+  };
+  const v128ValidationExecutionPlanDraft = buildV128ValidationExecutionPlan(validationPlanInput);
+  const cacheBoundNodeResults = v128ExecutionSnapshot.nodeResults.map((node) => (
+    node.executionState === 'reused' && v128ValidationExecutionPlanDraft.validationReuseDecision?.nodeCacheKeyDigests?.[node.nodeRef]
+      ? {
+        ...node,
+        cacheKeyDigest: v128ValidationExecutionPlanDraft.validationReuseDecision.nodeCacheKeyDigests[node.nodeRef],
+      }
+      : node
+  ));
+  const v128ValidationExecutionPlan = buildV128ValidationExecutionPlan({
+    ...validationPlanInput,
+    nodeResults: cacheBoundNodeResults,
   });
   const v128ValidationExecutionPlanStatus = validateV128ValidationExecutionPlan(v128ValidationExecutionPlan);
   const value = {
@@ -1133,7 +1172,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     routineDecisionProjection,
     routineProjectionReadSurface,
     v128ManagedContextEmitter,
-    v128ValidationExecutionPlan: v128ValidationExecutionPlanForStorage,
+    v128ValidationExecutionPlan,
     v128ValidationExecutionPlanStatus,
     v128TrustClosure: report.v128TrustClosure,
     v128TrustClosureStatus: report.v128TrustClosureStatus,
