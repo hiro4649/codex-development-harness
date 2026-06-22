@@ -28,6 +28,9 @@ const CANARY_NODE_REFS = [
 ];
 const PARTIAL_EXECUTED_NODE_REFS = ['aggregate_finalizer', 'projection_reader'];
 const ACTUAL_RESULT_SCHEMA = 'v128.node.typedResult.v1';
+const ACTUAL_CACHE_RECORD_SCHEMA = 'v128.actual.validation.cache.record.v2';
+const ACTUAL_CACHE_MAX_RECORDS = 256;
+const ACTUAL_CACHE_MAX_BYTES = 8 * 1024 * 1024;
 
 function canonicalJson(value) {
   if (value === undefined) return 'null';
@@ -73,8 +76,95 @@ function runnerEnvironment() {
   };
 }
 
-function cacheRecordPath(cacheDir, nodeRef) {
-  return path.join(cacheDir, `${nodeRef.replace(/[^a-z0-9_-]/gi, '_')}.json`);
+function safePathSegment(value) {
+  return String(value || 'unknown').replace(/[^a-z0-9_-]/gi, '_').slice(0, 96) || 'unknown';
+}
+
+function cacheRecordIdentityDigest(expected = {}) {
+  return digestValue({
+    cacheRecordPathSchema: ACTUAL_CACHE_RECORD_SCHEMA,
+    repositoryId: expected.repositoryId,
+    sourceHead: expected.sourceHead,
+    baseHead: expected.baseHead,
+    testedCommit: expected.testedCommit,
+    testedTreeKind: expected.testedTreeKind,
+    validationContextDigest: expected.validationContextDigest,
+    nodeRef: expected.nodeRef,
+    nodeInputDigest: expected.nodeInputDigest,
+    nodeSourceClosureDigest: expected.nodeSourceClosureDigest,
+    typedResultSchema: expected.typedResultSchema,
+    runnerEnvironmentDigest: expected.runnerEnvironmentDigest,
+  });
+}
+
+function cacheRecordPath(cacheDir, nodeRef, expected = null) {
+  if (!expected) return path.join(cacheDir, `${safePathSegment(nodeRef)}.json`);
+  const digest = cacheRecordIdentityDigest(expected).replace(/^sha256:/, '');
+  return path.join(cacheDir, safePathSegment(nodeRef), `${digest}.json`);
+}
+
+function writeCanonicalJsonAtomically(filePath, value) {
+  const payload = `${canonicalJson(value)}\n`;
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  if (fs.existsSync(filePath)) {
+    const existing = fs.readFileSync(filePath, 'utf8');
+    if (existing === payload) return digestValue(value);
+    return digestValue({ status: 'existing_record_content_mismatch', filePath: path.basename(filePath) });
+  }
+  const tempPath = path.join(
+    path.dirname(filePath),
+    `.tmp-${process.pid}-${Date.now()}-${crypto.randomBytes(6).toString('hex')}.json`,
+  );
+  fs.writeFileSync(tempPath, payload, 'utf8');
+  fs.renameSync(tempPath, filePath);
+  const readback = fs.readFileSync(filePath, 'utf8');
+  if (readback !== payload) {
+    throw new Error('codex_v128_cache_atomic_write_readback_mismatch');
+  }
+  return digestValue(value);
+}
+
+function listCacheJsonFiles(rootDir) {
+  if (!fs.existsSync(rootDir)) return [];
+  const pending = [rootDir];
+  const files = [];
+  while (pending.length) {
+    const dir = pending.pop();
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) pending.push(fullPath);
+      else if (entry.isFile() && entry.name.endsWith('.json')) {
+        const stat = fs.statSync(fullPath);
+        files.push({ filePath: fullPath, size: stat.size, mtimeMs: stat.mtimeMs });
+      }
+    }
+  }
+  return files;
+}
+
+function cleanupActualCacheDir(cacheDir, limits = {}) {
+  const maxRecords = Number(limits.maxRecords || ACTUAL_CACHE_MAX_RECORDS);
+  const maxBytes = Number(limits.maxBytes || ACTUAL_CACHE_MAX_BYTES);
+  let files = listCacheJsonFiles(cacheDir);
+  let totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  let deletedRecordCount = 0;
+  files = files.sort((a, b) => a.mtimeMs - b.mtimeMs);
+  while (files.length > maxRecords || totalBytes > maxBytes) {
+    const victim = files.shift();
+    if (!victim) break;
+    fs.rmSync(victim.filePath, { force: true });
+    totalBytes -= victim.size;
+    deletedRecordCount += 1;
+  }
+  return {
+    status: 'pass',
+    maxRecords,
+    maxBytes,
+    retainedRecordCount: files.length,
+    retainedBytes: Math.max(0, totalBytes),
+    deletedRecordCount,
+    safeSummaryOnly: true,
+  };
 }
 
 function buildRecord(binding, nodeRef, nodeInputDigest, nodeSourceClosureDigest, typedResultDigest, runnerEnvironmentDigest) {
@@ -161,7 +251,7 @@ function recordMatches(record, expected) {
 }
 
 function readRecord(cacheDir, expected) {
-  const filePath = cacheRecordPath(cacheDir, expected.nodeRef);
+  const filePath = cacheRecordPath(cacheDir, expected.nodeRef, expected);
   if (!fs.existsSync(filePath)) return { status: 'miss', missReason: 'missing_record' };
   let record;
   try {
@@ -177,12 +267,12 @@ function readRecord(cacheDir, expected) {
 }
 
 function writeRecord(cacheDir, record) {
-  fs.writeFileSync(cacheRecordPath(cacheDir, record.nodeRef), `${canonicalJson(record)}\n`, 'utf8');
+  writeCanonicalJsonAtomically(cacheRecordPath(cacheDir, record.nodeRef, record), record);
   return record.cacheRecordDigest;
 }
 
 function readActualCacheRecord(cacheDir, expected) {
-  const filePath = cacheRecordPath(cacheDir, expected.nodeRef);
+  const filePath = cacheRecordPath(cacheDir, expected.nodeRef, expected);
   if (!fs.existsSync(filePath)) return { status: 'miss', missReason: 'missing_record' };
   let record;
   try {
@@ -212,7 +302,7 @@ function readActualCacheRecord(cacheDir, expected) {
 }
 
 function writeActualCacheRecord(cacheDir, record) {
-  fs.writeFileSync(cacheRecordPath(cacheDir, record.nodeRef), `${canonicalJson(record)}\n`, 'utf8');
+  writeCanonicalJsonAtomically(cacheRecordPath(cacheDir, record.nodeRef, record), record);
   return record.cacheRecordDigest;
 }
 
@@ -463,7 +553,14 @@ export function runV128ActualValidationExecutorWithCache(input = {}) {
 
   const upstreamNodeResults = nodeResults.slice();
   const aggregateInputDigest = input.nodeInputDigests?.aggregate_finalizer
-    || buildV128OrderedUpstreamResultSetDigest(upstreamNodeResults);
+    || digestValue({
+      aggregateInputSchema: 'v128_aggregate_input_with_upstream_input_digests_v1',
+      orderedUpstreamResultSetDigest: buildV128OrderedUpstreamResultSetDigest(upstreamNodeResults),
+      upstreamNodeInputDigests: Object.fromEntries(upstreamNodeResults.map((node) => [
+        node.nodeRef,
+        node.nodeInputDigest || null,
+      ])),
+    });
   const aggregateRun = runCachedNode({
     nodeRef: 'aggregate_finalizer',
     cacheDir,
@@ -483,6 +580,7 @@ export function runV128ActualValidationExecutorWithCache(input = {}) {
   const ledgerSnapshot = getV128InvocationLedgerSnapshot();
   const executedNodeRefs = nodeResults.filter((node) => node.executionState === 'executed').map((node) => node.nodeRef).sort();
   const reusedNodeRefs = nodeResults.filter((node) => node.executionState === 'reused').map((node) => node.nodeRef).sort();
+  const cacheCleanup = cleanupActualCacheDir(cacheDir, input.cacheCleanupLimits || {});
   const durationMs = Math.max(0, Math.round((performance.now() - started) * 1000) / 1000);
   return {
     status: nodeResults.every((node) => node.status === 'pass') ? 'pass' : 'fail',
@@ -494,6 +592,8 @@ export function runV128ActualValidationExecutorWithCache(input = {}) {
     }),
     durationMs,
     cacheDirPersistedInRepo: false,
+    cacheRecordPathSchema: ACTUAL_CACHE_RECORD_SCHEMA,
+    cacheCleanup,
     runnerEnvironmentDigest: environment.runnerEnvironmentDigest,
     proofScope: environment.proofScope,
     typedResults,
