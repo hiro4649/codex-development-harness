@@ -140,7 +140,8 @@
       "requiredInQualityGateSafeSummary": true,
       "artifactPath": "codex-quality-gate-safe-summary.json",
       "summaryPath": "compactDiagnostics.releaseDrill",
-      "fields": ["executionMode", "trustedBaseCommit", "scenarioSetDigest", "scenarioCount", "status", "reasonCodes", "safeNextAction"],
+      "fields": ["status", "proofDigest", "safeNextAction"],
+      "coldEvidenceFields": ["executionMode", "trustedBaseCommit", "scenarioSetDigest", "scenarioCount", "reasonCodes"],
       "runOnlyInSourcePrRemoteGateByDefault": true,
       "localRoutineDefault": "not_run"
     },

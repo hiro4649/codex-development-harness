@@ -986,18 +986,17 @@ and bind only this compact result into
 `codex-quality-gate-safe-summary.json#compactDiagnostics.releaseDrill`:
 
 ```text
-executionMode
-trustedBaseCommit
-scenarioSetDigest
-scenarioCount
 status
-reasonCodes
+proofDigest
 safeNextAction
 ```
 
 Local routine gates default to `not_run` unless explicitly forced. This keeps
 routine token cost low while making activation integrity visible in remote
 machine evidence instead of relying on PR body text or local-only claims.
+The detailed release drill fields (`executionMode`, `trustedBaseCommit`,
+`scenarioSetDigest`, `scenarioCount`, and `reasonCodes`) remain cold evidence
+behind the proof digest and are not repeated in the hot safe summary.
 
 ## Activation Boundary
 

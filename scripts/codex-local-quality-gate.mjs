@@ -1342,7 +1342,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     stressObserved: true,
     safeSummaryOnly: true,
   };
-  const safeSummary = buildV128CompactQualityGateSafeSummary({
+  let safeSummary = buildV128CompactQualityGateSafeSummary({
     report,
     head,
     finalDecision: report.finalDecision,
@@ -1361,6 +1361,31 @@ function writeV117LoadBearingArtifacts(report = {}) {
     ownerDecisionBrief: report.ownerDecisionBrief,
     marker: MARKER,
   });
+  report.routineDecisionProjectionStatus.tokenCompressionStatus = safeSummary.tokenCompression.status;
+  report.routineDecisionProjectionStatus.storedSafeSummaryBytes = safeSummary.tokenCompression.storedSafeSummaryBytes;
+  report.routineDecisionProjectionStatus.storedSafeSummaryBytesMax = safeSummary.tokenCompression.storedSafeSummaryBytesMax;
+  if (safeSummary.tokenCompression.status !== 'pass') {
+    report.routineDecisionProjectionStatus.status = 'fail';
+    safeSummary = buildV128CompactQualityGateSafeSummary({
+      report,
+      head,
+      finalDecision: report.finalDecision,
+      routineDecisionProjection,
+      routineProjectionReadSurface,
+      v128ManagedContextEmitter,
+      v128ValidationExecutionPlan,
+      v128ValidationExecutionPlanStatus,
+      v128TrustClosure: report.v128TrustClosure,
+      v128TrustClosureStatus: report.v128TrustClosureStatus,
+      v128ReleaseDrillEvidence: report.v128ReleaseDrillEvidence,
+      providerSnapshot: report.v128ProviderSnapshotEvidence,
+      standingAutonomyPolicy: report.v128StandingAutonomyPolicy,
+      orchestrationCapsule: report.orchestrationCapsule,
+      workerProofCapsule: report.workerProofCapsule,
+      ownerDecisionBrief: report.ownerDecisionBrief,
+      marker: MARKER,
+    });
+  }
   const index = {
     status: 'pass',
     head,

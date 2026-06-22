@@ -523,8 +523,10 @@ function tokenCompressionCompactsSafeSummary() {
   return summary.tokenCompression.status === 'pass'
     && summary.tokenCompression.storedSafeSummaryBytes <= 5600
     && summary.tokenCompression.routineReadSurfaceBytes <= 2500
-    && summary.compactDiagnostics.releaseDrill.executionMode === 'black_box_child_process_filesystem'
-    && summary.compactDiagnostics.releaseDrill.scenarioCount === 5
+    && summary.compactDiagnostics.releaseDrill.status === 'pass'
+    && String(summary.compactDiagnostics.releaseDrill.proofDigest || '').startsWith('sha256:')
+    && !('executionMode' in summary.compactDiagnostics.releaseDrill)
+    && !('scenarioCount' in summary.compactDiagnostics.releaseDrill)
     && summary.compactDiagnostics.validationPlan.loopTransitionCode
     && !JSON.stringify(summary).includes('file-119')
     && !JSON.stringify(summary).includes('xxxxx');

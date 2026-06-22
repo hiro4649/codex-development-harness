@@ -129,14 +129,17 @@ function compactTrustClosure(trustClosure = {}, trustStatus = {}) {
 function compactReleaseDrillEvidence(evidence = {}) {
   return {
     status: evidence.status || 'not_run',
-    executionMode: evidence.executionMode || 'not_observed',
-    trustedBaseCommit: evidence.trustedBaseCommit || null,
-    scenarioSetDigest: evidence.scenarioSetDigest || null,
-    scenarioCount: Number(evidence.scenarioCount || 0),
-    reasonCodes: Array.isArray(evidence.reasonCodes) ? evidence.reasonCodes.slice(0, 8) : [],
+    proofDigest: digestValue({
+      executionMode: evidence.executionMode || 'not_observed',
+      trustedBaseCommit: evidence.trustedBaseCommit || null,
+      scenarioSetDigest: evidence.scenarioSetDigest || null,
+      scenarioCount: Number(evidence.scenarioCount || 0),
+      status: evidence.status || 'not_run',
+      reasonCodes: Array.isArray(evidence.reasonCodes) ? evidence.reasonCodes : [],
+      observedInRemoteSameHeadJob: evidence.observedInRemoteSameHeadJob === true,
+      loadBearingForActivationIntegrity: evidence.loadBearingForActivationIntegrity === true,
+    }),
     safeNextAction: evidence.safeNextAction || 'run_remote_same_head_quality_gate',
-    observedInRemoteSameHeadJob: evidence.observedInRemoteSameHeadJob === true,
-    loadBearingForActivationIntegrity: evidence.loadBearingForActivationIntegrity === true,
     safeSummaryOnly: true,
   };
 }
