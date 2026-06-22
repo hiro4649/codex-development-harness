@@ -55,7 +55,10 @@ import {
   buildV128ActualTargetCanaryContract,
   validateV128ActualTargetCanaryContract,
 } from './codex-v128-actual-target-canary-contract.mjs';
-import { runV128ActualTargetCanary } from './codex-v128-actual-target-canary-runner.mjs';
+import {
+  runV128ActualTargetCanary,
+  runV128ActualTargetCanaryTargetReport,
+} from './codex-v128-actual-target-canary-runner.mjs';
 import {
   buildV128TrustClosure,
   validateV128TrustClosure,
@@ -2726,6 +2729,32 @@ function buildActualTargetRunnerFixture(kind, options = {}) {
   if (!options.missingV127SelfTest) {
     writeFixtureFile(root, 'scripts/codex-v127-self-test.mjs', '#!/usr/bin/env node\nprocess.exit(0);\n');
   }
+  if (!restricted) {
+    const qualityGateFixture = options.qualityGateJsonPassExitFail
+      ? [
+          '#!/usr/bin/env node',
+          "console.log('target-qg-note {safe-prefix}');",
+          "console.log(JSON.stringify({ status: 'pass', failureCount: 0, qualityScore: 100, safeNextAction: 'owner_decision_or_state_delta' }));",
+          'process.exit(1);',
+          '',
+        ]
+      : options.qualityGateUnparsedLegacyExitFail
+        ? [
+            '#!/usr/bin/env node',
+            "console.log('legacy-qg-output-without-safe-summary');",
+            'process.exit(1);',
+            '',
+          ]
+      : [
+          '#!/usr/bin/env node',
+          "if (process.env.GITHUB_ACTIONS === 'true') process.exit(1);",
+          "if (String(process.env.GITHUB_REF || '').includes('/pull/')) process.exit(1);",
+          "if (process.env.CODEX_HARNESS_MODE !== 'target') process.exit(1);",
+          'process.exit(0);',
+          '',
+        ];
+    writeFixtureFile(root, 'scripts/codex-local-quality-gate.mjs', qualityGateFixture.join('\n'));
+  }
   initGitFixture(root);
   return root;
 }
@@ -2779,6 +2808,62 @@ function actualTargetCanaryRunnerFailsMissingV127SelfTest() {
   });
   return result.report.status === 'fail'
     && result.report.reasonCodes.some((reason) => reason.includes('actual_target_canary_v127_not_pass'));
+}
+
+function actualTargetCanaryRunnerUsesSafeJsonWhenExitDiffers() {
+  const result = runV128ActualTargetCanaryTargetReport({
+    sourceCandidateSha: 'a'.repeat(40),
+    candidateBundleDigest: sha256Canonical({ bundle: 'safe-json-exit-differs' }),
+    targets: [
+      {
+        kind: 'complex',
+        repositoryFullName: 'hiro4649/CRIPTO-TIP',
+        root: buildActualTargetRunnerFixture('complex', { qualityGateJsonPassExitFail: true }),
+      },
+    ],
+  });
+  return result.status === 'pass'
+    && result.targetReport.v127QualityGateStatus === 'pass'
+    && result.targetReport.v127QualityGateSafeStatus === 'pass'
+    && result.targetReport.v127Status === 'pass';
+}
+
+function actualTargetCanaryRunnerTreatsUnparsedLegacyQGAsDiagnostic() {
+  const result = runV128ActualTargetCanaryTargetReport({
+    sourceCandidateSha: 'b'.repeat(40),
+    candidateBundleDigest: sha256Canonical({ bundle: 'unparsed-legacy-qg' }),
+    targets: [
+      {
+        kind: 'complex',
+        repositoryFullName: 'hiro4649/CRIPTO-TIP',
+        root: buildActualTargetRunnerFixture('complex', { qualityGateUnparsedLegacyExitFail: true }),
+      },
+    ],
+  });
+  return result.status === 'pass'
+    && result.targetReport.v127QualityGateStatus === 'fail'
+    && result.targetReport.v127QualityGateDecisionInfluence === 'diagnostic_only_unparsed_legacy'
+    && result.targetReport.v127Status === 'pass';
+}
+
+function actualTargetCanaryRunnerDoesNotUsePreflightAsV128Pass() {
+  const text = fs.readFileSync('scripts/codex-v128-actual-target-canary-runner.mjs', 'utf8');
+  return !text.includes('evaluateV128TargetShadowPreflight')
+    && !text.includes('validateV128TargetShadowPreflight')
+    && text.includes('runV128ActualValidationExecutorWithCache')
+    && text.includes('buildV128RoutineDecisionProjection')
+    && text.includes('target_canary_local_readonly')
+    && text.includes("GITHUB_ACTIONS: 'false'")
+    && text.includes('GITHUB_REPOSITORY: repository');
+}
+
+function actualTargetCanaryWorkflowHasReadOnlyTargetMatrix() {
+  const text = fs.readFileSync('.github/workflows/v128-actual-target-canary.yml', 'utf8');
+  return text.includes('strategy:')
+    && text.includes('hiro4649/CRIPTO-TIP')
+    && text.includes('hiro4649/VGC-FUNKY-TOKEN')
+    && text.includes('--target-report-only')
+    && text.includes('codex-v128-actual-target-canary.safe.json');
 }
 
 function nonAuthoritativeProjectionStatusDoesNotBlockActiveGate() {
@@ -2986,6 +3071,10 @@ const cases = [
   ['actual_target_canary_contract_fails_source_mismatch', () => actualTargetCanaryContractFailsSourceMismatch()],
   ['actual_target_canary_runner_builds_contract_from_two_targets', () => actualTargetCanaryRunnerBuildsContractFromTwoTargets()],
   ['actual_target_canary_runner_fails_missing_v127_self_test', () => actualTargetCanaryRunnerFailsMissingV127SelfTest()],
+  ['actual_target_canary_runner_uses_safe_json_when_exit_differs', () => actualTargetCanaryRunnerUsesSafeJsonWhenExitDiffers()],
+  ['actual_target_canary_runner_treats_unparsed_legacy_qg_as_diagnostic', () => actualTargetCanaryRunnerTreatsUnparsedLegacyQGAsDiagnostic()],
+  ['actual_target_canary_runner_does_not_use_preflight_as_v128_pass', () => actualTargetCanaryRunnerDoesNotUsePreflightAsV128Pass()],
+  ['actual_target_canary_workflow_has_read_only_target_matrix', () => actualTargetCanaryWorkflowHasReadOnlyTargetMatrix()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],

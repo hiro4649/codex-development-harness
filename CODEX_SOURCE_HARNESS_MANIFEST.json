@@ -104,6 +104,7 @@
     "docs/process/CODEX_V128_STATE_MATRIX.json",
     "docs/process/CODEX_V128_PRESERVATION_MATRIX.json",
     "docs/process/CODEX_V128_REPLAY_CORPUS.json",
+    ".github/workflows/v128-actual-target-canary.yml",
     "scripts/codex-v128-self-test.mjs",
     "scripts/codex-v128-projection-reader.mjs",
     "scripts/codex-v128-projection-reader-adapter.mjs",

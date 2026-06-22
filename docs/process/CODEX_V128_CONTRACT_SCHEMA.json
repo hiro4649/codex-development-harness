@@ -46,6 +46,8 @@
   },
   "actualTargetCanary": {
     "contractScript": "scripts/codex-v128-actual-target-canary-contract.mjs",
+    "runnerScript": "scripts/codex-v128-actual-target-canary-runner.mjs",
+    "githubActionsWorkflow": ".github/workflows/v128-actual-target-canary.yml",
     "canaryKind": "v128_actual_remote_target_canary",
     "executionAuthority": "remote_read_only",
     "requiredTargets": [
@@ -374,6 +376,7 @@
       "fullTopologyEmbeddedInRoutineProjection": false
     },
     "scriptDigestSourceClosureFiles": [
+      ".github/workflows/v128-actual-target-canary.yml",
       "scripts/codex-v128-validation-execution-plan.mjs",
       "scripts/codex-v128-aggregate-finalizer.mjs",
       "scripts/codex-v128-aggregate-finalizer-adapter.mjs",

@@ -4346,7 +4346,7 @@ function finalizeMeasuredProjection(projectionBase) {
   return projection;
 }
 
-function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', projectionInputs = {}, options = {}) {
+export function buildV128RoutineDecisionProjection(report = {}, head = 'unknown', projectionInputs = {}, options = {}) {
   const blockingReasons = report.reasonSummaryStatus?.summary?.blockingReasons || [];
   const prTopology = options.prTopology || buildV128PrTopologyProjection(process.env, report);
   const standingAutonomyPolicy = options.standingAutonomyPolicy || evaluateV128StandingAutonomyPolicy({
