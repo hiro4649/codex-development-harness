@@ -1234,8 +1234,11 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
       else if (node.sourceResultDigest !== node.resultDigest) reasons.push('reused_node_source_result_digest_mismatch');
       if (!/^[a-f0-9]{40}$/.test(String(node.sourceHeadSha || ''))) reasons.push('reused_node_source_head_sha_required');
       if (!/^sha256:[a-f0-9]{64}$/.test(String(node.cacheKeyDigest || ''))) reasons.push('reused_node_cache_key_digest_required');
-      else if (reuse.nodeCacheKeyDigests?.[node.nodeRef] && node.cacheKeyDigest !== reuse.nodeCacheKeyDigests[node.nodeRef]) reasons.push('reused_node_cache_key_digest_mismatch');
-      else if (!reuse.nodeCacheKeyDigests?.[node.nodeRef] && reuse.cacheKeyDigest && node.cacheKeyDigest !== reuse.cacheKeyDigest) reasons.push('reused_node_cache_key_digest_mismatch');
+      else {
+        const nodeCacheKeyDigest = reuse.nodeCacheKeyDigests?.[node.nodeRef] || null;
+        const runWideCacheKeyDigest = reuse.cacheKeyDigest || null;
+        if (node.cacheKeyDigest !== nodeCacheKeyDigest && node.cacheKeyDigest !== runWideCacheKeyDigest) reasons.push('reused_node_cache_key_digest_mismatch');
+      }
       if (node.sourceRunRef?.nodeInputDigest && node.sourceRunRef.nodeInputDigest !== node.nodeInputDigest) reasons.push('reused_node_source_run_ref_node_input_digest_mismatch');
       if (!node.resultSchemaVersion) reasons.push('reused_node_result_schema_required');
     }
