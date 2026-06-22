@@ -935,6 +935,21 @@ Post-merge replay coverage remains `partial_shadow_candidate`; that
 partial status blocks Source Activation until sentinel, recovery, and verify
 lanes are executed against a real merged main.
 
+Target Shadow Preflight uses `scripts/codex-v128-target-shadow-preflight.mjs`
+as a bounded verifier. It reads only `AGENTS.md`, the active target manifest,
+the active policy index, and the v127 spec when present. It must not
+recursively scan `.git`, `node_modules`, build outputs, dist outputs, coverage,
+or cache directories. A complex target must preserve active v1.2.7/v127
+authority, manifest/profile availability, PR-body display-only semantics, and a
+clean worktree. A restricted token target may pass from the bounded
+AGENTS/profile surface when it proves token-only, no-deploy, no-wallet/RPC
+boundaries without product/runtime mutation. The preflight is
+non-authoritative. It is not an actual target v128 execution canary and cannot
+authorize Source Activation, target rollout, deploy, wallet/RPC access, or
+readiness claims. It must not expose canary-named compatibility exports or
+canary-named environment variable entrypoints; callers must use the preflight
+name so a static metadata check cannot be reported as an actual target canary.
+
 The bounded Projection reader verifies the extracted Projection schema, head,
 and Projection payload digest without reading additional cold artifacts. The
 source binding is generated from the v128 Projection/state-matrix contract
