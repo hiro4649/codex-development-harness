@@ -941,7 +941,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
   const cacheKeyInvalid = cacheKeyHasInvalidField(cacheKeyFields) || sourceClosureReuseForbidden;
   const reuseEligible = cacheReuseEligible(cacheKeyFields) && !sourceClosureReuseForbidden;
   const reuseDecision = classifyReuseDecision(nodeResults, input, cacheKeyInvalid);
-  const cacheKeyDigest = reuseEligible ? digestValue(cacheKeyFields) : null;
+  const cacheKeyDigest = cacheKeyInvalid ? null : digestValue(cacheKeyFields);
   const nodeCacheKeyDigests = Object.fromEntries(graphNodes.map((node) => {
     const nodeClosure = nodeSourceClosures[node.nodeRef] || {};
     const nodeSourceDigest = nodeSourceClosures[node.nodeRef]?.nodeSourceClosureDigest || sourceClosure.sourceClosureDigest;
