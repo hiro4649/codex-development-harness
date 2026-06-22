@@ -73,6 +73,7 @@ import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-
 import {
   V128_RELEASE_DRILL_SCENARIOS,
   buildV128ReleaseDrill,
+  runV128BlackBoxReleaseDrill,
   validateV128ReleaseDrill,
 } from './codex-v128-release-drill.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
@@ -3084,6 +3085,23 @@ function releaseDrillRollbackDryRunRequiresV127() {
       && scenario.reasonCodes.includes('v127_rollback_unavailable'));
 }
 
+function releaseDrillBlackBoxRunnerIsExported() {
+  return typeof runV128BlackBoxReleaseDrill === 'function';
+}
+
+function releaseDrillBlackBoxMissingObservationFails() {
+  const report = buildV128ReleaseDrill();
+  const validation = validateV128ReleaseDrill({
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    antiSpin: report.releaseDrillStatus.antiSpin,
+    scenarios: report.scenarios,
+  });
+  return failed(validation)
+    && validation.reasonCodes.some((reason) => reason.startsWith('release_drill_black_box_mode_missing_'))
+    && validation.reasonCodes.some((reason) => reason.startsWith('release_drill_child_process_observation_missing_'));
+}
+
 const cases = [
   ['v128_self_test_must_pass', () => true],
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -3237,6 +3255,8 @@ const cases = [
   ['release_drill_anti_spin_caps_are_fixed', () => releaseDrillAntiSpinCapsAreFixed()],
   ['release_drill_duplicate_writer_mutation_fails', () => releaseDrillDuplicateWriterMutationFails()],
   ['release_drill_rollback_dry_run_requires_v127', () => releaseDrillRollbackDryRunRequiresV127()],
+  ['release_drill_black_box_runner_is_exported', () => releaseDrillBlackBoxRunnerIsExported()],
+  ['release_drill_black_box_missing_observation_fails', () => releaseDrillBlackBoxMissingObservationFails()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],

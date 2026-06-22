@@ -105,6 +105,10 @@
   },
   "releaseDrill": {
     "script": "scripts/codex-v128-release-drill.mjs",
+    "routineFixtureMode": "contract_fixture_self_test_only",
+    "cliExecutionMode": "black_box_child_process_filesystem",
+    "trustedPreActivationBaseCommit": "37e2812620c1b64d8f4da7085b2e0efe1ac89de2",
+    "expectedDefaultObservationAllowed": false,
     "scenarioCount": 5,
     "requiredScenarios": [
       "forced_interruption_recovery",
@@ -126,6 +130,19 @@
     "sameBlockerMax": 1,
     "noProgressWindow": 1,
     "sourceActivationBlockedUntilPass": true,
+    "sourceActivationValidityDecision": {
+      "allBlackBoxScenariosPass": "ratify_current_activation",
+      "anyBlackBoxScenarioFailOrInconclusive": "auto_revert_source_activation",
+      "humanPerPrDecisionRequired": false,
+      "standingAutonomyStillCannotOverrideAutoQuarantine": true
+    },
+    "blackBoxRequiredEvidence": {
+      "forcedInterruption": ["child_process_killed", "checkpoint_file_observed", "resume_child_preserves_contract"],
+      "staleLock": ["stale_lock_file_observed", "reacquire_after_stale_lock", "live_lock_rejected"],
+      "sameBlocker": ["first_attempt_continues", "second_same_blocker_stops", "sameBlockerMax_1"],
+      "duplicateWriter": ["two_child_writers", "one_writer_mutates_state", "one_writer_rejected"],
+      "v127Rollback": ["detached_worktree_at_trusted_base", "v127_self_test_pass", "v127_quality_gate_pass"]
+    },
     "rollbackDryRunRequires": [
       "v127_self_test",
       "v127_spec",
