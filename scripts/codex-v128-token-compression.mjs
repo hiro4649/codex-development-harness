@@ -524,7 +524,7 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
       compactNode.sourceRunRefDigest = node.sourceRunRef ? digestValue(node.sourceRunRef) : null;
       compactNode.sourceResultDigest = node.sourceResultDigest || null;
       compactNode.sourceHeadSha = node.sourceHeadSha || null;
-      compactNode.cacheKeyDigest = node.cacheKeyDigest || null;
+      compactNode.cacheKeyDigest = compact.validationReuseDecision?.cacheKeyDigest || node.cacheKeyDigest || null;
     }
     return compactNode;
   });
