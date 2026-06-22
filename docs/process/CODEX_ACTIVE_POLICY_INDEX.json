@@ -195,6 +195,7 @@
       "projectionIntegrityChecks": ["schema", "head", "source_digest"],
       "stateMatrixExecutor": "scripts/codex-v128-state-matrix.mjs",
       "validationExecutionPlan": "scripts/codex-v128-validation-execution-plan.mjs",
+      "releaseDrill": "scripts/codex-v128-release-drill.mjs",
       "managedContextBytesObserved": true,
       "managedContextObservationSource": "v128_managed_context_emitter",
       "managedContextObservationScope": "source_shadow_candidate",

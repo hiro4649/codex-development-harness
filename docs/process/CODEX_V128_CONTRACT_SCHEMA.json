@@ -103,6 +103,36 @@
     "preflightMaySatisfyActualCanary": false,
     "sourceActivationBlockedUntilPass": true
   },
+  "releaseDrill": {
+    "script": "scripts/codex-v128-release-drill.mjs",
+    "scenarioCount": 5,
+    "requiredScenarios": [
+      "forced_interruption_recovery",
+      "stale_lock_recovery",
+      "same_blocker_stop",
+      "duplicate_writer_rejection",
+      "v127_rollback_dry_run"
+    ],
+    "extraScenarioAllowed": false,
+    "newFeatureAllowed": false,
+    "sourceActivationAuthorityCreated": false,
+    "targetRolloutAuthorityCreated": false,
+    "productRuntimeMutationAllowed": false,
+    "packageMutationAllowed": false,
+    "deployMutationAllowed": false,
+    "rawLogReadAllowed": false,
+    "completionContractChangeAllowed": false,
+    "maxRepairIterations": 2,
+    "sameBlockerMax": 1,
+    "noProgressWindow": 1,
+    "sourceActivationBlockedUntilPass": true,
+    "rollbackDryRunRequires": [
+      "v127_self_test",
+      "v127_spec",
+      "v127_v128_dual_reader",
+      "rollback_writer_to_v127"
+    ]
+  },
   "reason": {
     "states": ["none", "observed", "pending", "missing", "failed", "valid", "invalid", "stale", "blocked"],
     "effects": ["none", "awaiting", "blocking", "advisory", "display_only", "compatibility_shadow"],

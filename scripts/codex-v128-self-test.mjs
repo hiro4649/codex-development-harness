@@ -70,6 +70,11 @@ import {
   validateV128CompactValidationPlanExact,
 } from './codex-v128-token-compression.mjs';
 import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-finalizer.mjs';
+import {
+  V128_RELEASE_DRILL_SCENARIOS,
+  buildV128ReleaseDrill,
+  validateV128ReleaseDrill,
+} from './codex-v128-release-drill.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
 
 function test(name, fn) {
@@ -3010,6 +3015,73 @@ function validationRequiredSkippedFails() {
   })));
 }
 
+function releaseDrillExecutesExactScenarios() {
+  const report = buildV128ReleaseDrill();
+  const validation = validateV128ReleaseDrill(report);
+  return passed(validation)
+    && report.releaseDrillStatus.status === 'pass'
+    && report.releaseDrillStatus.safeNextAction === 'source_activation_pr_only'
+    && report.releaseDrillStatus.antiSpin.maxRepairIterations === 2
+    && report.releaseDrillStatus.antiSpin.sameBlockerMax === 1
+    && report.releaseDrillStatus.antiSpin.noProgressWindow === 1
+    && report.scenarios.length === V128_RELEASE_DRILL_SCENARIOS.length
+    && V128_RELEASE_DRILL_SCENARIOS.every((scenarioId) => report.scenarios.some((scenario) => scenario.scenarioId === scenarioId && scenario.status === 'pass'));
+}
+
+function releaseDrillMissingScenarioFails() {
+  const report = buildV128ReleaseDrill({
+    scenarioIds: V128_RELEASE_DRILL_SCENARIOS.filter((scenarioId) => scenarioId !== 'stale_lock_recovery'),
+  });
+  return failed(validateV128ReleaseDrill(report))
+    && report.releaseDrillStatus.reasonCodes.some((reason) => reason.includes('release_drill_missing_stale_lock_recovery'));
+}
+
+function releaseDrillExtraScenarioFails() {
+  const report = buildV128ReleaseDrill({
+    scenarioIds: [...V128_RELEASE_DRILL_SCENARIOS, 'new_unapproved_scenario'],
+  });
+  return failed(validateV128ReleaseDrill(report))
+    && report.releaseDrillStatus.reasonCodes.some((reason) => reason.includes('release_drill_extra_new_unapproved_scenario'));
+}
+
+function releaseDrillAntiSpinCapsAreFixed() {
+  const report = buildV128ReleaseDrill({
+    maxRepairIterations: 3,
+  });
+  return failed(validateV128ReleaseDrill(report))
+    && report.releaseDrillStatus.reasonCodes.includes('release_drill_max_repair_iterations_not_fixed');
+}
+
+function releaseDrillDuplicateWriterMutationFails() {
+  const report = buildV128ReleaseDrill({
+    scenarioOverrides: {
+      duplicate_writer_rejection: {
+        stateMutationAllowed: true,
+      },
+    },
+  });
+  return failed(validateV128ReleaseDrill(report))
+    && report.scenarios.some((scenario) => scenario.scenarioId === 'duplicate_writer_rejection'
+      && scenario.reasonCodes.includes('duplicate_writer_state_mutation_allowed'));
+}
+
+function releaseDrillRollbackDryRunRequiresV127() {
+  const report = buildV128ReleaseDrill({
+    repoFacts: {
+      v127SelfTestAvailable: false,
+      v128SelfTestAvailable: true,
+      v127SpecAvailable: true,
+      versionRegistryDeclaresPreviousV127: true,
+      versionRegistryDeclaresV127StatusKey: true,
+      preservationDeclaresRollback: true,
+      preservationDeclaresDualReader: true,
+    },
+  });
+  return failed(validateV128ReleaseDrill(report))
+    && report.scenarios.some((scenario) => scenario.scenarioId === 'v127_rollback_dry_run'
+      && scenario.reasonCodes.includes('v127_rollback_unavailable'));
+}
+
 const cases = [
   ['v128_self_test_must_pass', () => true],
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -3157,6 +3229,12 @@ const cases = [
   ['actual_target_canary_runner_requires_restricted_readonly_validation', () => actualTargetCanaryRunnerRequiresRestrictedReadonlyValidation()],
   ['actual_target_canary_runner_does_not_use_preflight_as_v128_pass', () => actualTargetCanaryRunnerDoesNotUsePreflightAsV128Pass()],
   ['actual_target_canary_workflow_has_read_only_target_matrix', () => actualTargetCanaryWorkflowHasReadOnlyTargetMatrix()],
+  ['release_drill_executes_exact_fixed_scenarios', () => releaseDrillExecutesExactScenarios()],
+  ['release_drill_missing_scenario_fails', () => releaseDrillMissingScenarioFails()],
+  ['release_drill_extra_scenario_fails', () => releaseDrillExtraScenarioFails()],
+  ['release_drill_anti_spin_caps_are_fixed', () => releaseDrillAntiSpinCapsAreFixed()],
+  ['release_drill_duplicate_writer_mutation_fails', () => releaseDrillDuplicateWriterMutationFails()],
+  ['release_drill_rollback_dry_run_requires_v127', () => releaseDrillRollbackDryRunRequiresV127()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
@@ -3291,6 +3369,7 @@ const fixtureGroups = [
   'validation_execution_plan_aggregate_finalizer',
   'standing_autonomy_policy_execution',
   'active_v127_exit_isolation_negative',
+  'release_drill_execution',
 ];
 
 const failures = cases.filter((item) => item.status !== 'pass');

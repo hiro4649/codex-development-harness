@@ -921,6 +921,32 @@ rollback:
   keep dual-reader
 ```
 
+## Release Drill
+
+Source Activation is blocked until `scripts/codex-v128-release-drill.mjs`
+passes exactly five scenarios:
+
+```text
+forced_interruption_recovery
+stale_lock_recovery
+same_blocker_stop
+duplicate_writer_rejection
+v127_rollback_dry_run
+```
+
+No extra release-drill scenarios are allowed in v1.2.8. The drill cannot add a
+new loop mode, status family, Skill, memory system, P0 artifact, cache layer,
+target canary layer, reviewer, owner authority, Source Activation authority, or
+target rollout authority. It must not read raw logs and must not mutate product,
+runtime, package, deploy, wallet/RPC, target, or readiness surfaces.
+
+The fixed anti-spin caps are `maxRepairIterations=2`, `sameBlockerMax=1`, and
+`noProgressWindow=1`. A same-blocker repeat stops instead of adding another
+repair pass. Duplicate writers are rejected before state mutation. The v127
+rollback dry-run must prove the v127 self-test, v127 spec, v127/v128 dual
+reader, and `rollback_writer_to_v127` contract remain available without
+changing activation surfaces.
+
 ## Activation Boundary
 
 Specification PR is allowed. Source Shadow Candidate is conditional on the
