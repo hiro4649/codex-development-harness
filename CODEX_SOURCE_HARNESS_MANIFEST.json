@@ -121,6 +121,7 @@
     "scripts/codex-v128-target-shadow-preflight.mjs",
     "scripts/codex-v128-actual-target-canary-contract.mjs",
     "scripts/codex-v128-actual-target-canary-runner.mjs",
+    "scripts/codex-v128-release-drill.mjs",
     "scripts/codex-v128-token-compression.mjs",
     "scripts/codex-v128-trust-closure.mjs"
   ],
@@ -594,6 +595,7 @@
     "scripts/codex-v128-target-shadow-preflight.mjs",
     "scripts/codex-v128-actual-target-canary-contract.mjs",
     "scripts/codex-v128-actual-target-canary-runner.mjs",
+    "scripts/codex-v128-release-drill.mjs",
     "scripts/codex-v128-token-compression.mjs"
   ],
   "scriptNames": [
@@ -1874,6 +1876,7 @@
       "projectionIntegrityChecks": ["schema", "head", "source_digest"],
       "stateMatrixExecutor": "scripts/codex-v128-state-matrix.mjs",
       "validationExecutionPlan": "scripts/codex-v128-validation-execution-plan.mjs",
+      "releaseDrill": "scripts/codex-v128-release-drill.mjs",
       "perTransitionManagedContextBytesMax": 4096,
       "managedContextBytesObserved": true,
       "managedContextObservationSource": "v128_managed_context_emitter",
