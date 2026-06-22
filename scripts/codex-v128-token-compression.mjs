@@ -79,8 +79,6 @@ function compactValidationPlan(plan = {}, status = {}) {
   const requeue = plan.failureDirectedRequeue || {};
   const economy = plan.loopEconomy || {};
   const admission = plan.loopAdmissionRouter || {};
-  const cacheCanary = plan.realCacheCanary || {};
-  const cacheLifecycle = plan.cacheLifecycle || {};
   const summary = {
     status: status.status || 'missing',
     observationState: status.observationState || plan.observationState || 'unknown',
@@ -93,19 +91,12 @@ function compactValidationPlan(plan = {}, status = {}) {
     loopBudgetState: economy.budgetState || 'unknown',
     executionMode: admission.executionMode || 'unknown',
     admissionStatus: admission.admissionStatus || 'unknown',
-    realCacheCanaryStatus: cacheCanary.status || 'unknown',
-    cacheState: cacheLifecycle.cacheState || 'not_observed',
-    cacheProofStatus: cacheCanary.actualCacheProof?.status || cacheCanary.actualCacheProofStatus || 'unknown',
-    cacheProofSampleCount: Number(cacheCanary.actualCacheProof?.sampleCount || cacheCanary.sampleCount || 0),
-    realHitExecutedCommandCount: Number(cacheCanary.performance?.realHitExecutedCommandCount || cacheCanary.realHit?.executedEligibleNodeCount || cacheCanary.realHitExecutedEligibleNodeCount || 0),
-    suppressedCommandCount: Number(cacheCanary.performance?.suppressedCommandCount || cacheCanary.suppressedCommandCount || 0),
     loopTransitionCode: admission.loopTransitionCode || 'unknown',
     acceptedChangeState: economy.acceptedChangeState || 'validation_pass',
     residentAndDeltaBytesPerValidatedPass: economy.residentAndDeltaBytesPerValidatedPass ?? null,
     modelInvocationObserved: economy.modelInvocationObserved === true,
     fullContextResendCount: Number(economy.fullContextResendCount || 0),
     deltaContextBytes: Number(economy.deltaContextBytes || 0),
-    safeSummaryOnly: true,
   };
   if (summary.status !== 'pass' && Array.isArray(status.reasonCodes) && status.reasonCodes.length) {
     summary.reasonCode = String(status.reasonCodes[0] || '').slice(0, 96);
@@ -140,7 +131,6 @@ function compactReleaseDrillEvidence(evidence = {}) {
       loadBearingForActivationIntegrity: evidence.loadBearingForActivationIntegrity === true,
     }),
     safeNextAction: evidence.safeNextAction || 'run_remote_same_head_quality_gate',
-    safeSummaryOnly: true,
   };
 }
 
@@ -248,7 +238,6 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
       validationPlan: compactValidationPlan(v128ValidationExecutionPlan, v128ValidationExecutionPlanStatus),
       trustClosure: compactTrustClosure(v128TrustClosure, v128TrustClosureStatus),
       releaseDrill: compactReleaseDrillEvidence(v128ReleaseDrillEvidence),
-      safeSummaryOnly: true,
     },
     finalDecisionPointer: {
       artifactName: 'codex-final-decision.safe.json',
