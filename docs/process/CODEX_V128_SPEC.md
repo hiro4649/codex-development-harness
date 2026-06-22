@@ -123,20 +123,20 @@ stress Projection <= 2048 bytes
 routine bounded Projection reader surface <= 1600 bytes
 routine bounded Projection reader stdout <= 1600 bytes
 routine bounded Projection reader rejects duplicate JSON keys
-per-transition managed context <= 4096 bytes
+per-transition managed context <= 2300 bytes
 compiled active instruction context <= 1400 bytes
 resident context <= 2048 bytes
 delta packet <= 768 bytes
 full context resend count <= 1 per task
-stored Safe Summary <= 6144 bytes soft cap
-routine Safe Summary read surface <= 2560 bytes
-Orchestration Capsule <= 58000 bytes soft cap
+stored Safe Summary <= 5600 bytes soft cap
+routine Safe Summary read surface <= 2500 bytes
+Orchestration Capsule <= 48000 bytes soft cap
 routine final report <= 8 lines
 routine owner interrupt = 0
 repeated safety text = 0
 ```
 
-The 4096 byte budget is per decision transition, not the cumulative task total.
+The 2300 byte budget is per decision transition, not the cumulative task total.
 The cumulative task bytes, repeated context bytes, and transitions-per-task are
 telemetry. In Source Shadow Candidate mode, `scripts/codex-v128-managed-context-emitter.mjs`
 measures a deterministic source managed-context capsule containing AGENTS,
@@ -512,23 +512,48 @@ validation pass; `managedInputBytesPerAcceptedChange` is reserved for an
 observed merge or protected-executor accepted result.
 
 Real cache canary is required in Source Shadow Candidate without adding a new
-P0 artifact. It uses existing validation artifacts to exercise:
+P0 artifact. It uses serialized cache records to exercise:
+
+The same-run node result reuse check is not load-bearing. It remains only as
+`cacheReuseSimulation` with `observationClass=simulation` and
+`status=partial_shadow_candidate`; it can never satisfy real cache acceptance.
 
 ```text
 cold_miss:
+  fresh invocation ledger
+  empty temporary serialized cache
   all eligible nodes execute once
+  serialized cache records are written
 
 real_hit:
-  eligible nodes reuse prior sourceRunRef/cache provenance
+  fresh invocation ledger
+  serialized cache records are read
+  eligible node execution count is 0
+  every eligible node is reused
+  commandSuppressionObserved=true
 
 real_partial_hit:
-  only failed, changed-input downstream, or invalidated-cache nodes execute
+  fresh invocation ledger
+  exactly projection_reader input digest changes
+  projection_reader and aggregate_finalizer execute
+  managed_context_emitter and state_matrix_executor reuse serialized records
   unaffectedNodeRerunCount=0
+  commandSuppressionObserved=true
 ```
 
-The canary is shadow-only until Activation, but its digest and status are
-included in the compact validation plan so repeated validation work is reduced
-without weakening v1.2.7 authority.
+Each cache record binds `repositoryId`, `sourceHead`, `baseHead`,
+`testedCommit`, `testedTreeKind`, `validationContextDigest`, `nodeRef`,
+`nodeInputDigest`, `nodeSourceClosureDigest`, `typedResultSchema`,
+`typedResultDigest`, `runnerEnvironmentDigest`, and `cacheRecordDigest`.
+Missing or mismatched fields are misses and cannot become implicit pass. The
+runner environment digest binds Node version, platform, architecture, GitHub
+Actions state, and provider image metadata when available. If provider image
+metadata is incomplete, proof scope is `same_environment_serialized_cache`, not
+cross-provider cache portability.
+
+The canary is shadow-only until Activation, but its digest, read/write counts,
+and command suppression counts are included in the compact validation plan so
+repeated validation work is reduced without weakening v1.2.7 authority.
 
 The routine Projection separates authority and operator actions without
 embedding a full topology object in the routine read surface:
@@ -856,11 +881,11 @@ bounded Projection reader model-facing surface <= 1600 measured canonical UTF-8 
 bounded Projection reader actual stdout <= 1600 measured UTF-8 bytes
 bounded Projection reader duplicate-key rejection pass
 bounded Projection reader schema/head/source digest binding pass
-managedContextEnvelope <= 3600 measured UTF-8 bytes
+managedContextEnvelope <= 2300 measured UTF-8 bytes
 Safe Summary <= 5600 stored UTF-8 bytes
-Orchestration Capsule <= 55000 stored UTF-8 bytes
+Orchestration Capsule <= 48000 stored UTF-8 bytes
 routine Projection <= 1536 preferred, 1600 hard max
-routine model-facing surface <= 2560 stored UTF-8 bytes
+routine model-facing surface <= 2500 stored UTF-8 bytes
 source and target deterministic replay pass
 PR body display-only replay pass
 receipt provenance and expiry replay pass

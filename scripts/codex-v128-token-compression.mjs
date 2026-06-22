@@ -7,8 +7,8 @@ import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-
 import { buildV128LoopAdmissionDigest } from './codex-v128-validation-execution-plan.mjs';
 
 export const V128_SAFE_SUMMARY_STORED_BYTES_SOFT_MAX = 5600;
-export const V128_SAFE_SUMMARY_ROUTINE_SURFACE_BYTES_MAX = 2560;
-export const V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX = 55000;
+export const V128_SAFE_SUMMARY_ROUTINE_SURFACE_BYTES_MAX = 2500;
+export const V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX = 48000;
 
 export function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -94,6 +94,9 @@ function compactValidationPlan(plan = {}, status = {}) {
     executionMode: admission.executionMode || 'unknown',
     admissionStatus: admission.admissionStatus || 'unknown',
     realCacheCanaryStatus: cacheCanary.status || 'unknown',
+    cacheProofScope: cacheCanary.proofScope || null,
+    realHitExecutedCommandCount: Number(cacheCanary.performance?.realHitExecutedCommandCount || cacheCanary.realHit?.executedEligibleNodeCount || 0),
+    suppressedCommandCount: Number(cacheCanary.performance?.suppressedCommandCount || 0),
     loopTransitionCode: admission.loopTransitionCode || 'unknown',
     acceptedChangeState: economy.acceptedChangeState || 'validation_pass',
     residentAndDeltaBytesPerValidatedPass: economy.residentAndDeltaBytesPerValidatedPass ?? null,
@@ -482,13 +485,23 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   const cacheCanary = plan.realCacheCanary || {};
   compact.realCacheCanary = {
     status: cacheCanary.status || 'unknown',
+    observationClass: cacheCanary.observationClass || 'unknown',
+    proofScope: cacheCanary.proofScope || null,
     observed: cacheCanary.observed === true,
     coldMissExecutedEligibleNodeCount: Number(cacheCanary.coldMiss?.executedEligibleNodeCount || 0),
     realHitReusedEligibleNodeCount: Number(cacheCanary.realHit?.reusedEligibleNodeCount || 0),
+    realHitExecutedEligibleNodeCount: Number(cacheCanary.realHit?.executedEligibleNodeCount || 0),
     realPartialHitExecutedNodeCount: Array.isArray(cacheCanary.realPartialHit?.executedNodeRefs) ? cacheCanary.realPartialHit.executedNodeRefs.length : 0,
     unaffectedNodeRerunCount: Number(cacheCanary.realPartialHit?.unaffectedNodeRerunCount || 0),
+    suppressedCommandCount: Number(cacheCanary.performance?.suppressedCommandCount || 0),
+    cacheRecordReadbackDigest: cacheCanary.cacheRecordReadbackDigest || null,
     canaryDigest: cacheCanary.canaryDigest || null,
     canaryTransportDigest: cacheCanary.canaryTransportDigest || null,
+  };
+  const cacheSimulation = plan.cacheReuseSimulation || {};
+  compact.cacheReuseSimulation = {
+    status: cacheSimulation.status || 'unknown',
+    observationClass: cacheSimulation.observationClass || 'simulation',
   };
   const originalTypedResults = plan.typedResults && typeof plan.typedResults === 'object' ? plan.typedResults : {};
   const typedResults = {};

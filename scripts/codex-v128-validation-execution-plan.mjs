@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { runV128SerializedCacheCanary } from './codex-v128-serialized-cache-canary.mjs';
 
 const VALIDATION_NODES_MAX = 12;
 const DELTA_CONTEXT_BYTES_MAX = 768;
@@ -37,6 +38,7 @@ const SOURCE_CLOSURE_FILES = [
   'scripts/codex-v128-state-matrix-adapter.mjs',
   'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
   'scripts/codex-v128-invocation-ledger.mjs',
+  'scripts/codex-v128-serialized-cache-canary.mjs',
   'scripts/codex-v128-projection-reader.mjs',
   'scripts/codex-v128-managed-context-emitter.mjs',
   'scripts/codex-v128-state-matrix.mjs',
@@ -817,7 +819,7 @@ function finalizerStaticScan() {
   };
 }
 
-function buildRealCacheCanary(input = {}, graphNodes = [], nodeResults = [], typedResults = {}, nodeInputDigests = {}, nodeCacheKeyDigests = {}, cacheKeyDigest = null, reuseEligible = false) {
+function buildCacheReuseSimulation(input = {}, graphNodes = [], nodeResults = [], typedResults = {}, nodeInputDigests = {}, nodeCacheKeyDigests = {}, cacheKeyDigest = null, reuseEligible = false) {
   const eligibleNodeRefs = graphNodes.map((node) => node.nodeRef);
   const typedResultDigests = Object.fromEntries(eligibleNodeRefs.map((nodeRef) => [nodeRef, digestValue(typedResults[nodeRef] || null)]));
   const allNodesPassed = eligibleNodeRefs.every((nodeRef) => (nodeResults.find((node) => node.nodeRef === nodeRef)?.status || 'missing') === 'pass');
@@ -836,44 +838,39 @@ function buildRealCacheCanary(input = {}, graphNodes = [], nodeResults = [], typ
   const partialReusedNodeRefs = eligibleNodeRefs.filter((nodeRef) => !partialExecutedNodeRefs.includes(nodeRef)).sort();
   const observed = allNodesPassed && reuseEligible === true && isSha256Digest(cacheKeyDigest) && eligibleNodeRefs.length > 0;
   const canaryCore = {
-    canaryKind: 'v128_existing_artifact_cache_canary',
+    canaryKind: 'v128_existing_artifact_cache_simulation',
+    observationClass: 'simulation',
     observationSource: 'existing_safe_artifact_typed_results',
-    observed,
+    observed: false,
+    simulatedOnly: true,
     cacheKeyDigest,
     canaryTransportDigest,
     coldMiss: {
-      observed,
+      observed: false,
       reuseDecision: 'miss',
-      executedEligibleNodeCount: observed ? eligibleNodeRefs.length : 0,
+      executedEligibleNodeCount: 0,
       reusedNodeCount: 0,
     },
     realHit: {
-      observed,
+      observed: false,
       reuseDecision: 'hit',
       executedEligibleNodeCount: 0,
-      reusedEligibleNodeCount: observed ? eligibleNodeRefs.length : 0,
+      reusedEligibleNodeCount: 0,
       sourceArtifactTransportDigest: canaryTransportDigest,
     },
     realPartialHit: {
-      observed,
+      observed: false,
       reuseDecision: 'partial_hit',
       invalidatedNodeRefs,
-      executedNodeRefs: observed ? partialExecutedNodeRefs : [],
-      reusedNodeRefs: observed ? partialReusedNodeRefs : [],
+      executedNodeRefs: [],
+      reusedNodeRefs: [],
       unaffectedNodeRerunCount: 0,
       sourceArtifactTransportDigest: canaryTransportDigest,
     },
   };
-  const status = observed
-    && canaryCore.coldMiss.executedEligibleNodeCount === eligibleNodeRefs.length
-    && canaryCore.realHit.executedEligibleNodeCount === 0
-    && canaryCore.realHit.reusedEligibleNodeCount === eligibleNodeRefs.length
-    && canaryCore.realPartialHit.unaffectedNodeRerunCount === 0
-    ? 'pass'
-    : 'partial_shadow_candidate';
   return {
     ...canaryCore,
-    status,
+    status: 'partial_shadow_candidate',
     canaryDigest: digestValue(canaryCore),
     safeSummaryOnly: true,
   };
@@ -989,9 +986,34 @@ export function buildV128ValidationExecutionPlan(input = {}) {
         : 'fail');
   const failureDirectedRequeue = buildFailureDirectedRequeue(input, graphNodes, boundNodeResults, nodeInputDigests);
   const loopEconomy = buildLoopEconomy(input, boundNodeResults, status, failureDirectedRequeue);
+  const typedResultDigests = Object.fromEntries(graphNodes.map((node) => [node.nodeRef, digestValue(typedResults[node.nodeRef] || null)]));
+  const nodeSourceClosureDigests = Object.fromEntries(graphNodes.map((node) => [
+    node.nodeRef,
+    nodeSourceClosures[node.nodeRef]?.nodeSourceClosureDigest || sourceClosure.sourceClosureDigest,
+  ]));
+  const baseHeadForSerializedCache = /^[a-f0-9]{40}$/.test(String(fieldValue(validationContext.baseOid) || ''))
+    ? fieldValue(validationContext.baseOid)
+    : digestValue({
+      testedTreeKind: fieldValue(validationContext.testedTreeKind) || 'unknown',
+      baseHead: 'not_applicable',
+    });
   const realCacheCanary = observationState === 'observed'
-    ? buildRealCacheCanary(input, graphNodes, boundNodeResults, typedResults, nodeInputDigests, nodeCacheKeyDigests, cacheKeyDigest, reuseEligible)
+    ? runV128SerializedCacheCanary({
+      repositoryId: workspaceIdentityCore.repositoryKey,
+      sourceHead: fieldValue(validationContext.sourceHeadOid) || fieldValue(cacheKeyFields.headSha) || 'unknown',
+      baseHead: baseHeadForSerializedCache,
+      testedCommit: fieldValue(validationContext.testedCommitOid) || fieldValue(cacheKeyFields.headSha) || 'unknown',
+      testedTreeKind: fieldValue(validationContext.testedTreeKind) || 'unknown',
+      validationContextDigest: fieldValue(validationContext.validationContextDigest) || null,
+      nodeRefs: graphNodes.map((node) => node.nodeRef),
+      typedResultDigests,
+      nodeInputDigests,
+      nodeSourceClosureDigests,
+    })
     : { status: 'not_exercised', observed: false, safeSummaryOnly: true };
+  const cacheReuseSimulation = observationState === 'observed'
+    ? buildCacheReuseSimulation(input, graphNodes, boundNodeResults, typedResults, nodeInputDigests, nodeCacheKeyDigests, cacheKeyDigest, reuseEligible)
+    : { status: 'not_exercised', observed: false, observationClass: 'simulation', safeSummaryOnly: true };
   const selectiveFailureMemory = buildSelectiveFailureMemory(input, failureDirectedRequeue);
   const loopAdmissionRouter = buildLoopAdmissionRouter(input, status, failureDirectedRequeue, loopEconomy);
   return {
@@ -1052,6 +1074,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
       skippedNodeRefs: reuseDecision === 'hit' || reuseDecision === 'partial_hit' ? reusedNodeRefs : [],
     },
     failureDirectedRequeue,
+    cacheReuseSimulation,
     realCacheCanary,
     loopEconomy,
     loopAdmissionRouter,
@@ -1107,6 +1130,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   const execution = plan.profileExecution || {};
   const reuse = plan.validationReuseDecision || {};
   const requeue = plan.failureDirectedRequeue || {};
+  const cacheReuseSimulation = plan.cacheReuseSimulation || {};
   const realCacheCanary = plan.realCacheCanary || {};
   const loopEconomy = plan.loopEconomy || {};
   const loopAdmissionRouter = plan.loopAdmissionRouter || {};
@@ -1274,17 +1298,38 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
     if (!requeueAllowed.has(nodeRef)) reasons.push('failure_directed_unallowed_requeue_node');
   }
   if (plan.observationState === 'observed') {
+    if (cacheReuseSimulation.status === 'pass') reasons.push('cache_reuse_simulation_cannot_pass');
+    if (cacheReuseSimulation.observationClass && cacheReuseSimulation.observationClass !== 'simulation') reasons.push('cache_reuse_simulation_class_invalid');
     if (!['pass', 'partial_shadow_candidate'].includes(realCacheCanary.status || 'missing')) reasons.push('real_cache_canary_status_invalid');
     if (realCacheCanary.status === 'pass') {
       if (realCacheCanary.observed !== true) reasons.push('real_cache_canary_observed_required');
+      if (realCacheCanary.observationClass !== 'serialized_cache_canary') reasons.push('real_cache_canary_observation_class_required');
+      if (!['same_environment_serialized_cache', 'provider_image_serialized_cache'].includes(realCacheCanary.proofScope || 'missing')) reasons.push('real_cache_canary_proof_scope_invalid');
+      const executionIds = [
+        realCacheCanary.coldMiss?.executionId,
+        realCacheCanary.realHit?.executionId,
+        realCacheCanary.realPartialHit?.executionId,
+      ].filter(Boolean);
+      if (executionIds.length !== 3 || new Set(executionIds).size !== 3) reasons.push('real_cache_canary_distinct_execution_ids_required');
       if (realCacheCanary.coldMiss?.reuseDecision !== 'miss') reasons.push('real_cache_canary_cold_miss_required');
       if (Number(realCacheCanary.coldMiss?.reusedNodeCount || 0) !== 0) reasons.push('real_cache_canary_cold_miss_reused_forbidden');
+      if (Number(realCacheCanary.coldMiss?.executedEligibleNodeCount || 0) !== graphNodes.length) reasons.push('real_cache_canary_cold_miss_all_nodes_required');
       if (realCacheCanary.realHit?.reuseDecision !== 'hit') reasons.push('real_cache_canary_hit_required');
       if (Number(realCacheCanary.realHit?.executedEligibleNodeCount || 0) !== 0) reasons.push('real_cache_canary_hit_execution_forbidden');
+      if (Number(realCacheCanary.realHit?.reusedEligibleNodeCount || 0) !== graphNodes.length) reasons.push('real_cache_canary_hit_reuse_all_required');
+      if (realCacheCanary.realHit?.commandSuppressionObserved !== true) reasons.push('real_cache_canary_hit_command_suppression_required');
       if (realCacheCanary.realPartialHit?.reuseDecision !== 'partial_hit') reasons.push('real_cache_canary_partial_hit_required');
+      const partialExecuted = Array.isArray(realCacheCanary.realPartialHit?.executedNodeRefs) ? realCacheCanary.realPartialHit.executedNodeRefs : [];
+      const partialReused = Array.isArray(realCacheCanary.realPartialHit?.reusedNodeRefs) ? realCacheCanary.realPartialHit.reusedNodeRefs : [];
+      if (canonicalJson([...partialExecuted].sort()) !== canonicalJson(['aggregate_finalizer', 'projection_reader'])) reasons.push('real_cache_canary_partial_executed_refs_invalid');
+      if (canonicalJson([...partialReused].sort()) !== canonicalJson(['managed_context_emitter', 'state_matrix_executor'])) reasons.push('real_cache_canary_partial_reused_refs_invalid');
       if (Number(realCacheCanary.realPartialHit?.unaffectedNodeRerunCount || 0) !== 0) reasons.push('real_cache_canary_unaffected_rerun_forbidden');
+      if (realCacheCanary.realPartialHit?.commandSuppressionObserved !== true) reasons.push('real_cache_canary_partial_command_suppression_required');
+      if (!isSha256Digest(realCacheCanary.cacheRecordReadbackDigest)) reasons.push('real_cache_canary_cache_readback_digest_required');
       if (!isSha256Digest(realCacheCanary.canaryDigest)) reasons.push('real_cache_canary_digest_required');
       if (!isSha256Digest(realCacheCanary.canaryTransportDigest)) reasons.push('real_cache_canary_transport_digest_required');
+      if (Number(realCacheCanary.performance?.realHitExecutedCommandCount || 0) !== 0) reasons.push('real_cache_canary_hit_performance_execution_forbidden');
+      if (Number(realCacheCanary.performance?.suppressedCommandCount || 0) < 1) reasons.push('real_cache_canary_suppressed_command_count_required');
     }
   }
   if (loopEconomy.observed === true && plan.observationState !== 'observed') reasons.push('loop_economy_observed_requires_observed_plan');

@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import process from 'node:process';
 
-const MANAGED_CONTEXT_BYTES_MAX = 3600;
+const MANAGED_CONTEXT_BYTES_MAX = 2300;
 const COMPILED_CONTEXT_BYTES_MAX = 1400;
 const RESIDENT_CONTEXT_BYTES_MAX = 2048;
 const DELTA_CONTEXT_BYTES_MAX = 768;
