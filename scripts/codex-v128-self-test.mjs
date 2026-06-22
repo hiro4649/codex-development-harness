@@ -47,6 +47,10 @@ import {
   validateV128StandingAutonomyPolicyEvaluation,
 } from './codex-v128-standing-autonomy-policy.mjs';
 import {
+  evaluateV128TargetShadowPreflight,
+  validateV128TargetShadowPreflight,
+} from './codex-v128-target-shadow-preflight.mjs';
+import {
   buildV128TrustClosure,
   validateV128TrustClosure,
 } from './codex-v128-trust-closure.mjs';
@@ -2441,6 +2445,109 @@ function standingAutonomyPolicyRejectsVerifierBundleMismatch() {
     && evaluation.reasonCodes.includes('standing_policy_trusted_verifier_bundle_mismatch');
 }
 
+function writeFixtureFile(root, relPath, text) {
+  const absolute = path.join(root, relPath);
+  fs.mkdirSync(path.dirname(absolute), { recursive: true });
+  fs.writeFileSync(absolute, text);
+}
+
+function buildTargetPreflightFixture(kind) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), `codex-v128-target-${kind}-`));
+  if (kind === 'complex') {
+    writeFixtureFile(root, 'AGENTS.md', [
+      'CODEX_QUALITY_HARNESS_FILE v1.2.7',
+      'Active target harness: v1.2.7 / v127.',
+      'PR bodies are human-rendered summaries only.',
+    ].join('\n'));
+    writeFixtureFile(root, 'docs/process/CODEX_HARNESS_MANIFEST.json', JSON.stringify({
+      versioning: {
+        activeHarnessVersion: '1.2.7',
+        activeSelfTestSuite: 'v127',
+      },
+    }));
+    writeFixtureFile(root, 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json', JSON.stringify({
+      profile: 'complex_target',
+      active: true,
+    }));
+    writeFixtureFile(root, 'docs/process/CODEX_V127_SPEC.md', 'PR body display-only. Active target harness v1.2.7 / v127.');
+  } else {
+    writeFixtureFile(root, 'AGENTS.md', [
+      'CODEX_QUALITY_HARNESS_FILE v1.2.7',
+      'Active target harness: v1.2.7 / v127.',
+      'Profile ID: VGC_TOKEN_NO_DEPLOY_NO_VALUE_TRANSFER_V1.',
+      'Token-only readonly target. No deploy action is allowed.',
+      'No wallet access is allowed. No secret or RPC value exposure is allowed.',
+      'PR bodies are human-rendered summaries only.',
+    ].join('\n'));
+    writeFixtureFile(root, 'node_modules/AGENTS.md', 'CODEX_QUALITY_HARNESS_FILE v0.0.0\nDeploy allowed.');
+  }
+  return root;
+}
+
+function targetShadowPreflightPassesComplexAndRestricted() {
+  const complex = buildTargetPreflightFixture('complex');
+  const restricted = buildTargetPreflightFixture('restricted');
+  const report = evaluateV128TargetShadowPreflight({
+    targets: [
+      { kind: 'complex', root: complex, label: 'complex_fixture' },
+      { kind: 'restricted', root: restricted, label: 'restricted_fixture' },
+    ],
+  });
+  const validation = validateV128TargetShadowPreflight(report);
+  return report.status === 'pass'
+    && passed(validation)
+    && report.complexPassCount === 1
+    && report.restrictedPassCount === 1
+    && report.generatedOrHeavyPathReadCount === 0
+    && report.foreignProfilePathReadCount === 0
+    && report.legacyActivePathReadCount === 0
+    && report.productRuntimeMutationFileCount === 0;
+}
+
+function targetShadowPreflightDoesNotReadNodeModules() {
+  const restricted = buildTargetPreflightFixture('restricted');
+  const report = evaluateV128TargetShadowPreflight({
+    targets: [
+      { kind: 'complex', root: buildTargetPreflightFixture('complex'), label: 'complex_fixture' },
+      { kind: 'restricted', root: restricted, label: 'restricted_fixture' },
+    ],
+  });
+  const restrictedResult = report.results.find((item) => item.kind === 'restricted');
+  return report.status === 'pass'
+    && restrictedResult.generatedOrHeavyPathReadCount === 0
+    && restrictedResult.boundedReadFileCount === 1
+    && restrictedResult.evidence.noDeployBoundary === true;
+}
+
+function targetShadowPreflightFailsMissingComplexManifest() {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v128-target-missing-'));
+  writeFixtureFile(root, 'AGENTS.md', [
+    'CODEX_QUALITY_HARNESS_FILE v1.2.7',
+    'Active target harness: v1.2.7 / v127.',
+    'PR bodies are human-rendered summaries only.',
+  ].join('\n'));
+  const report = evaluateV128TargetShadowPreflight({
+    targets: [
+      { kind: 'complex', root, label: 'missing_manifest' },
+      { kind: 'restricted', root: buildTargetPreflightFixture('restricted'), label: 'restricted_fixture' },
+    ],
+  });
+  return passed(validateV128TargetShadowPreflight(report))
+    && report.status === 'fail'
+    && report.reasonCodes.some((reason) => reason.includes('target_preflight_manifest_missing'));
+}
+
+function targetShadowPreflightHasNoDeprecatedCanaryEntrypoint() {
+  const text = fs.readFileSync('scripts/codex-v128-target-shadow-preflight.mjs', 'utf8');
+  const forbidden = [
+    'evaluateV128TargetShadow' + 'Canary',
+    'validateV128TargetShadow' + 'Canary',
+    'CODEX_V128_TARGET_' + 'CANARY_JSON',
+    'target_' + 'canary_',
+  ];
+  return forbidden.every((needle) => !text.includes(needle));
+}
+
 function nonAuthoritativeProjectionStatusDoesNotBlockActiveGate() {
   const summary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput({
     status: 'pass',
@@ -2635,6 +2742,10 @@ const cases = [
   ['trust_closure_builds_complete_verifier_bundle', () => trustClosureBuildsCompleteVerifierBundle()],
   ['trust_closure_fails_opaque_dependencies', () => trustClosureFailsOpaqueDependencies()],
   ['standing_autonomy_policy_rejects_verifier_bundle_mismatch', () => standingAutonomyPolicyRejectsVerifierBundleMismatch()],
+  ['target_shadow_preflight_passes_complex_and_restricted', () => targetShadowPreflightPassesComplexAndRestricted()],
+  ['target_shadow_preflight_does_not_read_node_modules', () => targetShadowPreflightDoesNotReadNodeModules()],
+  ['target_shadow_preflight_fails_missing_complex_manifest', () => targetShadowPreflightFailsMissingComplexManifest()],
+  ['target_shadow_preflight_has_no_deprecated_canary_entrypoint', () => targetShadowPreflightHasNoDeprecatedCanaryEntrypoint()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
