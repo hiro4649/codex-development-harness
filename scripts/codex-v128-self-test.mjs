@@ -34,6 +34,7 @@ import {
   buildV128ValidationExecutionPlan,
   validateV128ValidationExecutionPlan,
 } from './codex-v128-validation-execution-plan.mjs';
+import { runV128SerializedCacheCanary } from './codex-v128-serialized-cache-canary.mjs';
 import { buildCompactReasonSummary } from './codex-reason-summary.mjs';
 import {
   digestV128StandingAutonomyPolicy,
@@ -377,7 +378,7 @@ function managedContextEmitterObservesBytes() {
   return context.status === 'pass'
     && context.managedContextMeasurementSource === 'v128_managed_context_emitter'
     && context.managedContextBytes > 0
-    && context.managedContextBytes <= 3600
+    && context.managedContextBytes <= 2300
     && context.residentContextBytes > 0
     && context.residentContextBytes <= 2048
     && context.deltaContextBytes > 0
@@ -482,7 +483,7 @@ function tokenCompressionCompactsSafeSummary() {
   });
   return summary.tokenCompression.status === 'pass'
     && summary.tokenCompression.storedSafeSummaryBytes <= 5600
-    && summary.tokenCompression.routineReadSurfaceBytes <= 2560
+    && summary.tokenCompression.routineReadSurfaceBytes <= 2500
     && summary.compactDiagnostics.validationPlan.loopTransitionCode
     && !JSON.stringify(summary).includes('file-119')
     && !JSON.stringify(summary).includes('xxxxx');
@@ -697,6 +698,71 @@ function validationExecutionPlanVerifies() {
       }),
     ],
   })));
+}
+
+function validationSerializedCacheCanaryObservesColdHitPartial() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  });
+  const canary = plan.realCacheCanary || {};
+  return passed(validateV128ValidationExecutionPlan(plan))
+    && canary.status === 'pass'
+    && canary.observationClass === 'serialized_cache_canary'
+    && new Set([
+      canary.coldMiss?.executionId,
+      canary.realHit?.executionId,
+      canary.realPartialHit?.executionId,
+    ]).size === 3
+    && canary.coldMiss.executedEligibleNodeCount === 4
+    && canary.realHit.executedEligibleNodeCount === 0
+    && canary.realHit.reusedEligibleNodeCount === 4
+    && canonicalJson(canary.realPartialHit.executedNodeRefs) === canonicalJson(['aggregate_finalizer', 'projection_reader'])
+    && canonicalJson(canary.realPartialHit.reusedNodeRefs) === canonicalJson(['managed_context_emitter', 'state_matrix_executor'])
+    && canary.realPartialHit.unaffectedNodeRerunCount === 0
+    && canary.realHit.commandSuppressionObserved === true
+    && canary.realPartialHit.commandSuppressionObserved === true;
+}
+
+function validationCacheReuseSimulationCannotPass() {
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    runnerImageDigest: `sha256:${'b'.repeat(64)}`,
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: validValidationNodeResults(),
+  });
+  const simulation = plan.cacheReuseSimulation || {};
+  const tampered = {
+    ...plan,
+    cacheReuseSimulation: {
+      ...simulation,
+      status: 'pass',
+    },
+  };
+  return simulation.status === 'partial_shadow_candidate'
+    && simulation.observationClass === 'simulation'
+    && failed(validateV128ValidationExecutionPlan(tampered));
+}
+
+function serializedCacheCanaryMissingBindingDoesNotPass() {
+  const result = runV128SerializedCacheCanary({
+    repositoryId: 'github.com:hiro4649/codex-development-harness',
+    sourceHead: 'unknown',
+    testedCommit: 'unknown',
+    testedTreeKind: 'branch_head',
+    validationContextDigest: null,
+  });
+  return result.status === 'partial_shadow_candidate'
+    && result.observed === false
+    && result.observationClass === 'serialized_cache_canary';
 }
 
 function validationColdMissLoopEconomyObserved() {
@@ -2267,6 +2333,9 @@ const cases = [
   ['projection_payload_digest_tamper_fails', () => projectionPayloadDigestTamperFails()],
   ['projection_input_digest_tamper_fails', () => projectionInputDigestTamperFails()],
   ['validation_execution_plan_verifies', () => validationExecutionPlanVerifies()],
+  ['validation_serialized_cache_canary_observes_cold_hit_partial', () => validationSerializedCacheCanaryObservesColdHitPartial()],
+  ['validation_cache_reuse_simulation_cannot_pass', () => validationCacheReuseSimulationCannotPass()],
+  ['serialized_cache_canary_missing_binding_does_not_pass', () => serializedCacheCanaryMissingBindingDoesNotPass()],
   ['validation_cold_miss_loop_economy_observed', () => validationColdMissLoopEconomyObserved()],
   ['validation_real_cache_hit_loop_economy_observed', () => validationRealCacheHitLoopEconomyObserved()],
   ['validation_partial_hit_loop_economy_observed', () => validationPartialHitLoopEconomyObserved()],
