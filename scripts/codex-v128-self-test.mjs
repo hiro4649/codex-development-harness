@@ -1275,6 +1275,40 @@ function compactValidationPlanStillValidates() {
     && !JSON.stringify(compact).includes('xxxxxxxxxx');
 }
 
+function compactValidationPlanReusedSourceResultDigestTracksCompactPayload() {
+  const upstream = [
+    executedNode('projection_reader', 'pass', 'decision_stable', { surfaceCanonicalBytes: 1200 }),
+    reusedNode('managed_context_emitter', { managedContextBytes: 1800, compiledContext: 'x'.repeat(1200) }),
+    reusedNode('state_matrix_executor', { totalCells: 96 }),
+  ];
+  const plan = buildPlanWithBoundReusedCacheKeys({
+    headSha: 'f'.repeat(40),
+    sourceHeadOid: 'f'.repeat(40),
+    observedExecution: true,
+    workspaceObserved: true,
+    decisionInputManifestScanned: true,
+    nodeResults: [
+      ...upstream,
+      executedNode('aggregate_finalizer', 'pass', 'decision_stable', {
+        aggregateOnly: true,
+        downstreamRespawnAllowed: false,
+        upstreamNodeRefs: upstream.map((node) => node.nodeRef),
+        upstreamResultDigests: upstream.map((node) => ({
+          nodeRef: node.nodeRef,
+          status: node.status,
+          resultDigest: sha256Canonical(node.typedResultPayload),
+        })),
+        failedNodeRefs: [],
+      }),
+    ],
+  });
+  const compact = compactV128ValidationExecutionPlanForStorage(plan);
+  const reused = compact.profileExecution.nodeResults.filter((node) => node.executionState === 'reused');
+  return passed(validateV128CompactValidationPlanExact(compact))
+    && reused.length === 2
+    && reused.every((node) => node.sourceResultDigest === node.resultDigest);
+}
+
 function compactValidationPlanStaleAggregateDigestFails() {
   const compact = compactV128ValidationExecutionPlanForStorage(buildPlanWithBoundReusedCacheKeys({
     headSha: 'f'.repeat(40),
@@ -2447,6 +2481,7 @@ const cases = [
   ['loop_admission_router_stops_no_progress', () => loopAdmissionRouterStopsNoProgress()],
   ['loop_admission_router_digest_tamper_fails', () => loopAdmissionRouterDigestTamperFails()],
   ['compact_validation_plan_still_validates', () => compactValidationPlanStillValidates()],
+  ['compact_validation_plan_reused_source_result_digest_tracks_compact_payload', () => compactValidationPlanReusedSourceResultDigestTracksCompactPayload()],
   ['compact_validation_plan_stale_aggregate_digest_fails', () => compactValidationPlanStaleAggregateDigestFails()],
   ['compact_validation_plan_ledger_digest_mismatch_fails', () => compactValidationPlanLedgerDigestMismatchFails()],
   ['compact_validation_plan_upstream_digest_mismatch_fails', () => compactValidationPlanUpstreamDigestMismatchFails()],

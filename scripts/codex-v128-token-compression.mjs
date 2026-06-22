@@ -563,6 +563,9 @@ export function compactV128ValidationExecutionPlanForStorage(plan = {}) {
   }
   for (const node of nodeResults) {
     node.nodeInputDigest = compactNodeInputDigest(node.nodeRef, typedResults[node.nodeRef] || {});
+    if (node.executionState === 'reused') {
+      node.sourceResultDigest = node.resultDigest;
+    }
   }
   const profile = plan.profileExecution || {};
   compact.profileExecution = {
