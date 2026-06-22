@@ -107,7 +107,7 @@ function buildManagedContextInputParts(input = {}) {
     rootActiveBlockDigest: `sha256:${sha256(extractActiveBlock('AGENTS.md'))}`,
     activeSpecPath: 'docs/process/CODEX_V127_SPEC.md',
     candidateSpecPath: 'docs/process/CODEX_V128_SPEC.md',
-    profile: activePolicyIndex.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.activationState || 'source_shadow_candidate',
+    profile: activePolicyIndex.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.activationState || 'active',
     llmSummaryUsed: false,
     forbiddenBoundaryWeakeningAllowed: false,
   };
@@ -119,12 +119,12 @@ function buildManagedContextInputParts(input = {}) {
   };
   const attestedView = {
     finalAuthority: 'v1.1.8_final_decision_kernel',
-    activeAuthority: `${sourceManifest.activeHarnessVersion || '1.2.7'} / ${sourceManifest.activeSelfTestSuite || 'v127'}`,
+    activeAuthority: `${sourceManifest.activeHarnessVersion || '1.2.8'} / ${sourceManifest.activeSelfTestSuite || 'v128'}`,
     sourceHarnessVersion: sourceManifest.sourceHarnessVersion || '1.2.8',
     targetHarnessVersion: targetManifest.targetHarnessVersion || '1.2.7',
     projectionAuthority: 'non_authoritative',
     prBodyMachineEvidence: false,
-    sourceActivation: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation || 'not_started',
+    sourceActivation: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation || 'active',
     targetRollout: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.targetRollout || 'not_started',
   };
   return { sourceManifest, targetManifest, activePolicyIndex, headSha, sourceFiles, sourceFileDigests, instructionCapsule, providerSummary, attestedView };
@@ -140,8 +140,8 @@ function buildCompiledActiveInstructionCapsule(parts = {}) {
   const missingBindingIds = REQUIRED_BINDING_IDS.filter((id) => !bindingIds.includes(id));
   const headerLines = [
     'CODEX_ACTIVE_CONTEXT v1.2.8 shadow',
-    `active=${sourceManifest.activeHarnessVersion || '1.2.7'}/${sourceManifest.activeSelfTestSuite || 'v127'}`,
-    'candidate=1.2.8/source_shadow_candidate',
+    `active=${sourceManifest.activeHarnessVersion || '1.2.8'}/${sourceManifest.activeSelfTestSuite || 'v128'}`,
+    'candidate=1.2.8/active',
     `head=${providerSummary.headSha || 'unknown'}`,
     `target=${targetManifest.targetHarnessVersion || '1.2.7'} sourceActivation=${attestedView.sourceActivation || 'not_started'} targetRollout=${attestedView.targetRollout || 'not_started'}`,
   ];
@@ -163,11 +163,11 @@ function buildV128ResidentContext(parts = {}, compiled = {}) {
   const sourceManifest = parts.sourceManifest || {};
   const activePolicyIndex = parts.activePolicyIndex || {};
   const scopeContract = {
-    activeHarnessVersion: sourceManifest.activeHarnessVersion || '1.2.7',
-    activeSelfTestSuite: sourceManifest.activeSelfTestSuite || 'v127',
+    activeHarnessVersion: sourceManifest.activeHarnessVersion || '1.2.8',
+    activeSelfTestSuite: sourceManifest.activeSelfTestSuite || 'v128',
     candidateHarnessVersion: '1.2.8',
-    candidateActivationState: 'source_shadow_candidate',
-    sourceActivation: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation || 'not_started',
+    candidateActivationState: 'active',
+    sourceActivation: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation || 'active',
     targetRollout: sourceManifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.targetRollout || 'not_started',
     noProductScope: true,
     noPackageOrLockfile: true,
@@ -320,13 +320,13 @@ export function buildV128ManagedContextEmitter(input = {}) {
   const deltaPacket = buildV128DeltaPacket(input);
   return finalizeContext({
     schemaVersion: '1.2.8',
-    contextKind: 'managed_context_emitter_shadow',
+    contextKind: 'managed_context_emitter_active',
     authority: 'non_authoritative_context_surface',
-    activeHarnessVersion: sourceManifest.activeHarnessVersion || '1.2.7',
-    activeSelfTestSuite: sourceManifest.activeSelfTestSuite || 'v127',
+    activeHarnessVersion: sourceManifest.activeHarnessVersion || '1.2.8',
+    activeSelfTestSuite: sourceManifest.activeSelfTestSuite || 'v128',
     candidateHarnessVersion: '1.2.8',
-    candidateActivationState: 'source_shadow_candidate',
-    sourceActivationReady: false,
+    candidateActivationState: 'active',
+    sourceActivationReady: true,
     managedContextMeasurementSource: 'v128_managed_context_emitter',
     managedContextBytesMax: MANAGED_CONTEXT_BYTES_MAX,
     activeInstructionSourceSetDigest: buildV128ManagedInstructionSourceSetDigest(input),

@@ -3,13 +3,14 @@
 
 export const currentVersion = '1.2.8';
 export const previousVersion = '1.2.7';
-export const activeHarnessVersion = '1.2.7';
-export const activeSelfTestStatusKey = 'v127SelfTestStatus';
-export const activeSelfTestSuite = 'v127';
+export const previousSelfTestStatusKey = 'v127SelfTestStatus';
+export const activeHarnessVersion = '1.2.8';
+export const activeSelfTestStatusKey = 'v128SelfTestStatus';
+export const activeSelfTestSuite = 'v128';
 export const candidateHarnessVersion = '1.2.8';
 export const candidateSelfTestStatusKey = 'v128SelfTestStatus';
 export const candidateSelfTestSuite = 'v128';
-export const candidateActivationState = 'source_shadow_candidate';
+export const candidateActivationState = 'active';
 export const legacyAdvisorySuites = ['v127', 'v126', 'v125', 'v124', 'v123', 'v122', 'v121', 'v120', 'v119', 'v118', 'v117', 'v116', 'v115', 'v114', 'v113'];
 export const knownVersions = ['1.0.3', '1.0.4', '1.0.5', '1.0.6', '1.0.7', '1.0.8', '1.0.9', '1.1.0', '1.1.1', '1.1.2', '1.1.3', '1.1.4', '1.1.5', '1.1.6', '1.1.7', '1.1.8', '1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8'];
 export const versionLineagePolicy = {
@@ -37,13 +38,13 @@ export const versionLineagePolicy = {
   validationDagEvidenceReuse: 'required',
   ownerInterruptTokenBudget: 'required',
   blockerClosureProductValuePressure: 'required',
-  deterministicDecisionProjection: 'source_shadow_candidate_required',
-  orthogonalReasonModel: 'source_shadow_candidate_required',
-  tokenMinimalReadCompatibilityRouter: 'source_shadow_candidate_required',
-  resumableLoopPermissionProjection: 'source_shadow_candidate_required',
-  sourceActivation: 'not_started',
-  shadowTargetCanary: 'not_started',
-  activationReady: false,
+  deterministicDecisionProjection: 'active_required',
+  orthogonalReasonModel: 'active_required',
+  tokenMinimalReadCompatibilityRouter: 'active_required',
+  resumableLoopPermissionProjection: 'active_required',
+  sourceActivation: 'active',
+  shadowTargetCanary: 'passed',
+  activationReady: true,
   runtimeReadinessClaimed: false,
   productionReadinessClaimed: false,
   safeSummaryOnly: true,
@@ -53,6 +54,7 @@ export function buildHarnessVersionRegistry() {
   return {
     currentVersion,
     previousVersion,
+    previousSelfTestStatusKey,
     activeHarnessVersion,
     activeSelfTestStatusKey,
     activeSelfTestSuite,

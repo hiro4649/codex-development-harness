@@ -47,7 +47,7 @@ function loadRepoFacts(repoRoot = process.cwd()) {
     v128SelfTestAvailable: fs.existsSync(path.join(repoRoot, 'scripts/codex-v128-self-test.mjs')),
     v127SpecAvailable: fs.existsSync(path.join(repoRoot, 'docs/process/CODEX_V127_SPEC.md')),
     versionRegistryDeclaresPreviousV127: versionText.includes("previousVersion = '1.2.7'"),
-    versionRegistryDeclaresV127StatusKey: versionText.includes("activeSelfTestStatusKey = 'v127SelfTestStatus'"),
+    versionRegistryDeclaresV127StatusKey: versionText.includes('v127SelfTestStatus'),
     preservationDeclaresRollback: preservationText.includes('"rollback_writer_to_v127"'),
     preservationDeclaresDualReader: preservationText.includes('"v127_v128_dual_reader"'),
   };

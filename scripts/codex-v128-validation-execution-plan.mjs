@@ -967,7 +967,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     testedCommitOid: fieldValue(validationContext.testedCommitOid) || 'unknown',
     validationContextDigest: fieldValue(validationContext.validationContextDigest) || null,
     headSha: fieldValue(cacheKeyFields.headSha) || 'unknown',
-    activeHarnessVersion: input.activeHarnessVersion || '1.2.7',
+    activeHarnessVersion: input.activeHarnessVersion || '1.2.8',
   };
   const decisionInputManifestScanned = input.decisionInputManifest?.taxonomyScanStatus === 'pass'
     || input.decisionInputManifestScanned === true;
@@ -1021,7 +1021,7 @@ export function buildV128ValidationExecutionPlan(input = {}) {
     schemaVersion: '1.2.8',
     executionKind: 'validation_execution_plan_shadow',
     authority: 'non_authoritative_execution_surface',
-    candidateActivationState: input.candidateActivationState || 'source_shadow_candidate',
+    candidateActivationState: input.candidateActivationState || 'active',
     observationState,
     graph: {
       graphDigest: graph.graphDigest,
@@ -1164,7 +1164,7 @@ export function validateV128ValidationExecutionPlan(plan = {}) {
   if (plan.schemaVersion !== '1.2.8') reasons.push('validation_execution_schema_invalid');
   if (plan.executionKind !== 'validation_execution_plan_shadow') reasons.push('validation_execution_kind_invalid');
   if (plan.authority !== 'non_authoritative_execution_surface') reasons.push('validation_execution_authority_invalid');
-  if (plan.candidateActivationState !== 'source_shadow_candidate') reasons.push('validation_execution_activation_state_invalid');
+  if (!['source_shadow_candidate', 'active'].includes(plan.candidateActivationState)) reasons.push('validation_execution_activation_state_invalid');
   if (!OBSERVATION_STATES.has(plan.observationState)) reasons.push('validation_execution_observation_state_invalid');
   if (!execution.profileId) reasons.push('profile_execution_profile_id_required');
   if (!/^sha256:[a-f0-9]{64}$/.test(String(execution.planDigest || ''))) reasons.push('profile_execution_plan_digest_invalid');
