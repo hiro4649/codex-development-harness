@@ -126,6 +126,21 @@ function compactTrustClosure(trustClosure = {}, trustStatus = {}) {
   };
 }
 
+function compactReleaseDrillEvidence(evidence = {}) {
+  return {
+    status: evidence.status || 'not_run',
+    executionMode: evidence.executionMode || 'not_observed',
+    trustedBaseCommit: evidence.trustedBaseCommit || null,
+    scenarioSetDigest: evidence.scenarioSetDigest || null,
+    scenarioCount: Number(evidence.scenarioCount || 0),
+    reasonCodes: Array.isArray(evidence.reasonCodes) ? evidence.reasonCodes.slice(0, 8) : [],
+    safeNextAction: evidence.safeNextAction || 'run_remote_same_head_quality_gate',
+    observedInRemoteSameHeadJob: evidence.observedInRemoteSameHeadJob === true,
+    loadBearingForActivationIntegrity: evidence.loadBearingForActivationIntegrity === true,
+    safeSummaryOnly: true,
+  };
+}
+
 function finalizeCompression(summaryBase) {
   let summary = {
     ...summaryBase,
@@ -192,6 +207,7 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
   const v128ValidationExecutionPlanStatus = input.v128ValidationExecutionPlanStatus || report.v128ValidationExecutionPlanStatus || {};
   const v128TrustClosure = input.v128TrustClosure || report.v128TrustClosure || {};
   const v128TrustClosureStatus = input.v128TrustClosureStatus || report.v128TrustClosureStatus || {};
+  const v128ReleaseDrillEvidence = input.v128ReleaseDrillEvidence || report.v128ReleaseDrillEvidence || {};
   const orchestrationCapsule = input.orchestrationCapsule || report.orchestrationCapsule || null;
   const workerProofCapsule = input.workerProofCapsule || report.workerProofCapsule || null;
   const ownerDecisionBrief = input.ownerDecisionBrief || report.ownerDecisionBrief || null;
@@ -228,6 +244,7 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
       managedContext: compactManagedContext(input.v128ManagedContextEmitter || report.v128ManagedContextEmitter || {}),
       validationPlan: compactValidationPlan(v128ValidationExecutionPlan, v128ValidationExecutionPlanStatus),
       trustClosure: compactTrustClosure(v128TrustClosure, v128TrustClosureStatus),
+      releaseDrill: compactReleaseDrillEvidence(v128ReleaseDrillEvidence),
       safeSummaryOnly: true,
     },
     finalDecisionPointer: {

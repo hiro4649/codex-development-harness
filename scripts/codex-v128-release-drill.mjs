@@ -820,7 +820,9 @@ if (process.argv[2] === CHILD_ARG) {
 } else if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const report = await runV128BlackBoxReleaseDrill();
   writeJsonReport(report, 'CODEX_V128_RELEASE_DRILL_REPORT');
-  if (!process.env.CODEX_V128_RELEASE_DRILL_REPORT && process.env.CODEX_QUALITY_REPORT !== 'json') {
+  if (!process.argv.includes('--json')
+    && !process.env.CODEX_V128_RELEASE_DRILL_REPORT
+    && process.env.CODEX_QUALITY_REPORT !== 'json') {
     console.log(`v128ReleaseDrillStatus: ${report.releaseDrillStatus.status}`);
   }
   exitFor(report);

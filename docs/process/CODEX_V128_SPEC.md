@@ -164,6 +164,28 @@ must not remove or weaken Final Decision, Decision Capsule, same-head, receipt,
 Stop Circuit, post-merge verification, required-check failure, or PR body
 display-only contracts.
 
+### 3a. Capability Routing Hints
+
+Each worker may record a bounded capability route in the existing Worker Proof.
+This is a routing hint, not a new authority layer:
+
+```text
+default model tier = low_cost_worker
+routine selected plugin max = 0
+security task selected plugin max = 1
+mandatory safety plugin max = 2
+security task recommended plugin = codex-security
+```
+
+The route may select a higher model tier only from typed task kind, difficulty,
+or typed blocker evidence. Security-sensitive work may recommend Codex Security
+for defensive scan, validation, attack-path, threat-model, or patch workflows,
+matching the Daybreak pattern of moving from findings to verified fixes. The
+plugin route cannot create owner authority, read raw logs, access secrets,
+deploy, submit approval reviews, bypass `auto_quarantine`, or replace Final
+Decision. Non-security routine work keeps plugin fanout at zero to preserve
+token budget and avoid unnecessary tool/context loading.
+
 Marker-delimited active blocks from applicable AGENTS files and the active
 profile are compiled into one deterministic model-facing instruction capsule.
 The compiler reads `CODEX_ACTIVE_BLOCK_BEGIN` / `CODEX_ACTIVE_BLOCK_END`
@@ -980,6 +1002,24 @@ revert. This removes per-PR human judgment from the activation validity step,
 but it does not allow any AI path to override `auto_quarantine`, required-check
 failure, same-head failure, merge authorization expiry, raw-log exposure, or
 v1.2.7 Final Decision authority.
+
+Remote same-head quality-gate must execute the black-box drill for Source PRs
+and bind only this compact result into
+`codex-quality-gate-safe-summary.json#compactDiagnostics.releaseDrill`:
+
+```text
+executionMode
+trustedBaseCommit
+scenarioSetDigest
+scenarioCount
+status
+reasonCodes
+safeNextAction
+```
+
+Local routine gates default to `not_run` unless explicitly forced. This keeps
+routine token cost low while making activation integrity visible in remote
+machine evidence instead of relying on PR body text or local-only claims.
 
 ## Activation Boundary
 
