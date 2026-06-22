@@ -1026,6 +1026,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
   }
   report.validationExecutionPlanReuseInternalStatus = {
     ...v128ValidationExecutionPlanStatus,
+    ...shadowOnlyV128Fields('final_closure'),
     safeSummaryOnly: true,
   };
   if (report.orchestrationCapsule?.deterministicDecisionProjection) {
