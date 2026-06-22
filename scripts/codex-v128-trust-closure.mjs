@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const V128_TRUST_CLOSURE_FILES = [
+  '.github/workflows/quality-gate.yml',
   'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json',
   'docs/process/CODEX_V128_SPEC.md',
   'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
@@ -25,6 +26,8 @@ export const V128_TRUST_CLOSURE_FILES = [
   'scripts/codex-v128-aggregate-finalizer.mjs',
   'scripts/codex-v128-aggregate-finalizer-adapter.mjs',
   'scripts/codex-v128-invocation-ledger.mjs',
+  'scripts/codex-v128-serialized-cache-canary.mjs',
+  'scripts/codex-v128-token-compression.mjs',
   'scripts/codex-local-quality-gate.mjs',
   'scripts/codex-workflow-quality-runner.mjs',
   'scripts/codex-final-decision-kernel.mjs',
@@ -33,10 +36,12 @@ export const V128_TRUST_CLOSURE_FILES = [
 ];
 
 const PROVIDER_ADAPTER_FILES = [
+  '.github/workflows/quality-gate.yml',
   'scripts/codex-workflow-quality-runner.mjs',
   'scripts/codex-evidence-capsule.mjs',
   'scripts/codex-artifact-consistency-contract.mjs',
   'scripts/codex-local-quality-gate.mjs',
+  'scripts/codex-v128-serialized-cache-canary.mjs',
 ];
 
 const SCOPE_CLASSIFIER_FILES = [
@@ -54,6 +59,7 @@ const CANONICALIZER_FILES = [
   'scripts/codex-v128-integrity-lib.mjs',
   'scripts/codex-v128-projection-reader.mjs',
   'scripts/codex-v128-managed-context-emitter.mjs',
+  'scripts/codex-v128-token-compression.mjs',
 ];
 
 const FINAL_DECISION_AUTHORITY_FILES = [
@@ -125,6 +131,10 @@ function readSourceFileText(filePath, input = {}) {
 
 function resolveRelativePath(fromPath, specifier, input = {}) {
   if (!specifier.startsWith('.')) return null;
+  const repoRootCandidate = normalizeRepoPath(specifier);
+  if (!specifier.startsWith('./') && !specifier.startsWith('../') && sourceFileExists(repoRootCandidate, input)) {
+    return repoRootCandidate;
+  }
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(fromPath), specifier));
   const candidates = [
     base,

@@ -568,6 +568,33 @@ cleanup. Changing only `projection_reader` input must allow
 `managed_context_emitter` and `state_matrix_executor` to hit while
 `projection_reader` and `aggregate_finalizer` execute.
 
+GitHub Actions cache restore/save is lifecycle-scoped, not branch-scoped. The
+primary key is run-scoped and head-bound:
+
+```text
+v128-validation-v2-${runner.os}-${repositoryId}-${headSha}-${runId}
+```
+
+The restore prefix is same-head only:
+
+```text
+v128-validation-v2-${runner.os}-${repositoryId}-${headSha}-
+```
+
+Routine evidence records only `cacheRestoreState`, `cacheSaveState`, and
+`matchedCacheKeyDigest`; it must not expose the raw cache key.
+
+If a content-addressed record path already contains different bytes, the cache
+must emit `CACHE_RECORD_NONDETERMINISM`, quarantine the conflicting record, and
+treat the node as a miss in shadow mode. Activation mode must block on the same
+condition. The cache must not turn a conflicting record into a synthetic
+mismatch digest that can look like a successful hit.
+
+Cleanup is two-level. Node directories keep at most 256 records and 8 MiB each.
+The cache root keeps at most 8 head/environment directories and 32 MiB total,
+using deterministic oldest-first cleanup. Stage timing is cold evidence only,
+safe-summary only, and must not include raw logs.
+
 Black-box cache proof runs three separate Node child processes against one
 temporary non-P0 cache directory:
 
