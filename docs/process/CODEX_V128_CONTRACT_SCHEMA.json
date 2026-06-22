@@ -71,8 +71,24 @@
       "productRuntimeMutationCount",
       "deployWalletRpcSecretContractMutationCount",
       "readLedgerDigest",
+      "v127QualityGateStatus",
+      "v127QualityGateDecisionInfluence",
+      "v127QualityGateMode",
+      "v127QualityGateSafeStatus",
+      "v127QualityGateSafeFailureCount",
+      "v127QualityGateSafeQualityScore",
+      "v127QualityGateExitCode",
       "targetResultDigest"
     ],
+    "failClosedTargetGateRules": {
+      "nonzeroV127QualityGateExitPassAllowed": false,
+      "unparsedV127QualityGateOutputPassAllowed": false,
+      "restrictedTargetNotRequiredGatePassAllowed": false,
+      "requiredV127QualityGateDecisionInfluence": "load_bearing_pass",
+      "requiredV127QualityGateSafeStatus": "pass",
+      "requiredV127QualityGateSafeFailureCount": 0,
+      "requiredV127QualityGateSafeQualityScoreState": "observed_non_negative"
+    },
     "forbidden": ["raw_logs", "local_paths", "target_writes", "deploy", "wallet_rpc", "secrets", "contract_mutation", "source_activation", "target_rollout"],
     "preflightMaySatisfyActualCanary": false,
     "sourceActivationBlockedUntilPass": true

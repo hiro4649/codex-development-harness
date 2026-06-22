@@ -81,10 +81,9 @@ function readJson(root, relPath) {
 
 function summarizeTargetGateJson(json) {
   if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
-  const blockingReasons = Array.isArray(json.reasonSummary?.blockingReasons)
-    ? json.reasonSummary.blockingReasons
-    : [];
-  const failureCount = Number(json.failureCount ?? json.blockerState?.blockingCount ?? (blockingReasons.length ? blockingReasons.length : -1));
+  const hasBlockingReasonArray = Array.isArray(json.reasonSummary?.blockingReasons);
+  const blockingReasons = hasBlockingReasonArray ? json.reasonSummary.blockingReasons : [];
+  const failureCount = Number(json.failureCount ?? json.blockerState?.blockingCount ?? (hasBlockingReasonArray ? blockingReasons.length : -1));
   const qualityScore = Number(json.qualityScore ?? json.qualityScoreStatus?.score ?? -1);
   return {
     status: String(json.status || json.reasonSummary?.status || 'unknown'),
@@ -95,9 +94,31 @@ function summarizeTargetGateJson(json) {
   };
 }
 
+function summarizeTargetGateLineText(text = '') {
+  const values = {};
+  for (const rawLine of String(text || '').split(/\r?\n/)) {
+    const match = rawLine.trim().match(/^([A-Za-z][A-Za-z0-9]*):\s*(.+)$/);
+    if (match) values[match[1]] = match[2].trim();
+  }
+  const status = String(values.status || '').toLowerCase();
+  const qualityScore = Number(values.qualityScore ?? values.targetQualityScore);
+  const qualityStatus = String(values.qualityScoreStatus || values.targetQualityScoreStatus || '').toLowerCase();
+  if (!['pass', 'fail'].includes(status) || !Number.isFinite(qualityScore)) return null;
+  return {
+    status,
+    failureCount: status === 'pass' && (qualityStatus === 'pass' || qualityScore > 0) ? 0 : 1,
+    qualityScore,
+    safeNextAction: values.safeNextAction || 'unknown',
+    parseMode: 'safe_line_summary',
+    safeSummaryOnly: true,
+  };
+}
+
 function summarizeTargetGateJsonText(text = '') {
   const trimmed = String(text || '').trim();
   if (!trimmed) return null;
+  const lineSummary = summarizeTargetGateLineText(trimmed);
+  if (lineSummary) return lineSummary;
   const candidates = [];
   let start = -1;
   let depth = 0;
@@ -132,20 +153,27 @@ function summarizeTargetGateJsonText(text = '') {
       }
     }
   }
+  const parsedSummaries = [];
   for (const candidate of candidates.reverse()) {
     try {
       const summary = summarizeTargetGateJson(parseJsonRejectDuplicateKeys(candidate));
-      if (summary) return { ...summary, parseMode: 'strict_duplicate_key_rejecting' };
+      if (summary) parsedSummaries.push({ ...summary, parseMode: 'strict_duplicate_key_rejecting' });
     } catch {
       try {
         const summary = summarizeTargetGateJson(JSON.parse(candidate));
-        if (summary) return { ...summary, parseMode: 'legacy_json_parse' };
+        if (summary) parsedSummaries.push({ ...summary, parseMode: 'legacy_json_parse' });
       } catch {
         // Try the previous balanced object. Raw output is intentionally discarded.
       }
     }
   }
-  return null;
+  return parsedSummaries.find((summary) => summary.status === 'pass'
+    && summary.failureCount === 0
+    && summary.qualityScore === 100)
+    || parsedSummaries.find((summary) => summary.failureCount !== -1
+      && summary.qualityScore !== -1)
+    || parsedSummaries[0]
+    || null;
 }
 
 function classifyProcessText(text = '') {
@@ -229,7 +257,6 @@ function targetCanaryQualityGateEnv(targetHeadSha = '', repositoryFullName = '')
   const repository = String(repositoryFullName || '').trim();
   const owner = repository.includes('/') ? repository.split('/')[0] : '';
   return {
-    CODEX_QUALITY_REPORT: 'json',
     CODEX_HARNESS_MODE: 'target',
     CODEX_HARNESS_SOURCE_REPO: '0',
     CODEX_PROFILE_COMPAT_MODE: 'off',
@@ -254,8 +281,8 @@ function targetCanaryQualityGateEnv(targetHeadSha = '', repositoryFullName = '')
     GITHUB_REPOSITORY_OWNER: owner,
     GITHUB_RUN_ID: '',
     GITHUB_SHA: targetHeadSha,
-    GITHUB_TOKEN: '',
-    GH_TOKEN: '',
+    GITHUB_TOKEN: 'codex_target_canary_readonly_dummy_token',
+    GH_TOKEN: 'codex_target_canary_readonly_dummy_token',
     CI: 'false',
   };
 }
@@ -295,10 +322,63 @@ function readTargetGateSafeSummary(root) {
   };
 }
 
+function runRestrictedTargetReadonlyValidation(root, repositoryFullName = '') {
+  const agents = readText(root, 'AGENTS.md');
+  const manifest = readJson(root, 'docs/process/CODEX_HARNESS_MANIFEST.json');
+  const activePolicy = readJson(root, 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json');
+  const combined = [
+    agents.text,
+    activePolicy.text,
+    manifest.text,
+  ].join('\n');
+  const dirtyFiles = changedFiles(root);
+  const reasonCodes = [];
+
+  if (normalizeRel(repositoryFullName).toLowerCase() !== expectedRepo('restricted').toLowerCase()) {
+    reasonCodes.push('restricted_target_repository_unexpected');
+  }
+  if (!agents.exists) reasonCodes.push('restricted_target_agents_missing');
+  if (!activePolicy.exists || activePolicy.parseStatus !== 'pass') {
+    reasonCodes.push('restricted_target_active_policy_missing');
+  }
+  if (!manifestPreservesV127Authority(manifest)) {
+    reasonCodes.push('restricted_target_v127_manifest_missing');
+  }
+  if (!/VGC_TOKEN_NO_DEPLOY_NO_VALUE_TRANSFER_V1|restricted_target|token[-_\s]?only|readonly/i.test(combined)) {
+    reasonCodes.push('restricted_target_token_readonly_profile_missing');
+  }
+  if (!/no[-_\s]?deploy|deploy[^.\n]*(forbidden|not allowed|disabled|blocked)|NO_DEPLOY/i.test(combined)) {
+    reasonCodes.push('restricted_target_no_deploy_boundary_missing');
+  }
+  if (!/no[-_\s]?value[-_\s]?transfer|NO_VALUE_TRANSFER|value transfer[^.\n]*(forbidden|not allowed|disabled|blocked)|wallet[^.\n]*(forbidden|not allowed|disabled|blocked)|no wallet/i.test(combined)) {
+    reasonCodes.push('restricted_target_value_transfer_boundary_missing');
+  }
+  if (deployWalletRpcSecretContractMutationCount(dirtyFiles) !== 0) {
+    reasonCodes.push('restricted_target_forbidden_capability_mutation');
+  }
+
+  return {
+    status: reasonCodes.length ? 'fail' : 'pass',
+    mode: 'restricted_target_readonly_validation',
+    exitCode: reasonCodes.length ? 1 : 0,
+    stdoutBytes: 0,
+    stderrClass: 'none',
+    safeSummary: {
+      status: reasonCodes.length ? 'fail' : 'pass',
+      failureCount: reasonCodes.length,
+      qualityScore: reasonCodes.length ? 0 : 100,
+      safeNextAction: reasonCodes.length ? 'repair_restricted_target_readonly_contract' : 'none',
+      reasonCodes,
+      safeSummaryOnly: true,
+    },
+    safeSummaryOnly: true,
+  };
+}
+
 function runTargetV127QualityGate(root, kind, repositoryFullName = '') {
   if (!fs.existsSync(path.join(root, 'scripts/codex-local-quality-gate.mjs'))) {
     return kind === 'restricted'
-      ? { status: 'pass', mode: 'not_required_restricted_target', safeSummaryOnly: true }
+      ? runRestrictedTargetReadonlyValidation(root, repositoryFullName)
       : { status: 'missing', mode: 'missing_required_complex_target_gate', safeSummaryOnly: true };
   }
   const safeArtifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v128-target-qg-safe-'));
@@ -312,11 +392,12 @@ function runTargetV127QualityGate(root, kind, repositoryFullName = '') {
     ? execution.stdoutSummary
     : fileSummary;
   const summaryPass = safeSummary.status === 'pass'
-    && (safeSummary.failureCount === 0 || safeSummary.failureCount === -1)
-    && (safeSummary.qualityScore === 100 || safeSummary.qualityScore === -1);
+    && safeSummary.failureCount === 0
+    && Number.isFinite(Number(safeSummary.qualityScore))
+    && Number(safeSummary.qualityScore) >= 0;
   return {
     ...execution,
-    status: execution.status === 'pass' || summaryPass ? 'pass' : 'fail',
+    status: execution.status === 'pass' && summaryPass ? 'pass' : 'fail',
     mode: 'target_copy_quality_gate',
     safeSummary,
   };
@@ -329,7 +410,7 @@ function v127QualityGateDecisionInfluence(gate = {}) {
   const unparsedLegacyOutput = safeStatus === 'missing'
     && Number(gate.stdoutBytes || 0) > 0
     && !['module_not_found', 'package_not_found', 'syntax_error', 'reference_error', 'stdio_maxbuffer'].includes(stderrClass);
-  return unparsedLegacyOutput ? 'diagnostic_only_unparsed_legacy' : 'load_bearing_fail';
+  return unparsedLegacyOutput ? 'inconclusive_unparsed_legacy' : 'load_bearing_fail';
 }
 
 function changedFiles(root) {
@@ -417,22 +498,24 @@ function manifestPreservesV127Authority(manifest) {
 }
 
 function buildTargetCandidateReport(targetHeadSha, v127Status) {
+  const targetChecksPass = v127Status === 'pass';
+  const blockingReasons = targetChecksPass ? [] : [{ reasonCode: 'target_v127_gate_not_pass' }];
   const finalDecision = {
     finalDecisionVersion: '1',
     executionMode: 'target_shadow_canary',
-    terminalAction: 'create_pr_only',
-    decision: 'allowed',
+    terminalAction: targetChecksPass ? 'create_pr_only' : 'target_canary_blocked',
+    decision: targetChecksPass ? 'allowed' : 'blocked',
     mergeAllowed: false,
-    primaryClass: 'none',
-    safeNextAction: 'owner_merge_decision_only',
-    exitCode: 0,
+    primaryClass: targetChecksPass ? 'none' : 'target_canary_blocker',
+    safeNextAction: targetChecksPass ? 'owner_merge_decision_only' : 'repair_target_v127_gate',
+    exitCode: targetChecksPass ? 0 : 1,
     safeSummaryOnly: true,
   };
   const decisionCapsule = {
-    decision: 'allowed',
+    decision: targetChecksPass ? 'allowed' : 'blocked',
     mergeAllowed: false,
-    primaryClass: 'none',
-    safeNextAction: 'owner_merge_decision_only',
+    primaryClass: targetChecksPass ? 'none' : 'target_canary_blocker',
+    safeNextAction: targetChecksPass ? 'owner_merge_decision_only' : 'repair_target_v127_gate',
     safeSummaryOnly: true,
   };
   const evidenceCapsule = {
@@ -444,15 +527,15 @@ function buildTargetCandidateReport(targetHeadSha, v127Status) {
   const projectionInputs = { finalDecision, evidenceCapsule, decisionCapsule };
   return {
     report: {
-      status: 'pass',
-      qualityScore: 100,
-      qualityScoreStatus: { status: 'pass', score: 100, safeSummaryOnly: true },
-      technicalChecksReady: true,
+      status: targetChecksPass ? 'pass' : 'fail',
+      qualityScore: targetChecksPass ? 100 : 0,
+      qualityScoreStatus: { status: targetChecksPass ? 'pass' : 'fail', score: targetChecksPass ? 100 : 0, safeSummaryOnly: true },
+      technicalChecksReady: targetChecksPass,
       ownerMergeAuthorized: false,
       finalDecision,
       decisionCapsule,
       evidenceCapsule,
-      reasonSummaryStatus: { status: 'pass', summary: { blockingReasons: [] }, safeSummaryOnly: true },
+      reasonSummaryStatus: { status: targetChecksPass ? 'pass' : 'fail', summary: { blockingReasons }, safeSummaryOnly: true },
       v127SelfTestStatus: { status: v127Status, safeSummaryOnly: true },
       v128SelfTestStatus: { status: 'pass', safeSummaryOnly: true },
       runtimeReadinessClaimed: false,
@@ -539,7 +622,7 @@ function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
   const v127SelfTest = runNodeScript(root, 'scripts/codex-v127-self-test.mjs');
   const v127QualityGate = runTargetV127QualityGate(root, kind, repositoryFullName);
   const qgDecisionInfluence = v127QualityGateDecisionInfluence(v127QualityGate);
-  const v127Status = v127SelfTest.status === 'pass' && qgDecisionInfluence !== 'load_bearing_fail' ? 'pass' : 'fail';
+  const v127Status = v127SelfTest.status === 'pass' && qgDecisionInfluence === 'load_bearing_pass' ? 'pass' : 'fail';
   const targetHeadSha = gitValue(root, ['rev-parse', 'HEAD']) || 'unknown';
   const v128Candidate = runTargetV128CandidateExecution(sourceRoot, {
     targetHeadSha,
@@ -634,9 +717,18 @@ export function runV128ActualTargetCanaryTargetReport(input = {}) {
   if (!targetReport) reasonCodes.push('actual_target_canary_target_count_invalid');
   else {
     if (targetReport.v127SelfTestStatus !== 'pass') reasonCodes.push('actual_target_canary_v127_self_test_not_pass');
-    if (targetReport.v127QualityGateStatus !== 'pass'
-      && targetReport.v127QualityGateDecisionInfluence !== 'diagnostic_only_unparsed_legacy') {
-      reasonCodes.push('actual_target_canary_v127_quality_gate_not_pass');
+    if (targetReport.v127QualityGateStatus !== 'pass') reasonCodes.push('actual_target_canary_v127_quality_gate_not_pass');
+    if (targetReport.v127QualityGateDecisionInfluence === 'inconclusive_unparsed_legacy') {
+      reasonCodes.push('actual_target_canary_v127_quality_gate_inconclusive');
+    }
+    if (targetReport.v127QualityGateExitCode !== 0) reasonCodes.push('actual_target_canary_v127_quality_gate_exit_nonzero');
+    if (targetReport.v127QualityGateSafeStatus !== 'pass') reasonCodes.push('actual_target_canary_v127_quality_gate_safe_status_not_pass');
+    if (targetReport.v127QualityGateSafeFailureCount !== 0) {
+      reasonCodes.push('actual_target_canary_v127_quality_gate_safe_failure_count_nonzero');
+    }
+    if (!Number.isFinite(Number(targetReport.v127QualityGateSafeQualityScore))
+      || Number(targetReport.v127QualityGateSafeQualityScore) < 0) {
+      reasonCodes.push('actual_target_canary_v127_quality_gate_safe_score_missing');
     }
     if (targetReport.v128CandidateExecutionStatus !== 'pass') reasonCodes.push('actual_target_canary_v128_candidate_execution_not_pass');
     if (targetReport.v128ProjectionReadSurfaceStatus !== 'pass') reasonCodes.push('actual_target_canary_projection_reader_not_pass');

@@ -964,18 +964,33 @@ count `0`, and deploy/wallet/RPC/secret/contract mutation count `0`. Raw logs,
 local paths, target writes, Source Activation, target rollout, and deploy or
 wallet/RPC authority are forbidden. Until this contract passes from remote
 target artifacts, the remaining target canary requirement is not complete.
+The target v127 gate is fail-closed: a nonzero target quality-gate exit, missing
+safe summary, unparsed legacy output, nonzero safe failure count, or safe score
+missing from both safe JSON and exact safe line summary is not a pass. The
+runner must not force a verbose JSON report mode when the target already emits
+bounded safe line summaries such as `status:` and `targetQualityScoreStatus:`.
+Unparsed target output may be recorded as `inconclusive_unparsed_legacy`, but it
+remains blocking for Actual Target Canary. Restricted-token targets must run an executable readonly validation
+surface, either the target quality gate itself or the Source runner's
+target-derived restricted readonly validation. A `not_required` restricted gate
+is forbidden and cannot satisfy the canary.
 `scripts/codex-v128-actual-target-canary-runner.mjs` is the Source-side
 read-only runner for assembling that contract from observed target checkout
 state. The runner reads bounded authority files, runs the target v127 self-test,
-runs target v127 quality-gate only in a disposable execution copy, and runs the
-Source v1.2.8 candidate Projection reader, managed context emitter, validation
-executor, and cache against the target head binding. It must not edit target
-checkout files, store raw logs, store local paths, or use Target Shadow
+runs target v127 quality-gate or restricted readonly validation without leaking
+Source PR provider context, and runs the Source v1.2.8 candidate Projection
+reader, managed context emitter, validation executor, and cache against the
+target head binding. It must not edit target checkout files, store raw logs,
+store local paths, synthesize pass reports for failed target evidence, or use Target Shadow
 Preflight as `v128ShadowStatus`. Its output remains a Shadow Candidate artifact
 and cannot authorize Source Activation or target rollout. Source GitHub Actions
 may run `.github/workflows/v128-actual-target-canary.yml` to execute the two
 registered target checks as a read-only matrix and aggregate them through the
 same Actual Target Canary contract.
+If a target v127 availability check only needs token presence to avoid a local
+developer auth dependency, the runner may provide a fixed dummy token value. The
+dummy token is not a secret, must not authorize GitHub API access, and must not
+be treated as owner approval, deployment authority, or target rollout authority.
 
 The bounded Projection reader verifies the extracted Projection schema, head,
 and Projection payload digest without reading additional cold artifacts. The

@@ -2576,6 +2576,13 @@ function actualTargetCanaryTargetDigest(target) {
     deployWalletRpcSecretContractMutationCount: target.deployWalletRpcSecretContractMutationCount,
     cacheState: target.cacheState,
     readLedgerDigest: target.readLedgerDigest,
+    v127QualityGateStatus: target.v127QualityGateStatus,
+    v127QualityGateDecisionInfluence: target.v127QualityGateDecisionInfluence,
+    v127QualityGateMode: target.v127QualityGateMode,
+    v127QualityGateSafeStatus: target.v127QualityGateSafeStatus,
+    v127QualityGateSafeFailureCount: target.v127QualityGateSafeFailureCount,
+    v127QualityGateSafeQualityScore: target.v127QualityGateSafeQualityScore,
+    v127QualityGateExitCode: target.v127QualityGateExitCode,
   });
 }
 
@@ -2599,6 +2606,13 @@ function actualTargetCanaryFixture(overrides = {}) {
     rawLogStored: false,
     localPathStored: false,
     targetWriteAttempted: false,
+    v127QualityGateStatus: 'pass',
+    v127QualityGateDecisionInfluence: 'load_bearing_pass',
+    v127QualityGateMode: 'target_copy_quality_gate',
+    v127QualityGateSafeStatus: 'pass',
+    v127QualityGateSafeFailureCount: 0,
+    v127QualityGateSafeQualityScore: 100,
+    v127QualityGateExitCode: 0,
     sourceActivationAuthorized: false,
     targetRolloutAuthorized: false,
     deployWalletRpcAuthorized: false,
@@ -2707,9 +2721,9 @@ function buildActualTargetRunnerFixture(kind, options = {}) {
   writeFixtureFile(root, 'AGENTS.md', [
     'CODEX_QUALITY_HARNESS_FILE v1.2.7',
     'Active target harness: v1.2.7 / v127.',
-    restricted ? 'Profile ID: VGC_TOKEN_NO_DEPLOY_NO_VALUE_TRANSFER_V1.' : 'Complex target profile.',
-    restricted ? 'Token-only readonly target. No deploy action is allowed.' : 'PR bodies are human-rendered summaries only.',
-    restricted ? 'No wallet access is allowed. No secret or RPC value exposure is allowed.' : 'same-head evidence required.',
+    restricted && !options.restrictedBoundaryMissing ? 'Profile ID: VGC_TOKEN_NO_DEPLOY_NO_VALUE_TRANSFER_V1.' : 'Complex target profile.',
+    restricted && !options.restrictedBoundaryMissing ? 'Token-only readonly target. No deploy action is allowed.' : 'PR bodies are human-rendered summaries only.',
+    restricted && !options.restrictedBoundaryMissing ? 'No wallet access is allowed. No secret or RPC value exposure is allowed.' : 'same-head evidence required.',
     'PR bodies are human-rendered summaries only.',
   ].join('\n'));
   writeFixtureFile(root, 'docs/process/CODEX_HARNESS_MANIFEST.json', JSON.stringify({
@@ -2723,7 +2737,7 @@ function buildActualTargetRunnerFixture(kind, options = {}) {
     schemaVersion: '1.2.7',
     profileIdOnlyMode: true,
     rawLogsForbidden: true,
-    defaultTaskProfile: restricted ? 'restricted_target' : 'complex_target',
+    defaultTaskProfile: restricted && !options.restrictedBoundaryMissing ? 'restricted_target' : 'complex_target',
   }));
   writeFixtureFile(root, 'docs/process/CODEX_V127_SPEC.md', 'PR body display-only. Active target harness v1.2.7 / v127.');
   if (!options.missingV127SelfTest) {
@@ -2750,6 +2764,7 @@ function buildActualTargetRunnerFixture(kind, options = {}) {
           "if (process.env.GITHUB_ACTIONS === 'true') process.exit(1);",
           "if (String(process.env.GITHUB_REF || '').includes('/pull/')) process.exit(1);",
           "if (process.env.CODEX_HARNESS_MODE !== 'target') process.exit(1);",
+          "console.log(JSON.stringify({ status: 'pass', failureCount: 0, qualityScore: 100, safeNextAction: 'owner_decision_or_state_delta' }));",
           'process.exit(0);',
           '',
         ];
@@ -2810,7 +2825,7 @@ function actualTargetCanaryRunnerFailsMissingV127SelfTest() {
     && result.report.reasonCodes.some((reason) => reason.includes('actual_target_canary_v127_not_pass'));
 }
 
-function actualTargetCanaryRunnerUsesSafeJsonWhenExitDiffers() {
+function actualTargetCanaryRunnerFailsSafeJsonWhenExitDiffers() {
   const result = runV128ActualTargetCanaryTargetReport({
     sourceCandidateSha: 'a'.repeat(40),
     candidateBundleDigest: sha256Canonical({ bundle: 'safe-json-exit-differs' }),
@@ -2822,13 +2837,14 @@ function actualTargetCanaryRunnerUsesSafeJsonWhenExitDiffers() {
       },
     ],
   });
-  return result.status === 'pass'
-    && result.targetReport.v127QualityGateStatus === 'pass'
+  return result.status === 'fail'
+    && result.reasonCodes.includes('actual_target_canary_v127_quality_gate_not_pass')
+    && result.targetReport.v127QualityGateStatus === 'fail'
     && result.targetReport.v127QualityGateSafeStatus === 'pass'
-    && result.targetReport.v127Status === 'pass';
+    && result.targetReport.v127Status === 'fail';
 }
 
-function actualTargetCanaryRunnerTreatsUnparsedLegacyQGAsDiagnostic() {
+function actualTargetCanaryRunnerFailsUnparsedLegacyQG() {
   const result = runV128ActualTargetCanaryTargetReport({
     sourceCandidateSha: 'b'.repeat(40),
     candidateBundleDigest: sha256Canonical({ bundle: 'unparsed-legacy-qg' }),
@@ -2840,10 +2856,31 @@ function actualTargetCanaryRunnerTreatsUnparsedLegacyQGAsDiagnostic() {
       },
     ],
   });
-  return result.status === 'pass'
+  return result.status === 'fail'
+    && result.reasonCodes.includes('actual_target_canary_v127_quality_gate_not_pass')
+    && result.reasonCodes.includes('actual_target_canary_v127_quality_gate_inconclusive')
     && result.targetReport.v127QualityGateStatus === 'fail'
-    && result.targetReport.v127QualityGateDecisionInfluence === 'diagnostic_only_unparsed_legacy'
-    && result.targetReport.v127Status === 'pass';
+    && result.targetReport.v127QualityGateDecisionInfluence === 'inconclusive_unparsed_legacy'
+    && result.targetReport.v127Status === 'fail';
+}
+
+function actualTargetCanaryRunnerRequiresRestrictedReadonlyValidation() {
+  const result = runV128ActualTargetCanaryTargetReport({
+    sourceCandidateSha: 'c'.repeat(40),
+    candidateBundleDigest: sha256Canonical({ bundle: 'restricted-readonly-required' }),
+    targets: [
+      {
+        kind: 'restricted',
+        repositoryFullName: 'hiro4649/VGC-FUNKY-TOKEN',
+        root: buildActualTargetRunnerFixture('restricted', { restrictedBoundaryMissing: true }),
+      },
+    ],
+  });
+  return result.status === 'fail'
+    && result.reasonCodes.includes('actual_target_canary_v127_quality_gate_not_pass')
+    && result.targetReport.v127QualityGateMode === 'restricted_target_readonly_validation'
+    && result.targetReport.v127QualityGateSafeStatus === 'fail'
+    && result.targetReport.v127Status === 'fail';
 }
 
 function actualTargetCanaryRunnerDoesNotUsePreflightAsV128Pass() {
@@ -3071,8 +3108,9 @@ const cases = [
   ['actual_target_canary_contract_fails_source_mismatch', () => actualTargetCanaryContractFailsSourceMismatch()],
   ['actual_target_canary_runner_builds_contract_from_two_targets', () => actualTargetCanaryRunnerBuildsContractFromTwoTargets()],
   ['actual_target_canary_runner_fails_missing_v127_self_test', () => actualTargetCanaryRunnerFailsMissingV127SelfTest()],
-  ['actual_target_canary_runner_uses_safe_json_when_exit_differs', () => actualTargetCanaryRunnerUsesSafeJsonWhenExitDiffers()],
-  ['actual_target_canary_runner_treats_unparsed_legacy_qg_as_diagnostic', () => actualTargetCanaryRunnerTreatsUnparsedLegacyQGAsDiagnostic()],
+  ['actual_target_canary_runner_fails_safe_json_when_exit_differs', () => actualTargetCanaryRunnerFailsSafeJsonWhenExitDiffers()],
+  ['actual_target_canary_runner_fails_unparsed_legacy_qg', () => actualTargetCanaryRunnerFailsUnparsedLegacyQG()],
+  ['actual_target_canary_runner_requires_restricted_readonly_validation', () => actualTargetCanaryRunnerRequiresRestrictedReadonlyValidation()],
   ['actual_target_canary_runner_does_not_use_preflight_as_v128_pass', () => actualTargetCanaryRunnerDoesNotUsePreflightAsV128Pass()],
   ['actual_target_canary_workflow_has_read_only_target_matrix', () => actualTargetCanaryWorkflowHasReadOnlyTargetMatrix()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],

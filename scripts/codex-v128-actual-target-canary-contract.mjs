@@ -50,6 +50,13 @@ export function buildV128ActualTargetCanaryTargetDigest(target) {
     deployWalletRpcSecretContractMutationCount: target.deployWalletRpcSecretContractMutationCount,
     cacheState: target.cacheState,
     readLedgerDigest: target.readLedgerDigest,
+    v127QualityGateStatus: target.v127QualityGateStatus,
+    v127QualityGateDecisionInfluence: target.v127QualityGateDecisionInfluence,
+    v127QualityGateMode: target.v127QualityGateMode,
+    v127QualityGateSafeStatus: target.v127QualityGateSafeStatus,
+    v127QualityGateSafeFailureCount: target.v127QualityGateSafeFailureCount,
+    v127QualityGateSafeQualityScore: target.v127QualityGateSafeQualityScore,
+    v127QualityGateExitCode: target.v127QualityGateExitCode,
   });
 }
 
@@ -80,6 +87,26 @@ function validateTarget(target = {}, context = {}) {
     reasonCodes.push('actual_target_canary_candidate_bundle_mismatch');
   }
   if (target.v127Status !== 'pass') reasonCodes.push('actual_target_canary_v127_not_pass');
+  if (target.v127QualityGateStatus !== 'pass') reasonCodes.push('actual_target_canary_v127_quality_gate_not_pass');
+  if (target.v127QualityGateDecisionInfluence !== 'load_bearing_pass') {
+    reasonCodes.push('actual_target_canary_v127_quality_gate_not_load_bearing_pass');
+  }
+  if (Number(target.v127QualityGateExitCode) !== 0) reasonCodes.push('actual_target_canary_v127_quality_gate_exit_nonzero');
+  if (target.v127QualityGateSafeStatus !== 'pass') reasonCodes.push('actual_target_canary_v127_quality_gate_safe_status_not_pass');
+  if (Number(target.v127QualityGateSafeFailureCount) !== 0) {
+    reasonCodes.push('actual_target_canary_v127_quality_gate_safe_failure_count_nonzero');
+  }
+  if (!Number.isFinite(Number(target.v127QualityGateSafeQualityScore))
+    || Number(target.v127QualityGateSafeQualityScore) < 0) {
+    reasonCodes.push('actual_target_canary_v127_quality_gate_safe_score_missing');
+  }
+  if (target.v127QualityGateMode === 'not_required_restricted_target') {
+    reasonCodes.push('actual_target_canary_restricted_gate_not_required_forbidden');
+  }
+  if (target.kind === 'restricted'
+    && !['restricted_target_readonly_validation', 'target_copy_quality_gate'].includes(String(target.v127QualityGateMode || ''))) {
+    reasonCodes.push('actual_target_canary_restricted_gate_mode_invalid');
+  }
   if (target.v128ShadowStatus !== 'pass') reasonCodes.push('actual_target_canary_v128_shadow_not_pass');
   if (Number(target.preservationMismatchCount || 0) !== 0) reasonCodes.push('actual_target_canary_preservation_mismatch');
   if (Number(target.semanticForeignProfileLoadCount || 0) !== 0) reasonCodes.push('actual_target_canary_foreign_profile_loaded');
