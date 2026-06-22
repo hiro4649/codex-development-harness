@@ -661,9 +661,6 @@
       "managedContextObservationSource": "v128_managed_context_emitter",
       "managedContextObservationScope": "source_activation",
       "managedContextObservationRequiredForActivation": true,
-      "routineSelectedPluginMax": 0,
-      "securityTaskPluginMax": 1,
-      "securityTaskRecommendedPlugin": "codex-security",
       "routineFinalReportLineMax": 8,
       "routineOwnerInterruptMax": 0
     },

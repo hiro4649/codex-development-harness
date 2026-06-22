@@ -63,10 +63,6 @@ import {
   buildV128TrustClosure,
   validateV128TrustClosure,
 } from './codex-v128-trust-closure.mjs';
-import {
-  buildWorkerProofCapsule,
-  validateWorkerProofCapsule,
-} from './codex-worker-proof-capsule.mjs';
 import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
 import {
   buildV128CompactQualityGateSafeSummary,
@@ -3121,27 +3117,6 @@ function releaseDrillBlackBoxMissingObservationFails() {
     && validation.reasonCodes.some((reason) => reason.startsWith('release_drill_child_process_observation_missing_'));
 }
 
-function workerCapabilityRoutingSelectsSecurityPlugin() {
-  const capsule = buildWorkerProofCapsule({
-    taskKind: 'security',
-    securitySensitive: true,
-    typedBlocker: 'security_sensitive_ambiguity',
-  });
-  return validateWorkerProofCapsule(capsule).status === 'pass'
-    && capsule.capabilityRouting.selectedModelTier === 'specialist_reviewer'
-    && capsule.capabilityRouting.selectedPlugins.includes('codex-security')
-    && capsule.capabilityRouting.pluginCanCreateOwnerAuthority === false
-    && capsule.capabilityRouting.pluginCanReadRawLogs === false;
-}
-
-function workerCapabilityRoutingPluginBudgetFails() {
-  const capsule = buildWorkerProofCapsule({
-    taskKind: 'security',
-    selectedPlugins: ['codex-security', 'github'],
-  });
-  return failed(validateWorkerProofCapsule(capsule));
-}
-
 const cases = [
   ['v128_self_test_must_pass', () => true],
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -3297,8 +3272,6 @@ const cases = [
   ['release_drill_rollback_dry_run_requires_v127', () => releaseDrillRollbackDryRunRequiresV127()],
   ['release_drill_black_box_runner_is_exported', () => releaseDrillBlackBoxRunnerIsExported()],
   ['release_drill_black_box_missing_observation_fails', () => releaseDrillBlackBoxMissingObservationFails()],
-  ['worker_capability_routing_selects_security_plugin', () => workerCapabilityRoutingSelectsSecurityPlugin()],
-  ['worker_capability_routing_plugin_budget_fails', () => workerCapabilityRoutingPluginBudgetFails()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],

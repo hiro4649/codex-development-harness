@@ -206,19 +206,6 @@
     "routineOwnerInterruptMax": 0,
     "repeatedSafetyTextMax": 0
   },
-  "capabilityRouting": {
-    "authority": "bounded_task_profile_hint",
-    "defaultModelTier": "low_cost_worker",
-    "selectedPluginDefaultMax": 0,
-    "securityTaskPluginMax": 1,
-    "mandatorySafetyPluginMax": 2,
-    "securityTaskRecommendedPlugin": "codex-security",
-    "pluginCanCreateOwnerAuthority": false,
-    "pluginCanAccessSecrets": false,
-    "pluginCanReadRawLogs": false,
-    "pluginCanDeploy": false,
-    "humanPerPrDecisionRequired": false
-  },
   "validationExecution": {
     "storage": "codex-orchestration-capsule.safe.json",
     "newP0ArtifactAllowed": false,

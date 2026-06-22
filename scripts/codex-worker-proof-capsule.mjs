@@ -61,8 +61,6 @@ const REPAIR_SCOPES = new Set(['none', 'harness_only', 'docs_only', 'product_req
 const MERGE_QUEUE_STATUSES = new Set(['open', 'blocked', 'partially_merged', 'merged', 'superseded']);
 const CONFLICT_RISK_LEVELS = new Set(['low', 'medium', 'high']);
 const V126_OBSERVED_PR_STATES = new Set(['none', 'open', 'merged', 'closed', 'unknown']);
-const CAPABILITY_TASK_KINDS = new Set(['routine', 'harness', 'product', 'runtime', 'security', 'restricted_asset', 'target_rollout']);
-const CAPABILITY_PLUGIN_IDS = new Set(['none', 'codex-security', 'github', 'browser', 'xcodebuildmcp']);
 
 function list(values = [], limit = 50) {
   return Array.isArray(values) ? values.slice(0, limit).map(String) : [];
@@ -74,46 +72,6 @@ function tier(value, fallback = 'low_cost_worker') {
 
 function typedBlocker(value) {
   return TYPED_BLOCKERS.has(value) ? value : 'none';
-}
-
-function capabilityTaskKind(input = {}) {
-  const value = String(input.taskKind || input.taskProfile || input.reviewRiskProfile || 'routine');
-  return CAPABILITY_TASK_KINDS.has(value) ? value : 'routine';
-}
-
-function defaultCapabilityRouting(input = {}) {
-  const taskKind = capabilityTaskKind(input);
-  const securityRelevant = taskKind === 'security'
-    || input.securitySensitive === true
-    || input.typedBlocker === 'security_sensitive_ambiguity';
-  const runtimeRelevant = taskKind === 'runtime' || input.runtimeRelevant === true;
-  const restrictedRelevant = taskKind === 'restricted_asset' || input.restrictedAssetSensitive === true;
-  const difficulty = ['low', 'medium', 'high'].includes(input.difficulty) ? input.difficulty : (
-    securityRelevant || runtimeRelevant || restrictedRelevant ? 'high' : 'low'
-  );
-  const recommendedModelTier = securityRelevant || restrictedRelevant
-    ? 'specialist_reviewer'
-    : (difficulty === 'high' ? 'standard_worker' : 'low_cost_worker');
-  const recommendedPlugins = securityRelevant ? ['codex-security'] : [];
-  return {
-    routingVersion: '1.2.8',
-    taskKind,
-    difficulty,
-    recommendedModelTier,
-    selectedModelTier: tier(input.selectedModelTier || input.currentTier || recommendedModelTier),
-    recommendedPlugins,
-    selectedPlugins: list(input.selectedPlugins || recommendedPlugins, 3)
-      .filter((item) => CAPABILITY_PLUGIN_IDS.has(item)),
-    pluginSelectionAuthority: 'bounded_task_profile_hint',
-    pluginCanCreateOwnerAuthority: false,
-    pluginCanAccessSecrets: false,
-    pluginCanReadRawLogs: false,
-    pluginCanDeploy: false,
-    selectedPluginMax: securityRelevant ? 1 : 0,
-    mandatorySafetyPluginMax: 2,
-    humanPerPrDecisionRequired: false,
-    safeSummaryOnly: true,
-  };
 }
 
 function highTierRepairPlan(input = {}) {
@@ -489,7 +447,6 @@ export function buildWorkerProofCapsule(input = {}) {
       secretValuesAllowedForHighTier: false,
       unrelatedRepoHistoryAllowedForHighTier: false,
     },
-    capabilityRouting: defaultCapabilityRouting(input.capabilityRouting || input),
     reviewerPoolTrace: {
       reviewerCount: Math.min(Number(input.reviewerCount || 0), 3),
       maxReviewersDefault: 2,
@@ -556,7 +513,6 @@ export function validateWorkerProofCapsule(capsule = {}) {
   if (specialistReview.forbiddenScopeDetected === true) reasons.push('auto_repair_blocks_on_package_lockfile_runtime_secret_deploy_scope');
   if (specialistReview.testsWorsened === true) reasons.push('auto_repair_stops_when_tests_worsen');
   const modelTierTrace = capsule.modelTierTrace || {};
-  const capabilityRouting = capsule.capabilityRouting || {};
   const reviewerPoolTrace = capsule.reviewerPoolTrace || {};
   if (modelTierTrace.defaultTier !== 'low_cost_worker') reasons.push('low_cost_worker_default_required');
   if (!MODEL_TIERS.has(modelTierTrace.currentTier)) reasons.push('model_tier_trace_current_tier_invalid');
@@ -564,18 +520,6 @@ export function validateWorkerProofCapsule(capsule = {}) {
   if (modelTierTrace.fullConversationAllowedForHighTier !== false) reasons.push('high_tier_context_packet_excludes_full_history');
   if (modelTierTrace.rawLogsAllowedForHighTier !== false) reasons.push('high_tier_context_packet_excludes_raw_logs');
   if (modelTierTrace.secretValuesAllowedForHighTier !== false) reasons.push('high_tier_context_packet_excludes_secrets');
-  if (capabilityRouting.routingVersion !== '1.2.8') reasons.push('capability_routing_version_invalid');
-  if (!CAPABILITY_TASK_KINDS.has(capabilityRouting.taskKind)) reasons.push('capability_routing_task_kind_invalid');
-  if (!MODEL_TIERS.has(capabilityRouting.selectedModelTier)) reasons.push('capability_routing_model_tier_invalid');
-  for (const pluginId of capabilityRouting.selectedPlugins || []) {
-    if (!CAPABILITY_PLUGIN_IDS.has(pluginId)) reasons.push('capability_routing_plugin_invalid');
-  }
-  if ((capabilityRouting.selectedPlugins || []).length > Number(capabilityRouting.selectedPluginMax || 0)) reasons.push('capability_routing_selected_plugin_budget_exceeded');
-  if (capabilityRouting.pluginCanCreateOwnerAuthority !== false) reasons.push('capability_plugin_cannot_create_owner_authority');
-  if (capabilityRouting.pluginCanAccessSecrets !== false) reasons.push('capability_plugin_cannot_access_secrets');
-  if (capabilityRouting.pluginCanReadRawLogs !== false) reasons.push('capability_plugin_raw_logs_forbidden');
-  if (capabilityRouting.pluginCanDeploy !== false) reasons.push('capability_plugin_deploy_forbidden');
-  if (capabilityRouting.humanPerPrDecisionRequired !== false) reasons.push('capability_routing_human_per_pr_decision_must_be_false');
   if (Number(reviewerPoolTrace.maxReviewersDefault || 0) > 2) reasons.push('review_pool_default_max_two');
   if (Number(reviewerPoolTrace.maxReviewersHard || 0) > 3) reasons.push('review_pool_hard_max_three');
   if (reviewerPoolTrace.sameWorkerSelfReviewCanPass !== false) reasons.push('same_worker_self_review_cannot_pass');

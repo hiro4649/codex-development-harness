@@ -164,28 +164,6 @@ must not remove or weaken Final Decision, Decision Capsule, same-head, receipt,
 Stop Circuit, post-merge verification, required-check failure, or PR body
 display-only contracts.
 
-### 3a. Capability Routing Hints
-
-Each worker may record a bounded capability route in the existing Worker Proof.
-This is a routing hint, not a new authority layer:
-
-```text
-default model tier = low_cost_worker
-routine selected plugin max = 0
-security task selected plugin max = 1
-mandatory safety plugin max = 2
-security task recommended plugin = codex-security
-```
-
-The route may select a higher model tier only from typed task kind, difficulty,
-or typed blocker evidence. Security-sensitive work may recommend Codex Security
-for defensive scan, validation, attack-path, threat-model, or patch workflows,
-matching the Daybreak pattern of moving from findings to verified fixes. The
-plugin route cannot create owner authority, read raw logs, access secrets,
-deploy, submit approval reviews, bypass `auto_quarantine`, or replace Final
-Decision. Non-security routine work keeps plugin fanout at zero to preserve
-token budget and avoid unnecessary tool/context loading.
-
 Marker-delimited active blocks from applicable AGENTS files and the active
 profile are compiled into one deterministic model-facing instruction capsule.
 The compiler reads `CODEX_ACTIVE_BLOCK_BEGIN` / `CODEX_ACTIVE_BLOCK_END`

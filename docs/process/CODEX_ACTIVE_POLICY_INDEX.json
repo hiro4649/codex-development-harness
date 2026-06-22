@@ -175,9 +175,6 @@
       "compiledInstructionCapsule": 1,
       "selectedSkillMax": 1,
       "mandatorySafetySelectedSkillMax": 2,
-      "selectedPluginMax": 0,
-      "securityTaskPluginMax": 1,
-      "securityTaskRecommendedPlugin": "codex-security",
       "finalReportLineMax": 8,
       "ownerInterruptMax": 0
     },
