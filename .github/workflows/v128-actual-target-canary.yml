@@ -1,0 +1,143 @@
+# CODEX_QUALITY_HARNESS_FILE v1.2.8
+name: v128-actual-target-canary
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/v128-actual-target-canary.yml'
+      - 'scripts/codex-v128-actual-target-canary-contract.mjs'
+      - 'scripts/codex-v128-actual-target-canary-runner.mjs'
+      - 'scripts/codex-v128-projection-reader.mjs'
+      - 'scripts/codex-v128-managed-context-emitter.mjs'
+      - 'scripts/codex-v128-serialized-cache-canary.mjs'
+      - 'scripts/codex-v128-validation-execution-plan.mjs'
+      - 'scripts/codex-local-quality-gate.mjs'
+      - 'docs/process/CODEX_V128_SPEC.md'
+      - 'docs/process/CODEX_V128_CONTRACT_SCHEMA.json'
+
+permissions:
+  contents: read
+
+jobs:
+  target-matrix:
+    name: target ${{ matrix.kind }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - kind: complex
+            repository: hiro4649/CRIPTO-TIP
+            target_path: _target/cripto-tip
+          - kind: restricted
+            repository: hiro4649/VGC-FUNKY-TOKEN
+            target_path: _target/vgc-funky-token
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          path: source
+          fetch-depth: 0
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repository }}
+          path: source/${{ matrix.target_path }}
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run target report
+        shell: bash
+        working-directory: source
+        env:
+          CODEX_V128_SOURCE_CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v128-target-${{ matrix.kind }}"
+          runner_exit=0
+          set +e
+          node scripts/codex-v128-actual-target-canary-runner.mjs \
+            --target-report-only \
+            --target "${{ matrix.kind }}=${{ matrix.repository }}=${{ github.workspace }}/source/${{ matrix.target_path }}" \
+            > "$RUNNER_TEMP/v128-target-${{ matrix.kind }}/target-report.json" || runner_exit=$?
+          set -e
+          node -e "const fs=require('node:fs'); const r=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); console.log('status='+r.status); console.log('kind='+(r.targetReport&&r.targetReport.kind)); console.log('v127='+(r.targetReport&&r.targetReport.v127Status)); console.log('v128='+(r.targetReport&&r.targetReport.v128ShadowStatus)); console.log('reasons='+(r.reasonCodes||[]).join(','));" "$RUNNER_TEMP/v128-target-${{ matrix.kind }}/target-report.json"
+          exit "$runner_exit"
+      - name: Upload target report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v128-target-report-${{ matrix.kind }}
+          path: ${{ runner.temp }}/v128-target-${{ matrix.kind }}/target-report.json
+          if-no-files-found: error
+
+  aggregate:
+    name: aggregate contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: target-matrix
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          path: source
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Download target reports
+        uses: actions/download-artifact@v4
+        with:
+          path: source/_target_reports
+          pattern: v128-target-report-*
+          merge-multiple: false
+      - name: Build contract artifact
+        shell: bash
+        working-directory: source
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import {
+            buildV128ActualTargetCanaryContract,
+            validateV128ActualTargetCanaryContract,
+          } from './scripts/codex-v128-actual-target-canary-contract.mjs';
+
+          const root = '_target_reports';
+          const files = [];
+          const visit = (dir) => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) visit(full);
+              else if (entry.name === 'target-report.json') files.push(full);
+            }
+          };
+          visit(root);
+          const targetReports = files.map((file) => JSON.parse(fs.readFileSync(file, 'utf8')).targetReport);
+          const sourceCandidateSha = targetReports[0]?.sourceCandidateSha || '';
+          const candidateBundleDigest = targetReports[0]?.candidateBundleDigest || '';
+          const report = buildV128ActualTargetCanaryContract({
+            sourceCandidateSha,
+            candidateBundleDigest,
+            targets: targetReports,
+          });
+          const validation = validateV128ActualTargetCanaryContract(report);
+          const output = { report, validation, safeSummaryOnly: true };
+          fs.writeFileSync('codex-v128-actual-target-canary.safe.json', JSON.stringify(output, null, 2));
+          console.log(`status=${report.status}`);
+          console.log(`validation=${validation.status}`);
+          console.log(`targetCount=${report.targetCount}`);
+          process.exit(report.status === 'pass' && validation.status === 'pass' ? 0 : 1);
+          NODE
+      - name: Upload contract artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-v128-actual-target-canary-safe-artifacts
+          path: source/codex-v128-actual-target-canary.safe.json
+          if-no-files-found: error

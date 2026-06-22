@@ -966,10 +966,16 @@ wallet/RPC authority are forbidden. Until this contract passes from remote
 target artifacts, the remaining target canary requirement is not complete.
 `scripts/codex-v128-actual-target-canary-runner.mjs` is the Source-side
 read-only runner for assembling that contract from observed target checkout
-state. The runner may read bounded authority files and run the target v127
-self-test entrypoint, but it must not run write-prone target gates, edit target
-files, store raw logs, or store local paths. Its output remains a Shadow
-Candidate artifact and cannot authorize Source Activation or target rollout.
+state. The runner reads bounded authority files, runs the target v127 self-test,
+runs target v127 quality-gate only in a disposable execution copy, and runs the
+Source v1.2.8 candidate Projection reader, managed context emitter, validation
+executor, and cache against the target head binding. It must not edit target
+checkout files, store raw logs, store local paths, or use Target Shadow
+Preflight as `v128ShadowStatus`. Its output remains a Shadow Candidate artifact
+and cannot authorize Source Activation or target rollout. Source GitHub Actions
+may run `.github/workflows/v128-actual-target-canary.yml` to execute the two
+registered target checks as a read-only matrix and aggregate them through the
+same Actual Target Canary contract.
 
 The bounded Projection reader verifies the extracted Projection schema, head,
 and Projection payload digest without reading additional cold artifacts. The

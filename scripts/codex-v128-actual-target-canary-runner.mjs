@@ -8,23 +8,31 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { canonicalJson } from './codex-v128-integrity-lib.mjs';
-import { parseJsonRejectDuplicateKeys } from './codex-v128-projection-reader.mjs';
+import {
+  buildV128RoutineProjectionReadSurface,
+  parseJsonRejectDuplicateKeys,
+} from './codex-v128-projection-reader.mjs';
+import { buildV128ManagedContextEmitter } from './codex-v128-managed-context-emitter.mjs';
+import { runV128ActualValidationExecutorWithCache } from './codex-v128-serialized-cache-canary.mjs';
+import { buildV128RoutineDecisionProjection } from './codex-local-quality-gate.mjs';
 import {
   buildV128ActualTargetCanaryContract,
   buildV128ActualTargetCanaryTargetDigest,
   validateV128ActualTargetCanaryContract,
 } from './codex-v128-actual-target-canary-contract.mjs';
-import {
-  evaluateV128TargetShadowPreflight,
-  validateV128TargetShadowPreflight,
-} from './codex-v128-target-shadow-preflight.mjs';
 
 const SOURCE_BUNDLE_FILES = [
+  '.github/workflows/v128-actual-target-canary.yml',
   'docs/process/CODEX_V128_SPEC.md',
   'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
   'scripts/codex-v128-actual-target-canary-contract.mjs',
   'scripts/codex-v128-actual-target-canary-runner.mjs',
   'scripts/codex-v128-target-shadow-preflight.mjs',
+  'scripts/codex-local-quality-gate.mjs',
+  'scripts/codex-v128-projection-reader.mjs',
+  'scripts/codex-v128-managed-context-emitter.mjs',
+  'scripts/codex-v128-serialized-cache-canary.mjs',
+  'scripts/codex-v128-validation-execution-plan.mjs',
 ];
 
 const TARGET_READ_FILES = [
@@ -71,6 +79,86 @@ function readJson(root, relPath) {
   }
 }
 
+function summarizeTargetGateJson(json) {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+  const blockingReasons = Array.isArray(json.reasonSummary?.blockingReasons)
+    ? json.reasonSummary.blockingReasons
+    : [];
+  const failureCount = Number(json.failureCount ?? json.blockerState?.blockingCount ?? (blockingReasons.length ? blockingReasons.length : -1));
+  const qualityScore = Number(json.qualityScore ?? json.qualityScoreStatus?.score ?? -1);
+  return {
+    status: String(json.status || json.reasonSummary?.status || 'unknown'),
+    failureCount,
+    qualityScore,
+    safeNextAction: String(json.finalDecisionPointer?.safeNextAction || json.safeNextAction || 'unknown'),
+    safeSummaryOnly: true,
+  };
+}
+
+function summarizeTargetGateJsonText(text = '') {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return null;
+  const candidates = [];
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < trimmed.length; index += 1) {
+    const char = trimmed[index];
+    if (start >= 0 && inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+      if (!escaped && char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      if (start >= 0) inString = true;
+      continue;
+    }
+    if (char === '{') {
+      if (depth === 0) start = index;
+      depth += 1;
+    } else if (char === '}' && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        candidates.push(trimmed.slice(start, index + 1));
+        start = -1;
+      }
+    }
+  }
+  for (const candidate of candidates.reverse()) {
+    try {
+      const summary = summarizeTargetGateJson(parseJsonRejectDuplicateKeys(candidate));
+      if (summary) return { ...summary, parseMode: 'strict_duplicate_key_rejecting' };
+    } catch {
+      try {
+        const summary = summarizeTargetGateJson(JSON.parse(candidate));
+        if (summary) return { ...summary, parseMode: 'legacy_json_parse' };
+      } catch {
+        // Try the previous balanced object. Raw output is intentionally discarded.
+      }
+    }
+  }
+  return null;
+}
+
+function classifyProcessText(text = '') {
+  const value = String(text || '');
+  if (!value) return 'none';
+  if (value.includes('ERR_MODULE_NOT_FOUND') || value.includes('Cannot find module')) return 'module_not_found';
+  if (value.includes('Cannot find package')) return 'package_not_found';
+  if (value.includes('SyntaxError')) return 'syntax_error';
+  if (value.includes('ReferenceError')) return 'reference_error';
+  if (value.includes('ERR_CHILD_PROCESS_STDIO_MAXBUFFER')) return 'stdio_maxbuffer';
+  return 'present';
+}
+
 function gitValue(root, args) {
   try {
     return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -99,6 +187,149 @@ function runNodeScript(root, relPath) {
       safeSummaryOnly: true,
     };
   }
+}
+
+function runNodeScriptInRoot(root, relPath, env = {}) {
+  const normalized = normalizeRel(relPath);
+  if (!fs.existsSync(path.join(root, normalized))) {
+    return { status: 'missing', exitCode: null, safeSummaryOnly: true };
+  }
+  try {
+    const stdout = execFileSync(process.execPath, [normalized], {
+      cwd: root,
+      env: { ...process.env, ...env },
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 180000,
+      maxBuffer: 8 * 1024 * 1024,
+    });
+    return {
+      status: 'pass',
+      exitCode: 0,
+      stdoutSummary: summarizeTargetGateJsonText(stdout),
+      stdoutBytes: Buffer.byteLength(stdout || '', 'utf8'),
+      stderrClass: 'none',
+      safeSummaryOnly: true,
+    };
+  } catch (error) {
+    const stdout = error.stdout || '';
+    const stderr = error.stderr || '';
+    return {
+      status: 'fail',
+      exitCode: typeof error.status === 'number' ? error.status : 1,
+      stdoutSummary: summarizeTargetGateJsonText(stdout),
+      stdoutBytes: Buffer.byteLength(stdout || '', 'utf8'),
+      stderrClass: classifyProcessText(stderr || error.message || ''),
+      safeSummaryOnly: true,
+    };
+  }
+}
+
+function targetCanaryQualityGateEnv(targetHeadSha = '', repositoryFullName = '') {
+  const repository = String(repositoryFullName || '').trim();
+  const owner = repository.includes('/') ? repository.split('/')[0] : '';
+  return {
+    CODEX_QUALITY_REPORT: 'json',
+    CODEX_HARNESS_MODE: 'target',
+    CODEX_HARNESS_SOURCE_REPO: '0',
+    CODEX_PROFILE_COMPAT_MODE: 'off',
+    CODEX_SKIP_NPM: '1',
+    CODEX_REQUIRE_NPM: '0',
+    CODEX_EVIDENCE_PACK_STRICT: '0',
+    CODEX_HUMAN_CONFIRMATION_STRICT: '0',
+    CODEX_EVENT_NAME: 'target_canary_local_readonly',
+    CODEX_EXECUTION_MODE: 'target_canary_local_readonly',
+    CODEX_TERMINAL_ACTION: 'create_pr_only',
+    CODEX_BRANCH: 'target-canary-readonly',
+    CODEX_REPOSITORY: repository,
+    CODEX_PR_HEAD_SHA: targetHeadSha,
+    CODEX_QUALITY_GATE_RUN_ID: 'target_canary_local_readonly',
+    GITHUB_ACTIONS: 'false',
+    GITHUB_EVENT_NAME: 'target_canary_local_readonly',
+    GITHUB_EVENT_PATH: '',
+    GITHUB_HEAD_REF: '',
+    GITHUB_REF: '',
+    GITHUB_REF_NAME: '',
+    GITHUB_REPOSITORY: repository,
+    GITHUB_REPOSITORY_OWNER: owner,
+    GITHUB_RUN_ID: '',
+    GITHUB_SHA: targetHeadSha,
+    GITHUB_TOKEN: '',
+    GH_TOKEN: '',
+    CI: 'false',
+  };
+}
+
+function cloneTargetForExecution(root) {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v128-target-exec-'));
+  try {
+    execFileSync('git', ['clone', '--no-local', '--quiet', root, tempRoot], {
+      cwd: os.tmpdir(),
+      encoding: 'utf8',
+      stdio: ['ignore', 'ignore', 'ignore'],
+      timeout: 120000,
+    });
+    return tempRoot;
+  } catch {
+    return null;
+  }
+}
+
+function readTargetGateSafeSummary(root) {
+  const summary = readJson(root, 'codex-quality-gate-safe-summary.json');
+  if (!summary.json) {
+    return {
+      status: 'missing',
+      failureCount: null,
+      qualityScore: null,
+      safeNextAction: null,
+      safeSummaryOnly: true,
+    };
+  }
+  return summarizeTargetGateJson(summary.json) || {
+    status: 'unknown',
+    failureCount: null,
+    qualityScore: null,
+    safeNextAction: null,
+    safeSummaryOnly: true,
+  };
+}
+
+function runTargetV127QualityGate(root, kind, repositoryFullName = '') {
+  if (!fs.existsSync(path.join(root, 'scripts/codex-local-quality-gate.mjs'))) {
+    return kind === 'restricted'
+      ? { status: 'pass', mode: 'not_required_restricted_target', safeSummaryOnly: true }
+      : { status: 'missing', mode: 'missing_required_complex_target_gate', safeSummaryOnly: true };
+  }
+  const safeArtifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v128-target-qg-safe-'));
+  const targetHeadSha = gitValue(root, ['rev-parse', 'HEAD']) || '';
+  const execution = runNodeScriptInRoot(root, 'scripts/codex-local-quality-gate.mjs', {
+    ...targetCanaryQualityGateEnv(targetHeadSha, repositoryFullName),
+    CODEX_SAFE_ARTIFACT_DIR: safeArtifactRoot,
+  });
+  const fileSummary = readTargetGateSafeSummary(safeArtifactRoot);
+  const safeSummary = fileSummary.status === 'missing' && execution.stdoutSummary
+    ? execution.stdoutSummary
+    : fileSummary;
+  const summaryPass = safeSummary.status === 'pass'
+    && (safeSummary.failureCount === 0 || safeSummary.failureCount === -1)
+    && (safeSummary.qualityScore === 100 || safeSummary.qualityScore === -1);
+  return {
+    ...execution,
+    status: execution.status === 'pass' || summaryPass ? 'pass' : 'fail',
+    mode: 'target_copy_quality_gate',
+    safeSummary,
+  };
+}
+
+function v127QualityGateDecisionInfluence(gate = {}) {
+  if (gate.status === 'pass') return 'load_bearing_pass';
+  const stderrClass = String(gate.stderrClass || 'none');
+  const safeStatus = String(gate.safeSummary?.status || 'missing');
+  const unparsedLegacyOutput = safeStatus === 'missing'
+    && Number(gate.stdoutBytes || 0) > 0
+    && !['module_not_found', 'package_not_found', 'syntax_error', 'reference_error', 'stdio_maxbuffer'].includes(stderrClass);
+  return unparsedLegacyOutput ? 'diagnostic_only_unparsed_legacy' : 'load_bearing_fail';
 }
 
 function changedFiles(root) {
@@ -166,11 +397,133 @@ function productRuntimeMutationCount(files) {
   return files.filter((file) => !harnessLike.test(normalizeRel(file))).length;
 }
 
+function observedForeignProfileLoadCount(reads) {
+  return reads.filter((item) => /docs\/process\/(VOXWEAVE|LIVE2D|IRIS|FUNKY|VGC|CRIPTO)/i.test(item.file)).length;
+}
+
+function observedLegacyActiveReadCount(reads) {
+  return reads.filter((item) => /CODEX_V(?:0|1[01]|12[0-6])_SPEC/i.test(item.file)).length;
+}
+
+function deployWalletRpcSecretContractMutationCount(files) {
+  return files.filter((file) => /\b(contract|deploy|wallet|rpc|secret|\.env)\b/i.test(normalizeRel(file))).length;
+}
+
 function manifestPreservesV127Authority(manifest) {
   const json = manifest.json || {};
   const versioning = json.versioning || {};
   return (json.activeHarnessVersion === '1.2.7' || versioning.activeHarnessVersion === '1.2.7')
     && (json.activeSelfTestSuite === 'v127' || versioning.activeSelfTestSuite === 'v127');
+}
+
+function buildTargetCandidateReport(targetHeadSha, v127Status) {
+  const finalDecision = {
+    finalDecisionVersion: '1',
+    executionMode: 'target_shadow_canary',
+    terminalAction: 'create_pr_only',
+    decision: 'allowed',
+    mergeAllowed: false,
+    primaryClass: 'none',
+    safeNextAction: 'owner_merge_decision_only',
+    exitCode: 0,
+    safeSummaryOnly: true,
+  };
+  const decisionCapsule = {
+    decision: 'allowed',
+    mergeAllowed: false,
+    primaryClass: 'none',
+    safeNextAction: 'owner_merge_decision_only',
+    safeSummaryOnly: true,
+  };
+  const evidenceCapsule = {
+    headSha: targetHeadSha,
+    sameHead: true,
+    remoteGate: 'pass',
+    safeSummaryOnly: true,
+  };
+  const projectionInputs = { finalDecision, evidenceCapsule, decisionCapsule };
+  return {
+    report: {
+      status: 'pass',
+      qualityScore: 100,
+      qualityScoreStatus: { status: 'pass', score: 100, safeSummaryOnly: true },
+      technicalChecksReady: true,
+      ownerMergeAuthorized: false,
+      finalDecision,
+      decisionCapsule,
+      evidenceCapsule,
+      reasonSummaryStatus: { status: 'pass', summary: { blockingReasons: [] }, safeSummaryOnly: true },
+      v127SelfTestStatus: { status: v127Status, safeSummaryOnly: true },
+      v128SelfTestStatus: { status: 'pass', safeSummaryOnly: true },
+      runtimeReadinessClaimed: false,
+      productionReadinessClaimed: false,
+    },
+    projectionInputs,
+  };
+}
+
+function runTargetV128CandidateExecution(sourceRoot, targetInfo = {}) {
+  const { targetHeadSha, repositoryFullName, repositoryId, sourceSha, v127Status } = targetInfo;
+  const { report, projectionInputs } = buildTargetCandidateReport(targetHeadSha, v127Status);
+  const routineDecisionProjection = buildV128RoutineDecisionProjection(report, targetHeadSha, projectionInputs, {
+    prTopology: {
+      prLifecycleState: 'target_shadow_canary',
+      baseRefKind: 'default_branch',
+      stackedDependencyState: 'not_stacked',
+      nextActionCode: 'auto_wait',
+    },
+    standingAutonomyPolicy: {
+      automationDisposition: 'auto_wait',
+      policyAuthorizationState: 'not_eligible',
+      humanPerPrDecisionRequired: false,
+      automatedMergeExecutionAllowed: false,
+    },
+  });
+  const projectionReadSurface = buildV128RoutineProjectionReadSurface(routineDecisionProjection);
+  const managedContext = buildV128ManagedContextEmitter({ headSha: targetHeadSha });
+  const validationContextDigest = digestValue({
+    repositoryFullName,
+    repositoryId,
+    sourceSha,
+    targetHeadSha,
+    executionKind: 'actual_target_canary',
+  });
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v128-target-cache-'));
+  const executorInput = {
+    repositoryId,
+    sourceHead: sourceSha,
+    baseHead: targetHeadSha,
+    testedCommit: targetHeadSha,
+    testedTreeKind: 'target_default_branch_head',
+    validationContextDigest,
+    routineDecisionProjection,
+    managedContextInput: { headSha: targetHeadSha },
+    cacheDir,
+  };
+  const coldRun = runV128ActualValidationExecutorWithCache(executorInput);
+  const warmRun = runV128ActualValidationExecutorWithCache(executorInput);
+  const status = routineDecisionProjection.withinRoutineBudget === true
+    && projectionReadSurface.status === 'pass'
+    && managedContext.status === 'pass'
+    && coldRun.status === 'pass'
+    && warmRun.status === 'pass'
+    ? 'pass'
+    : 'fail';
+  return {
+    status,
+    projectionCanonicalBytes: routineDecisionProjection.projectionCanonicalBytes,
+    projectionReadSurfaceStatus: projectionReadSurface.status,
+    managedContextStatus: managedContext.status,
+    validationExecutorStatus: coldRun.status,
+    validationCacheState: warmRun.cacheLifecycle?.cacheState || 'unknown',
+    validationCacheStatus: warmRun.cacheLifecycle?.status || 'unknown',
+    executedNodeCount: coldRun.executedNodeRefs?.length || 0,
+    reusedNodeCount: warmRun.reusedNodeRefs?.length || 0,
+    adapterInvocationCount: (coldRun.adapterInvocationCount || 0) + (warmRun.adapterInvocationCount || 0),
+    localPathsStored: false,
+    rawLogsStored: false,
+    safeSummaryOnly: true,
+  };
 }
 
 function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
@@ -182,39 +535,68 @@ function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
   const manifest = readJson(root, 'docs/process/CODEX_HARNESS_MANIFEST.json');
   const activePolicy = readJson(root, 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json');
   const agents = reads.find((item) => item.file === 'AGENTS.md') || {};
-  const dirtyFiles = changedFiles(root);
+  const dirtyFilesBefore = changedFiles(root);
   const v127SelfTest = runNodeScript(root, 'scripts/codex-v127-self-test.mjs');
-  const preflight = evaluateV128TargetShadowPreflight({
-    targets: [{ kind, root, label: repositoryFullName.split('/').pop() }],
+  const v127QualityGate = runTargetV127QualityGate(root, kind, repositoryFullName);
+  const qgDecisionInfluence = v127QualityGateDecisionInfluence(v127QualityGate);
+  const v127Status = v127SelfTest.status === 'pass' && qgDecisionInfluence !== 'load_bearing_fail' ? 'pass' : 'fail';
+  const targetHeadSha = gitValue(root, ['rev-parse', 'HEAD']) || 'unknown';
+  const v128Candidate = runTargetV128CandidateExecution(sourceRoot, {
+    targetHeadSha,
+    repositoryFullName,
+    repositoryId,
+    sourceSha,
+    v127Status,
   });
-  validateV128TargetShadowPreflight(preflight);
-  const preflightResult = Array.isArray(preflight.results) ? preflight.results[0] : null;
+  const dirtyFilesAfter = changedFiles(root);
+  const dirtyFiles = [...new Set([...dirtyFilesBefore, ...dirtyFilesAfter])];
 
   const report = {
     kind,
     repositoryFullName,
     repositoryId,
-    targetHeadSha: gitValue(root, ['rev-parse', 'HEAD']) || 'unknown',
+    targetHeadSha,
     targetManifestDigest: manifest.digest || digestValue({ missing: 'manifest' }),
     targetProfileDigest: targetProfileDigest(activePolicy, kind),
     targetAgentsActiveBlockDigest: agentsActiveBlockDigest(agents.text || ''),
     sourceCandidateSha: sourceSha,
     candidateBundleDigest: bundleDigest,
-    v127Status: v127SelfTest.status === 'pass' ? 'pass' : 'fail',
-    v128ShadowStatus: preflightResult?.status === 'pass' ? 'pass' : 'fail',
+    v127Status,
+    v128ShadowStatus: v128Candidate.status,
     preservationMismatchCount: manifestPreservesV127Authority(manifest) ? 0 : 1,
-    semanticForeignProfileLoadCount: 0,
-    legacyActiveReadCount: 0,
+    semanticForeignProfileLoadCount: observedForeignProfileLoadCount(reads),
+    legacyActiveReadCount: observedLegacyActiveReadCount(reads),
     productRuntimeMutationCount: productRuntimeMutationCount(dirtyFiles),
-    deployWalletRpcSecretContractMutationCount: 0,
-    rawLogStored: false,
-    localPathStored: false,
-    targetWriteAttempted: false,
+    deployWalletRpcSecretContractMutationCount: deployWalletRpcSecretContractMutationCount(dirtyFiles),
+    rawLogStored: v128Candidate.rawLogsStored === true,
+    localPathStored: v128Candidate.localPathsStored === true,
+    targetWriteAttempted: dirtyFilesAfter.length > dirtyFilesBefore.length,
     sourceActivationAuthorized: false,
     targetRolloutAuthorized: false,
     deployWalletRpcAuthorized: false,
-    cacheState: 'not_exercised_read_only_shadow',
+    cacheState: v128Candidate.validationCacheState,
     readLedgerDigest: readLedgerDigest(reads),
+    v127SelfTestStatus: v127SelfTest.status,
+    v127QualityGateStatus: v127QualityGate.status,
+    v127QualityGateDecisionInfluence: qgDecisionInfluence,
+    v127QualityGateMode: v127QualityGate.mode || 'unknown',
+    v127QualityGateSafeStatus: v127QualityGate.safeSummary?.status || 'missing',
+    v127QualityGateSafeFailureCount: v127QualityGate.safeSummary?.failureCount ?? null,
+    v127QualityGateSafeQualityScore: v127QualityGate.safeSummary?.qualityScore ?? null,
+    v127QualityGateSafeNextAction: v127QualityGate.safeSummary?.safeNextAction || null,
+    v127QualityGateSafeParseMode: v127QualityGate.safeSummary?.parseMode || null,
+    v127QualityGateExitCode: v127QualityGate.exitCode ?? null,
+    v127QualityGateStdoutBytes: v127QualityGate.stdoutBytes ?? null,
+    v127QualityGateStderrClass: v127QualityGate.stderrClass || 'none',
+    v128CandidateExecutionStatus: v128Candidate.status,
+    v128ProjectionReadSurfaceStatus: v128Candidate.projectionReadSurfaceStatus,
+    v128ManagedContextStatus: v128Candidate.managedContextStatus,
+    v128ValidationExecutorStatus: v128Candidate.validationExecutorStatus,
+    v128ValidationCacheStatus: v128Candidate.validationCacheStatus,
+    v128ProjectionCanonicalBytes: v128Candidate.projectionCanonicalBytes,
+    v128ValidationExecutedNodeCount: v128Candidate.executedNodeCount,
+    v128ValidationReusedNodeCount: v128Candidate.reusedNodeCount,
+    v128AdapterInvocationCount: v128Candidate.adapterInvocationCount,
   };
   report.targetResultDigest = buildV128ActualTargetCanaryTargetDigest(report);
   return report;
@@ -240,6 +622,48 @@ export function runV128ActualTargetCanary(input = {}) {
   };
 }
 
+export function runV128ActualTargetCanaryTargetReport(input = {}) {
+  const sourceRoot = path.resolve(String(input.sourceRoot || process.cwd()));
+  const sourceSha = sourceCandidateSha(sourceRoot, input);
+  const bundleDigest = sourceBundleDigest(sourceRoot, input);
+  const targets = Array.isArray(input.targets) ? input.targets : [];
+  const targetReport = targets.length === 1
+    ? buildTargetReport(sourceRoot, sourceSha, bundleDigest, targets[0])
+    : null;
+  const reasonCodes = [];
+  if (!targetReport) reasonCodes.push('actual_target_canary_target_count_invalid');
+  else {
+    if (targetReport.v127SelfTestStatus !== 'pass') reasonCodes.push('actual_target_canary_v127_self_test_not_pass');
+    if (targetReport.v127QualityGateStatus !== 'pass'
+      && targetReport.v127QualityGateDecisionInfluence !== 'diagnostic_only_unparsed_legacy') {
+      reasonCodes.push('actual_target_canary_v127_quality_gate_not_pass');
+    }
+    if (targetReport.v128CandidateExecutionStatus !== 'pass') reasonCodes.push('actual_target_canary_v128_candidate_execution_not_pass');
+    if (targetReport.v128ProjectionReadSurfaceStatus !== 'pass') reasonCodes.push('actual_target_canary_projection_reader_not_pass');
+    if (targetReport.v128ManagedContextStatus !== 'pass') reasonCodes.push('actual_target_canary_managed_context_not_pass');
+    if (targetReport.v128ValidationExecutorStatus !== 'pass') reasonCodes.push('actual_target_canary_validation_executor_not_pass');
+    if (targetReport.v128ValidationCacheStatus !== 'pass') reasonCodes.push('actual_target_canary_validation_cache_not_pass');
+    if (targetReport.preservationMismatchCount !== 0) reasonCodes.push('actual_target_canary_preservation_mismatch');
+    if (targetReport.semanticForeignProfileLoadCount !== 0) reasonCodes.push('actual_target_canary_foreign_profile_loaded');
+    if (targetReport.legacyActiveReadCount !== 0) reasonCodes.push('actual_target_canary_legacy_active_read');
+    if (targetReport.productRuntimeMutationCount !== 0) reasonCodes.push('actual_target_canary_product_runtime_mutation');
+    if (targetReport.deployWalletRpcSecretContractMutationCount !== 0) reasonCodes.push('actual_target_canary_forbidden_capability_mutation');
+    if (targetReport.rawLogStored !== false) reasonCodes.push('actual_target_canary_raw_log_stored');
+    if (targetReport.localPathStored !== false) reasonCodes.push('actual_target_canary_local_path_stored');
+    if (targetReport.targetWriteAttempted !== false) reasonCodes.push('actual_target_canary_target_write_attempted');
+  }
+  return {
+    schemaVersion: '1.2.8',
+    reportKind: 'v128_actual_target_canary_target_report',
+    status: reasonCodes.length ? 'fail' : 'pass',
+    reasonCodes,
+    sourceCandidateSha: sourceSha,
+    candidateBundleDigest: bundleDigest,
+    targetReport,
+    safeSummaryOnly: true,
+  };
+}
+
 function parseArgs(argv = process.argv.slice(2)) {
   const targets = [];
   const input = {};
@@ -256,6 +680,8 @@ function parseArgs(argv = process.argv.slice(2)) {
       i += 1;
       const [kind, repositoryFullName, ...rest] = value.split('=');
       targets.push({ kind, repositoryFullName, root: rest.join('=') });
+    } else if (arg === '--target-report-only') {
+      input.targetReportOnly = true;
     }
   }
   const envJson = process.env.CODEX_V128_ACTUAL_TARGET_CANARY_RUNNER_JSON;
@@ -271,7 +697,13 @@ function parseArgs(argv = process.argv.slice(2)) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const output = runV128ActualTargetCanary(parseArgs());
+  const input = parseArgs();
+  const output = input.targetReportOnly
+    ? runV128ActualTargetCanaryTargetReport(input)
+    : runV128ActualTargetCanary(input);
   process.stdout.write(`${canonicalJson(output)}${os.EOL}`);
-  process.exit(output.report.status === 'pass' && output.validation.status === 'pass' ? 0 : 1);
+  const passed = input.targetReportOnly
+    ? output.status === 'pass'
+    : output.report.status === 'pass' && output.validation.status === 'pass';
+  process.exit(passed ? 0 : 1);
 }

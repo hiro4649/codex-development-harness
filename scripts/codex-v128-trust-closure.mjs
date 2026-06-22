@@ -7,6 +7,7 @@ import path from 'node:path';
 
 export const V128_TRUST_CLOSURE_FILES = [
   '.github/workflows/quality-gate.yml',
+  '.github/workflows/v128-actual-target-canary.yml',
   'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json',
   'docs/process/CODEX_V128_SPEC.md',
   'docs/process/CODEX_V128_CONTRACT_SCHEMA.json',
@@ -40,6 +41,7 @@ export const V128_TRUST_CLOSURE_FILES = [
 
 const PROVIDER_ADAPTER_FILES = [
   '.github/workflows/quality-gate.yml',
+  '.github/workflows/v128-actual-target-canary.yml',
   'scripts/codex-workflow-quality-runner.mjs',
   'scripts/codex-evidence-capsule.mjs',
   'scripts/codex-artifact-consistency-contract.mjs',
@@ -163,6 +165,16 @@ function discoverRelativeDependencies(file = {}, input = {}) {
   const unsupportedLoaderUsages = [];
   const executableScriptInvocations = [];
   const text = file.text || '';
+  const isJavaScriptLike = /\.(?:mjs|cjs|js)$/i.test(String(file.path || ''));
+  if (!isJavaScriptLike) {
+    return {
+      dependencies,
+      unresolvedRelativeImports,
+      unsupportedDynamicImports,
+      unsupportedLoaderUsages,
+      executableScriptInvocations,
+    };
+  }
   const importPattern = /(?:import\s+(?:[^'"]*?\s+from\s*)?|export\s+[^'"]*?\s+from\s*|import\s*\(\s*|require\(\s*)['"]([^'"]+)['"]/g;
   const dynamicImportPattern = /\bimport\s*\(\s*([^'"\s][^)]*)\)/g;
   const fsLiteralPattern = /\b(?:readFileSync|readJson|loadPolicy)\(\s*['"]([^'"]+)['"]/g;
