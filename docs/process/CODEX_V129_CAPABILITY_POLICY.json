@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.2.9",
+  "candidateHarnessVersion": "1.2.9",
+  "candidateActivationState": "source_shadow_candidate",
+  "sourceActivation": "forbidden",
+  "targetRollout": "forbidden",
+  "modelIdsInCore": "forbidden",
+  "pluginDefault": "none",
+  "pluginInvocationMax": 1,
+  "capabilityClasses": [
+    "low_cost_worker",
+    "standard_code_worker",
+    "high_reasoning_planner",
+    "independent_verifier",
+    "security_specialist",
+    "runtime_specialist",
+    "authority_reviewer"
+  ],
+  "taskRoutes": {
+    "routine_metadata": ["low_cost_worker"],
+    "repository_discovery": ["low_cost_worker"],
+    "code_change": ["standard_code_worker", "independent_verifier"],
+    "bug_repair": ["standard_code_worker", "independent_verifier"],
+    "architecture": ["high_reasoning_planner", "independent_verifier"],
+    "migration": ["high_reasoning_planner", "independent_verifier"],
+    "security_scan": ["security_specialist", "independent_verifier"],
+    "security_remediation": ["security_specialist", "independent_verifier"],
+    "runtime_sensitive": ["runtime_specialist", "independent_verifier"],
+    "restricted_asset": ["runtime_specialist", "independent_verifier"],
+    "authority_change": ["authority_reviewer"],
+    "target_rollout": ["standard_code_worker", "independent_verifier"],
+    "research": ["high_reasoning_planner"]
+  }
+}
