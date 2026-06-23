@@ -1,0 +1,59 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "candidateHarnessVersion": "1.2.9",
+  "candidateActivationState": "source_shadow_candidate",
+  "schemaVersion": "1.2.9",
+  "title": "CODEX v1.2.9 Protected Capability Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "registryId", "capabilities", "plugins", "routes"],
+  "properties": {
+    "schemaVersion": { "const": "1.2.9" },
+    "registryId": { "type": "string", "minLength": 1 },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["capabilityClass", "resolvedModelRef", "maxOutputBytes", "availabilityState", "authorizationState", "costClass"],
+        "properties": {
+          "capabilityClass": { "type": "string" },
+          "resolvedModelRef": { "type": "string" },
+          "maxOutputBytes": { "type": "integer", "minimum": 1 },
+          "availabilityState": { "type": "string", "enum": ["available", "unavailable"] },
+          "authorizationState": { "type": "string", "enum": ["authorized", "unauthorized"] },
+          "costClass": { "type": "string", "enum": ["low", "standard", "high", "specialist"] },
+          "fallbackChain": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["pluginId", "authorizedTaskClasses", "availabilityState", "authorizationState"],
+        "properties": {
+          "pluginId": { "type": "string" },
+          "authorizedTaskClasses": { "type": "array", "items": { "type": "string" } },
+          "availabilityState": { "type": "string", "enum": ["available", "unavailable"] },
+          "authorizationState": { "type": "string", "enum": ["authorized", "unauthorized"] },
+          "requiresDefensiveScope": { "type": "boolean" }
+        }
+      }
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["requiredCapabilityClasses", "pluginDefault"],
+        "properties": {
+          "requiredCapabilityClasses": { "type": "array", "items": { "type": "string" } },
+          "pluginDefault": { "type": "string" },
+          "eligiblePlugins": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

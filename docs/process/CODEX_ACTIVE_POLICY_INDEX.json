@@ -95,6 +95,25 @@
       "selectedSkillsMax": 3,
       "thirdSkillAllowed": true,
       "thirdSkillRequiresTypedJustification": true
+    },
+    "v129_shadow": {
+      "requiredReads": [
+        "AGENTS.md",
+        "CODEX_SOURCE_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_V129_SPEC.md"
+      ],
+      "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
+        "docs/process/CODEX_V129_CONTRACT_SCHEMA.json",
+        "docs/process/CODEX_V129_CAPABILITY_POLICY.json",
+        "legacy_specs",
+        "pr_history_docs"
+      ],
+      "mdFilesReadMax": 4,
+      "selectedSkillsMax": 1,
+      "routineColdArtifactReadMax": 0,
+      "fullHistory": "forbidden",
+      "rawLogs": "forbidden"
     }
   },
   "requiredReads": [
@@ -192,7 +211,11 @@
       "boundedReaderStrictJson": true,
       "managedContextEmitter": "scripts/codex-v128-managed-context-emitter.mjs",
       "projectionIntegrityBindingRequired": true,
-      "projectionIntegrityChecks": ["schema", "head", "source_digest"],
+      "projectionIntegrityChecks": [
+        "schema",
+        "head",
+        "source_digest"
+      ],
       "stateMatrixExecutor": "scripts/codex-v128-state-matrix.mjs",
       "validationExecutionPlan": "scripts/codex-v128-validation-execution-plan.mjs",
       "releaseDrill": "scripts/codex-v128-release-drill.mjs",
@@ -215,5 +238,17 @@
     "stateMatrixFullEnumProductExecuted": true,
     "postMergeReplayCoverage": "release_drill_passed",
     "placeholderReceiptValid": false
+  },
+  "v129SourceShadowCandidate": {
+    "version": "1.2.9",
+    "name": "Goal-Contracted Capability Router",
+    "activationState": "source_shadow_candidate",
+    "sourceActivation": "forbidden",
+    "targetRollout": "forbidden",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "profile": "v129_shadow"
   }
 }

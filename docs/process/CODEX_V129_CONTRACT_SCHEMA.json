@@ -1,0 +1,102 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
+  "candidateHarnessVersion": "1.2.9",
+  "candidateActivationState": "source_shadow_candidate",
+  "schemaVersion": "1.2.9",
+  "title": "CODEX v1.2.9 Goal Contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "goalId",
+    "goalVersion",
+    "taskClass",
+    "truthOwnerRefs",
+    "desiredEndState",
+    "acceptanceCriteria",
+    "constraints",
+    "nonGoals",
+    "allowedFiles",
+    "forbiddenFiles",
+    "evidencePlan",
+    "killCriteria",
+    "repairBudget",
+    "binding",
+    "goalDigest"
+  ],
+  "properties": {
+    "goalId": { "type": "string", "minLength": 1, "maxLength": 96 },
+    "goalVersion": { "type": "integer", "minimum": 1 },
+    "taskClass": {
+      "type": "string",
+      "enum": [
+        "routine_metadata",
+        "repository_discovery",
+        "code_change",
+        "bug_repair",
+        "architecture",
+        "migration",
+        "security_scan",
+        "security_remediation",
+        "runtime_sensitive",
+        "restricted_asset",
+        "authority_change",
+        "target_rollout",
+        "research"
+      ]
+    },
+    "truthOwnerRefs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "digest"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1, "maxLength": 240 },
+          "digest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        }
+      }
+    },
+    "desiredEndState": { "type": "string", "minLength": 1, "maxLength": 1200 },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description", "required"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^AC[1-9][0-9]*$" },
+          "description": { "type": "string", "minLength": 1, "maxLength": 800 },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "constraints": { "type": "array", "maxItems": 24, "items": { "type": "string", "maxLength": 400 } },
+    "nonGoals": { "type": "array", "maxItems": 24, "items": { "type": "string", "maxLength": 400 } },
+    "allowedFiles": { "type": "array", "maxItems": 96, "items": { "type": "string", "maxLength": 240 } },
+    "forbiddenFiles": { "type": "array", "maxItems": 96, "items": { "type": "string", "maxLength": 240 } },
+    "evidencePlan": { "type": "array", "maxItems": 24, "items": { "type": "string", "maxLength": 400 } },
+    "killCriteria": { "type": "array", "maxItems": 12, "items": { "type": "string", "maxLength": 400 } },
+    "repairBudget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxRepairIterations", "sameBlockerMax"],
+      "properties": {
+        "maxRepairIterations": { "type": "integer", "minimum": 0, "maximum": 1 },
+        "sameBlockerMax": { "type": "integer", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repositoryId", "baseSha", "scopeDigest"],
+      "properties": {
+        "repositoryId": { "type": "integer", "minimum": 1 },
+        "baseSha": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "scopeDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+      }
+    },
+    "goalDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+  }
+}
