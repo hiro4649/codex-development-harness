@@ -3,6 +3,8 @@
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 
 export const V129_TASK_CLASSES = Object.freeze([
@@ -345,7 +347,7 @@ export function readGoalContractFile(file) {
   return fs.readFileSync(file, 'utf8');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
   let report;
   try {
     const file = process.argv[2];

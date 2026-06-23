@@ -202,7 +202,11 @@
     "scripts/codex-v129-capability-router.mjs",
     "scripts/codex-v129-plugin-broker.mjs",
     "scripts/codex-v129-host-dispatch.mjs",
-    "scripts/codex-v129-fixture-host-adapter.mjs"
+    "scripts/codex-v129-fixture-host-adapter.mjs",
+    "scripts/codex-v129-independent-verifier.mjs",
+    "scripts/codex-v129-goal-finalizer.mjs",
+    "scripts/codex-v129-shadow-runner.mjs",
+    ".github/workflows/v129-shadow-gate.yml"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -2001,6 +2005,8 @@
     "newP0Artifact": false,
     "newTopLevelStatus": false,
     "finalAuthority": "v1.1.8_final_decision_kernel",
-    "runtimeStage": "capability_dispatch_runtime_candidate"
+    "runtimeStage": "capability_dispatch_runtime_candidate",
+    "shadowIntegration": "goal_completion_and_verifier_shadow_runtime",
+    "shadowWorkflow": ".github/workflows/v129-shadow-gate.yml"
   }
 }

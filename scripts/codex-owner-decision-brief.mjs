@@ -318,6 +318,7 @@ export function buildOwnerDecisionBrief(input = {}) {
     ownerDecisionBriefVersion: '1',
     decisionReady: input.decisionReady === true,
     itemUrl: input.itemUrl || null,
+    v129ShadowPointer: input.v129ShadowPointer || null,
     whatChanges: input.whatChanges || 'source_harness_v128_deterministic_decision_projection_token_minimal_loop_closure_body_only',
     whoBenefits: input.whoBenefits || 'maintainer_owner_burden_reduction_and_safer_long_running_agent_loops',
     whyOwnerDecisionNeededNow: input.whyOwnerDecisionNeededNow || 'owner_merge_instruction_not_provided',

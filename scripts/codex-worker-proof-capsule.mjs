@@ -387,6 +387,7 @@ export function buildWorkerProofCapsule(input = {}) {
     workerId: input.workerId || 'single_worker',
     repo: input.repo || 'hiro4649/codex-development-harness',
     headSha: input.headSha || null,
+    v129ShadowPointer: input.v129ShadowPointer || null,
     changedFiles,
     changedFilesListedCount: changedFiles.length,
     changedFilesTruncated: Array.isArray(input.changedFiles) && input.changedFiles.length > changedFiles.length,

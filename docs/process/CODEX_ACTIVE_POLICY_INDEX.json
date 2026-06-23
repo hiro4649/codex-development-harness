@@ -249,6 +249,8 @@
     "newTopLevelStatus": false,
     "newSkill": false,
     "finalAuthority": "v1.1.8_final_decision_kernel",
-    "profile": "v129_shadow"
+    "profile": "v129_shadow",
+    "shadowIntegration": "goal_completion_and_verifier_shadow_runtime",
+    "shadowWorkflow": ".github/workflows/v129-shadow-gate.yml"
   }
 }

@@ -10093,6 +10093,7 @@ async function runSourceHarnessGate() {
 
 
   const jsonReport = process.env.CODEX_QUALITY_REPORT === 'json';
+  const V129_SHADOW_MODE_ENV = 'CODEX_V129_SHADOW';
 
 
 
