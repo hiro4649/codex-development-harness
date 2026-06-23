@@ -28,6 +28,26 @@ export function digestValue(value) {
   return `sha256:${crypto.createHash('sha256').update(canonicalJson(value)).digest('hex')}`;
 }
 
+export function measureV128OrchestrationCapsuleStoredBytes(capsule = {}) {
+  return Buffer.byteLength(JSON.stringify(capsule || {}), 'utf8');
+}
+
+export function validateV128OrchestrationCapsuleStoredBytes(
+  capsule = {},
+  maxBytes = V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX,
+) {
+  const storedBytes = measureV128OrchestrationCapsuleStoredBytes(capsule);
+  return storedBytes <= maxBytes
+    ? { status: 'pass', storedBytes, maxBytes, safeSummaryOnly: true }
+    : {
+      status: 'fail',
+      storedBytes,
+      maxBytes,
+      reasonCodes: ['v128_orchestration_capsule_bytes_over_budget'],
+      safeSummaryOnly: true,
+    };
+}
+
 function compactStatus(value = {}) {
   if (!value || typeof value !== 'object') return { status: 'missing' };
   return { status: value.status || 'missing' };
@@ -249,6 +269,7 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
     compactIntegrityStatus: {
       qualityScoreStatus: compactStatus(report.qualityScoreStatus),
       finalDecisionStatus: compactStatus(report.finalDecisionStatus),
+      orchestrationCapsuleBudgetStatus: report.routineDecisionProjectionStatus?.orchestrationCapsuleStoredBytesStatus || 'unknown',
       reasonSummaryStatus: compactReasonSummary(reasonSummaryStatus),
       v127SelfTestStatus: compactStatus(report.v127SelfTestStatus),
       v128SelfTestStatus: compactStatus(report.v128SelfTestStatus),

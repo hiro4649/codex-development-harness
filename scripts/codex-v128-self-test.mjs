@@ -68,6 +68,8 @@ import {
   buildV128ReleaseDrillColdEvidence,
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
+  measureV128OrchestrationCapsuleStoredBytes,
+  validateV128OrchestrationCapsuleStoredBytes,
   validateV128CompactValidationPlanExact,
   validateV128ReleaseDrillHotColdBinding,
 } from './codex-v128-token-compression.mjs';
@@ -635,6 +637,41 @@ function releaseDrillHotSummaryRejectsColdFieldLeakage() {
     executionMode: cold.executionMode,
   };
   return failed(validateV128ReleaseDrillHotColdBinding(hot, cold));
+}
+
+function capsuleWithStoredBytes(targetBytes) {
+  const capsule = { payload: '' };
+  const baseBytes = measureV128OrchestrationCapsuleStoredBytes(capsule);
+  capsule.payload = 'x'.repeat(Math.max(0, targetBytes - baseBytes));
+  while (measureV128OrchestrationCapsuleStoredBytes(capsule) < targetBytes) {
+    capsule.payload += 'x';
+  }
+  while (measureV128OrchestrationCapsuleStoredBytes(capsule) > targetBytes) {
+    capsule.payload = capsule.payload.slice(0, -1);
+  }
+  return capsule;
+}
+
+function orchestrationCapsuleBudgetPassesAt47999() {
+  const capsule = capsuleWithStoredBytes(47999);
+  const validation = validateV128OrchestrationCapsuleStoredBytes(capsule);
+  return measureV128OrchestrationCapsuleStoredBytes(capsule) === 47999
+    && passed(validation);
+}
+
+function orchestrationCapsuleBudgetPassesAt48000() {
+  const capsule = capsuleWithStoredBytes(48000);
+  const validation = validateV128OrchestrationCapsuleStoredBytes(capsule);
+  return measureV128OrchestrationCapsuleStoredBytes(capsule) === 48000
+    && passed(validation);
+}
+
+function orchestrationCapsuleBudgetFailsAt48001() {
+  const capsule = capsuleWithStoredBytes(48001);
+  const validation = validateV128OrchestrationCapsuleStoredBytes(capsule);
+  return measureV128OrchestrationCapsuleStoredBytes(capsule) === 48001
+    && failed(validation)
+    && validation.reasonCodes.includes('v128_orchestration_capsule_bytes_over_budget');
 }
 
 function projectionIntegrityBindingVerifies() {
@@ -3392,6 +3429,9 @@ const cases = [
   ['release_drill_hot_cold_binding_fails_modified_cold', () => releaseDrillHotColdBindingFailsModifiedCold()],
   ['release_drill_hot_cold_binding_fails_proof_mismatch', () => releaseDrillHotColdBindingFailsProofMismatch()],
   ['release_drill_hot_summary_rejects_cold_field_leakage', () => releaseDrillHotSummaryRejectsColdFieldLeakage()],
+  ['orchestration_capsule_budget_passes_at_47999', () => orchestrationCapsuleBudgetPassesAt47999()],
+  ['orchestration_capsule_budget_passes_at_48000', () => orchestrationCapsuleBudgetPassesAt48000()],
+  ['orchestration_capsule_budget_fails_at_48001', () => orchestrationCapsuleBudgetFailsAt48001()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
   }).tokenMinimalReadCompatibilityRouter))],

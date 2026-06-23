@@ -104,6 +104,8 @@ import {
   buildV128ReleaseDrillColdEvidence,
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
+  V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX,
+  validateV128OrchestrationCapsuleStoredBytes,
   validateV128ReleaseDrillHotColdBinding,
 } from './codex-v128-token-compression.mjs';
 import {
@@ -1256,6 +1258,10 @@ function writeV117LoadBearingArtifacts(report = {}) {
   if (report.orchestrationCapsule && typeof report.orchestrationCapsule === 'object') {
     report.orchestrationCapsule.v128ReleaseDrillEvidence = v128ReleaseDrillColdEvidence;
   }
+  const orchestrationCapsuleStoredBytesStatus = validateV128OrchestrationCapsuleStoredBytes(
+    report.orchestrationCapsule || {},
+    V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX,
+  );
   const projectionSourceConsistencyStatus = report.status === 'pass'
     && (report.reasonSummaryStatus?.summary?.blockingReasons || []).length > 0
     ? 'fail'
@@ -1275,6 +1281,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
       && !['mismatch', 'tuple_mismatch'].includes(providerChangedFilesEvidence.status)
       && projectionSourceConsistencyStatus === 'pass'
       && !['fail', 'blocked'].includes(releaseDrillRemoteBindingStatus)
+      && orchestrationCapsuleStoredBytesStatus.status === 'pass'
       ? 'pass'
       : 'fail',
     ...shadowOnlyV128Fields('final_closure'),
@@ -1306,6 +1313,9 @@ function writeV117LoadBearingArtifacts(report = {}) {
     releaseDrillSafeNextAction: report.v128ReleaseDrillEvidence.safeNextAction,
     releaseDrillRemoteBindingStatus,
     releaseDrillColdEvidenceStatus: report.orchestrationCapsule?.v128ReleaseDrillEvidence ? 'present' : 'missing',
+    orchestrationCapsuleStoredBytesStatus: orchestrationCapsuleStoredBytesStatus.status,
+    orchestrationCapsuleStoredBytes: orchestrationCapsuleStoredBytesStatus.storedBytes,
+    orchestrationCapsuleBytesMax: orchestrationCapsuleStoredBytesStatus.maxBytes,
     validationExecutionPlanStatus: v128ValidationExecutionPlanStatus.status,
     trustClosureStatus: v128TrustClosureStatus.status,
     trustClosureDigest: v128TrustClosure.trustClosureDigest,
