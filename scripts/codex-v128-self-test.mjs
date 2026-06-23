@@ -3032,6 +3032,27 @@ function actualTargetCanaryRunnerKeepsHarnessDirtyFilesOutOfProductRuntimeCount(
     && !result.reasonCodes.includes('actual_target_canary_product_runtime_mutation');
 }
 
+function actualTargetCanaryRunnerKeepsGeneratedSafeArtifactsOutOfMutationCounts() {
+  const root = buildActualTargetRunnerFixture('complex');
+  writeFixtureFile(root, 'codex-safe-secret-scan.safe.json', JSON.stringify({ status: 'pass', safeSummaryOnly: true }));
+  const result = runV128ActualTargetCanaryTargetReport({
+    sourceCandidateSha: '1'.repeat(40),
+    candidateBundleDigest: sha256Canonical({ bundle: 'generated-safe-artifact-is-harness-only' }),
+    targets: [
+      {
+        kind: 'complex',
+        repositoryFullName: 'hiro4649/CRIPTO-TIP',
+        root,
+      },
+    ],
+  });
+  return result.status === 'pass'
+    && result.targetReport.productRuntimeMutationCount === 0
+    && result.targetReport.deployWalletRpcSecretContractMutationCount === 0
+    && !result.reasonCodes.includes('actual_target_canary_product_runtime_mutation')
+    && !result.reasonCodes.includes('actual_target_canary_forbidden_capability_mutation');
+}
+
 function actualTargetCanaryRunnerFailsMissingV127SelfTest() {
   const result = runV128ActualTargetCanary({
     sourceCandidateSha: 'f'.repeat(40),
@@ -3580,6 +3601,7 @@ const cases = [
   ['actual_target_canary_runner_builds_contract_from_two_targets', () => actualTargetCanaryRunnerBuildsContractFromTwoTargets()],
   ['actual_target_canary_runner_uses_target_derived_v128_candidate_input', () => actualTargetCanaryRunnerUsesTargetDerivedV128CandidateInput()],
   ['actual_target_canary_runner_keeps_harness_dirty_files_out_of_product_runtime_count', () => actualTargetCanaryRunnerKeepsHarnessDirtyFilesOutOfProductRuntimeCount()],
+  ['actual_target_canary_runner_keeps_generated_safe_artifacts_out_of_mutation_counts', () => actualTargetCanaryRunnerKeepsGeneratedSafeArtifactsOutOfMutationCounts()],
   ['actual_target_canary_runner_fails_missing_v127_self_test', () => actualTargetCanaryRunnerFailsMissingV127SelfTest()],
   ['actual_target_canary_runner_fails_safe_json_when_exit_differs', () => actualTargetCanaryRunnerFailsSafeJsonWhenExitDiffers()],
   ['actual_target_canary_runner_fails_unparsed_legacy_qg', () => actualTargetCanaryRunnerFailsUnparsedLegacyQG()],

@@ -131,7 +131,7 @@ function changedFiles(root) {
 }
 
 function classifyMutationFiles(files = []) {
-  const harnessLike = /^(AGENTS\.md|CODEX_SOURCE_HARNESS_MANIFEST\.json|docs\/process\/|docs\/codex\/|scripts\/codex-|\.github\/pull_request_template\.md)/;
+  const harnessLike = /^(AGENTS\.md|CODEX_SOURCE_HARNESS_MANIFEST\.json|docs\/process\/|docs\/codex\/|scripts\/codex-|\.github\/pull_request_template\.md)|^codex-[^/]+\.json$/;
   const productRuntimeFiles = files.filter((file) => !harnessLike.test(normalizeRel(file)));
   return {
     observed: true,
