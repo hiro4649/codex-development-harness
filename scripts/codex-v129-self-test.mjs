@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.8
+// CODEX_QUALITY_HARNESS_FILE v1.2.9
 
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import fs from 'node:fs';
@@ -45,6 +45,7 @@ import {
 } from './codex-orchestration-capsule.mjs';
 import { buildWorkerProofCapsule } from './codex-worker-proof-capsule.mjs';
 import { buildOwnerDecisionBrief } from './codex-owner-decision-brief.mjs';
+import { buildHarnessVersionRegistry } from './codex-harness-version.mjs';
 
 function test(name, fn) {
   try {
@@ -467,11 +468,16 @@ function verifierTests() {
   const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const headSha = git(['rev-parse', 'HEAD']);
   const truthOwnerPath = 'docs/process/CODEX_V129_SPEC.md';
-  const truthOwnerDigest = `sha256:${sha256(fs.readFileSync(path.join(repoRoot, truthOwnerPath)))}`;
+  const truthOwnerWorkspacePath = makeGitWorktree('truth-owner', headSha);
+  const truthOwnerRefs = [{
+    path: truthOwnerPath,
+    digest: `sha256:${sha256(fs.readFileSync(path.join(truthOwnerWorkspacePath, truthOwnerPath)))}`,
+  }];
+  const truthOwnerDigest = `sha256:${sha256(canonicalJson(truthOwnerRefs))}`;
   const goal = baseGoal({
     desiredEndState: 'Complete shadow verifier fixture.',
     acceptanceCriteria: [{ id: 'AC1', description: 'shadow verifier proof passes', required: true }],
-    truthOwnerRefs: [{ path: truthOwnerPath, digest: truthOwnerDigest }],
+    truthOwnerRefs,
     constraints: ['keep current active authority'],
     nonGoals: ['No merge authority.'],
     allowedFiles: ['scripts/codex-v129-shadow-runner.mjs'],
@@ -548,7 +554,7 @@ function verifierTests() {
     dispatchRequest,
     evidence,
     evidenceDigest,
-    truthOwnerDigest: `sha256:${sha256(canonicalJson(goal.truthOwnerRefs))}`,
+    truthOwnerDigest,
     worker: {
       goalDigest: goal.goalDigest,
       candidateHeadSha: headSha,
@@ -573,7 +579,7 @@ function verifierTests() {
     candidateHeadSha: headSha,
     baseSha: goal.binding.baseSha,
     scopeDigest: goal.binding.scopeDigest,
-    truthOwnerDigest: `sha256:${sha256(canonicalJson(goal.truthOwnerRefs))}`,
+    truthOwnerDigest,
     routeDecisionDigest: route.routeDecisionDigest,
     workerReceipt,
     workerReceiptDigest,
@@ -722,11 +728,37 @@ function negativeTests() {
   ];
 }
 
+function activationTests() {
+  const sourceManifest = JSON.parse(fs.readFileSync('CODEX_SOURCE_HARNESS_MANIFEST.json', 'utf8'));
+  const versionRegistry = buildHarnessVersionRegistry();
+  const v129 = sourceManifest.v129SourceShadowCandidate || {};
+  const realHost = v129.realHostQualification || {};
+  return [
+    test('v129_active_harness_version_pass', () => versionRegistry.activeHarnessVersion === '1.2.9' && sourceManifest.activeHarnessVersion === '1.2.9'),
+    test('v129_active_self_test_suite_pass', () => versionRegistry.activeSelfTestSuite === 'v129' && sourceManifest.activeSelfTestSuite === 'v129'),
+    test('v129_current_active_authority_pass', () => sourceManifest.versionAuthority?.v129 === 'blocking_current_active_authority'),
+    test('v129_v128_compatibility_rollback_pass', () => sourceManifest.versionAuthority?.v128 === 'blocking_compatibility_rollback'),
+    test('v129_final_decision_authority_unchanged', () => v129.finalAuthority === 'v1.1.8_final_decision_kernel' && sourceManifest.finalAuthority === 'v1.1.8_final_decision_kernel'),
+    test('v129_receipt_digest_exact_match_pass', () => realHost.receiptDigest === 'sha256:d42c41eb94ed1c4a14e2f4050b1efbaf6464734e97d70b4e568dee276bfa40b4'),
+    test('v129_qualified_source_sha_exact_match_pass', () => realHost.qualifiedSourceMainSha === '1b48b20fb911d34141953adc8e8886d3775340be'),
+    test('v129_worker_invocation_observed_pass', () => realHost.workerModelInvocationObserved === true),
+    test('v129_verifier_invocation_observed_pass', () => realHost.verifierModelInvocationObserved === true),
+    test('v129_distinct_threads_pass', () => realHost.workerVerifierDistinctThreads === true),
+    test('v129_token_budget_pass', () => realHost.tokenBudgetStatus === 'pass'),
+    test('v129_plugin_unavailable_nonblocking_pass', () => realHost.pluginSelectionState === 'unavailable' && realHost.pluginQualification === 'unavailable_nonblocking'),
+    test('v129_plugin_unavailable_invoked_fails', () => !(realHost.pluginSelectionState === 'unavailable' && realHost.pluginInvocationObserved === true)),
+    test('v129_authority_created_true_fails_activation', () => realHost.authorityCreated === false),
+    test('v129_fixture_actual_claim_fails_activation', () => realHost.actualModelInvocationState !== 'fixture' && realHost.actualPluginInvocationState !== 'fixture'),
+    test('v129_target_rollout_not_started_pass', () => sourceManifest.targetRollout === 'not_started' && v129.targetRollout === 'not_started'),
+    test('v129_target_registry_unchanged_pass', () => Array.isArray(sourceManifest.registeredTargetRepositories) && sourceManifest.registeredTargetRepositories.every((item) => item.targetHarnessVersion !== '1.2.9')),
+  ];
+}
+
 function selectedStages() {
   const arg = process.argv.find((item) => item.startsWith('--stage='));
-  if (!arg) return new Set(['contract', 'routing', 'verifier']);
+  if (!arg) return new Set(['contract', 'routing', 'verifier', 'activation']);
   const stage = arg.split('=')[1];
-  if (stage === 'all') return new Set(['contract', 'routing', 'verifier', 'negative']);
+  if (stage === 'all') return new Set(['contract', 'routing', 'verifier', 'negative', 'activation']);
   return new Set(stage.split(',').map((item) => item.trim()).filter(Boolean));
 }
 
@@ -736,6 +768,7 @@ const cases = [
   ...(stages.has('routing') ? routingTests() : []),
   ...(stages.has('verifier') ? verifierTests() : []),
   ...(stages.has('negative') ? negativeTests() : []),
+  ...(stages.has('activation') ? activationTests() : []),
 ];
 const failures = cases.filter((item) => item.status !== 'pass');
 const report = {

@@ -267,9 +267,13 @@ function activeManifestPathsForMode(env = process.env) {
 
 function manifestDeclaresSourceActivation() {
   const manifests = activeManifestPathsForMode().map((file) => readJson(file));
-  return manifests.every((manifest) => manifest.activeHarnessVersion === '1.2.8'
+  return manifests.every((manifest) => ((manifest.activeHarnessVersion === '1.2.8'
     && manifest.activeSelfTestSuite === 'v128'
-    && manifest.activeSelfTestStatusKey === 'v128SelfTestStatus'
+    && manifest.activeSelfTestStatusKey === 'v128SelfTestStatus')
+    || (manifest.activeHarnessVersion === '1.2.9'
+      && manifest.activeSelfTestSuite === 'v129'
+      && manifest.activeSelfTestStatusKey === 'v129SelfTestStatus'
+      && manifest.versionAuthority?.v128 === 'blocking_compatibility_rollback'))
     && manifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.version === '1.2.8'
     && manifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.activationState === 'active'
     && manifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation === 'active');

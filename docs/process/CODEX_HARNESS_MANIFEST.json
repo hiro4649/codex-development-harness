@@ -1,16 +1,16 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
-  "schemaVersion": "1.2.8",
-  "sourceHarnessVersion": "1.2.8",
-  "harnessVersion": "1.2.8",
-  "activeHarnessVersion": "1.2.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.9",
+  "schemaVersion": "1.2.9",
+  "sourceHarnessVersion": "1.2.9",
+  "harnessVersion": "1.2.9",
+  "activeHarnessVersion": "1.2.9",
   "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
   "upgradePath": "v127_to_v128_shadow_candidate_then_activation",
-  "activeSelfTestSuite": "v128",
-  "activeSelfTestStatusKey": "v128SelfTestStatus",
+  "activeSelfTestSuite": "v129",
+  "activeSelfTestStatusKey": "v129SelfTestStatus",
   "legacySelfTests": {
     "v126": "blocking_compatibility",
     "v125": "blocking_compatibility",
@@ -36,7 +36,7 @@
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
   "syntheticRepresentativeValidation": "required",
-  "theme": "Deterministic Decision Projection and Token-Minimal Loop Closure",
+  "theme": "Goal-Contracted Capability Router",
   "requiredStatuses": [
     "orchestrationModeStatus",
     "permissionGrantStatus",
@@ -648,7 +648,11 @@
       "trustedFinalDecisionAuthorityDigestRequired": true,
       "roleSpecificTrustClosuresRequired": true,
       "projectionIntegrityBindingRequired": true,
-      "projectionIntegrityChecks": ["schema", "head", "source_digest"],
+      "projectionIntegrityChecks": [
+        "schema",
+        "head",
+        "source_digest"
+      ],
       "stateMatrixExecutor": "scripts/codex-v128-state-matrix.mjs",
       "validationExecutionPlan": "scripts/codex-v128-validation-execution-plan.mjs",
       "releaseDrill": "scripts/codex-v128-release-drill.mjs",
@@ -687,5 +691,17 @@
     "stateMatrixFullEnumProductExecuted": true,
     "postMergeReplayCoverage": "release_drill_passed",
     "placeholderReceiptValid": false
+  },
+  "currentVersion": "1.2.9",
+  "previousVersion": "1.2.8",
+  "candidateHarnessVersion": "1.2.9",
+  "candidateSelfTestSuite": "v129",
+  "candidateSelfTestStatusKey": "v129SelfTestStatus",
+  "candidateActivationState": "active",
+  "sourceActivation": "active",
+  "finalAuthority": "v1.1.8_final_decision_kernel",
+  "versionAuthority": {
+    "v128": "blocking_compatibility_rollback",
+    "v129": "blocking_current_active_authority"
   }
 }

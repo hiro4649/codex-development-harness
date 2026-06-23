@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.8
+CODEX_QUALITY_HARNESS_FILE v1.2.9
 
 <!-- CODEX_ACTIVE_BLOCK_BEGIN -->
 machineBindingId=FD_AUTH: Final Decision is pass/block/mergeAllowed/exit-code authority.
@@ -15,7 +15,7 @@ machineBindingId=NO_SELF_APPROVAL: AI must not self-approve.
 machineBindingId=NO_GH_APPROVAL_REVIEW: AI must not submit GitHub approval review.
 machineBindingId=RUNTIME_DEPLOY_WALLET_BOUNDARY: Product/runtime/workflow/deploy/wallet/RPC/secret scope is separate.
 machineBindingId=STOP_CIRCUIT: repeated architectural blocker stops expansion.
-machineBindingId=PROJECTION_NONAUTH: v1.2.8 Projection is non-authoritative active routine surface.
+machineBindingId=PROJECTION_NONAUTH: v1.2.8 Projection and v1.2.9 Goal/Router/Receipt surfaces are non-authoritative routine surfaces.
 <!-- CODEX_ACTIVE_BLOCK_END -->
 
 ## Prime Directive
@@ -227,24 +227,16 @@ AI-only merge, self approval, GitHub approval review, deploy/wallet/RPC/secret
 automation, same-head remote gate bypass, or readiness/legal/YouTube compliance
 claims.
 For v1.2.8 Deterministic Decision Projection and Token-Minimal Loop Closure,
-use `docs/process/CODEX_V128_SPEC.md` only as a Source Shadow Candidate spec
-unless a separate activation PR is explicitly authorized. Active authority in
-this PR remains v1.2.7 / v127. v1.2.8 adds only candidate internal
-Deterministic Decision Projection, Orthogonal Reason Model, Token-Minimal Read
-and Compatibility Router, and Resumable Loop/Permission Projection fields
-inside the existing v1.1.9 P0 artifacts. Safe Summary may carry a
-non-authoritative stored Projection; Decision Capsule remains domain decision
-authority, Evidence Capsule remains same-head/freshness authority, and Final
-Decision remains final pass/block/mergeAllowed/exit-code authority. Routine
-mode reads one managed safe artifact, zero cold artifacts, one compiled
-instruction capsule, and emits at most eight routine lines. Projection must not
-create owner authority, permission authority, provider closure, merge authority,
-or Final Decision input authority. v1.2.8 must not add new P0 artifacts,
-top-level statuses, new Skills, target rollout, product/package/runtime/
-workflow changes, raw-log access, AI owner authority, AI-only merge, self
-approval, GitHub approval review, deploy/wallet/RPC/secret automation,
-same-head bypass, or readiness/legal/YouTube compliance claims. Source
-activation, target canary, and portfolio rollout are not part of this PR.
+use `docs/process/CODEX_V128_SPEC.md` as compatibility and rollback authority.
+For v1.2.9 Goal-Contracted Capability Router, use
+`docs/process/CODEX_V129_SPEC.md` as the active Source spec. v1.2.9 activates
+Goal Contract, task classification, capability routing, receipt binding, and
+independent verifier contracts as load-bearing Source checks, while keeping
+v1.2.8 Projection non-authoritative and preserving Final Decision as final
+pass/block/mergeAllowed/exit-code authority. Source activation does not start
+target rollout, does not mutate target repositories, and does not create owner,
+permission, provider-closure, merge, product/runtime/deploy/wallet/RPC/secret,
+readiness, legal, or YouTube compliance authority.
 
 ## Plan-First Rule
 

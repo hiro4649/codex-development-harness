@@ -73,9 +73,13 @@ function activeManifestPathsForMode(env = process.env) {
 
 function manifestThemeMatchesActiveVersion() {
   const manifests = activeManifestPathsForMode().map((file) => JSON.parse(fs.readFileSync(file, 'utf8')));
-  return manifests.every((manifest) => ['1.2.7', '1.2.8'].includes(manifest.activeHarnessVersion)
-    && ['v127', 'v128'].includes(manifest.activeSelfTestSuite)
-    && ['Receipt-Carried Continuation and Evidence Compression', 'Deterministic Decision Projection and Token-Minimal Loop Closure'].includes(manifest.theme));
+  return manifests.every((manifest) => ['1.2.7', '1.2.8', '1.2.9'].includes(manifest.activeHarnessVersion)
+    && ['v127', 'v128', 'v129'].includes(manifest.activeSelfTestSuite)
+    && [
+      'Receipt-Carried Continuation and Evidence Compression',
+      'Deterministic Decision Projection and Token-Minimal Loop Closure',
+      'Goal-Contracted Capability Router',
+    ].includes(manifest.theme));
 }
 
 const cases = [
