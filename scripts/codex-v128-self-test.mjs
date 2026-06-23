@@ -3179,9 +3179,12 @@ function protectedRatifierWorkflowChecksOutExecutionCommit() {
 function protectedRatifierBlocksNormalAutoMergeForbiddenFiles() {
   const text = fs.readFileSync('scripts/codex-v128-protected-ratifier.mjs', 'utf8');
   return text.includes('FORBIDDEN_NORMAL_AUTO_MERGE_FILE_PATTERNS')
+    && text.includes('NORMAL_AUTO_MERGE_ALLOWED_FILE_PATTERNS')
     && text.includes('normal_auto_merge_forbidden_file')
     && text.includes('candidateChangedFilesDigest')
+    && text.includes('candidateChangedFileClassCounts')
     && text.includes('candidateForbiddenFileCount')
+    && text.includes('previousFilename')
     && text.includes('scripts/codex-v128-protected-ratifier')
     && text.includes('scripts\\/codex-local-quality-gate')
     && text.includes('scripts\\/codex-final-decision-kernel')
@@ -3191,6 +3194,72 @@ function protectedRatifierBlocksNormalAutoMergeForbiddenFiles() {
     && text.includes('scripts\\/codex-v128-trust-closure')
     && text.includes('docs\\/process\\/CODEX_V128_.*')
     && text.includes('CODEX_SOURCE_HARNESS_MANIFEST');
+}
+
+function classifyFileWithProtectedRatifier(filename) {
+  return JSON.parse(execFileSync(process.execPath, [
+    'scripts/codex-v128-protected-ratifier.mjs',
+    '--classify-file',
+    filename,
+  ], { encoding: 'utf8' }));
+}
+
+function classifyFileWithProtectedRatifierArgs(args) {
+  return JSON.parse(execFileSync(process.execPath, [
+    'scripts/codex-v128-protected-ratifier.mjs',
+    ...args,
+  ], { encoding: 'utf8' }));
+}
+
+function protectedRatifierUsesPositiveAutoMergeAllowlist() {
+  const readme = classifyFileWithProtectedRatifier('README.md');
+  const template = classifyFileWithProtectedRatifier('.github/pull_request_template.md');
+  const codexDoc = classifyFileWithProtectedRatifier('docs/codex/TEAM_USAGE_GUIDE.md');
+  const authorityDoc = classifyFileWithProtectedRatifier('docs/codex/AUTHORITY_POLICY.md');
+  const authority = classifyFileWithProtectedRatifier('scripts/codex-local-quality-gate.mjs');
+  const unknown = classifyFileWithProtectedRatifier('notes/random.txt');
+  return readme.fileClass === 'normal_harness_only'
+    && readme.autoMergeAllowed === true
+    && readme.quarantineRequired === false
+    && template.fileClass === 'normal_harness_only'
+    && template.autoMergeAllowed === true
+    && template.quarantineRequired === false
+    && codexDoc.fileClass === 'authority_sensitive'
+    && codexDoc.autoMergeAllowed === false
+    && codexDoc.quarantineRequired === true
+    && authorityDoc.fileClass === 'authority_sensitive'
+    && authorityDoc.autoMergeAllowed === false
+    && authorityDoc.quarantineRequired === true
+    && authority.fileClass === 'authority_sensitive'
+    && authority.autoMergeAllowed === false
+    && authority.quarantineRequired === true
+    && unknown.fileClass === 'unknown'
+    && unknown.autoMergeAllowed === false
+    && unknown.quarantineRequired === true;
+}
+
+function protectedRatifierQuarantinesRenamesAndDeletes() {
+  const authorityRename = classifyFileWithProtectedRatifierArgs([
+    '--classify-file', 'README.md',
+    '--previous-file', 'scripts/codex-final-decision-kernel.mjs',
+    '--file-status', 'renamed',
+  ]);
+  const allowedRename = classifyFileWithProtectedRatifierArgs([
+    '--classify-file', 'README.md',
+    '--previous-file', '.github/pull_request_template.md',
+    '--file-status', 'renamed',
+  ]);
+  const deleted = classifyFileWithProtectedRatifierArgs([
+    '--classify-file', 'README.md',
+    '--file-status', 'removed',
+  ]);
+  return authorityRename.fileClass === 'rename'
+    && authorityRename.autoMergeAllowed === false
+    && authorityRename.previousFilename === 'scripts/codex-final-decision-kernel.mjs'
+    && allowedRename.fileClass === 'rename'
+    && allowedRename.autoMergeAllowed === false
+    && deleted.fileClass === 'deleted'
+    && deleted.autoMergeAllowed === false;
 }
 
 function protectedRatifierValidatesMergeApiResponse() {
@@ -3502,6 +3571,8 @@ const cases = [
   ['protected_ratifier_rechecks_base_after_ready_and_before_merge', () => protectedRatifierRechecksBaseAfterReadyAndBeforeMerge()],
   ['protected_ratifier_workflow_checks_out_execution_commit', () => protectedRatifierWorkflowChecksOutExecutionCommit()],
   ['protected_ratifier_blocks_normal_auto_merge_forbidden_files', () => protectedRatifierBlocksNormalAutoMergeForbiddenFiles()],
+  ['protected_ratifier_uses_positive_auto_merge_allowlist', () => protectedRatifierUsesPositiveAutoMergeAllowlist()],
+  ['protected_ratifier_quarantines_renames_and_deletes', () => protectedRatifierQuarantinesRenamesAndDeletes()],
   ['protected_ratifier_validates_merge_api_response', () => protectedRatifierValidatesMergeApiResponse()],
   ['release_drill_executes_exact_fixed_scenarios', () => releaseDrillExecutesExactScenarios()],
   ['release_drill_missing_scenario_fails', () => releaseDrillMissingScenarioFails()],
