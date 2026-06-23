@@ -923,8 +923,12 @@ rollback:
 
 ## Release Drill
 
-Source Activation is blocked until `scripts/codex-v128-release-drill.mjs`
-passes exactly five scenarios:
+Source Activation validity is blocked until `scripts/codex-v128-release-drill.mjs`
+passes exactly five black-box scenarios from the pre-activation trusted base
+`37e2812620c1b64d8f4da7085b2e0efe1ac89de2`. The self-test may keep a
+`contract_fixture` builder to prove the fixed scenario set, but the CLI drill is
+`black_box_child_process_filesystem` and cannot pass by materializing expected
+default fields.
 
 ```text
 forced_interruption_recovery
@@ -940,12 +944,65 @@ target canary layer, reviewer, owner authority, Source Activation authority, or
 target rollout authority. It must not read raw logs and must not mutate product,
 runtime, package, deploy, wallet/RPC, target, or readiness surfaces.
 
+The black-box drill must derive its pass state from observed child-process and
+filesystem evidence:
+
+```text
+forced_interruption_recovery:
+  kill a child worker after it writes a checkpoint, then resume from that
+  checkpoint with the same contract digest
+
+stale_lock_recovery:
+  recover an actual stale lock and reject an actual live lock holder
+
+same_blocker_stop:
+  record one blocker, repeat the same blocker once, and stop
+
+duplicate_writer_rejection:
+  race two child writers and allow exactly one state mutation
+
+v127_rollback_dry_run:
+  create a detached worktree at the trusted pre-activation base and prove the
+  v127 self-test plus v127 quality gate pass there
+```
+
 The fixed anti-spin caps are `maxRepairIterations=2`, `sameBlockerMax=1`, and
 `noProgressWindow=1`. A same-blocker repeat stops instead of adding another
 repair pass. Duplicate writers are rejected before state mutation. The v127
 rollback dry-run must prove the v127 self-test, v127 spec, v127/v128 dual
 reader, and `rollback_writer_to_v127` contract remain available without
 changing activation surfaces.
+
+If all five black-box scenarios pass, the current Source Activation may be
+ratified by machine audit under the previous trusted policy. If any scenario is
+failed or inconclusive, the safe next action is automatic Source Activation
+revert. This removes per-PR human judgment from the activation validity step,
+but it does not allow any AI path to override `auto_quarantine`, required-check
+failure, same-head failure, merge authorization expiry, raw-log exposure, or
+v1.2.7 Final Decision authority.
+
+Remote same-head quality-gate must execute the black-box drill for Source PRs
+and bind only this compact result into
+`codex-quality-gate-safe-summary.json#compactDiagnostics.releaseDrill`:
+
+```text
+status
+proofDigest
+safeNextAction
+```
+
+Local routine gates default to `not_run` unless explicitly forced. This keeps
+routine token cost low while making activation integrity visible in remote
+machine evidence instead of relying on PR body text or local-only claims.
+The detailed release drill fields (`executionMode`, `trustedBaseCommit`,
+`scenarioSetDigest`, `scenarioCount`, `status`, `reasonCodes`,
+`observedInRemoteSameHeadJob`, and `loadBearingForActivationIntegrity`) remain
+cold evidence behind the proof digest and are not repeated in the hot safe
+summary. The cold evidence is persisted at
+`codex-orchestration-capsule.safe.json#v128ReleaseDrillEvidence`; independent
+audits recompute `compactDiagnostics.releaseDrill.proofDigest` from that object.
+If the cold object is missing, modified, or leaks into the hot summary, the
+Source Shadow Candidate quality gate fails closed.
 
 ## Activation Boundary
 

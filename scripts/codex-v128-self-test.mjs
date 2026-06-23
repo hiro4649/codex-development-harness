@@ -65,14 +65,19 @@ import {
 } from './codex-v128-trust-closure.mjs';
 import { buildEvidenceCapsule } from './codex-evidence-capsule.mjs';
 import {
+  buildV128ReleaseDrillColdEvidence,
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
+  measureV128OrchestrationCapsuleStoredBytes,
+  validateV128OrchestrationCapsuleStoredBytes,
   validateV128CompactValidationPlanExact,
+  validateV128ReleaseDrillHotColdBinding,
 } from './codex-v128-token-compression.mjs';
 import { buildV128OrderedUpstreamResultSetDigest } from './codex-v128-aggregate-finalizer.mjs';
 import {
   V128_RELEASE_DRILL_SCENARIOS,
   buildV128ReleaseDrill,
+  runV128BlackBoxReleaseDrill,
   validateV128ReleaseDrill,
 } from './codex-v128-release-drill.mjs';
 import { scanSafeOutput } from './codex-safe-output-scan.mjs';
@@ -492,6 +497,18 @@ function tokenCompressionCompactsSafeSummary() {
       policyDigest: sha256Canonical({ policy: true }),
     },
     v128StandingAutonomyPolicyStatus: { status: 'pass', safeSummaryOnly: true },
+    v128ReleaseDrillEvidence: {
+      status: 'pass',
+      executionMode: 'black_box_child_process_filesystem',
+      trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+      scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+      scenarioCount: 5,
+      reasonCodes: [],
+      safeNextAction: 'ratify_current_activation',
+      observedInRemoteSameHeadJob: true,
+      loadBearingForActivationIntegrity: true,
+      safeSummaryOnly: true,
+    },
   };
   const summary = buildV128CompactQualityGateSafeSummary({
     report: noisyReport,
@@ -505,13 +522,156 @@ function tokenCompressionCompactsSafeSummary() {
     v128TrustClosure: noisyReport.v128TrustClosure,
     v128TrustClosureStatus: noisyReport.v128TrustClosureStatus,
     standingAutonomyPolicy: noisyReport.v128StandingAutonomyPolicy,
+    v128ReleaseDrillEvidence: noisyReport.v128ReleaseDrillEvidence,
   });
+  const releaseDrillColdEvidence = buildV128ReleaseDrillColdEvidence(noisyReport.v128ReleaseDrillEvidence);
+  const releaseDrillBinding = validateV128ReleaseDrillHotColdBinding(
+    summary.compactDiagnostics.releaseDrill,
+    releaseDrillColdEvidence,
+  );
   return summary.tokenCompression.status === 'pass'
     && summary.tokenCompression.storedSafeSummaryBytes <= 5600
     && summary.tokenCompression.routineReadSurfaceBytes <= 2500
+    && summary.compactDiagnostics.releaseDrill.status === 'pass'
+    && String(summary.compactDiagnostics.releaseDrill.proofDigest || '').startsWith('sha256:')
+    && passed(releaseDrillBinding)
+    && !('executionMode' in summary.compactDiagnostics.releaseDrill)
+    && !('scenarioCount' in summary.compactDiagnostics.releaseDrill)
     && summary.compactDiagnostics.validationPlan.loopTransitionCode
     && !JSON.stringify(summary).includes('file-119')
     && !JSON.stringify(summary).includes('xxxxx');
+}
+
+function releaseDrillHotColdBindingVerifies() {
+  const evidence = {
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  };
+  const cold = buildV128ReleaseDrillColdEvidence(evidence);
+  const hot = {
+    status: cold.status,
+    proofDigest: sha256Canonical(cold),
+    safeNextAction: 'ratify_current_activation',
+  };
+  return passed(validateV128ReleaseDrillHotColdBinding(hot, cold));
+}
+
+function releaseDrillHotColdBindingFailsMissingCold() {
+  const cold = buildV128ReleaseDrillColdEvidence({
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  });
+  const hot = {
+    status: 'pass',
+    proofDigest: sha256Canonical(cold),
+    safeNextAction: 'ratify_current_activation',
+  };
+  return failed(validateV128ReleaseDrillHotColdBinding(hot, {}));
+}
+
+function releaseDrillHotColdBindingFailsModifiedCold() {
+  const cold = buildV128ReleaseDrillColdEvidence({
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  });
+  const hot = {
+    status: cold.status,
+    proofDigest: sha256Canonical(cold),
+    safeNextAction: 'ratify_current_activation',
+  };
+  return failed(validateV128ReleaseDrillHotColdBinding(hot, { ...cold, scenarioCount: 4 }));
+}
+
+function releaseDrillHotColdBindingFailsProofMismatch() {
+  const cold = buildV128ReleaseDrillColdEvidence({
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  });
+  const hot = {
+    status: cold.status,
+    proofDigest: sha256Canonical({ stale: true }),
+    safeNextAction: 'ratify_current_activation',
+  };
+  return failed(validateV128ReleaseDrillHotColdBinding(hot, cold));
+}
+
+function releaseDrillHotSummaryRejectsColdFieldLeakage() {
+  const cold = buildV128ReleaseDrillColdEvidence({
+    status: 'pass',
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    scenarioSetDigest: sha256Canonical({ releaseDrill: true }),
+    scenarioCount: 5,
+    reasonCodes: [],
+    observedInRemoteSameHeadJob: true,
+    loadBearingForActivationIntegrity: true,
+  });
+  const hot = {
+    status: cold.status,
+    proofDigest: sha256Canonical(cold),
+    safeNextAction: 'ratify_current_activation',
+    executionMode: cold.executionMode,
+  };
+  return failed(validateV128ReleaseDrillHotColdBinding(hot, cold));
+}
+
+function capsuleWithStoredBytes(targetBytes) {
+  const capsule = { payload: '' };
+  const baseBytes = measureV128OrchestrationCapsuleStoredBytes(capsule);
+  capsule.payload = 'x'.repeat(Math.max(0, targetBytes - baseBytes));
+  while (measureV128OrchestrationCapsuleStoredBytes(capsule) < targetBytes) {
+    capsule.payload += 'x';
+  }
+  while (measureV128OrchestrationCapsuleStoredBytes(capsule) > targetBytes) {
+    capsule.payload = capsule.payload.slice(0, -1);
+  }
+  return capsule;
+}
+
+function orchestrationCapsuleBudgetPassesAt47999() {
+  const capsule = capsuleWithStoredBytes(47999);
+  const validation = validateV128OrchestrationCapsuleStoredBytes(capsule);
+  return measureV128OrchestrationCapsuleStoredBytes(capsule) === 47999
+    && passed(validation);
+}
+
+function orchestrationCapsuleBudgetPassesAt48000() {
+  const capsule = capsuleWithStoredBytes(48000);
+  const validation = validateV128OrchestrationCapsuleStoredBytes(capsule);
+  return measureV128OrchestrationCapsuleStoredBytes(capsule) === 48000
+    && passed(validation);
+}
+
+function orchestrationCapsuleBudgetFailsAt48001() {
+  const capsule = capsuleWithStoredBytes(48001);
+  const validation = validateV128OrchestrationCapsuleStoredBytes(capsule);
+  return measureV128OrchestrationCapsuleStoredBytes(capsule) === 48001
+    && failed(validation)
+    && validation.reasonCodes.includes('v128_orchestration_capsule_bytes_over_budget');
 }
 
 function projectionIntegrityBindingVerifies() {
@@ -3084,6 +3244,23 @@ function releaseDrillRollbackDryRunRequiresV127() {
       && scenario.reasonCodes.includes('v127_rollback_unavailable'));
 }
 
+function releaseDrillBlackBoxRunnerIsExported() {
+  return typeof runV128BlackBoxReleaseDrill === 'function';
+}
+
+function releaseDrillBlackBoxMissingObservationFails() {
+  const report = buildV128ReleaseDrill();
+  const validation = validateV128ReleaseDrill({
+    executionMode: 'black_box_child_process_filesystem',
+    trustedBaseCommit: '37e2812620c1b64d8f4da7085b2e0efe1ac89de2',
+    antiSpin: report.releaseDrillStatus.antiSpin,
+    scenarios: report.scenarios,
+  });
+  return failed(validation)
+    && validation.reasonCodes.some((reason) => reason.startsWith('release_drill_black_box_mode_missing_'))
+    && validation.reasonCodes.some((reason) => reason.startsWith('release_drill_child_process_observation_missing_'));
+}
+
 const cases = [
   ['v128_self_test_must_pass', () => true],
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
@@ -3237,6 +3414,8 @@ const cases = [
   ['release_drill_anti_spin_caps_are_fixed', () => releaseDrillAntiSpinCapsAreFixed()],
   ['release_drill_duplicate_writer_mutation_fails', () => releaseDrillDuplicateWriterMutationFails()],
   ['release_drill_rollback_dry_run_requires_v127', () => releaseDrillRollbackDryRunRequiresV127()],
+  ['release_drill_black_box_runner_is_exported', () => releaseDrillBlackBoxRunnerIsExported()],
+  ['release_drill_black_box_missing_observation_fails', () => releaseDrillBlackBoxMissingObservationFails()],
   ['provider_changed_files_path_set_is_not_exact_tuple', () => providerChangedFilesPathSetIsNotExactTuple()],
   ['provider_changed_files_full_tuple_digest_matches', () => providerChangedFilesFullTupleDigestMatches()],
   ['non_authoritative_projection_status_does_not_block_active_gate', () => nonAuthoritativeProjectionStatusDoesNotBlockActiveGate()],
@@ -3245,6 +3424,14 @@ const cases = [
   ['managed_context_emitter_delta_budget_fails_closed', () => managedContextEmitterDeltaBudgetFailsClosed()],
   ['managed_context_emitter_passes_safe_output_scan', () => managedContextEmitterPassesSafeOutputScan()],
   ['token_compression_compacts_safe_summary', () => tokenCompressionCompactsSafeSummary()],
+  ['release_drill_hot_cold_binding_verifies', () => releaseDrillHotColdBindingVerifies()],
+  ['release_drill_hot_cold_binding_fails_missing_cold', () => releaseDrillHotColdBindingFailsMissingCold()],
+  ['release_drill_hot_cold_binding_fails_modified_cold', () => releaseDrillHotColdBindingFailsModifiedCold()],
+  ['release_drill_hot_cold_binding_fails_proof_mismatch', () => releaseDrillHotColdBindingFailsProofMismatch()],
+  ['release_drill_hot_summary_rejects_cold_field_leakage', () => releaseDrillHotSummaryRejectsColdFieldLeakage()],
+  ['orchestration_capsule_budget_passes_at_47999', () => orchestrationCapsuleBudgetPassesAt47999()],
+  ['orchestration_capsule_budget_passes_at_48000', () => orchestrationCapsuleBudgetPassesAt48000()],
+  ['orchestration_capsule_budget_fails_at_48001', () => orchestrationCapsuleBudgetFailsAt48001()],
   ['activation_requires_managed_byte_observation', () => failed(validateV128TokenMinimalReadCompatibilityRouter(buildOrchestrationCapsule({
     tokenMinimalReadCompatibilityRouter: { activationReady: true },
   }).tokenMinimalReadCompatibilityRouter))],

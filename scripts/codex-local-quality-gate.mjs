@@ -101,12 +101,20 @@ import {
   validateV128TrustClosure,
 } from './codex-v128-trust-closure.mjs';
 import {
+  buildV128ReleaseDrillColdEvidence,
   buildV128CompactQualityGateSafeSummary,
   compactV128ValidationExecutionPlanForStorage,
+  V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX,
+  validateV128OrchestrationCapsuleStoredBytes,
+  validateV128ReleaseDrillHotColdBinding,
 } from './codex-v128-token-compression.mjs';
 import {
   runV128ActualValidationExecutorWithCache,
 } from './codex-v128-serialized-cache-canary.mjs';
+import {
+  V128_RELEASE_DRILL_SCENARIOS,
+  V128_RELEASE_DRILL_TRUSTED_BASE_COMMIT,
+} from './codex-v128-release-drill.mjs';
 
 
 
@@ -123,6 +131,105 @@ const PROFILE_TEMPLATE_VERSION = '0.7.0';
 
 
 const MARKER = `CODEX_QUALITY_HARNESS_FILE v${HARNESS_VERSION}`;
+
+function shouldRunV128RemoteReleaseDrill(env = process.env) {
+  if (env.CODEX_V128_RELEASE_DRILL_MODE === 'skip') return false;
+  if (env.CODEX_V128_RELEASE_DRILL_MODE === 'force') return true;
+  return env.GITHUB_ACTIONS === 'true'
+    && (env.CODEX_EVENT_NAME === 'pull_request' || env.GITHUB_EVENT_NAME === 'pull_request')
+    && env.CODEX_HARNESS_SOURCE_REPO === '1'
+    && fs.existsSync('scripts/codex-v128-release-drill.mjs');
+}
+
+function compactV128RemoteReleaseDrillReport(report = {}, processStatus = {}, env = process.env) {
+  const executionMode = report.releaseDrillStatus?.executionMode || 'not_observed';
+  const trustedBaseCommit = report.releaseDrillStatus?.trustedBaseCommit || null;
+  const scenarios = Array.isArray(report.scenarios) ? report.scenarios : [];
+  const scenarioCount = report.releaseDrillStatus?.scenarioCount ?? scenarios.length;
+  const scenarioSetDigest = report.scenarioSetDigest || null;
+  const reasonCodes = Array.isArray(report.releaseDrillStatus?.reasonCodes)
+    ? [...report.releaseDrillStatus.reasonCodes]
+    : (Array.isArray(report.reasonCodes) ? [...report.reasonCodes] : []);
+  if (processStatus.timedOut === true) reasonCodes.push('v128_remote_release_drill_timed_out');
+  if (processStatus.exitCode !== 0) reasonCodes.push('v128_remote_release_drill_exit_nonzero');
+  if (executionMode !== 'black_box_child_process_filesystem') reasonCodes.push('v128_remote_release_drill_execution_mode_invalid');
+  if (trustedBaseCommit !== V128_RELEASE_DRILL_TRUSTED_BASE_COMMIT) reasonCodes.push('v128_remote_release_drill_trusted_base_invalid');
+  if (!String(scenarioSetDigest || '').startsWith('sha256:')) reasonCodes.push('v128_remote_release_drill_scenario_digest_missing');
+  if (scenarioCount < V128_RELEASE_DRILL_SCENARIOS.length) reasonCodes.push('v128_remote_release_drill_scenario_count_incomplete');
+  const reportedStatus = report.releaseDrillStatus?.status || report.status || 'fail';
+  const status = reportedStatus === 'pass' && reasonCodes.length === 0 ? 'pass' : 'fail';
+  return {
+    status,
+    executionMode,
+    trustedBaseCommit,
+    scenarioSetDigest,
+    scenarioCount,
+    reasonCodes,
+    safeNextAction: status === 'pass'
+      ? (report.releaseDrillStatus?.safeNextAction || 'ratify_current_activation')
+      : (report.releaseDrillStatus?.safeNextAction || 'auto_revert_source_activation'),
+    processExitCode: processStatus.exitCode,
+    processTimedOut: processStatus.timedOut === true,
+    observedInRemoteSameHeadJob: env.GITHUB_ACTIONS === 'true',
+    loadBearingForActivationIntegrity: true,
+    safeSummaryOnly: true,
+  };
+}
+
+function runV128RemoteReleaseDrillEvidence(env = process.env) {
+  if (!shouldRunV128RemoteReleaseDrill(env)) {
+    return {
+      status: 'not_run',
+      executionMode: 'not_required_for_local_or_non_source_context',
+      trustedBaseCommit: null,
+      scenarioSetDigest: null,
+      scenarioCount: 0,
+      reasonCodes: [],
+      safeNextAction: 'run_remote_same_head_quality_gate',
+      observedInRemoteSameHeadJob: false,
+      loadBearingForActivationIntegrity: false,
+      safeSummaryOnly: true,
+    };
+  }
+  const result = spawnSync(process.execPath, ['scripts/codex-v128-release-drill.mjs', '--json'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    timeout: 300000,
+    env: {
+      ...env,
+      CODEX_QUALITY_REPORT: 'json',
+      CODEX_V128_RELEASE_DRILL_REPORT: 'json',
+      CODEX_V128_RELEASE_DRILL_MODE: 'skip',
+    },
+  });
+  let parsed = null;
+  try {
+    parsed = JSON.parse(result.stdout || '{}');
+  } catch {
+    parsed = null;
+  }
+  const processStatus = {
+    exitCode: result.status,
+    timedOut: Boolean(result.error && result.error.code === 'ETIMEDOUT'),
+  };
+  if (!parsed) {
+    return {
+      status: 'fail',
+      executionMode: 'black_box_child_process_filesystem',
+      trustedBaseCommit: null,
+      scenarioSetDigest: null,
+      scenarioCount: 0,
+      reasonCodes: ['v128_remote_release_drill_json_missing'],
+      safeNextAction: 'auto_revert_source_activation',
+      processExitCode: result.status,
+      processTimedOut: processStatus.timedOut,
+      observedInRemoteSameHeadJob: env.GITHUB_ACTIONS === 'true',
+      loadBearingForActivationIntegrity: true,
+      safeSummaryOnly: true,
+    };
+  }
+  return compactV128RemoteReleaseDrillReport(parsed, processStatus, env);
+}
 
 function isPostMergeMainWorkflow(env = process.env) {
   const eventName = String(env.GITHUB_EVENT_NAME || env.CODEX_EVENT_NAME || '').trim();
@@ -1146,10 +1253,22 @@ function writeV117LoadBearingArtifacts(report = {}) {
   report.v128ProjectionIntegrityStatus = v128ProjectionIntegrityStatus;
   report.v128ManagedContextEmitter = v128ManagedContextEmitter;
   report.v128StateMatrixExecution = v128StateMatrixExecution;
+  report.v128ReleaseDrillEvidence ||= runV128RemoteReleaseDrillEvidence(process.env);
+  const v128ReleaseDrillColdEvidence = buildV128ReleaseDrillColdEvidence(report.v128ReleaseDrillEvidence);
+  if (report.orchestrationCapsule && typeof report.orchestrationCapsule === 'object') {
+    report.orchestrationCapsule.v128ReleaseDrillEvidence = v128ReleaseDrillColdEvidence;
+  }
+  const orchestrationCapsuleStoredBytesStatus = validateV128OrchestrationCapsuleStoredBytes(
+    report.orchestrationCapsule || {},
+    V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX,
+  );
   const projectionSourceConsistencyStatus = report.status === 'pass'
     && (report.reasonSummaryStatus?.summary?.blockingReasons || []).length > 0
     ? 'fail'
     : 'pass';
+  const releaseDrillRemoteBindingStatus = report.v128ReleaseDrillEvidence.loadBearingForActivationIntegrity === true
+    ? report.v128ReleaseDrillEvidence.status
+    : 'not_required';
   report.routineDecisionProjectionStatus = {
     status: routineDecisionProjection.projectionCanonicalBytes <= 1600
       && stressDecisionProjection.projectionCanonicalBytes <= 2048
@@ -1161,6 +1280,8 @@ function writeV117LoadBearingArtifacts(report = {}) {
       && standingAutonomyPolicyStatus.status === 'pass'
       && !['mismatch', 'tuple_mismatch'].includes(providerChangedFilesEvidence.status)
       && projectionSourceConsistencyStatus === 'pass'
+      && !['fail', 'blocked'].includes(releaseDrillRemoteBindingStatus)
+      && orchestrationCapsuleStoredBytesStatus.status === 'pass'
       ? 'pass'
       : 'fail',
     ...shadowOnlyV128Fields('final_closure'),
@@ -1186,6 +1307,15 @@ function writeV117LoadBearingArtifacts(report = {}) {
     stateMatrixTransitionCells: v128StateMatrixExecution.transitionCells,
     stateMatrixHardInvalidCells: v128StateMatrixExecution.hardInvalidCells,
     stateMatrixUnresolvedCells: v128StateMatrixExecution.unresolvedCells,
+    releaseDrillStatus: report.v128ReleaseDrillEvidence.status,
+    releaseDrillExecutionMode: report.v128ReleaseDrillEvidence.executionMode,
+    releaseDrillScenarioCount: report.v128ReleaseDrillEvidence.scenarioCount,
+    releaseDrillSafeNextAction: report.v128ReleaseDrillEvidence.safeNextAction,
+    releaseDrillRemoteBindingStatus,
+    releaseDrillColdEvidenceStatus: report.orchestrationCapsule?.v128ReleaseDrillEvidence ? 'present' : 'missing',
+    orchestrationCapsuleStoredBytesStatus: orchestrationCapsuleStoredBytesStatus.status,
+    orchestrationCapsuleStoredBytes: orchestrationCapsuleStoredBytesStatus.storedBytes,
+    orchestrationCapsuleBytesMax: orchestrationCapsuleStoredBytesStatus.maxBytes,
     validationExecutionPlanStatus: v128ValidationExecutionPlanStatus.status,
     trustClosureStatus: v128TrustClosureStatus.status,
     trustClosureDigest: v128TrustClosure.trustClosureDigest,
@@ -1229,7 +1359,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     stressObserved: true,
     safeSummaryOnly: true,
   };
-  const safeSummary = buildV128CompactQualityGateSafeSummary({
+  let safeSummary = buildV128CompactQualityGateSafeSummary({
     report,
     head,
     finalDecision: report.finalDecision,
@@ -1240,6 +1370,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
     v128ValidationExecutionPlanStatus,
     v128TrustClosure: report.v128TrustClosure,
     v128TrustClosureStatus: report.v128TrustClosureStatus,
+    v128ReleaseDrillEvidence: report.v128ReleaseDrillEvidence,
     providerSnapshot: report.v128ProviderSnapshotEvidence,
     standingAutonomyPolicy: report.v128StandingAutonomyPolicy,
     orchestrationCapsule: report.orchestrationCapsule,
@@ -1247,6 +1378,37 @@ function writeV117LoadBearingArtifacts(report = {}) {
     ownerDecisionBrief: report.ownerDecisionBrief,
     marker: MARKER,
   });
+  const releaseDrillHotColdBindingStatus = validateV128ReleaseDrillHotColdBinding(
+    safeSummary.compactDiagnostics?.releaseDrill,
+    report.orchestrationCapsule?.v128ReleaseDrillEvidence,
+  );
+  report.routineDecisionProjectionStatus.releaseDrillHotColdBindingStatus = releaseDrillHotColdBindingStatus.status;
+  report.routineDecisionProjectionStatus.releaseDrillProofDigest = releaseDrillHotColdBindingStatus.expectedProofDigest;
+  report.routineDecisionProjectionStatus.tokenCompressionStatus = safeSummary.tokenCompression.status;
+  report.routineDecisionProjectionStatus.storedSafeSummaryBytes = safeSummary.tokenCompression.storedSafeSummaryBytes;
+  report.routineDecisionProjectionStatus.storedSafeSummaryBytesMax = safeSummary.tokenCompression.storedSafeSummaryBytesMax;
+  if (safeSummary.tokenCompression.status !== 'pass' || releaseDrillHotColdBindingStatus.status !== 'pass') {
+    report.routineDecisionProjectionStatus.status = 'fail';
+    safeSummary = buildV128CompactQualityGateSafeSummary({
+      report,
+      head,
+      finalDecision: report.finalDecision,
+      routineDecisionProjection,
+      routineProjectionReadSurface,
+      v128ManagedContextEmitter,
+      v128ValidationExecutionPlan,
+      v128ValidationExecutionPlanStatus,
+      v128TrustClosure: report.v128TrustClosure,
+      v128TrustClosureStatus: report.v128TrustClosureStatus,
+      v128ReleaseDrillEvidence: report.v128ReleaseDrillEvidence,
+      providerSnapshot: report.v128ProviderSnapshotEvidence,
+      standingAutonomyPolicy: report.v128StandingAutonomyPolicy,
+      orchestrationCapsule: report.orchestrationCapsule,
+      workerProofCapsule: report.workerProofCapsule,
+      ownerDecisionBrief: report.ownerDecisionBrief,
+      marker: MARKER,
+    });
+  }
   const index = {
     status: 'pass',
     head,
