@@ -1120,9 +1120,13 @@ standing policy, Source manifest, active quality gate, Final Decision kernel,
 Decision/Evidence Capsules, artifact consistency contract, trust closure, v128
 contract/spec/policy files, product/runtime files, package or lock files, or
 deploy/wallet/RPC/secret/contract surfaces are not eligible for the normal
-auto-merge lane. Merge API success must be verified from the returned
-`merged=true` state and a valid merge commit SHA before the result can be
-reported as merged.
+auto-merge lane. The normal auto-merge lane is positive-allowlist based: only
+explicitly listed normal harness documentation surfaces may pass that lane.
+Unknown files are quarantined rather than treated as implicitly safe. Target
+rollout and authority-changing work must use their own lanes instead of adding
+more denylist exceptions to the normal lane. Merge API success must be verified
+from the returned `merged=true` state and a valid merge commit SHA before the
+result can be reported as merged.
 
 Model and plugin routing is P1. The v1.2.8 core may record an invocation receipt
 for the selected worker class or plugin, but it must not make model identity,

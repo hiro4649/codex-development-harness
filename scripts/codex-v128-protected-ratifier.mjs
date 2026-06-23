@@ -56,6 +56,11 @@ const FORBIDDEN_NORMAL_AUTO_MERGE_FILE_PATTERNS = [
   /(^|\/)(deploy|deployment|wallet|rpc|secret|secrets|contract|contracts)(\/|\.|-|_)/i,
   /(^|\/)(src|app|pages|server|runtime|product)(\/|\.|-|_)/i,
 ];
+const NORMAL_AUTO_MERGE_ALLOWED_FILE_PATTERNS = [
+  /^README\.md$/,
+  /^\.github\/pull_request_template\.md$/,
+  /^docs\/codex\/[A-Za-z0-9._/-]+\.md$/,
+];
 const DEFAULT_POLICY_PATH = 'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json';
 const RATIFIER_FILES = [
   '.github/workflows/v128-protected-ratifier.yml',
@@ -221,8 +226,42 @@ function requiredCheckBindingsDigest(checks) {
 }
 
 function classifyForbiddenNormalAutoMergeFile(filename) {
+  return !classifyNormalAutoMergeFile(filename).autoMergeAllowed;
+}
+
+function classifyNormalAutoMergeFile(filename) {
   const normalized = String(filename || '').replace(/\\/g, '/');
-  return FORBIDDEN_NORMAL_AUTO_MERGE_FILE_PATTERNS.some((pattern) => pattern.test(normalized));
+  if (FORBIDDEN_NORMAL_AUTO_MERGE_FILE_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return {
+      filename: normalized,
+      fileClass: 'authority_sensitive',
+      autoMergeAllowed: false,
+      quarantineRequired: true,
+    };
+  }
+  if (NORMAL_AUTO_MERGE_ALLOWED_FILE_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return {
+      filename: normalized,
+      fileClass: 'normal_harness_only',
+      autoMergeAllowed: true,
+      quarantineRequired: false,
+    };
+  }
+  return {
+    filename: normalized,
+    fileClass: 'unknown',
+    autoMergeAllowed: false,
+    quarantineRequired: true,
+  };
+}
+
+function countChangedFileClasses(files) {
+  const counts = {};
+  for (const file of files) {
+    const fileClass = classifyNormalAutoMergeFile(file.filename).fileClass;
+    counts[fileClass] = (counts[fileClass] || 0) + 1;
+  }
+  return counts;
 }
 
 function extractRunId(detailsUrl = '') {
@@ -431,6 +470,16 @@ function safeError(error) {
 }
 
 async function main() {
+  const classifyFile = argValue('classify-file');
+  if (classifyFile) {
+    process.stdout.write(`${canonicalJson({
+      schemaVersion: '1.2.8',
+      resultKind: 'normal_auto_merge_file_classification',
+      ...classifyNormalAutoMergeFile(classifyFile),
+      safeSummaryOnly: true,
+    })}\n`);
+    return;
+  }
   if (hasFlag('print-trust-vars')) {
     printTrustVariables();
     return;
@@ -478,8 +527,9 @@ async function main() {
       if (String(pr.head?.sha || '').toLowerCase() !== expectedHead.toLowerCase()) reasons.push('pr_head_mismatch');
       candidateChangedFiles = await getPullFiles(owner, repo, prNumber);
       for (const file of candidateChangedFiles) {
-        if (classifyForbiddenNormalAutoMergeFile(file.filename)) {
-          reasons.push(`normal_auto_merge_forbidden_file:${file.filename}`);
+        const classification = classifyNormalAutoMergeFile(file.filename);
+        if (!classification.autoMergeAllowed) {
+          reasons.push(`normal_auto_merge_forbidden_file:${classification.fileClass}:${file.filename}`);
         }
       }
       const checkRuns = await getCheckRuns(owner, repo, expectedHead);
@@ -571,6 +621,7 @@ async function main() {
     repositoryIdDigest: repositoryId ? digestValue({ repositoryId }) : null,
     executeMergeRequested: execute,
     candidateChangedFilesDigest: candidateChangedFiles.length ? digestValue({ files: candidateChangedFiles }) : null,
+    candidateChangedFileClassCounts: countChangedFileClasses(candidateChangedFiles),
     candidateForbiddenFileCount: candidateChangedFiles.filter((file) => classifyForbiddenNormalAutoMergeFile(file.filename)).length,
     requiredCheckBindingsDigest: trustRoot.observed.requiredCheckBindingsDigest,
     requiredChecks: requiredCheckRuns,

@@ -152,6 +152,10 @@
     },
     "requiredCheckBindingDigestInTrustRoot": true,
     "requiredCheckSetMustMatchProtectedExpectedSet": true,
+    "normalAutoMergeMode": "positive_allowlist",
+    "normalAutoMergeAllowedChangedFileClasses": [
+      "normal_harness_only"
+    ],
     "normalAutoMergeForbiddenChangedFileClasses": [
       "workflow",
       "ratifier",
@@ -167,6 +171,9 @@
       "package_or_lockfile",
       "deploy_wallet_rpc_secret_contract"
     ],
+    "unknownChangedFileNormalAutoMergePolicy": "auto_quarantine",
+    "targetRolloutLaneRequiredForBundleMutation": true,
+    "authorityChangeLaneRequiredForAuthoritySensitiveMutation": true,
     "mergeApiResponseRequired": {
       "merged": true,
       "mergeCommitSha": "valid_sha"

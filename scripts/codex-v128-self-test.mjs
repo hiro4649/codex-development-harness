@@ -3179,8 +3179,10 @@ function protectedRatifierWorkflowChecksOutExecutionCommit() {
 function protectedRatifierBlocksNormalAutoMergeForbiddenFiles() {
   const text = fs.readFileSync('scripts/codex-v128-protected-ratifier.mjs', 'utf8');
   return text.includes('FORBIDDEN_NORMAL_AUTO_MERGE_FILE_PATTERNS')
+    && text.includes('NORMAL_AUTO_MERGE_ALLOWED_FILE_PATTERNS')
     && text.includes('normal_auto_merge_forbidden_file')
     && text.includes('candidateChangedFilesDigest')
+    && text.includes('candidateChangedFileClassCounts')
     && text.includes('candidateForbiddenFileCount')
     && text.includes('scripts/codex-v128-protected-ratifier')
     && text.includes('scripts\\/codex-local-quality-gate')
@@ -3191,6 +3193,29 @@ function protectedRatifierBlocksNormalAutoMergeForbiddenFiles() {
     && text.includes('scripts\\/codex-v128-trust-closure')
     && text.includes('docs\\/process\\/CODEX_V128_.*')
     && text.includes('CODEX_SOURCE_HARNESS_MANIFEST');
+}
+
+function classifyFileWithProtectedRatifier(filename) {
+  return JSON.parse(execFileSync(process.execPath, [
+    'scripts/codex-v128-protected-ratifier.mjs',
+    '--classify-file',
+    filename,
+  ], { encoding: 'utf8' }));
+}
+
+function protectedRatifierUsesPositiveAutoMergeAllowlist() {
+  const allowed = classifyFileWithProtectedRatifier('docs/codex/TEAM_USAGE_GUIDE.md');
+  const authority = classifyFileWithProtectedRatifier('scripts/codex-local-quality-gate.mjs');
+  const unknown = classifyFileWithProtectedRatifier('notes/random.txt');
+  return allowed.fileClass === 'normal_harness_only'
+    && allowed.autoMergeAllowed === true
+    && allowed.quarantineRequired === false
+    && authority.fileClass === 'authority_sensitive'
+    && authority.autoMergeAllowed === false
+    && authority.quarantineRequired === true
+    && unknown.fileClass === 'unknown'
+    && unknown.autoMergeAllowed === false
+    && unknown.quarantineRequired === true;
 }
 
 function protectedRatifierValidatesMergeApiResponse() {
@@ -3502,6 +3527,7 @@ const cases = [
   ['protected_ratifier_rechecks_base_after_ready_and_before_merge', () => protectedRatifierRechecksBaseAfterReadyAndBeforeMerge()],
   ['protected_ratifier_workflow_checks_out_execution_commit', () => protectedRatifierWorkflowChecksOutExecutionCommit()],
   ['protected_ratifier_blocks_normal_auto_merge_forbidden_files', () => protectedRatifierBlocksNormalAutoMergeForbiddenFiles()],
+  ['protected_ratifier_uses_positive_auto_merge_allowlist', () => protectedRatifierUsesPositiveAutoMergeAllowlist()],
   ['protected_ratifier_validates_merge_api_response', () => protectedRatifierValidatesMergeApiResponse()],
   ['release_drill_executes_exact_fixed_scenarios', () => releaseDrillExecutesExactScenarios()],
   ['release_drill_missing_scenario_fails', () => releaseDrillMissingScenarioFails()],
