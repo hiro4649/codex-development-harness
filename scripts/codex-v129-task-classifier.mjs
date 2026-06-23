@@ -164,17 +164,25 @@ function classifyDifficulty(goal = {}, taskClass = chooseClass(goal)) {
   return { difficulty: 'low', riskFlags };
 }
 
+function validCandidateHeadSha(value) {
+  return /^[a-f0-9]{40}$/.test(String(value || ''));
+}
+
 export function classifyGoalTask(goal = {}, options = {}) {
   const validation = validateGoalContract(goal);
   const reasonCodes = [...validation.reasonCodes];
   if (options.modelClaimedTaskClass || goal.modelClaimedTaskClass) reasonCodes.push('model_self_claim_task_class_forbidden');
   if (options.modelClaimedDifficulty || goal.modelClaimedDifficulty) reasonCodes.push('model_self_claim_difficulty_forbidden');
+  const candidateHeadSha = options.candidateHeadSha || null;
+  if (!validCandidateHeadSha(candidateHeadSha)) reasonCodes.push('runtime_candidate_head_invalid');
   const taskClass = chooseClass(goal);
   const { difficulty, riskFlags } = classifyDifficulty(goal, taskClass);
   const requiredCapabilityClasses = ROUTES[taskClass] || ['standard_code_worker'];
   const pluginEligibility = ['security_scan', 'security_remediation'].includes(taskClass) ? ['security'] : [];
   const classificationPayload = {
     goalDigest: goal.goalDigest || null,
+    repositoryId: goal.binding?.repositoryId || null,
+    candidateHeadSha,
     taskClass,
     difficulty,
     riskFlags,
@@ -184,6 +192,9 @@ export function classifyGoalTask(goal = {}, options = {}) {
   return {
     schemaVersion: '1.2.9',
     candidateHarnessVersion: '1.2.9',
+    goalDigest: goal.goalDigest || null,
+    repositoryId: goal.binding?.repositoryId || null,
+    candidateHeadSha,
     taskClass,
     difficulty,
     riskFlags,
@@ -191,6 +202,7 @@ export function classifyGoalTask(goal = {}, options = {}) {
     pluginEligibility,
     classificationDigest: `sha256:${sha256(canonicalJson(classificationPayload))}`,
     classificationStatus: { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes, safeSummaryOnly: true },
+    reasonCodes,
     safeSummaryOnly: true,
     status: reasonCodes.length ? 'fail' : 'pass',
   };
