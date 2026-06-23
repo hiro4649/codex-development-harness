@@ -1,0 +1,52 @@
+# CODEX_QUALITY_HARNESS_FILE v1.2.9
+name: v129-shadow-gate
+
+on:
+  pull_request:
+    paths:
+      - "docs/process/CODEX_V129_SPEC.md"
+      - "docs/process/CODEX_V129_CONTRACT_SCHEMA.json"
+      - "docs/process/CODEX_V129_CAPABILITY_REGISTRY.schema.json"
+      - "docs/process/CODEX_V129_CAPABILITY_POLICY.json"
+      - "scripts/codex-v129-*.mjs"
+      - "scripts/codex-orchestration-capsule.mjs"
+      - "scripts/codex-local-quality-gate.mjs"
+      - ".github/workflows/v129-shadow-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  v129-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - run: node scripts/codex-v129-self-test.mjs --stage=contract
+  v129-routing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - run: node scripts/codex-v129-self-test.mjs --stage=routing
+  v129-verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - run: node scripts/codex-v129-self-test.mjs --stage=verifier
+  v128-compatibility:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - run: node scripts/codex-v128-self-test.mjs
+  v129-shadow-aggregate:
+    runs-on: ubuntu-latest
+    needs: [v129-contract, v129-routing, v129-verifier, v128-compatibility]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - run: CODEX_V129_TEST_MODE=1 CODEX_V129_SHADOW=1 node scripts/codex-v129-shadow-runner.mjs --fixture > v129-shadow-safe-summary.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: v129-shadow-safe-artifacts
+          path: v129-shadow-safe-summary.json
+          if-no-files-found: error

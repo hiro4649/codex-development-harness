@@ -2775,6 +2775,32 @@ export function validateOrchestrationCapsule(capsule = {}) {
   };
 }
 
+export function buildV129ShadowRoutingMetadata(input = {}) {
+  return {
+    schemaVersion: '1.2.9',
+    candidateHarnessVersion: '1.2.9',
+    candidateActivationState: 'source_shadow_candidate',
+    goalRef: input.goalRef || null,
+    goalDigest: input.goalDigest || input.goalRef?.goalDigest || null,
+    classificationDigest: input.classificationDigest || null,
+    routeDecisionDigest: input.routeDecisionDigest || null,
+    routingState: input.routingState || 'not_run',
+    authorityCreated: false,
+    safeSummaryOnly: true,
+  };
+}
+
+export function validateV129ShadowRoutingMetadata(metadata = {}) {
+  const reasons = [];
+  if (metadata.schemaVersion !== '1.2.9') reasons.push('v129_shadow_schema_invalid');
+  if (metadata.candidateActivationState !== 'source_shadow_candidate') reasons.push('v129_shadow_activation_state_invalid');
+  for (const key of ['goalDigest', 'classificationDigest', 'routeDecisionDigest']) {
+    if (!/^sha256:[a-f0-9]{64}$/.test(String(metadata[key] || ''))) reasons.push(`${key}_invalid`);
+  }
+  if (metadata.authorityCreated !== false) reasons.push('v129_shadow_authority_created_forbidden');
+  return reasons.length ? fail(reasons) : pass({ routingState: metadata.routingState || 'not_run' });
+}
+
 export function buildOrchestrationReport(input = {}) {
   const capsule = buildOrchestrationCapsule(input);
   return {

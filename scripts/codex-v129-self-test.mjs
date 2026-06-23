@@ -22,6 +22,13 @@ import {
   dispatchHost,
   validateInvocationReceipt,
 } from './codex-v129-host-dispatch.mjs';
+import { verifyV129IndependentReview } from './codex-v129-independent-verifier.mjs';
+import { buildGoalCompletionProof } from './codex-v129-goal-finalizer.mjs';
+import { runV129ShadowFixture } from './codex-v129-shadow-runner.mjs';
+import {
+  buildV129ShadowRoutingMetadata,
+  validateV129ShadowRoutingMetadata,
+} from './codex-orchestration-capsule.mjs';
 
 function test(name, fn) {
   try {
@@ -410,6 +417,79 @@ function routingTests() {
   ];
 }
 
+function verifierTests() {
+  const goal = baseGoal({
+    desiredEndState: 'Complete shadow verifier fixture.',
+    constraints: ['keep current active authority'],
+    nonGoals: ['No merge authority.'],
+    allowedFiles: ['scripts/codex-v129-shadow-runner.mjs'],
+    forbiddenFiles: ['scripts/codex-final-decision-kernel.mjs'],
+    evidencePlan: ['safe fixture proof'],
+    killCriteria: ['stop once'],
+  });
+  const classification = classifyGoalTask(goal);
+  const registry = defaultTestRegistry();
+  const route = routeCapability(classification, registryEnv(registry));
+  const workerOutputDigest = `sha256:${'5'.repeat(64)}`;
+  const workerReceiptDigest = `sha256:${'6'.repeat(64)}`;
+  const verifierReceiptDigest = `sha256:${'7'.repeat(64)}`;
+  const criterion = { id: 'AC1', required: true, status: 'pass', evidenceDigest: workerReceiptDigest };
+  const reviewInput = {
+    workerId: 'worker-a',
+    verifierId: 'verifier-b',
+    workerWorkspaceDigest: `sha256:${'8'.repeat(64)}`,
+    verifierWorkspaceDigest: `sha256:${'9'.repeat(64)}`,
+    worker: {
+      goalDigest: goal.goalDigest,
+      candidateHeadSha: goal.binding.baseSha,
+      routeDecisionDigest: route.routeDecisionDigest,
+      workerOutputDigest,
+    },
+    verifier: {
+      goalDigest: goal.goalDigest,
+      candidateHeadSha: goal.binding.baseSha,
+      routeDecisionDigest: route.routeDecisionDigest,
+      workerOutputDigest,
+    },
+    criteriaResults: [criterion],
+    verifierMergeAuthority: false,
+  };
+  const finalizerInput = {
+    goalDigest: goal.goalDigest,
+    candidateHeadSha: goal.binding.baseSha,
+    baseSha: goal.binding.baseSha,
+    scopeDigest: goal.binding.scopeDigest,
+    truthOwnerDigestMatch: true,
+    routeDecisionDigest: route.routeDecisionDigest,
+    workerReceiptDigest,
+    verifierReceiptDigest,
+    criteriaResults: [criterion],
+    repairIterationCount: 0,
+    sameBlockerCount: 0,
+    tokenBudgetStatus: { status: 'pass' },
+    sameHead: true,
+  };
+  return [
+    test('v129_independent_verifier_passes_distinct_worker_workspace', () => verifyV129IndependentReview(reviewInput).status === 'pass'),
+    test('v129_same_worker_verifier_fails', () => verifyV129IndependentReview({ ...reviewInput, verifierId: 'worker-a' }).status === 'fail'),
+    test('v129_same_workspace_fails', () => verifyV129IndependentReview({ ...reviewInput, verifierWorkspaceDigest: reviewInput.workerWorkspaceDigest }).status === 'fail'),
+    test('v129_goal_digest_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, verifier: { ...reviewInput.verifier, goalDigest: `sha256:${'a'.repeat(64)}` } }).status === 'fail'),
+    test('v129_route_decision_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, verifier: { ...reviewInput.verifier, routeDecisionDigest: `sha256:${'b'.repeat(64)}` } }).status === 'fail'),
+    test('v129_required_criterion_missing_fails', () => verifyV129IndependentReview({ ...reviewInput, criteriaResults: [{ id: 'AC1', required: true, status: 'missing' }] }).status === 'fail'),
+    test('v129_verifier_merge_authority_fails', () => verifyV129IndependentReview({ ...reviewInput, verifierMergeAuthority: true }).status === 'fail'),
+    test('v129_goal_completion_proof_passes', () => buildGoalCompletionProof(finalizerInput).status === 'pass'),
+    test('v129_goal_finalizer_does_not_compute_merge_allowed', () => buildGoalCompletionProof(finalizerInput).mergeAllowedComputed === false),
+    test('v129_truth_owner_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, truthOwnerDigestMatch: false }).status === 'fail'),
+    test('v129_token_overflow_blocks', () => buildGoalCompletionProof({ ...finalizerInput, tokenBudgetStatus: { status: 'fail' } }).status === 'fail'),
+    test('v129_repair_iteration_two_blocks', () => buildGoalCompletionProof({ ...finalizerInput, repairIterationCount: 2 }).status === 'fail'),
+    test('v129_same_blocker_repeat_blocks', () => buildGoalCompletionProof({ ...finalizerInput, sameBlockerCount: 2 }).status === 'fail'),
+    test('v129_authority_created_shadow_metadata_fails', () => validateV129ShadowRoutingMetadata({ ...buildV129ShadowRoutingMetadata({ goalDigest: goal.goalDigest, classificationDigest: classification.classificationDigest, routeDecisionDigest: route.routeDecisionDigest, routingState: 'routed' }), authorityCreated: true }).status === 'fail'),
+    test('v129_shadow_runner_requires_shadow_env', () => runV129ShadowFixture({}).status === 'blocked'),
+    test('v129_shadow_runner_fixture_passes', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1' }).status === 'pass'),
+    test('v129_active_mode_has_no_shadow_leakage', () => runV129ShadowFixture({ CODEX_V129_TEST_MODE: '1' }).activeOutputChanged === false),
+  ];
+}
+
 function selectedStages() {
   const arg = process.argv.find((item) => item.startsWith('--stage='));
   if (!arg) return new Set(['contract', 'routing', 'verifier']);
@@ -422,6 +502,7 @@ const stages = selectedStages();
 const cases = [
   ...(stages.has('contract') ? contractTests() : []),
   ...(stages.has('routing') ? routingTests() : []),
+  ...(stages.has('verifier') ? verifierTests() : []),
 ];
 const failures = cases.filter((item) => item.status !== 'pass');
 const report = {
