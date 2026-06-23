@@ -6,9 +6,22 @@ import {
   canonicalJson,
   compileGoalContract,
   computeGoalDigest,
+  sha256,
   parseJsonRejectDuplicateKeys,
 } from './codex-v129-goal-contract.mjs';
 import { classifyGoalTask } from './codex-v129-task-classifier.mjs';
+import {
+  defaultTestRegistry,
+  digestRegistry,
+  routeCapability,
+} from './codex-v129-capability-router.mjs';
+import { selectPlugins } from './codex-v129-plugin-broker.mjs';
+import {
+  buildDispatchRequest,
+  digestFile,
+  dispatchHost,
+  validateInvocationReceipt,
+} from './codex-v129-host-dispatch.mjs';
 
 function test(name, fn) {
   try {
@@ -217,6 +230,87 @@ function contractTests() {
   ];
 }
 
+function registryEnv(registry = defaultTestRegistry()) {
+  return {
+    ...process.env,
+    CODEX_V129_CAPABILITY_REGISTRY_JSON: canonicalJson(registry),
+    CODEX_V129_TRUSTED_CAPABILITY_REGISTRY_DIGEST: digestRegistry(registry),
+  };
+}
+
+function routingTests() {
+  const registry = defaultTestRegistry();
+  const env = registryEnv(registry);
+  const goal = baseGoal({
+    desiredEndState: 'Change a source helper.',
+    constraints: ['keep tests passing'],
+    nonGoals: ['No product behavior change.'],
+    allowedFiles: ['scripts/codex-v129-goal-contract.mjs'],
+    forbiddenFiles: ['docs/private.md'],
+    evidencePlan: ['run focused self-test'],
+    killCriteria: ['stop once'],
+  });
+  const classification = classifyGoalTask(goal);
+  const route = routeCapability(classification, env);
+  const adapterPath = new URL('./codex-v129-fixture-host-adapter.mjs', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+  const adapterDigest = digestFile(adapterPath);
+  const dispatchRequest = buildDispatchRequest({
+    goalDigest: goal.goalDigest,
+    classificationDigest: classification.classificationDigest,
+    routeDecisionDigest: route.routeDecisionDigest,
+    capabilityClass: route.capabilityClass,
+    resolvedModelRef: route.resolvedModelRef,
+    safeInput: { goalDigest: goal.goalDigest },
+    workspaceDigest: `sha256:${'3'.repeat(64)}`,
+  });
+  return [
+    test('v129_lowest_sufficient_capability_selected', () => {
+      const report = routeCapability(classifyGoalTask(baseGoal({ taskClass: 'routine_metadata', allowedFiles: ['README.md'], forbiddenFiles: ['docs/private.md'], desiredEndState: 'metadata update', constraints: ['keep current behavior'], nonGoals: ['No product change.'], evidencePlan: ['read README'], killCriteria: ['stop once'] })), env);
+      return report.status === 'pass' && report.capabilityClass === 'low_cost_worker';
+    }),
+    test('v129_registry_missing_routes_unavailable', () => routeCapability(classification, {}).status === 'route_unavailable'),
+    test('v129_registry_digest_mismatch_fails', () => routeCapability(classification, { ...env, CODEX_V129_TRUSTED_CAPABILITY_REGISTRY_DIGEST: `sha256:${'f'.repeat(64)}` }).status === 'fail'),
+    test('v129_explicit_fallback_pass', () => {
+      const fallbackRegistry = { ...registry, capabilities: registry.capabilities.filter((cap) => !['standard_code_worker', 'independent_verifier'].includes(cap.capabilityClass)) };
+      fallbackRegistry.routes = { ...registry.routes, code_change: { ...registry.routes.code_change, fallbackChain: ['high_reasoning_planner'] } };
+      const report = routeCapability(classification, registryEnv(fallbackRegistry));
+      return report.status === 'pass' && report.capabilityClass === 'high_reasoning_planner';
+    }),
+    test('v129_undeclared_fallback_fails', () => {
+      const missingRegistry = { ...registry, capabilities: registry.capabilities.filter((cap) => !['standard_code_worker', 'independent_verifier'].includes(cap.capabilityClass)) };
+      return routeCapability(classification, registryEnv(missingRegistry)).status === 'fail';
+    }),
+    test('v129_security_plugin_eligible', () => {
+      const securityClassification = { ...classifyGoalTask(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] })), requestedPlugins: ['codex-security'], authorizedDefensiveScope: true };
+      const securityRoute = routeCapability(securityClassification, env);
+      const report = selectPlugins(securityClassification, securityRoute, env);
+      return report.status === 'pass' && report.selectedPluginIds[0] === 'codex-security';
+    }),
+    test('v129_routine_plugin_misuse_fails', () => {
+      const report = selectPlugins({ ...classification, requestedPlugins: ['codex-security'] }, route, env);
+      return report.status === 'fail';
+    }),
+    test('v129_plugin_unavailable_receipt', () => {
+      const report = selectPlugins({ ...classification, taskClass: 'security_scan', requestedPlugins: ['missing-plugin'], authorizedDefensiveScope: true }, { eligiblePlugins: ['missing-plugin'] }, env);
+      return report.status === 'fail' && report.reasonCodes.includes('plugin_unavailable');
+    }),
+    test('v129_host_adapter_missing_fails', () => dispatchHost(dispatchRequest, { ...env, CODEX_V129_TEST_MODE: '1' }).status === 'fail'),
+    test('v129_relative_adapter_path_fails', () => dispatchHost(dispatchRequest, { ...env, CODEX_V129_TEST_MODE: '1', CODEX_V129_HOST_ADAPTER_PATH: 'scripts/codex-v129-fixture-host-adapter.mjs' }).status === 'fail'),
+    test('v129_adapter_digest_mismatch_fails', () => dispatchHost(dispatchRequest, { ...env, CODEX_V129_TEST_MODE: '1', CODEX_V129_HOST_ADAPTER_PATH: adapterPath, CODEX_V129_TRUSTED_HOST_ADAPTER_DIGEST: `sha256:${'f'.repeat(64)}` }).status === 'fail'),
+    test('v129_malformed_receipt_fails', () => validateInvocationReceipt({ schemaVersion: '1.2.9' }).status === 'fail'),
+    test('v129_fake_model_invocation_fails', () => validateInvocationReceipt({ schemaVersion: '1.2.9', runId: 'r', goalDigest: goal.goalDigest, routeDecisionDigest: route.routeDecisionDigest, registryDigest: digestRegistry(registry), hostAdapterDigest: adapterDigest, capabilityClass: route.capabilityClass, inputDigest: `sha256:${'4'.repeat(64)}`, modelInvocationObserved: true, selectedPluginIds: [], authorityCreated: false }).status === 'fail'),
+    test('v129_fake_plugin_invocation_fails', () => validateInvocationReceipt({ schemaVersion: '1.2.9', runId: 'r', goalDigest: goal.goalDigest, routeDecisionDigest: route.routeDecisionDigest, registryDigest: digestRegistry(registry), hostAdapterDigest: adapterDigest, capabilityClass: route.capabilityClass, resolvedModelId: 'registry:model:standard', inputDigest: `sha256:${'4'.repeat(64)}`, modelInvocationObserved: true, selectedPluginIds: ['codex-security'], pluginInvocationObserved: true, authorityCreated: false }).status === 'fail'),
+    test('v129_fixture_in_production_fails', () => {
+      const report = dispatchHost(dispatchRequest, { ...env, CODEX_V129_TEST_MODE: '1', CODEX_V129_HOST_ADAPTER_PATH: adapterPath, CODEX_V129_TRUSTED_HOST_ADAPTER_DIGEST: adapterDigest });
+      return validateInvocationReceipt(report.invocationReceipt, { production: true }).status === 'fail';
+    }),
+    test('v129_plugin_invocation_count_two_fails', () => validateInvocationReceipt({ schemaVersion: '1.2.9', runId: 'r', goalDigest: goal.goalDigest, routeDecisionDigest: route.routeDecisionDigest, registryDigest: digestRegistry(registry), hostAdapterDigest: adapterDigest, capabilityClass: route.capabilityClass, resolvedModelId: 'registry:model:standard', inputDigest: `sha256:${'4'.repeat(64)}`, modelInvocationObserved: true, selectedPluginIds: ['a', 'b'], pluginInvocationObserved: false, authorityCreated: false }).status === 'fail'),
+    test('v129_authority_created_true_fails', () => validateInvocationReceipt({ schemaVersion: '1.2.9', runId: 'r', goalDigest: goal.goalDigest, routeDecisionDigest: route.routeDecisionDigest, registryDigest: digestRegistry(registry), hostAdapterDigest: adapterDigest, capabilityClass: route.capabilityClass, resolvedModelId: 'registry:model:standard', inputDigest: `sha256:${'4'.repeat(64)}`, modelInvocationObserved: true, selectedPluginIds: [], authorityCreated: true }).status === 'fail'),
+    test('v129_fixture_host_dispatch_passes_in_test_mode', () => dispatchHost(dispatchRequest, { ...env, CODEX_V129_TEST_MODE: '1', CODEX_V129_HOST_ADAPTER_PATH: adapterPath, CODEX_V129_TRUSTED_HOST_ADAPTER_DIGEST: adapterDigest }).status === 'pass'),
+    test('v129_route_decision_digest_stable', () => route.routeDecisionDigest === `sha256:${sha256(canonicalJson({ schemaVersion: '1.2.9', taskClass: route.taskClass, difficulty: route.difficulty, registryDigest: route.registryDigest, capabilityClass: route.capabilityClass, resolvedModelRef: route.resolvedModelRef, pluginDefault: route.pluginDefault, eligiblePlugins: route.eligiblePlugins, authorityCreated: false }))}`),
+  ];
+}
+
 function selectedStages() {
   const arg = process.argv.find((item) => item.startsWith('--stage='));
   if (!arg) return new Set(['contract', 'routing', 'verifier']);
@@ -228,6 +322,7 @@ function selectedStages() {
 const stages = selectedStages();
 const cases = [
   ...(stages.has('contract') ? contractTests() : []),
+  ...(stages.has('routing') ? routingTests() : []),
 ];
 const failures = cases.filter((item) => item.status !== 'pass');
 const report = {

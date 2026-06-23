@@ -198,7 +198,11 @@
     "docs/process/CODEX_V129_CAPABILITY_POLICY.json",
     "scripts/codex-v129-goal-contract.mjs",
     "scripts/codex-v129-task-classifier.mjs",
-    "scripts/codex-v129-self-test.mjs"
+    "scripts/codex-v129-self-test.mjs",
+    "scripts/codex-v129-capability-router.mjs",
+    "scripts/codex-v129-plugin-broker.mjs",
+    "scripts/codex-v129-host-dispatch.mjs",
+    "scripts/codex-v129-fixture-host-adapter.mjs"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -1996,6 +2000,7 @@
     "targetRollout": "forbidden",
     "newP0Artifact": false,
     "newTopLevelStatus": false,
-    "finalAuthority": "v1.1.8_final_decision_kernel"
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "runtimeStage": "capability_dispatch_runtime_candidate"
   }
 }
