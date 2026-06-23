@@ -3125,6 +3125,9 @@ function sourceManifestRegistersCanonicalPortfolioTargets() {
     'hiro4649/iris-live2d-renderer',
   ].sort();
   return JSON.stringify(names) === JSON.stringify(expected)
+    && targets.every((target) => Number.isInteger(target.repositoryId) && target.repositoryId > 0)
+    && targets.every((target) => target.defaultBranch === 'main')
+    && targets.every((target) => /^sha256:[a-f0-9]{64}$/.test(target.enrollmentDigest))
     && targets.every((target) => target.currentTargetHarnessVersion === '1.2.7')
     && targets.every((target) => target.desiredTargetHarnessVersion === '1.2.8')
     && targets.every((target) => target.rolloutAuthority === 'protected_source_control_plane')
@@ -3140,7 +3143,9 @@ function protectedRatifierRequiresWorkflowIdAndDigestBindings() {
     && text.includes('required_check_workflow_id_mismatch')
     && text.includes('required_check_workflow_digest_mismatch')
     && text.includes('required_check_binding_duplicate_name')
-    && text.includes('required_check_binding_extra_field');
+    && text.includes('required_check_binding_extra_field')
+    && text.includes('required_check_bindings_expected_set_mismatch')
+    && text.includes('CODEX_V128_TRUSTED_REQUIRED_CHECK_BINDINGS_DIGEST');
 }
 
 function protectedRatifierRechecksBaseAfterReadyAndBeforeMerge() {
@@ -3154,7 +3159,26 @@ function protectedRatifierRechecksBaseAfterReadyAndBeforeMerge() {
 function protectedRatifierWorkflowChecksOutExecutionCommit() {
   const text = fs.readFileSync('.github/workflows/v128-protected-ratifier.yml', 'utf8');
   return text.includes('ref: ${{ github.sha }}')
-    && text.includes('CODEX_V128_REQUIRED_CHECK_BINDINGS_JSON');
+    && text.includes('CODEX_V128_REQUIRED_CHECK_BINDINGS_JSON')
+    && text.includes('CODEX_V128_TRUSTED_REQUIRED_CHECK_BINDINGS_DIGEST');
+}
+
+function protectedRatifierBlocksNormalAutoMergeForbiddenFiles() {
+  const text = fs.readFileSync('scripts/codex-v128-protected-ratifier.mjs', 'utf8');
+  return text.includes('FORBIDDEN_NORMAL_AUTO_MERGE_FILE_PATTERNS')
+    && text.includes('normal_auto_merge_forbidden_file')
+    && text.includes('candidateChangedFilesDigest')
+    && text.includes('candidateForbiddenFileCount')
+    && text.includes('scripts/codex-v128-protected-ratifier')
+    && text.includes('CODEX_SOURCE_HARNESS_MANIFEST');
+}
+
+function protectedRatifierValidatesMergeApiResponse() {
+  const text = fs.readFileSync('scripts/codex-v128-protected-ratifier.mjs', 'utf8');
+  return text.includes('merge_api_response_not_merged')
+    && text.includes('merge_api_response_sha_invalid')
+    && text.includes('mergeResult?.merged !== true')
+    && text.includes('!isSha(mergeResult?.sha)');
 }
 
 function nonAuthoritativeProjectionStatusDoesNotBlockActiveGate() {
@@ -3457,6 +3481,8 @@ const cases = [
   ['protected_ratifier_requires_workflow_id_and_digest_bindings', () => protectedRatifierRequiresWorkflowIdAndDigestBindings()],
   ['protected_ratifier_rechecks_base_after_ready_and_before_merge', () => protectedRatifierRechecksBaseAfterReadyAndBeforeMerge()],
   ['protected_ratifier_workflow_checks_out_execution_commit', () => protectedRatifierWorkflowChecksOutExecutionCommit()],
+  ['protected_ratifier_blocks_normal_auto_merge_forbidden_files', () => protectedRatifierBlocksNormalAutoMergeForbiddenFiles()],
+  ['protected_ratifier_validates_merge_api_response', () => protectedRatifierValidatesMergeApiResponse()],
   ['release_drill_executes_exact_fixed_scenarios', () => releaseDrillExecutesExactScenarios()],
   ['release_drill_missing_scenario_fails', () => releaseDrillMissingScenarioFails()],
   ['release_drill_extra_scenario_fails', () => releaseDrillExtraScenarioFails()],

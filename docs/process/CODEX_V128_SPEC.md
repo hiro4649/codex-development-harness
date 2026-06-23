@@ -1095,17 +1095,28 @@ listed there are eligible for automated target rollout; repositories not listed
 there, including lite or experimental repositories, are excluded until an
 explicit enrollment update lands in Source under the protected control plane.
 Target rollout automation must not infer enrollment from historical docs,
-thread memory, PR text, or local checkout discovery.
+thread memory, PR text, or local checkout discovery. Each registered target must
+carry `repositoryId`, `defaultBranch`, and `enrollmentDigest`; the
+`currentTargetHarnessVersion` field is a planning hint and is not live target
+authority. Live target version and rollout state must be observed from the target
+repository before target mutation or merge.
 
 Per-PR human judgment is not required for eligible harness-only PRs, but the
 replacement authority is the protected ratifier, not the candidate PR head. The
 ratifier must bind each required check to the expected GitHub App, workflow
 event, head SHA, workflow name, workflow path, protected workflow ID, and
 protected workflow file digest. Empty, duplicate, missing, or extra check
-binding fields fail closed. The ratifier must re-check head and base after any
+binding fields fail closed. The complete required-check set and the
+`CODEX_V128_REQUIRED_CHECK_BINDINGS_JSON` digest must be included in the trust
+root and ratifier result. The ratifier must re-check head and base after any
 draft-to-ready transition and again immediately before exact-head CAS merge.
 Required check success remains non-owner-overridable when a protected binding
-mismatch is observed.
+mismatch is observed. Candidate PRs that change workflows, ratifier code,
+standing policy, Source manifest, product/runtime files, package or lock files,
+or deploy/wallet/RPC/secret/contract surfaces are not eligible for the normal
+auto-merge lane. Merge API success must be verified from the returned
+`merged=true` state and a valid merge commit SHA before the result can be
+reported as merged.
 
 Model and plugin routing is P1. The v1.2.8 core may record an invocation receipt
 for the selected worker class or plugin, but it must not make model identity,

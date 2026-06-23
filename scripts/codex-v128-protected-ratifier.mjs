@@ -36,6 +36,19 @@ const REQUIRED_CHECK_BINDING_KEYS = new Set([
   'workflowFileDigest',
   'appId',
 ]);
+const EXPECTED_REQUIRED_CHECK_NAMES = DEFAULT_REQUIRED_CHECKS.map((check) => check.name).sort();
+const FORBIDDEN_NORMAL_AUTO_MERGE_FILE_PATTERNS = [
+  /^\.github\/workflows\//,
+  /^scripts\/codex-v128-protected-ratifier\.mjs$/,
+  /^docs\/process\/CODEX_V128_STANDING_AUTONOMY_POLICY\.json$/,
+  /^docs\/process\/CODEX_V128_CONTRACT_SCHEMA\.json$/,
+  /^docs\/process\/CODEX_V128_SPEC\.md$/,
+  /^CODEX_SOURCE_HARNESS_MANIFEST\.json$/,
+  /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/,
+  /(^|\/)package\.json$/,
+  /(^|\/)(deploy|deployment|wallet|rpc|secret|secrets|contract|contracts)(\/|\.|-|_)/i,
+  /(^|\/)(src|app|pages|server|runtime|product)(\/|\.|-|_)/i,
+];
 const DEFAULT_POLICY_PATH = 'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json';
 const RATIFIER_FILES = [
   '.github/workflows/v128-protected-ratifier.yml',
@@ -179,7 +192,30 @@ function parseRequiredChecks() {
     if (!Number.isInteger(check.appId) || check.appId <= 0) reasons.push(`required_check_binding_app_id_invalid:${check.name || index}`);
     return check;
   });
+  const names = checks.map((check) => check.name).sort();
+  if (JSON.stringify(names) !== JSON.stringify(EXPECTED_REQUIRED_CHECK_NAMES)) {
+    reasons.push('required_check_bindings_expected_set_mismatch');
+  }
   return { checks, reasons };
+}
+
+function requiredCheckBindingsDigest(checks) {
+  return digestValue({
+    expectedCheckNames: EXPECTED_REQUIRED_CHECK_NAMES,
+    checks: checks.map((check) => ({
+      name: check.name,
+      workflowName: check.workflowName,
+      workflowPath: check.workflowPath,
+      workflowId: check.workflowId,
+      workflowFileDigest: check.workflowFileDigest,
+      appId: check.appId,
+    })).sort((a, b) => a.name.localeCompare(b.name)),
+  });
+}
+
+function classifyForbiddenNormalAutoMergeFile(filename) {
+  const normalized = String(filename || '').replace(/\\/g, '/');
+  return FORBIDDEN_NORMAL_AUTO_MERGE_FILE_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 function extractRunId(detailsUrl = '') {
@@ -251,6 +287,23 @@ async function getWorkflowRun(owner, repo, runId) {
   return githubApi(`/repos/${owner}/${repo}/actions/runs/${runId}`);
 }
 
+async function getPullFiles(owner, repo, prNumber) {
+  const files = [];
+  for (let page = 1; page <= 10; page += 1) {
+    const chunk = await githubApi(`/repos/${owner}/${repo}/pulls/${prNumber}/files?per_page=100&page=${page}`);
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    files.push(...chunk.map((file) => ({
+      filename: String(file.filename || ''),
+      status: String(file.status || ''),
+      additions: Number(file.additions || 0),
+      deletions: Number(file.deletions || 0),
+      changes: Number(file.changes || 0),
+    })));
+    if (chunk.length < 100) break;
+  }
+  return files;
+}
+
 function latestByName(runs) {
   const byName = new Map();
   for (const run of runs) {
@@ -262,7 +315,7 @@ function latestByName(runs) {
   return byName;
 }
 
-function buildTrustRoot() {
+function buildTrustRoot(requiredCheckBindingsDigestValue = null) {
   const policy = readJson(DEFAULT_POLICY_PATH);
   const trustClosure = buildV128TrustClosure({ sourceFileTexts: collectSourceTexts() });
   const trustClosureStatus = validateV128TrustClosure(trustClosure);
@@ -276,6 +329,7 @@ function buildTrustRoot() {
     canonicalizerDigest: env('CODEX_V128_TRUSTED_CANONICALIZER_DIGEST'),
     finalDecisionAuthorityDigest: env('CODEX_V128_TRUSTED_FINAL_DECISION_AUTHORITY_DIGEST'),
     ratifierDigest: env('CODEX_V128_TRUSTED_RATIFIER_DIGEST'),
+    requiredCheckBindingsDigest: env('CODEX_V128_TRUSTED_REQUIRED_CHECK_BINDINGS_DIGEST'),
     authorityEpoch: env('CODEX_V128_AUTHORITY_EPOCH'),
     trustedAuthorityEpoch: env('CODEX_V128_TRUSTED_AUTHORITY_EPOCH'),
     revocationNonce: env('CODEX_V128_REVOCATION_NONCE'),
@@ -292,6 +346,7 @@ function buildTrustRoot() {
     canonicalizerDigest: trustClosure.trustDigests?.canonicalizerDigest || null,
     finalDecisionAuthorityDigest: trustClosure.trustDigests?.finalDecisionAuthorityDigest || null,
     ratifierDigest: ratifierDigest(),
+    requiredCheckBindingsDigest: requiredCheckBindingsDigestValue,
   };
   return {
     policy,
@@ -319,6 +374,8 @@ function trustRootReasons(trustRoot) {
     if (!isDigest(trustRoot.trusted[key])) reasons.push(`trusted_${key}_missing`);
     else if (trustRoot.trusted[key] !== trustRoot.observed[key]) reasons.push(`trusted_${key}_mismatch`);
   }
+  if (!isDigest(trustRoot.trusted.requiredCheckBindingsDigest)) reasons.push('trusted_requiredCheckBindingsDigest_missing');
+  else if (trustRoot.trusted.requiredCheckBindingsDigest !== trustRoot.observed.requiredCheckBindingsDigest) reasons.push('trusted_requiredCheckBindingsDigest_mismatch');
   if (!trustRoot.trusted.authorityEpoch) reasons.push('authority_epoch_missing');
   if (!trustRoot.trusted.trustedAuthorityEpoch) reasons.push('trusted_authority_epoch_missing');
   if (trustRoot.trusted.authorityEpoch !== trustRoot.trusted.trustedAuthorityEpoch) reasons.push('authority_epoch_mismatch');
@@ -329,7 +386,8 @@ function trustRootReasons(trustRoot) {
 }
 
 function printTrustVariables() {
-  const trustRoot = buildTrustRoot();
+  const parsedRequiredChecks = parseRequiredChecks();
+  const trustRoot = buildTrustRoot(parsedRequiredChecks.reasons.length ? null : requiredCheckBindingsDigest(parsedRequiredChecks.checks));
   const output = {
     CODEX_V128_TRUSTED_POLICY_SOURCE: 'protected_repository_variable',
     CODEX_V128_TRUSTED_POLICY_DIGEST: trustRoot.observed.policyDigest,
@@ -341,6 +399,7 @@ function printTrustVariables() {
     CODEX_V128_TRUSTED_CANONICALIZER_DIGEST: trustRoot.observed.canonicalizerDigest,
     CODEX_V128_TRUSTED_FINAL_DECISION_AUTHORITY_DIGEST: trustRoot.observed.finalDecisionAuthorityDigest,
     CODEX_V128_TRUSTED_RATIFIER_DIGEST: trustRoot.observed.ratifierDigest,
+    CODEX_V128_TRUSTED_REQUIRED_CHECK_BINDINGS_DIGEST: trustRoot.observed.requiredCheckBindingsDigest,
     CODEX_V128_REQUIRED_CHECK_APP_ID: '15368',
   };
   process.stdout.write(`${canonicalJson(output)}\n`);
@@ -386,7 +445,7 @@ async function main() {
   const expectedAppId = Number(env('CODEX_V128_REQUIRED_CHECK_APP_ID') || '0') || null;
   const { owner, repo } = parseRepo(repository);
   const reasons = [];
-  const trustRoot = buildTrustRoot();
+  const trustRoot = buildTrustRoot(parsedRequiredChecks.reasons.length ? null : requiredCheckBindingsDigest(requiredChecks));
 
   if (!Number.isInteger(prNumber) || prNumber <= 0) reasons.push('pr_number_invalid');
   if (!isSha(expectedHead)) reasons.push('expected_head_invalid');
@@ -401,6 +460,7 @@ async function main() {
   let pr = null;
   let requiredCheckRuns = {};
   let requiredWorkflowRuns = {};
+  let candidateChangedFiles = [];
   let mergeResult = null;
   try {
     if (!reasons.length) {
@@ -409,6 +469,12 @@ async function main() {
       if (pr.base?.ref !== 'main') reasons.push('pr_base_not_main');
       if (String(pr.base?.sha || '').toLowerCase() !== expectedBase.toLowerCase()) reasons.push('pr_base_mismatch');
       if (String(pr.head?.sha || '').toLowerCase() !== expectedHead.toLowerCase()) reasons.push('pr_head_mismatch');
+      candidateChangedFiles = await getPullFiles(owner, repo, prNumber);
+      for (const file of candidateChangedFiles) {
+        if (classifyForbiddenNormalAutoMergeFile(file.filename)) {
+          reasons.push(`normal_auto_merge_forbidden_file:${file.filename}`);
+        }
+      }
       const checkRuns = await getCheckRuns(owner, repo, expectedHead);
       const byName = latestByName(checkRuns);
       requiredCheckRuns = Object.fromEntries(requiredChecks.map((check) => [check.name, byName.get(check.name) || null]));
@@ -477,6 +543,8 @@ async function main() {
             commit_message: 'v1.2.8 protected ratifier exact-head CAS merge',
           }),
         });
+        if (mergeResult?.merged !== true) reasons.push('merge_api_response_not_merged');
+        if (!isSha(mergeResult?.sha)) reasons.push('merge_api_response_sha_invalid');
       }
     }
   } catch (error) {
@@ -495,6 +563,9 @@ async function main() {
     repository,
     repositoryIdDigest: repositoryId ? digestValue({ repositoryId }) : null,
     executeMergeRequested: execute,
+    candidateChangedFilesDigest: candidateChangedFiles.length ? digestValue({ files: candidateChangedFiles }) : null,
+    candidateForbiddenFileCount: candidateChangedFiles.filter((file) => classifyForbiddenNormalAutoMergeFile(file.filename)).length,
+    requiredCheckBindingsDigest: trustRoot.observed.requiredCheckBindingsDigest,
     requiredChecks: requiredCheckRuns,
     requiredWorkflowRuns,
     trustRootDigest: digestValue({
@@ -509,6 +580,7 @@ async function main() {
         finalDecisionAuthorityDigest: trustRoot.observed.finalDecisionAuthorityDigest,
       },
       ratifierDigest: trustRoot.observed.ratifierDigest,
+      requiredCheckBindingsDigest: trustRoot.observed.requiredCheckBindingsDigest,
       authorityEpoch: trustRoot.trusted.authorityEpoch,
       revocationNonceDigest: trustRoot.trusted.revocationNonce ? digestValue({ revocationNonce: trustRoot.trusted.revocationNonce }) : null,
     }),

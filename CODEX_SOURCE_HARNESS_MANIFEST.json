@@ -22,51 +22,69 @@
   "registeredTargetRepositories": [
     {
       "repositoryFullName": "hiro4649/CRIPTO-TIP",
+      "repositoryId": 1256870006,
+      "defaultBranch": "main",
       "targetProfileId": "cripto_tip_no_crypto_youtube_runtime",
       "currentTargetHarnessVersion": "1.2.7",
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "complex",
-      "rolloutAuthority": "protected_source_control_plane"
+      "rolloutAuthority": "protected_source_control_plane",
+      "enrollmentDigest": "sha256:63258e3c5f77a9208672c3da30415a350e3368e022987a9ac1259f54de74857d"
     },
     {
       "repositoryFullName": "hiro4649/VGC-FUNKY-TOKEN",
+      "repositoryId": 1257029490,
+      "defaultBranch": "main",
       "targetProfileId": "vgc_token_no_deploy_no_value_transfer",
       "currentTargetHarnessVersion": "1.2.7",
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "restricted_token",
-      "rolloutAuthority": "protected_source_control_plane"
+      "rolloutAuthority": "protected_source_control_plane",
+      "enrollmentDigest": "sha256:cd11486cf9103498e32a815f79e2924dce4c6d49c2704016a37f7d62adad2a4c"
     },
     {
       "repositoryFullName": "hiro4649/VOXWEAVE",
+      "repositoryId": 1255020469,
+      "defaultBranch": "main",
       "targetProfileId": "voxweave_no_tts_asr_runtime",
       "currentTargetHarnessVersion": "1.2.7",
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "standard",
-      "rolloutAuthority": "protected_source_control_plane"
+      "rolloutAuthority": "protected_source_control_plane",
+      "enrollmentDigest": "sha256:7f1693af22d54f98952cf0b40ad578d6fe36066ce9b159c74c9b6eb5a19e8b9c"
     },
     {
       "repositoryFullName": "hiro4649/iris",
+      "repositoryId": 1239764352,
+      "defaultBranch": "main",
       "targetProfileId": "iris_priority1_no_production_go",
       "currentTargetHarnessVersion": "1.2.7",
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "standard",
-      "rolloutAuthority": "protected_source_control_plane"
+      "rolloutAuthority": "protected_source_control_plane",
+      "enrollmentDigest": "sha256:0c096653ca8c48d9055c44f1735c8383b99351ad0154603699de1f3a3469b851"
     },
     {
       "repositoryFullName": "hiro4649/disco-funky-repair",
+      "repositoryId": 1239326977,
+      "defaultBranch": "main",
       "targetProfileId": "disco_funky_repair_no_deploy",
       "currentTargetHarnessVersion": "1.2.7",
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "standard",
-      "rolloutAuthority": "protected_source_control_plane"
+      "rolloutAuthority": "protected_source_control_plane",
+      "enrollmentDigest": "sha256:dcfb06233d81998e044e03f272e4009c1b3934a0873dc852b899fadcabdb085e"
     },
     {
       "repositoryFullName": "hiro4649/iris-live2d-renderer",
+      "repositoryId": 1239765322,
+      "defaultBranch": "main",
       "targetProfileId": "iris_live2d_renderer_no_runtime_write",
       "currentTargetHarnessVersion": "1.2.7",
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "standard",
-      "rolloutAuthority": "protected_source_control_plane"
+      "rolloutAuthority": "protected_source_control_plane",
+      "enrollmentDigest": "sha256:f8903cec62409a6efaa9d21b1db6ec40deddcf54de9c495286ce87b3f2717dff"
     }
   ],
   "managedFiles": [

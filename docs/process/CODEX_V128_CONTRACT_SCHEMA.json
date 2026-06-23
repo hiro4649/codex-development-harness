@@ -107,6 +107,18 @@
     "sourceCompletionEqualsPortfolioCompletion": false,
     "canonicalTargetRegistry": "CODEX_SOURCE_HARNESS_MANIFEST.json#registeredTargetRepositories",
     "registeredTargetCount": 6,
+    "registeredTargetRequiredFields": [
+      "repositoryFullName",
+      "repositoryId",
+      "defaultBranch",
+      "targetProfileId",
+      "desiredTargetHarnessVersion",
+      "rolloutClass",
+      "rolloutAuthority",
+      "enrollmentDigest"
+    ],
+    "currentTargetHarnessVersionAuthority": "planning_hint_only",
+    "liveTargetVersionObservationRequired": true,
     "unenrolledRepositoryInferenceAllowed": false,
     "perPrHumanJudgmentRequiredForEligibleHarnessOnlyPr": false,
     "replacementAuthority": "protected_ratifier",
@@ -125,6 +137,21 @@
       "extraFieldAllowed": false,
       "protectedWorkflowIdRequired": true,
       "protectedWorkflowFileDigestRequired": true
+    },
+    "requiredCheckBindingDigestInTrustRoot": true,
+    "requiredCheckSetMustMatchProtectedExpectedSet": true,
+    "normalAutoMergeForbiddenChangedFileClasses": [
+      "workflow",
+      "ratifier",
+      "standing_policy",
+      "source_manifest",
+      "product_runtime",
+      "package_or_lockfile",
+      "deploy_wallet_rpc_secret_contract"
+    ],
+    "mergeApiResponseRequired": {
+      "merged": true,
+      "mergeCommitSha": "valid_sha"
     },
     "modelPluginRouting": {
       "phase": "P1_after_portfolio_post_merge_pass",
