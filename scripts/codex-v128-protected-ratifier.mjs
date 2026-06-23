@@ -27,7 +27,11 @@ function digestValue(value) {
 }
 
 function digestText(text) {
-  return `sha256:${crypto.createHash('sha256').update(String(text)).digest('hex')}`;
+  return `sha256:${crypto.createHash('sha256').update(normalizeText(text)).digest('hex')}`;
+}
+
+function normalizeText(text) {
+  return String(text).replace(/\r\n/g, '\n');
 }
 
 function readJson(filePath) {
@@ -35,12 +39,30 @@ function readJson(filePath) {
 }
 
 function fileDigest(filePath) {
-  const text = fs.readFileSync(filePath, 'utf8');
+  const text = normalizeText(fs.readFileSync(filePath, 'utf8'));
   return {
     path: filePath.replace(/\\/g, '/'),
     digest: digestText(text),
     bytes: Buffer.byteLength(text, 'utf8'),
   };
+}
+
+function collectSourceTexts() {
+  const roots = ['.github/workflows', 'docs/process', 'scripts'];
+  const sourceFileTexts = {};
+  const visit = (entry) => {
+    if (!fs.existsSync(entry)) return;
+    const stat = fs.statSync(entry);
+    if (stat.isDirectory()) {
+      for (const child of fs.readdirSync(entry).sort()) visit(`${entry}/${child}`);
+      return;
+    }
+    if (!/\.(?:mjs|js|json|md|yml|yaml)$/i.test(entry)) return;
+    const normalized = entry.replace(/\\/g, '/');
+    sourceFileTexts[normalized] = normalizeText(fs.readFileSync(entry, 'utf8'));
+  };
+  roots.forEach(visit);
+  return sourceFileTexts;
 }
 
 function ratifierDigest() {
@@ -142,7 +164,7 @@ function latestByName(runs) {
 
 function buildTrustRoot() {
   const policy = readJson(DEFAULT_POLICY_PATH);
-  const trustClosure = buildV128TrustClosure();
+  const trustClosure = buildV128TrustClosure({ sourceFileTexts: collectSourceTexts() });
   const trustClosureStatus = validateV128TrustClosure(trustClosure);
   const trusted = {
     policyDigest: env('CODEX_V128_TRUSTED_POLICY_DIGEST'),
