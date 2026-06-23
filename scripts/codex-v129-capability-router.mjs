@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   canonicalJson,
   parseJsonRejectDuplicateKeys,
@@ -12,17 +14,82 @@ export function digestRegistry(registry = {}) {
   return `sha256:${sha256(canonicalJson(registry))}`;
 }
 
+function duplicateValues(values) {
+  const seen = new Set();
+  const duplicates = new Set();
+  for (const value of values) {
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  }
+  return [...duplicates];
+}
+
+export function validateCapabilityRegistry(registry = {}) {
+  const reasonCodes = [];
+  if (registry.schemaVersion !== '1.2.9') reasonCodes.push('registry_schema_invalid');
+  if (!Array.isArray(registry.capabilities)) reasonCodes.push('registry_capabilities_missing');
+  if (!Array.isArray(registry.plugins)) reasonCodes.push('registry_plugins_missing');
+  if (!registry.routes || typeof registry.routes !== 'object' || Array.isArray(registry.routes)) reasonCodes.push('registry_routes_missing');
+  const capabilities = Array.isArray(registry.capabilities) ? registry.capabilities : [];
+  const plugins = Array.isArray(registry.plugins) ? registry.plugins : [];
+  const capabilityClasses = capabilities.map((item) => item.capabilityClass).filter(Boolean);
+  const pluginIds = plugins.map((item) => item.pluginId).filter(Boolean);
+  if (duplicateValues(capabilityClasses).length) reasonCodes.push('duplicate_capability_class');
+  if (duplicateValues(pluginIds).length) reasonCodes.push('duplicate_plugin_id');
+  const capabilitySet = new Set(capabilityClasses);
+  const pluginSet = new Set(pluginIds);
+  for (const capability of capabilities) {
+    if (!capability.capabilityClass || typeof capability.capabilityClass !== 'string') reasonCodes.push('capability_class_missing');
+    if (!capability.resolvedModelRef || typeof capability.resolvedModelRef !== 'string') reasonCodes.push('resolved_model_ref_missing');
+    if (capability.resolvedModelId) reasonCodes.push('core_model_id_forbidden');
+    if (!Number.isInteger(capability.maxOutputBytes) || capability.maxOutputBytes < 1) reasonCodes.push('max_output_bytes_invalid');
+    if (!['available', 'unavailable'].includes(capability.availabilityState)) reasonCodes.push('availability_state_invalid');
+    if (!['authorized', 'unauthorized'].includes(capability.authorizationState)) reasonCodes.push('authorization_state_invalid');
+    if (!['low', 'standard', 'high', 'specialist'].includes(capability.costClass)) reasonCodes.push('cost_class_invalid');
+    for (const fallback of capability.fallbackChain || []) {
+      if (!capabilitySet.has(fallback)) reasonCodes.push('unknown_capability');
+    }
+  }
+  for (const plugin of plugins) {
+    if (!plugin.pluginId || typeof plugin.pluginId !== 'string') reasonCodes.push('plugin_id_missing');
+    if (!Array.isArray(plugin.authorizedTaskClasses)) reasonCodes.push('plugin_authorized_tasks_invalid');
+    if (!['available', 'unavailable'].includes(plugin.availabilityState)) reasonCodes.push('plugin_availability_state_invalid');
+    if (!['authorized', 'unauthorized'].includes(plugin.authorizationState)) reasonCodes.push('plugin_authorization_state_invalid');
+  }
+  for (const [taskClass, route] of Object.entries(registry.routes || {})) {
+    if (!route || typeof route !== 'object' || Array.isArray(route)) {
+      reasonCodes.push('route_invalid');
+      continue;
+    }
+    if (!Array.isArray(route.requiredCapabilityClasses)) reasonCodes.push('route_required_capabilities_invalid');
+    for (const capabilityClass of route.requiredCapabilityClasses || []) {
+      if (!capabilitySet.has(capabilityClass)) reasonCodes.push('unknown_capability');
+    }
+    for (const capabilityClass of route.fallbackChain || []) {
+      if (!capabilitySet.has(capabilityClass)) reasonCodes.push('unknown_capability');
+    }
+    if (!('pluginDefault' in route)) reasonCodes.push('route_plugin_default_missing');
+    if (route.pluginDefault !== 'none' && !pluginSet.has(route.pluginDefault)) reasonCodes.push('unknown_plugin');
+    for (const pluginId of route.eligiblePlugins || []) {
+      if (!pluginSet.has(pluginId)) reasonCodes.push('unknown_plugin');
+    }
+    if (!taskClass) reasonCodes.push('unknown_task_route');
+  }
+  return { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes };
+}
+
 export function parseCapabilityRegistry(text) {
   const registry = parseJsonRejectDuplicateKeys(text);
-  if (registry.schemaVersion !== '1.2.9') throw new Error('registry_schema_invalid');
-  if (!Array.isArray(registry.capabilities)) throw new Error('registry_capabilities_missing');
-  if (!registry.routes || typeof registry.routes !== 'object') throw new Error('registry_routes_missing');
+  const validation = validateCapabilityRegistry(registry);
+  if (validation.status !== 'pass') throw new Error(validation.reasonCodes.join(','));
   return registry;
 }
 
 export function loadCapabilityRegistry(env = process.env) {
   const text = env.CODEX_V129_CAPABILITY_REGISTRY_JSON;
-  if (!text) return { status: 'route_unavailable', reasonCodes: ['registry_missing'] };
+  const trustedDigest = env.CODEX_V129_TRUSTED_CAPABILITY_REGISTRY_DIGEST;
+  if (!text) return { status: 'fail', reasonCodes: ['registry_missing'] };
+  if (!trustedDigest) return { status: 'fail', reasonCodes: ['trusted_registry_digest_missing'] };
   let registry;
   try {
     registry = parseCapabilityRegistry(text);
@@ -30,14 +97,14 @@ export function loadCapabilityRegistry(env = process.env) {
     return { status: 'fail', reasonCodes: [String(error.message || error)] };
   }
   const registryDigest = digestRegistry(registry);
-  if (env.CODEX_V129_TRUSTED_CAPABILITY_REGISTRY_DIGEST && env.CODEX_V129_TRUSTED_CAPABILITY_REGISTRY_DIGEST !== registryDigest) {
+  if (trustedDigest !== registryDigest) {
     return { status: 'fail', reasonCodes: ['registry_digest_mismatch'], registryDigest };
   }
   return { status: 'pass', registry, registryDigest, reasonCodes: [] };
 }
 
 function capabilityByClass(registry, capabilityClass) {
-  return (registry.capabilities || []).find((capability) => capability.capabilityClass === capabilityClass);
+  return (registry.capabilities || []).find((capability) => capability.capabilityClass === capabilityClass && capability.availabilityState === 'available' && capability.authorizationState === 'authorized');
 }
 
 export function routeCapability(classification = {}, env = process.env) {
@@ -53,39 +120,36 @@ export function routeCapability(classification = {}, env = process.env) {
     };
   }
   const { registry, registryDigest } = loaded;
-  const route = registry.routes[classification.taskClass] || {};
-  const required = route.requiredCapabilityClasses || classification.requiredCapabilityClasses || [];
+  const route = registry.routes[classification.taskClass] || null;
+  const required = route?.requiredCapabilityClasses || classification.requiredCapabilityClasses || [];
   const reasonCodes = [];
-  let selectedCapability = null;
+  if (!route) reasonCodes.push('unknown_task_route');
+  const selectedCapabilities = [];
   for (const capabilityClass of required) {
     const capability = capabilityByClass(registry, capabilityClass);
     if (capability) {
-      selectedCapability = capability;
-      break;
+      selectedCapabilities.push(capability);
+    } else if (capabilityClass === 'independent_verifier') {
+      reasonCodes.push('independent_verifier_required');
+    } else {
+      const fallbackClass = (route?.fallbackChain || []).find((fallback) => capabilityByClass(registry, fallback));
+      if (fallbackClass) selectedCapabilities.push(capabilityByClass(registry, fallbackClass));
+      else reasonCodes.push('capability_unavailable');
     }
   }
-  if (!selectedCapability && Array.isArray(route.fallbackChain)) {
-    for (const capabilityClass of route.fallbackChain) {
-      const capability = capabilityByClass(registry, capabilityClass);
-      if (capability) {
-        selectedCapability = capability;
-        break;
-      }
-    }
-  } else if (!selectedCapability) {
-    reasonCodes.push('undeclared_fallback_forbidden');
-  }
-  if (!selectedCapability) reasonCodes.push('capability_unavailable');
-  if (selectedCapability?.resolvedModelId) reasonCodes.push('core_model_id_forbidden');
+  if (required.includes('independent_verifier') && !selectedCapabilities.some((capability) => capability.capabilityClass === 'independent_verifier')) reasonCodes.push('independent_verifier_required');
+  const selectedCapability = selectedCapabilities[0] || null;
   const routeDecision = {
     schemaVersion: '1.2.9',
     taskClass: classification.taskClass || null,
     difficulty: classification.difficulty || null,
     registryDigest,
     capabilityClass: selectedCapability?.capabilityClass || null,
+    capabilityClasses: selectedCapabilities.map((capability) => capability.capabilityClass),
     resolvedModelRef: selectedCapability?.resolvedModelRef || null,
-    pluginDefault: route.pluginDefault || 'none',
-    eligiblePlugins: route.eligiblePlugins || [],
+    maxOutputBytes: selectedCapability?.maxOutputBytes || null,
+    pluginDefault: route?.pluginDefault || 'none',
+    eligiblePlugins: route?.eligiblePlugins || [],
     authorityCreated: false,
   };
   return {
@@ -102,16 +166,16 @@ export function defaultTestRegistry() {
     schemaVersion: '1.2.9',
     registryId: 'v129-fixture-registry',
     capabilities: [
-      { capabilityClass: 'low_cost_worker', resolvedModelRef: 'registry:model:low', maxOutputBytes: 2048 },
-      { capabilityClass: 'standard_code_worker', resolvedModelRef: 'registry:model:standard', maxOutputBytes: 4096 },
-      { capabilityClass: 'high_reasoning_planner', resolvedModelRef: 'registry:model:planner', maxOutputBytes: 8192 },
-      { capabilityClass: 'independent_verifier', resolvedModelRef: 'registry:model:verifier', maxOutputBytes: 4096 },
-      { capabilityClass: 'security_specialist', resolvedModelRef: 'registry:model:security', maxOutputBytes: 4096 },
-      { capabilityClass: 'runtime_specialist', resolvedModelRef: 'registry:model:runtime', maxOutputBytes: 4096 },
-      { capabilityClass: 'authority_reviewer', resolvedModelRef: 'registry:model:authority', maxOutputBytes: 4096 },
+      { capabilityClass: 'low_cost_worker', resolvedModelRef: 'registry:model:low', maxOutputBytes: 2048, availabilityState: 'available', authorizationState: 'authorized', costClass: 'low' },
+      { capabilityClass: 'standard_code_worker', resolvedModelRef: 'registry:model:standard', maxOutputBytes: 4096, availabilityState: 'available', authorizationState: 'authorized', costClass: 'standard' },
+      { capabilityClass: 'high_reasoning_planner', resolvedModelRef: 'registry:model:planner', maxOutputBytes: 8192, availabilityState: 'available', authorizationState: 'authorized', costClass: 'high' },
+      { capabilityClass: 'independent_verifier', resolvedModelRef: 'registry:model:verifier', maxOutputBytes: 4096, availabilityState: 'available', authorizationState: 'authorized', costClass: 'standard' },
+      { capabilityClass: 'security_specialist', resolvedModelRef: 'registry:model:security', maxOutputBytes: 4096, availabilityState: 'available', authorizationState: 'authorized', costClass: 'specialist' },
+      { capabilityClass: 'runtime_specialist', resolvedModelRef: 'registry:model:runtime', maxOutputBytes: 4096, availabilityState: 'available', authorizationState: 'authorized', costClass: 'specialist' },
+      { capabilityClass: 'authority_reviewer', resolvedModelRef: 'registry:model:authority', maxOutputBytes: 4096, availabilityState: 'available', authorizationState: 'authorized', costClass: 'specialist' },
     ],
     plugins: [
-      { pluginId: 'codex-security', authorizedTaskClasses: ['security_scan', 'security_remediation'], requiresDefensiveScope: true },
+      { pluginId: 'codex-security', authorizedTaskClasses: ['security_scan', 'security_remediation'], requiresDefensiveScope: true, availabilityState: 'available', authorizationState: 'authorized' },
     ],
     routes: {
       routine_metadata: { requiredCapabilityClasses: ['low_cost_worker'], pluginDefault: 'none' },
@@ -131,7 +195,7 @@ export function defaultTestRegistry() {
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
   const input = process.argv[2] ? JSON.parse(fs.readFileSync(process.argv[2], 'utf8')) : JSON.parse(fs.readFileSync(0, 'utf8'));
   const report = routeCapability(input);
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

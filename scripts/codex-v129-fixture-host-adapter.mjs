@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -17,8 +17,9 @@ const receipt = {
   schemaVersion: '1.2.9',
   runId: request.runId,
   goalDigest: request.goalDigest,
+  classificationDigest: request.classificationDigest,
   routeDecisionDigest: request.routeDecisionDigest,
-  registryDigest: process.env.CODEX_V129_TRUSTED_CAPABILITY_REGISTRY_DIGEST || `sha256:${'1'.repeat(64)}`,
+  registryDigest: request.registryDigest,
   hostAdapterDigest: digestFile(fileURLToPath(import.meta.url)),
   capabilityClass: request.capabilityClass,
   resolvedModelId: request.resolvedModelRef || 'fixture:model',
@@ -27,10 +28,13 @@ const receipt = {
   modelOutputBytes: Buffer.byteLength(canonicalJson(output), 'utf8'),
   modelOutputDigest: `sha256:${sha256(canonicalJson(output))}`,
   selectedPluginIds: request.pluginRefs || [],
+  pluginRefs: request.pluginRefs || [],
   pluginInvocationObserved: Boolean((request.pluginRefs || []).length),
   pluginResultDigest: (request.pluginRefs || []).length ? `sha256:${'2'.repeat(64)}` : null,
   workerOutputDigest: `sha256:${sha256(canonicalJson(output))}`,
   inputDigest: request.inputDigest,
+  maxOutputBytes: request.maxOutputBytes,
+  workspaceDigest: request.workspaceDigest,
   fixture: true,
   authorityCreated: false,
 };

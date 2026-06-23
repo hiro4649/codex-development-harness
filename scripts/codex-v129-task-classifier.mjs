@@ -184,6 +184,7 @@ export function classifyGoalTask(goal = {}, options = {}) {
   return {
     schemaVersion: '1.2.9',
     candidateHarnessVersion: '1.2.9',
+    goalDigest: goal.goalDigest || null,
     taskClass,
     difficulty,
     riskFlags,
