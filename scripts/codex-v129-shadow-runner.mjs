@@ -130,121 +130,126 @@ export function runV129ShadowFixture(env = process.env) {
   const evidenceDigest = digest(evidence);
   const workerWorkspacePath = makeShadowWorktree('v129-worker-', goal.candidateHeadSha);
   const verifierWorkspacePath = makeShadowWorktree('v129-verifier-', goal.candidateHeadSha);
-  let report;
-  const verifierInput = {
-    schemaVersion: '1.2.9',
-    workerId: 'worker-a',
-    verifierId: 'verifier-b',
-    workerWorkspacePath,
-    verifierWorkspacePath,
-    workerWorkspaceDigest: computeWorkspaceTreeDigest(workerWorkspacePath),
-    verifierWorkspaceDigest: computeWorkspaceTreeDigest(verifierWorkspacePath),
-    candidateHeadSha: goal.candidateHeadSha,
-    goalDigest: goal.goalDigest,
-    goalContract: goal,
-    workerReceipt: dispatch.invocationReceipt || {},
-    workerReceiptDigest,
-    evidence,
-    evidenceDigest,
-    worker: {
+  try {
+    const verifierInput = {
+      schemaVersion: '1.2.9',
+      workerId: 'worker-a',
+      verifierId: 'verifier-b',
+      workerWorkspacePath,
+      verifierWorkspacePath,
+      workerWorkspaceDigest: computeWorkspaceTreeDigest(workerWorkspacePath),
+      verifierWorkspaceDigest: computeWorkspaceTreeDigest(verifierWorkspacePath),
+      candidateHeadSha: goal.candidateHeadSha,
+      goalDigest: goal.goalDigest,
+      goalContract: goal,
+      workerReceipt: dispatch.invocationReceipt || {},
+      workerReceiptDigest,
+      evidence,
+      evidenceDigest,
+      worker: {
+        goalDigest: goal.goalDigest,
+        candidateHeadSha: goal.candidateHeadSha,
+        routeDecisionDigest: routeDecision.routeDecisionDigest,
+        workerOutputDigest: dispatch.invocationReceipt?.workerOutputDigest,
+      },
+      verifier: {
+        goalDigest: goal.goalDigest,
+        candidateHeadSha: goal.candidateHeadSha,
+        routeDecisionDigest: routeDecision.routeDecisionDigest,
+        workerOutputDigest: dispatch.invocationReceipt?.workerOutputDigest,
+      },
+      criteriaResults: [{ id: 'AC1', required: true, status: 'pass', evidenceDigest: workerReceiptDigest }],
+      verifierMergeAuthority: false,
+    };
+    const verifierStdout = execFileSync(process.execPath, [fileURLToPath(new URL('./codex-v129-independent-verifier.mjs', import.meta.url))], {
+      input: canonicalJson(verifierInput),
+      encoding: 'utf8',
+      timeout: 5000,
+      maxBuffer: 8192,
+      env: { CODEX_QUALITY_REPORT: 'json' },
+    });
+    const verifier = JSON.parse(verifierStdout);
+    const verifierReceiptDigest = digest(verifier);
+    const truthOwnerDigest = digest(goal.truthOwnerRefs);
+    const v129ShadowPointer = {
+      candidateHarnessVersion: '1.2.9',
+      candidateActivationState: 'source_shadow_candidate',
+      goalDigest: goal.goalDigest,
+      routeDecisionDigest: routeDecision.routeDecisionDigest,
+      workerReceiptDigest,
+      verifierReceiptDigest,
+      evidenceDigest,
+    };
+    const finalizer = buildGoalCompletionProof({
+      goalContract: goal,
       goalDigest: goal.goalDigest,
       candidateHeadSha: goal.candidateHeadSha,
+      baseSha: goal.binding.baseSha,
+      scopeDigest: goal.binding.scopeDigest,
+      truthOwnerDigest,
       routeDecisionDigest: routeDecision.routeDecisionDigest,
-      workerOutputDigest: dispatch.invocationReceipt?.workerOutputDigest,
-    },
-    verifier: {
-      goalDigest: goal.goalDigest,
-      candidateHeadSha: goal.candidateHeadSha,
+      workerReceipt: dispatch.invocationReceipt || {},
+      workerReceiptDigest,
+      verifierReceipt: verifier,
+      verifierReceiptDigest,
+      evidence,
+      evidenceDigest,
+      criteriaResults: verifierInput.criteriaResults,
+      headBindings: [goal.candidateHeadSha, goal.candidateHeadSha, goal.candidateHeadSha],
+      validatedWorkerReceipt: { status: dispatch.status, digest: workerReceiptDigest },
+      independentVerifier: { status: verifier.status, digest: verifierReceiptDigest },
+      repairIterationCount: 0,
+      sameBlockerCount: 0,
+      tokenBudget: { usedBytes: Buffer.byteLength(canonicalJson(verifier), 'utf8'), maxBytes: 4096 },
+    });
+    const statuses = [classification, routeDecision, pluginDecision, dispatch, verifier, finalizer];
+    const reasonCodes = statuses.flatMap((item) => item.reasonCodes || []);
+    return {
+      schemaVersion: '1.2.9',
+      candidateHarnessVersion: '1.2.9',
+      candidateActivationState: 'source_shadow_candidate',
+      sourceActivation: 'forbidden',
+      targetRollout: 'forbidden',
+      executionMode: 'fixture',
+      actualModelInvocationState: 'unavailable',
+      actualPluginInvocationState: 'unavailable',
+      hostAdapterAvailability: 'unavailable',
+      goalRef: { goalId: goal.goalId, goalVersion: goal.goalVersion, goalDigest: goal.goalDigest },
+      classificationDigest: classification.classificationDigest,
       routeDecisionDigest: routeDecision.routeDecisionDigest,
-      workerOutputDigest: dispatch.invocationReceipt?.workerOutputDigest,
-    },
-    criteriaResults: [{ id: 'AC1', required: true, status: 'pass', evidenceDigest: workerReceiptDigest }],
-    verifierMergeAuthority: false,
-  };
-  const verifierStdout = execFileSync(process.execPath, [fileURLToPath(new URL('./codex-v129-independent-verifier.mjs', import.meta.url))], {
-    input: canonicalJson(verifierInput),
-    encoding: 'utf8',
-    timeout: 5000,
-    maxBuffer: 8192,
-    env: { CODEX_QUALITY_REPORT: 'json' },
-  });
-  const verifier = JSON.parse(verifierStdout);
-  const verifierReceiptDigest = digest(verifier);
-  const truthOwnerDigest = digest(goal.truthOwnerRefs);
-  const v129ShadowPointer = {
-    candidateHarnessVersion: '1.2.9',
-    candidateActivationState: 'source_shadow_candidate',
-    goalDigest: goal.goalDigest,
-    routeDecisionDigest: routeDecision.routeDecisionDigest,
-    workerReceiptDigest,
-    verifierReceiptDigest,
-    evidenceDigest,
-  };
-  const finalizer = buildGoalCompletionProof({
-    goalContract: goal,
-    goalDigest: goal.goalDigest,
-    candidateHeadSha: goal.candidateHeadSha,
-    baseSha: goal.binding.baseSha,
-    scopeDigest: goal.binding.scopeDigest,
-    truthOwnerDigest,
-    routeDecisionDigest: routeDecision.routeDecisionDigest,
-    workerReceipt: dispatch.invocationReceipt || {},
-    workerReceiptDigest,
-    verifierReceipt: verifier,
-    verifierReceiptDigest,
-    evidence,
-    evidenceDigest,
-    criteriaResults: verifierInput.criteriaResults,
-    headBindings: [goal.candidateHeadSha, goal.candidateHeadSha, goal.candidateHeadSha],
-    validatedWorkerReceipt: { status: dispatch.status, digest: workerReceiptDigest },
-    independentVerifier: { status: verifier.status, digest: verifierReceiptDigest },
-    repairIterationCount: 0,
-    sameBlockerCount: 0,
-    tokenBudget: { usedBytes: Buffer.byteLength(canonicalJson(verifier), 'utf8'), maxBytes: 4096 },
-  });
-  const statuses = [classification, routeDecision, pluginDecision, dispatch, verifier, finalizer];
-  const reasonCodes = statuses.flatMap((item) => item.reasonCodes || []);
-  report = {
-    schemaVersion: '1.2.9',
-    candidateHarnessVersion: '1.2.9',
-    candidateActivationState: 'source_shadow_candidate',
-    sourceActivation: 'forbidden',
-    targetRollout: 'forbidden',
-    goalRef: { goalId: goal.goalId, goalVersion: goal.goalVersion, goalDigest: goal.goalDigest },
-    classificationDigest: classification.classificationDigest,
-    routeDecisionDigest: routeDecision.routeDecisionDigest,
-    v129ShadowPointer,
-    routingState: routeDecision.status === 'pass' ? 'routed' : 'blocked',
-    invocationReceiptDigest: workerReceiptDigest,
-    verifierReceiptDigest,
-    goalCompletionProofSummary: {
-      completionState: finalizer.goalCompletionProof.completionState,
-      proofDigest: finalizer.goalCompletionProof.proofDigest,
-      unresolvedCriterionCount: finalizer.goalCompletionProof.unresolvedCriterionCount,
-      safeNextAction: finalizer.goalCompletionProof.safeNextAction,
+      v129ShadowPointer,
+      routingState: routeDecision.status === 'pass' ? 'routed' : 'blocked',
+      invocationReceiptDigest: workerReceiptDigest,
+      verifierReceiptDigest,
+      goalCompletionProofSummary: {
+        completionState: finalizer.goalCompletionProof.completionState,
+        proofDigest: finalizer.goalCompletionProof.proofDigest,
+        unresolvedCriterionCount: finalizer.goalCompletionProof.unresolvedCriterionCount,
+        safeNextAction: finalizer.goalCompletionProof.safeNextAction,
+        authorityCreated: false,
+      },
+      verifierWorkspace: {
+        workerVerifierDistinctGitWorktrees: path.resolve(workerWorkspacePath) !== path.resolve(verifierWorkspacePath),
+        workerHeadSha: verifier.recomputed?.workerCandidateHeadSha || null,
+        verifierHeadSha: verifier.recomputed?.verifierCandidateHeadSha || null,
+        workerTreeSha: verifier.recomputed?.workerTreeSha || null,
+        verifierTreeSha: verifier.recomputed?.verifierTreeSha || null,
+      },
+      invocationState: {
+        actualModelReceiptState: dispatch.invocationReceipt?.fixture === true ? 'unavailable_fixture_only' : 'observed',
+        actualPluginReceiptState: (dispatch.invocationReceipt?.pluginRefs || []).length ? 'observed' : 'unavailable_not_selected',
+      },
+      tokenBudgetStatus: { status: Buffer.byteLength(canonicalJson(finalizer.goalCompletionProof), 'utf8') <= 4096 ? 'pass' : 'fail' },
+      activeOutputChanged: false,
       authorityCreated: false,
-    },
-    verifierWorkspace: {
-      workerVerifierDistinctGitWorktrees: path.resolve(workerWorkspacePath) !== path.resolve(verifierWorkspacePath),
-      workerHeadSha: verifier.recomputed?.workerCandidateHeadSha || null,
-      verifierHeadSha: verifier.recomputed?.verifierCandidateHeadSha || null,
-      workerTreeSha: verifier.recomputed?.workerTreeSha || null,
-      verifierTreeSha: verifier.recomputed?.verifierTreeSha || null,
-    },
-    invocationState: {
-      actualModelReceiptState: dispatch.invocationReceipt?.fixture === true ? 'unavailable_fixture_only' : 'observed',
-      actualPluginReceiptState: (dispatch.invocationReceipt?.pluginRefs || []).length ? 'observed' : 'unavailable_not_selected',
-    },
-    tokenBudgetStatus: { status: Buffer.byteLength(canonicalJson(finalizer.goalCompletionProof), 'utf8') <= 4096 ? 'pass' : 'fail' },
-    activeOutputChanged: false,
-    authorityCreated: false,
-    status: reasonCodes.length ? 'fail' : 'pass',
-    reasonCodes,
-    safeSummaryOnly: true,
-  };
-  removeShadowWorktree(workerWorkspacePath);
-  removeShadowWorktree(verifierWorkspacePath);
-  return report;
+      status: reasonCodes.length ? 'fail' : 'pass',
+      reasonCodes,
+      safeSummaryOnly: true,
+    };
+  } finally {
+    removeShadowWorktree(workerWorkspacePath);
+    removeShadowWorktree(verifierWorkspacePath);
+  }
 }
 
 if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {

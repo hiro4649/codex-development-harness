@@ -631,6 +631,13 @@ function verifierTests() {
     test('v129_authority_created_shadow_metadata_fails', () => validateV129ShadowRoutingMetadata({ ...buildV129ShadowRoutingMetadata({ goalDigest: goal.goalDigest, classificationDigest: classification.classificationDigest, routeDecisionDigest: route.routeDecisionDigest, routingState: 'routed' }), authorityCreated: true }).status === 'fail'),
     test('v129_shadow_runner_requires_shadow_env', () => runV129ShadowFixture({}).status === 'blocked'),
     test('v129_shadow_runner_fixture_passes', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1' }).status === 'pass'),
+    test('v129_shadow_runner_marks_fixture_invocation_unavailable', () => {
+      const report = runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1' });
+      return report.executionMode === 'fixture'
+        && report.actualModelInvocationState === 'unavailable'
+        && report.actualPluginInvocationState === 'unavailable'
+        && report.hostAdapterAvailability === 'unavailable';
+    }),
     test('v129_active_mode_has_no_shadow_leakage', () => runV129ShadowFixture({ CODEX_V129_TEST_MODE: '1' }).activeOutputChanged === false),
   ];
 }
