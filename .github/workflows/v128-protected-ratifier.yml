@@ -10,6 +10,9 @@ on:
       expected_head:
         description: Exact PR head SHA to merge.
         required: true
+      expected_base:
+        description: Exact PR base SHA required before merge.
+        required: true
       execute_merge:
         description: Execute exact-head CAS merge after ratification.
         required: true
@@ -33,12 +36,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout protected default branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           ref: main
           fetch-depth: 1
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '20'
       - name: Ratify exact-head candidate
@@ -47,7 +50,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           CODEX_PR_NUMBER: ${{ github.event.inputs.pr_number }}
           CODEX_EXPECTED_HEAD_SHA: ${{ github.event.inputs.expected_head }}
+          CODEX_EXPECTED_BASE_SHA: ${{ github.event.inputs.expected_base }}
           CODEX_V128_EXECUTE_MERGE: ${{ github.event.inputs.execute_merge == 'true' && '1' || '0' }}
+          CODEX_V128_REQUIRED_CHECK_APP_ID: ${{ vars.CODEX_V128_REQUIRED_CHECK_APP_ID }}
+          CODEX_V128_REQUIRED_CHECK_BINDINGS_JSON: ${{ vars.CODEX_V128_REQUIRED_CHECK_BINDINGS_JSON }}
           CODEX_V128_TRUSTED_POLICY_SOURCE: ${{ vars.CODEX_V128_TRUSTED_POLICY_SOURCE }}
           CODEX_V128_TRUSTED_POLICY_DIGEST: ${{ vars.CODEX_V128_TRUSTED_POLICY_DIGEST }}
           CODEX_V128_TRUSTED_EVALUATOR_DIGEST: ${{ vars.CODEX_V128_TRUSTED_EVALUATOR_DIGEST }}
@@ -68,8 +74,8 @@ jobs:
           node scripts/codex-v128-protected-ratifier.mjs
       - name: Upload ratifier result
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: codex-v128-ratifier-result
           path: ${{ runner.temp }}/codex-v128-ratifier-result.safe.json
-          if-no-files-found: warn
+          if-no-files-found: error

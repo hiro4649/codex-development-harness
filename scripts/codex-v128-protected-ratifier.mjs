@@ -6,7 +6,28 @@ import fs from 'node:fs';
 import { buildV128TrustClosure, validateV128TrustClosure } from './codex-v128-trust-closure.mjs';
 import { digestV128StandingAutonomyPolicy } from './codex-v128-standing-autonomy-policy.mjs';
 
-const REQUIRED_CHECKS = ['quality-gate', 'target complex', 'target restricted', 'aggregate contract'];
+const DEFAULT_REQUIRED_CHECKS = [
+  {
+    name: 'quality-gate',
+    workflowName: 'quality-gate',
+    workflowPath: '.github/workflows/quality-gate.yml',
+  },
+  {
+    name: 'target complex',
+    workflowName: 'v128-actual-target-canary',
+    workflowPath: '.github/workflows/v128-actual-target-canary.yml',
+  },
+  {
+    name: 'target restricted',
+    workflowName: 'v128-actual-target-canary',
+    workflowPath: '.github/workflows/v128-actual-target-canary.yml',
+  },
+  {
+    name: 'aggregate contract',
+    workflowName: 'v128-actual-target-canary',
+    workflowPath: '.github/workflows/v128-actual-target-canary.yml',
+  },
+];
 const DEFAULT_POLICY_PATH = 'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json';
 const RATIFIER_FILES = [
   '.github/workflows/v128-protected-ratifier.yml',
@@ -97,6 +118,24 @@ function isDigest(value) {
   return /^sha256:[a-f0-9]{64}$/.test(String(value || ''));
 }
 
+function parseRequiredChecks() {
+  const raw = env('CODEX_V128_REQUIRED_CHECK_BINDINGS_JSON');
+  if (!raw) return DEFAULT_REQUIRED_CHECKS;
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('required_check_bindings_invalid');
+  return parsed.map((item) => ({
+    name: String(item.name || ''),
+    workflowName: String(item.workflowName || ''),
+    workflowPath: String(item.workflowPath || ''),
+    appId: item.appId === undefined || item.appId === null ? null : Number(item.appId),
+  }));
+}
+
+function extractRunId(detailsUrl = '') {
+  const match = String(detailsUrl || '').match(/\/actions\/runs\/([0-9]+)/);
+  return match ? match[1] : null;
+}
+
 function parseRepo(slug) {
   const [owner, repo] = String(slug || '').split('/');
   if (!owner || !repo) throw new Error('invalid_repository');
@@ -142,13 +181,23 @@ async function getCheckRuns(owner, repo, headSha) {
   const first = await githubApi(`/repos/${owner}/${repo}/commits/${headSha}/check-runs?per_page=100`);
   const runs = Array.isArray(first?.check_runs) ? first.check_runs : [];
   return runs.map((run) => ({
+    appId: run.app?.id || null,
+    appSlug: run.app?.slug || null,
+    checkSuiteId: run.check_suite?.id || null,
     name: run.name,
     status: run.status,
     conclusion: run.conclusion,
     startedAt: run.started_at,
     completedAt: run.completed_at,
     htmlUrl: run.html_url,
+    detailsUrl: run.details_url,
+    runId: extractRunId(run.details_url),
   }));
+}
+
+async function getWorkflowRun(owner, repo, runId) {
+  if (!runId) return null;
+  return githubApi(`/repos/${owner}/${repo}/actions/runs/${runId}`);
 }
 
 function latestByName(runs) {
@@ -241,6 +290,7 @@ function printTrustVariables() {
     CODEX_V128_TRUSTED_CANONICALIZER_DIGEST: trustRoot.observed.canonicalizerDigest,
     CODEX_V128_TRUSTED_FINAL_DECISION_AUTHORITY_DIGEST: trustRoot.observed.finalDecisionAuthorityDigest,
     CODEX_V128_TRUSTED_RATIFIER_DIGEST: trustRoot.observed.ratifierDigest,
+    CODEX_V128_REQUIRED_CHECK_APP_ID: '15368',
   };
   process.stdout.write(`${canonicalJson(output)}\n`);
 }
@@ -262,37 +312,68 @@ async function main() {
   const execute = hasFlag('execute') || env('CODEX_V128_EXECUTE_MERGE') === '1';
   const prNumber = Number(argValue('pr', env('CODEX_PR_NUMBER')));
   const expectedHead = String(argValue('expected-head', env('CODEX_EXPECTED_HEAD_SHA')) || '').trim();
+  const expectedBase = String(argValue('expected-base', env('CODEX_EXPECTED_BASE_SHA')) || '').trim();
   const defaultBranch = String(env('GITHUB_REF_NAME') || env('GITHUB_DEFAULT_BRANCH') || 'main').trim();
   const repository = env('GITHUB_REPOSITORY', 'hiro4649/codex-development-harness');
   const repositoryId = env('GITHUB_REPOSITORY_ID');
+  const requiredChecks = parseRequiredChecks();
+  const expectedAppId = Number(env('CODEX_V128_REQUIRED_CHECK_APP_ID') || '0') || null;
   const { owner, repo } = parseRepo(repository);
   const reasons = [];
   const trustRoot = buildTrustRoot();
 
   if (!Number.isInteger(prNumber) || prNumber <= 0) reasons.push('pr_number_invalid');
   if (!isSha(expectedHead)) reasons.push('expected_head_invalid');
+  if (!isSha(expectedBase)) reasons.push('expected_base_invalid');
   if (env('GITHUB_EVENT_NAME') !== 'workflow_dispatch') reasons.push('workflow_dispatch_required');
   if (defaultBranch !== 'main') reasons.push('default_branch_ref_required');
   if (!repositoryId) reasons.push('repository_id_missing');
+  if (!expectedAppId) reasons.push('required_check_app_id_missing');
   reasons.push(...trustRootReasons(trustRoot));
 
   let pr = null;
   let requiredCheckRuns = {};
+  let requiredWorkflowRuns = {};
   let mergeResult = null;
   try {
     if (!reasons.length) {
       pr = await githubApi(`/repos/${owner}/${repo}/pulls/${prNumber}`);
       if (pr.state !== 'open') reasons.push('pr_not_open');
       if (pr.base?.ref !== 'main') reasons.push('pr_base_not_main');
+      if (String(pr.base?.sha || '').toLowerCase() !== expectedBase.toLowerCase()) reasons.push('pr_base_mismatch');
       if (String(pr.head?.sha || '').toLowerCase() !== expectedHead.toLowerCase()) reasons.push('pr_head_mismatch');
       const checkRuns = await getCheckRuns(owner, repo, expectedHead);
       const byName = latestByName(checkRuns);
-      requiredCheckRuns = Object.fromEntries(REQUIRED_CHECKS.map((name) => [name, byName.get(name) || null]));
-      for (const name of REQUIRED_CHECKS) {
-        const run = requiredCheckRuns[name];
-        if (!run) reasons.push(`required_check_missing:${name}`);
-        else if (run.status !== 'completed' && run.status !== 'COMPLETED') reasons.push(`required_check_not_completed:${name}`);
-        else if (run.conclusion !== 'success' && run.conclusion !== 'SUCCESS') reasons.push(`required_check_not_success:${name}`);
+      requiredCheckRuns = Object.fromEntries(requiredChecks.map((check) => [check.name, byName.get(check.name) || null]));
+      for (const check of requiredChecks) {
+        const run = requiredCheckRuns[check.name];
+        if (!run) {
+          reasons.push(`required_check_missing:${check.name}`);
+          continue;
+        }
+        if (run.status !== 'completed' && run.status !== 'COMPLETED') reasons.push(`required_check_not_completed:${check.name}`);
+        if (run.conclusion !== 'success' && run.conclusion !== 'SUCCESS') reasons.push(`required_check_not_success:${check.name}`);
+        if (expectedAppId && Number(run.appId) !== expectedAppId) reasons.push(`required_check_app_mismatch:${check.name}`);
+        const workflowRun = await getWorkflowRun(owner, repo, run.runId);
+        requiredWorkflowRuns[check.name] = workflowRun ? {
+          event: workflowRun.event,
+          headSha: workflowRun.head_sha,
+          headBranch: workflowRun.head_branch,
+          path: workflowRun.path,
+          workflowId: workflowRun.workflow_id,
+          name: workflowRun.name,
+        } : null;
+        if (!workflowRun) reasons.push(`required_check_workflow_run_missing:${check.name}`);
+        else {
+          if (workflowRun.event !== 'pull_request') reasons.push(`required_check_event_mismatch:${check.name}`);
+          if (String(workflowRun.head_sha || '').toLowerCase() !== expectedHead.toLowerCase()) reasons.push(`required_check_head_mismatch:${check.name}`);
+          if (check.workflowName && workflowRun.name !== check.workflowName) reasons.push(`required_check_workflow_name_mismatch:${check.name}`);
+          if (check.workflowPath && workflowRun.path !== check.workflowPath) reasons.push(`required_check_workflow_path_mismatch:${check.name}`);
+        }
+        if (check.workflowPath) {
+          const workflowDigest = fs.existsSync(check.workflowPath) ? fileDigest(check.workflowPath).digest : null;
+          if (!workflowDigest) reasons.push(`required_check_workflow_digest_missing:${check.name}`);
+        }
       }
     }
     if (!reasons.length && execute) {
@@ -330,10 +411,12 @@ async function main() {
     status,
     prNumber,
     expectedHead,
+    expectedBase,
     repository,
     repositoryIdDigest: repositoryId ? digestValue({ repositoryId }) : null,
     executeMergeRequested: execute,
     requiredChecks: requiredCheckRuns,
+    requiredWorkflowRuns,
     trustRootDigest: digestValue({
       policyDigest: trustRoot.observed.policyDigest,
       evaluatorDigest: trustRoot.observed.evaluatorDigest,
