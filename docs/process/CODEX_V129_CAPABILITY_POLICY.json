@@ -1,4 +1,5 @@
 {
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
   "schemaVersion": "1.2.9",
   "candidateHarnessVersion": "1.2.9",
   "candidateActivationState": "source_shadow_candidate",

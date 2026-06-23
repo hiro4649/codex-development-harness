@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import {
@@ -47,7 +47,7 @@ function baseGoal(overrides = {}) {
     killCriteria: ['same blocker repeats once'],
     repairBudget: { maxRepairIterations: 1, sameBlockerMax: 1 },
     binding: {
-      repositoryId: 'hiro4649/codex-development-harness',
+      repositoryId: 1243452288,
       baseSha: '8e74e8d4843dea7ca41bfc50d2e66ad9079fc87d',
       scopeDigest: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
     },
@@ -94,11 +94,54 @@ function contractTests() {
       const goal = baseGoal({ repairBudget: { maxRepairIterations: 2, sameBlockerMax: 1 } });
       return failed(compileGoalContract(asText(goal)));
     }),
+    test('v129_repair_budget_negative_fails', () => {
+      const goal = baseGoal({ repairBudget: { maxRepairIterations: -1, sameBlockerMax: 1 } });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_repository_id_string_fails', () => {
+      const goal = baseGoal({ binding: { ...baseGoal().binding, repositoryId: 'hiro4649/codex-development-harness' } });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_desired_end_state_non_string_fails', () => {
+      const goal = baseGoal({ desiredEndState: { text: 'not-string' } });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_truth_owner_duplicate_path_fails', () => {
+      const goal = baseGoal({ truthOwnerRefs: [
+        { path: 'docs/process/CODEX_V129_SPEC.md', digest: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' },
+        { path: './docs/process/CODEX_V129_SPEC.md', digest: 'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' },
+      ] });
+      return failed(compileGoalContract(asText(goal)));
+    }),
     test('v129_truth_owner_digest_missing_fails', () => {
       const goal = baseGoal({ truthOwnerRefs: [{ path: 'docs/process/CODEX_V129_SPEC.md' }] });
       return failed(compileGoalContract(asText(goal)));
     }),
+    test('v129_acceptance_id_gap_fails', () => {
+      const goal = baseGoal({ acceptanceCriteria: [
+        { id: 'AC1', description: 'one', required: true },
+        { id: 'AC3', description: 'gap', required: true },
+      ] });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_array_count_limit_fails', () => {
+      const goal = baseGoal({ constraints: Array.from({ length: 25 }, (_, index) => `constraint ${index}`) });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_string_byte_limit_fails', () => {
+      const goal = baseGoal({ desiredEndState: 'x'.repeat(1201) });
+      return failed(compileGoalContract(asText(goal)));
+    }),
     test('v129_authority_file_classifies_authority_change', () => classifyGoalTask(baseGoal({ allowedFiles: ['scripts/codex-final-decision-kernel.mjs'] })).taskClass === 'authority_change'),
+    test('v129_authority_like_filename_not_exact_path_does_not_classify_authority', () => classifyGoalTask(baseGoal({
+      allowedFiles: ['docs/process/final-decision-kernel-not-authority.md'],
+      forbiddenFiles: ['README.md'],
+      desiredEndState: 'Change a source helper.',
+      constraints: ['keep tests passing'],
+      nonGoals: ['No product behavior change.'],
+      evidencePlan: ['run focused self-test'],
+      killCriteria: ['stop once'],
+    })).taskClass !== 'authority_change'),
     test('v129_security_file_classifies_security_task', () => classifyGoalTask(baseGoal({
       allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'],
       forbiddenFiles: ['README.md'],

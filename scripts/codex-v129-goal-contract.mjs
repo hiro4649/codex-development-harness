@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -22,6 +22,17 @@ export const V129_TASK_CLASSES = Object.freeze([
 ]);
 
 export const V129_DIFFICULTIES = Object.freeze(['low', 'medium', 'high', 'critical']);
+
+export const V129_CONTRACT_LIMITS = Object.freeze({
+  goalIdBytes: 96,
+  desiredEndStateBytes: 1200,
+  truthOwnerRefsMax: 24,
+  acceptanceCriteriaMax: 64,
+  stringArrayItemsMax: 96,
+  stringArrayItemBytes: 400,
+  pathBytes: 240,
+  totalContractBytes: 8192,
+});
 
 export const V129_GOAL_CONTRACT_FIELDS = Object.freeze([
   'goalId',
@@ -174,8 +185,37 @@ function isFullSha(value) {
   return /^[a-f0-9]{40}$/.test(String(value || ''));
 }
 
+function utf8Bytes(value) {
+  return Buffer.byteLength(String(value ?? ''), 'utf8');
+}
+
+function validateString(reasonCodes, name, value, maxBytes, { required = true } = {}) {
+  if (typeof value !== 'string') {
+    reasonCodes.push(`${name}_type_invalid`);
+    return;
+  }
+  if (required && value.length === 0) reasonCodes.push(`${name}_missing`);
+  if (utf8Bytes(value) > maxBytes) reasonCodes.push(`${name}_byte_limit_exceeded`);
+}
+
+function validateStringArray(reasonCodes, name, value, { maxItems = V129_CONTRACT_LIMITS.stringArrayItemsMax, maxItemBytes = V129_CONTRACT_LIMITS.stringArrayItemBytes } = {}) {
+  if (!arrayStrings(value)) {
+    reasonCodes.push(`${name}_invalid`);
+    return;
+  }
+  if (value.length > maxItems) reasonCodes.push(`${name}_count_limit_exceeded`);
+  for (const item of value) {
+    if (utf8Bytes(item) > maxItemBytes) reasonCodes.push(`${name}_item_byte_limit_exceeded`);
+  }
+}
+
+function normalizedPath(value) {
+  return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+}
+
 export function validateGoalContract(goal = {}) {
   const reasonCodes = [];
+  if (utf8Bytes(canonicalJson(goal)) > V129_CONTRACT_LIMITS.totalContractBytes) reasonCodes.push('goal_contract_byte_limit_exceeded');
   const keys = Object.keys(goal);
   const allowed = new Set(V129_GOAL_CONTRACT_FIELDS);
   for (const key of V129_GOAL_CONTRACT_FIELDS) {
@@ -184,41 +224,53 @@ export function validateGoalContract(goal = {}) {
   for (const key of keys) {
     if (!allowed.has(key)) reasonCodes.push(`unknown_field_${key}`);
   }
+  validateString(reasonCodes, 'goal_id', goal.goalId, V129_CONTRACT_LIMITS.goalIdBytes);
   if (!Number.isInteger(goal.goalVersion) || goal.goalVersion < 1) reasonCodes.push('goal_version_invalid');
   if (!V129_TASK_CLASSES.includes(goal.taskClass)) reasonCodes.push('task_class_invalid');
   const truthOwnerRefs = Array.isArray(goal.truthOwnerRefs) ? goal.truthOwnerRefs : [];
   if (!truthOwnerRefs.length) reasonCodes.push('truth_owner_refs_missing');
+  if (truthOwnerRefs.length > V129_CONTRACT_LIMITS.truthOwnerRefsMax) reasonCodes.push('truth_owner_refs_count_limit_exceeded');
+  const truthOwnerPaths = [];
   for (const ref of truthOwnerRefs) {
     if (!ref || typeof ref.path !== 'string' || !ref.path) reasonCodes.push('truth_owner_path_missing');
+    else {
+      validateString(reasonCodes, 'truth_owner_path', ref.path, V129_CONTRACT_LIMITS.pathBytes);
+      truthOwnerPaths.push(normalizedPath(ref.path));
+    }
     if (!isSha256Digest(ref?.digest)) reasonCodes.push('truth_owner_digest_missing');
   }
+  if (hasDuplicates(truthOwnerPaths)) reasonCodes.push('truth_owner_path_duplicate');
+  validateString(reasonCodes, 'desired_end_state', goal.desiredEndState, V129_CONTRACT_LIMITS.desiredEndStateBytes);
   const criteria = Array.isArray(goal.acceptanceCriteria) ? goal.acceptanceCriteria : [];
   if (!criteria.length) reasonCodes.push('acceptance_criteria_missing');
+  if (criteria.length > V129_CONTRACT_LIMITS.acceptanceCriteriaMax) reasonCodes.push('acceptance_criteria_count_limit_exceeded');
   const criteriaIds = criteria.map((item) => item?.id).filter(Boolean);
   if (hasDuplicates(criteriaIds)) reasonCodes.push('acceptance_criterion_id_duplicate');
-  for (const criterion of criteria) {
-    if (!criterion?.id || !criterion?.description || typeof criterion.required !== 'boolean') {
+  for (let index = 0; index < criteria.length; index += 1) {
+    const criterion = criteria[index];
+    if (!criterion?.id || !/^AC[1-9][0-9]*$/.test(criterion.id) || criterion.id !== `AC${index + 1}` || !criterion?.description || typeof criterion.required !== 'boolean') {
       reasonCodes.push('acceptance_criterion_invalid');
     }
+    if (criterion?.description) validateString(reasonCodes, 'acceptance_criterion_description', criterion.description, 800);
   }
-  if (!arrayStrings(goal.constraints)) reasonCodes.push('constraints_invalid');
-  if (!arrayStrings(goal.nonGoals)) reasonCodes.push('non_goals_invalid');
-  if (!arrayStrings(goal.allowedFiles)) reasonCodes.push('allowed_files_invalid');
-  if (!arrayStrings(goal.forbiddenFiles)) reasonCodes.push('forbidden_files_invalid');
-  if (!arrayStrings(goal.evidencePlan)) reasonCodes.push('evidence_plan_invalid');
-  if (!arrayStrings(goal.killCriteria)) reasonCodes.push('kill_criteria_invalid');
+  validateStringArray(reasonCodes, 'constraints', goal.constraints, { maxItems: 24 });
+  validateStringArray(reasonCodes, 'non_goals', goal.nonGoals, { maxItems: 24 });
+  validateStringArray(reasonCodes, 'allowed_files', goal.allowedFiles, { maxItems: 96, maxItemBytes: V129_CONTRACT_LIMITS.pathBytes });
+  validateStringArray(reasonCodes, 'forbidden_files', goal.forbiddenFiles, { maxItems: 96, maxItemBytes: V129_CONTRACT_LIMITS.pathBytes });
+  validateStringArray(reasonCodes, 'evidence_plan', goal.evidencePlan, { maxItems: 24 });
+  validateStringArray(reasonCodes, 'kill_criteria', goal.killCriteria, { maxItems: 12 });
   const allowedFiles = new Set(goal.allowedFiles || []);
   for (const file of goal.forbiddenFiles || []) {
     if (allowedFiles.has(file)) reasonCodes.push('allowed_forbidden_overlap');
   }
-  if (!goal.repairBudget || !Number.isInteger(goal.repairBudget.maxRepairIterations) || goal.repairBudget.maxRepairIterations > 1) {
+  if (!goal.repairBudget || !Number.isInteger(goal.repairBudget.maxRepairIterations) || goal.repairBudget.maxRepairIterations < 0 || goal.repairBudget.maxRepairIterations > 1) {
     reasonCodes.push('repair_budget_iterations_invalid');
   }
-  if (!goal.repairBudget || !Number.isInteger(goal.repairBudget.sameBlockerMax) || goal.repairBudget.sameBlockerMax > 1) {
+  if (!goal.repairBudget || !Number.isInteger(goal.repairBudget.sameBlockerMax) || goal.repairBudget.sameBlockerMax < 0 || goal.repairBudget.sameBlockerMax > 1) {
     reasonCodes.push('repair_budget_same_blocker_invalid');
   }
   if (!goal.binding || typeof goal.binding !== 'object') reasonCodes.push('binding_missing');
-  if (!goal.binding?.repositoryId) reasonCodes.push('binding_repository_id_missing');
+  if (!Number.isInteger(goal.binding?.repositoryId) || goal.binding.repositoryId < 1) reasonCodes.push('binding_repository_id_invalid');
   if (!isFullSha(goal.binding?.baseSha)) reasonCodes.push('binding_base_sha_invalid');
   if (!isSha256Digest(goal.binding?.scopeDigest)) reasonCodes.push('binding_scope_digest_invalid');
   const expectedDigest = computeGoalDigest(goal);

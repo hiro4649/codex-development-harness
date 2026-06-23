@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v1.2.9
+# CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 # HARNESS v1.2.9: Goal-Contracted Capability Router
 
@@ -18,7 +18,7 @@ v1.2.9 is a Source shadow candidate. It does not activate Source v1.2.9, does no
 
 ## Goal Contract
 
-Goal Contract is strict JSON with duplicate-key rejection and unknown-field rejection. Required fields:
+Goal Contract is strict JSON with duplicate-key rejection and unknown-field rejection. The active source marker remains `CODEX_QUALITY_HARNESS_FILE v1.2.8`; v1.2.9 identity is carried only by `candidateHarnessVersion=1.2.9` and `candidateActivationState=source_shadow_candidate`. Required fields:
 
 - `goalId`
 - `goalVersion`
@@ -36,7 +36,16 @@ Goal Contract is strict JSON with duplicate-key rejection and unknown-field reje
 - `binding`
 - `goalDigest`
 
-`goalDigest` is computed from canonical JSON after excluding the `goalDigest` field. After a goal starts, a changed digest requires a new `goalVersion` and a new run. Candidate head is not included in the immutable goal digest. Repository identity, base SHA, and scope digest are included in `binding`.
+`goalDigest` is computed from canonical JSON after excluding the `goalDigest` field. After a goal starts, a changed digest requires a new `goalVersion` and a new run. Candidate head is not included in the immutable goal digest. Repository identity, base SHA, and scope digest are included in `binding`. `binding.repositoryId` is the positive integer GitHub repository id, not the `owner/name` string.
+
+Contract limits:
+
+- `repairBudget.maxRepairIterations` and `repairBudget.sameBlockerMax` are integers from 0 to 1.
+- `desiredEndState` is a non-empty string with a bounded byte length.
+- `truthOwnerRefs.path` values are unique.
+- `acceptanceCriteria.id` values are unique and complete as `AC1..ACn`.
+- all string and array fields have byte/count limits.
+- authority-sensitive file classification uses an exact normalized path classifier, not substring guessing.
 
 ## Task Classifier
 

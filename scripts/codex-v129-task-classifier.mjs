@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import fs from 'node:fs';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
@@ -42,6 +42,16 @@ const ROUTES = {
   research: ['high_reasoning_planner'],
 };
 
+export const V129_AUTHORITY_SENSITIVE_PATHS = Object.freeze([
+  'CODEX_SOURCE_HARNESS_MANIFEST.json',
+  'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
+  'docs/process/CODEX_V128_SPEC.md',
+  'scripts/codex-final-decision-kernel.mjs',
+  'scripts/codex-local-quality-gate.mjs',
+  'scripts/codex-source-ratifier.mjs',
+  '.github/workflows/quality-gate.yml',
+].map((item) => item.toLowerCase()));
+
 function textOf(goal = {}) {
   return [
     goal.taskClass,
@@ -56,8 +66,28 @@ function textOf(goal = {}) {
   ].join(' ').toLowerCase();
 }
 
+function narrativeTextOf(goal = {}) {
+  return [
+    goal.taskClass,
+    goal.desiredEndState,
+    ...(goal.constraints || []),
+    ...(goal.nonGoals || []),
+    ...(goal.evidencePlan || []),
+    ...(goal.killCriteria || []),
+    ...(goal.acceptanceCriteria || []).map((item) => `${item?.id || ''} ${item?.description || ''}`),
+  ].join(' ').toLowerCase();
+}
+
 function pathText(goal = {}) {
   return [...(goal.allowedFiles || []), ...(goal.forbiddenFiles || []), ...(goal.truthOwnerRefs || []).map((ref) => ref.path || '')].join('\n').toLowerCase();
+}
+
+function normalizedPath(value) {
+  return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+}
+
+function exactPaths(goal = {}) {
+  return [...(goal.allowedFiles || []), ...(goal.forbiddenFiles || []), ...(goal.truthOwnerRefs || []).map((ref) => ref.path || '')].map(normalizedPath);
 }
 
 function includesAny(text, words) {
@@ -66,9 +96,11 @@ function includesAny(text, words) {
 
 function candidateClasses(goal = {}) {
   const text = textOf(goal);
+  const narrativeText = narrativeTextOf(goal);
   const paths = pathText(goal);
+  const exact = exactPaths(goal);
   const candidates = new Set();
-  if (includesAny(text + paths, ['final decision', 'authority', 'receipt', 'merge executor', 'protected ratifier', 'activeharnessversion', 'activeselftestsuite'])) candidates.add('authority_change');
+  if (exact.some((item) => V129_AUTHORITY_SENSITIVE_PATHS.includes(item)) || includesAny(narrativeText, ['final decision', 'authority', 'receipt', 'merge executor', 'protected ratifier', 'activeharnessversion', 'activeselftestsuite'])) candidates.add('authority_change');
   if (includesAny(text + paths, ['wallet', 'rpc', 'secret', 'deploy', 'release', 'restricted asset'])) candidates.add('restricted_asset');
   if (includesAny(text + paths, ['runtime', 'production readiness', 'mainnet', 'testnet', 'staging'])) candidates.add('runtime_sensitive');
   if (includesAny(text + paths, ['vulnerability', 'exploit', 'cve', 'attack path', 'security remediation', 'patch vulnerable'])) candidates.add('security_remediation');
