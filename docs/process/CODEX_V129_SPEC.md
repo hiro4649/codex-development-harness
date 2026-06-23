@@ -1,20 +1,41 @@
-# CODEX_QUALITY_HARNESS_FILE v1.2.8
+# CODEX_QUALITY_HARNESS_FILE v1.2.9
 
 # HARNESS v1.2.9: Goal-Contracted Capability Router
 
-v1.2.9 is a Source shadow candidate. It does not activate Source v1.2.9, does not roll out to targets, and does not change v1.2.8 active authority.
+v1.2.9 is the active Source harness. It activates Goal Contract, deterministic task classification, capability routing, receipt binding, and independent verifier contracts as load-bearing Source checks. It does not roll out to targets and does not change Final Decision authority.
 
 ## Authority
 
-- activeHarnessVersion remains `1.2.8`.
-- activeSelfTestSuite remains `v128`.
+- activeHarnessVersion is `1.2.9`.
+- activeSelfTestSuite is `v129`.
 - candidateHarnessVersion is `1.2.9`.
 - candidateSelfTestSuite is `v129`.
-- candidateActivationState is `source_shadow_candidate`.
-- sourceActivation is `forbidden`.
-- targetRollout is `forbidden`.
+- candidateActivationState is `active`.
+- sourceActivation is `active`.
+- targetRollout is `not_started`.
 - finalAuthority remains `v1.1.8_final_decision_kernel`.
 - Final Decision, Decision Capsule, Evidence Capsule, and v1.2.8 safe summary schemas are not replaced.
+- v1.2.8 remains blocking compatibility rollback authority.
+- v1.2.9 is blocking current active authority.
+
+## Real-Host Qualification
+
+Source activation is bound to a safe receipt generated outside the repository:
+
+- status: `pass`
+- qualifiedSourceMainSha: `1b48b20fb911d34141953adc8e8886d3775340be`
+- receiptDigest: `sha256:d42c41eb94ed1c4a14e2f4050b1efbaf6464734e97d70b4e568dee276bfa40b4`
+- workerModelInvocationObserved: `true`
+- verifierModelInvocationObserved: `true`
+- workerVerifierDistinctThreads: `true`
+- tokenBudgetStatus: `pass`
+- pluginSelectionState: `unavailable`
+- pluginInvocationObserved: `false`
+- pluginQualification: `unavailable_nonblocking`
+- authorityCreated: `false`
+- safeSummaryOnly: `true`
+
+The repository records only safe metadata and digests. It must not store raw prompt, raw output, credential material, full environment, full logs, local receipt paths, absolute adapter paths, or model IDs as authority.
 
 ## Goal Contract
 

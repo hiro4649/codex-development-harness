@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.8",
-  "harnessVersion": "1.2.8",
-  "sourceHarnessVersion": "1.2.8",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.9",
+  "harnessVersion": "1.2.9",
+  "sourceHarnessVersion": "1.2.9",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.2.8",
+  "schemaVersion": "1.2.9",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -1050,9 +1050,9 @@
     "codex-v126-self-test.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.2.8",
-  "activeSelfTestSuite": "v128",
-  "activeSelfTestStatusKey": "v128SelfTestStatus",
+  "activeHarnessVersion": "1.2.9",
+  "activeSelfTestSuite": "v129",
+  "activeSelfTestStatusKey": "v129SelfTestStatus",
   "legacySelfTestSuites": {
     "v126": "blocking_compatibility",
     "v125": "blocking_compatibility",
@@ -1471,7 +1471,7 @@
   ],
   "targetHarnessVersion": "1.2.7",
   "evidenceSchemaVersion": 6,
-  "theme": "Deterministic Decision Projection and Token-Minimal Loop Closure",
+  "theme": "Goal-Contracted Capability Router",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",
@@ -1999,14 +1999,45 @@
   "v129SourceShadowCandidate": {
     "version": "1.2.9",
     "name": "Goal-Contracted Capability Router",
-    "activationState": "source_shadow_candidate",
-    "sourceActivation": "forbidden",
-    "targetRollout": "forbidden",
+    "activationState": "active",
+    "sourceActivation": "active",
+    "targetRollout": "not_started",
     "newP0Artifact": false,
     "newTopLevelStatus": false,
     "finalAuthority": "v1.1.8_final_decision_kernel",
-    "runtimeStage": "capability_dispatch_runtime_candidate",
+    "runtimeStage": "active_capability_dispatch_runtime",
     "shadowIntegration": "goal_completion_and_verifier_shadow_runtime",
-    "shadowWorkflow": ".github/workflows/v129-shadow-gate.yml"
+    "shadowWorkflow": ".github/workflows/v129-shadow-gate.yml",
+    "activationReady": true,
+    "realHostQualification": {
+      "status": "pass",
+      "qualifiedSourceMainSha": "1b48b20fb911d34141953adc8e8886d3775340be",
+      "receiptDigest": "sha256:d42c41eb94ed1c4a14e2f4050b1efbaf6464734e97d70b4e568dee276bfa40b4",
+      "workerModelInvocationObserved": true,
+      "verifierModelInvocationObserved": true,
+      "workerVerifierDistinctThreads": true,
+      "tokenBudgetStatus": "pass",
+      "pluginSelectionState": "unavailable",
+      "pluginInvocationObserved": false,
+      "pluginQualification": "unavailable_nonblocking",
+      "authorityCreated": false,
+      "safeSummaryOnly": true,
+      "codexCliVersion": "0.142.0",
+      "appServerSchemaDigest": "sha256:959827632e66fda6d7d7bfe80d382cf9ea2afcfe8b6aac2d3b345d7875c70bf8",
+      "hostAdapterDigest": "sha256:1fd5ac42071fe7373f5f3c07439c5cd3b9901f89347444edb9826360a938a189",
+      "runtimeRegistryDigest": "sha256:b563d3cf6fe049b20cde125b8db0c74fc7891bccd06773162231a6f51d06e8e4"
+    }
+  },
+  "currentVersion": "1.2.9",
+  "previousVersion": "1.2.8",
+  "candidateHarnessVersion": "1.2.9",
+  "candidateSelfTestSuite": "v129",
+  "candidateSelfTestStatusKey": "v129SelfTestStatus",
+  "candidateActivationState": "active",
+  "sourceActivation": "active",
+  "finalAuthority": "v1.1.8_final_decision_kernel",
+  "versionAuthority": {
+    "v128": "blocking_compatibility_rollback",
+    "v129": "blocking_current_active_authority"
   }
 }

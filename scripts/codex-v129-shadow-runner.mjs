@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.8
+// CODEX_QUALITY_HARNESS_FILE v1.2.9
 
 import { canonicalJson, computeGoalDigest, sha256 } from './codex-v129-goal-contract.mjs';
 import fs from 'node:fs';
