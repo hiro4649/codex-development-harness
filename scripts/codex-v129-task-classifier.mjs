@@ -175,6 +175,8 @@ export function classifyGoalTask(goal = {}, options = {}) {
   const pluginEligibility = ['security_scan', 'security_remediation'].includes(taskClass) ? ['security'] : [];
   const classificationPayload = {
     goalDigest: goal.goalDigest || null,
+    repositoryId: goal.binding?.repositoryId || null,
+    candidateHeadSha: goal.candidateHeadSha || goal.binding?.baseSha || null,
     taskClass,
     difficulty,
     riskFlags,
@@ -185,6 +187,8 @@ export function classifyGoalTask(goal = {}, options = {}) {
     schemaVersion: '1.2.9',
     candidateHarnessVersion: '1.2.9',
     goalDigest: goal.goalDigest || null,
+    repositoryId: goal.binding?.repositoryId || null,
+    candidateHeadSha: goal.candidateHeadSha || goal.binding?.baseSha || null,
     taskClass,
     difficulty,
     riskFlags,

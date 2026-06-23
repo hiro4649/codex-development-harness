@@ -5,22 +5,46 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCapabilityRegistry } from './codex-v129-capability-router.mjs';
+import {
+  canonicalJson,
+  parseJsonRejectDuplicateKeys,
+  sha256,
+} from './codex-v129-goal-contract.mjs';
 
 function loadTrustedAuthorityEvidence(env = process.env) {
   if (!env.CODEX_V129_TRUSTED_AUTHORITY_EVIDENCE_JSON) return { status: 'fail', reasonCodes: ['trusted_authority_evidence_missing'] };
+  if (!env.CODEX_V129_TRUSTED_AUTHORITY_EVIDENCE_DIGEST) return { status: 'fail', reasonCodes: ['trusted_authority_evidence_digest_missing'] };
   try {
-    const evidence = JSON.parse(env.CODEX_V129_TRUSTED_AUTHORITY_EVIDENCE_JSON);
+    const evidence = parseJsonRejectDuplicateKeys(env.CODEX_V129_TRUSTED_AUTHORITY_EVIDENCE_JSON);
+    const digest = `sha256:${sha256(canonicalJson(evidence))}`;
+    if (digest !== env.CODEX_V129_TRUSTED_AUTHORITY_EVIDENCE_DIGEST) {
+      return { status: 'fail', reasonCodes: ['trusted_authority_evidence_digest_mismatch'], evidenceDigest: digest };
+    }
+    const allowed = new Set(['schemaVersion', 'repositoryId', 'goalDigest', 'candidateHeadSha', 'authorizedTaskClass', 'expiry', 'authorityEpoch']);
+    const unknown = Object.keys(evidence).filter((key) => !allowed.has(key));
+    if (unknown.length) return { status: 'fail', reasonCodes: unknown.map((key) => `trusted_authority_unknown_field_${key}`), evidenceDigest: digest };
+    if (evidence.schemaVersion !== '1.2.9') return { status: 'fail', reasonCodes: ['trusted_authority_schema_invalid'], evidenceDigest: digest };
+    if (!Number.isInteger(evidence.repositoryId) || evidence.repositoryId < 1) return { status: 'fail', reasonCodes: ['trusted_authority_repository_id_invalid'], evidenceDigest: digest };
+    if (!/^sha256:[a-f0-9]{64}$/.test(String(evidence.goalDigest || ''))) return { status: 'fail', reasonCodes: ['trusted_authority_goal_digest_invalid'], evidenceDigest: digest };
+    if (!/^[a-f0-9]{40}$/.test(String(evidence.candidateHeadSha || ''))) return { status: 'fail', reasonCodes: ['trusted_authority_candidate_head_invalid'], evidenceDigest: digest };
+    if (typeof evidence.authorizedTaskClass !== 'string') return { status: 'fail', reasonCodes: ['trusted_authority_task_class_invalid'], evidenceDigest: digest };
+    if (!Number.isInteger(evidence.authorityEpoch) || evidence.authorityEpoch < 1) return { status: 'fail', reasonCodes: ['trusted_authority_epoch_invalid'], evidenceDigest: digest };
+    const expiryMs = Date.parse(evidence.expiry || '');
+    if (!Number.isFinite(expiryMs) || expiryMs <= Date.now()) return { status: 'fail', reasonCodes: ['trusted_authority_expired'], evidenceDigest: digest };
     return { status: 'pass', evidence, reasonCodes: [] };
-  } catch {
-    return { status: 'fail', reasonCodes: ['trusted_authority_evidence_malformed'] };
+  } catch (error) {
+    return { status: 'fail', reasonCodes: ['trusted_authority_evidence_malformed', String(error.message || error)] };
   }
 }
 
-function defensiveScopeAuthorized(goalDigest, env = process.env) {
+function defensiveScopeAuthorized(classification, env = process.env) {
   const loaded = loadTrustedAuthorityEvidence(env);
   if (loaded.status !== 'pass') return loaded;
-  const authorized = Array.isArray(loaded.evidence.authorizedDefensiveGoalDigests)
-    && loaded.evidence.authorizedDefensiveGoalDigests.includes(goalDigest);
+  const evidence = loaded.evidence;
+  const authorized = evidence.repositoryId === classification.repositoryId
+    && evidence.goalDigest === classification.goalDigest
+    && evidence.candidateHeadSha === classification.candidateHeadSha
+    && evidence.authorizedTaskClass === classification.taskClass;
   return {
     status: authorized ? 'pass' : 'fail',
     reasonCodes: authorized ? [] : ['plugin_defensive_scope_missing'],
@@ -72,7 +96,7 @@ export function selectPlugins(classification = {}, routeDecision = {}, env = pro
       continue;
     }
     if (plugin.requiresDefensiveScope) {
-      const scope = defensiveScopeAuthorized(classification.goalDigest, env);
+      const scope = defensiveScopeAuthorized(classification, env);
       if (scope.status !== 'pass') {
         reasonCodes.push(...scope.reasonCodes);
         continue;

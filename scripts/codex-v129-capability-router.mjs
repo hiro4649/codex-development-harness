@@ -8,6 +8,7 @@ import {
   canonicalJson,
   parseJsonRejectDuplicateKeys,
   sha256,
+  V129_TASK_CLASSES,
 } from './codex-v129-goal-contract.mjs';
 
 export function digestRegistry(registry = {}) {
@@ -24,8 +25,15 @@ function duplicateValues(values) {
   return [...duplicates];
 }
 
+function unknownFields(value, allowedFields) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  const allowed = new Set(allowedFields);
+  return Object.keys(value).filter((key) => !allowed.has(key));
+}
+
 export function validateCapabilityRegistry(registry = {}) {
   const reasonCodes = [];
+  for (const field of unknownFields(registry, ['schemaVersion', 'registryId', 'capabilities', 'plugins', 'routes'])) reasonCodes.push(`registry_unknown_field_${field}`);
   if (registry.schemaVersion !== '1.2.9') reasonCodes.push('registry_schema_invalid');
   if (!Array.isArray(registry.capabilities)) reasonCodes.push('registry_capabilities_missing');
   if (!Array.isArray(registry.plugins)) reasonCodes.push('registry_plugins_missing');
@@ -39,6 +47,7 @@ export function validateCapabilityRegistry(registry = {}) {
   const capabilitySet = new Set(capabilityClasses);
   const pluginSet = new Set(pluginIds);
   for (const capability of capabilities) {
+    for (const field of unknownFields(capability, ['capabilityClass', 'resolvedModelRef', 'maxOutputBytes', 'availabilityState', 'authorizationState', 'costClass', 'fallbackChain'])) reasonCodes.push(`capability_unknown_field_${field}`);
     if (!capability.capabilityClass || typeof capability.capabilityClass !== 'string') reasonCodes.push('capability_class_missing');
     if (!capability.resolvedModelRef || typeof capability.resolvedModelRef !== 'string') reasonCodes.push('resolved_model_ref_missing');
     if (capability.resolvedModelId) reasonCodes.push('core_model_id_forbidden');
@@ -51,16 +60,22 @@ export function validateCapabilityRegistry(registry = {}) {
     }
   }
   for (const plugin of plugins) {
+    for (const field of unknownFields(plugin, ['pluginId', 'authorizedTaskClasses', 'requiresDefensiveScope', 'availabilityState', 'authorizationState'])) reasonCodes.push(`plugin_unknown_field_${field}`);
     if (!plugin.pluginId || typeof plugin.pluginId !== 'string') reasonCodes.push('plugin_id_missing');
     if (!Array.isArray(plugin.authorizedTaskClasses)) reasonCodes.push('plugin_authorized_tasks_invalid');
+    for (const taskClass of plugin.authorizedTaskClasses || []) {
+      if (!V129_TASK_CLASSES.includes(taskClass)) reasonCodes.push('unknown_plugin_task_class');
+    }
     if (!['available', 'unavailable'].includes(plugin.availabilityState)) reasonCodes.push('plugin_availability_state_invalid');
     if (!['authorized', 'unauthorized'].includes(plugin.authorizationState)) reasonCodes.push('plugin_authorization_state_invalid');
   }
   for (const [taskClass, route] of Object.entries(registry.routes || {})) {
+    if (!V129_TASK_CLASSES.includes(taskClass)) reasonCodes.push('unknown_task_route');
     if (!route || typeof route !== 'object' || Array.isArray(route)) {
       reasonCodes.push('route_invalid');
       continue;
     }
+    for (const field of unknownFields(route, ['requiredCapabilityClasses', 'fallbackChain', 'pluginDefault', 'eligiblePlugins'])) reasonCodes.push(`route_unknown_field_${field}`);
     if (!Array.isArray(route.requiredCapabilityClasses)) reasonCodes.push('route_required_capabilities_invalid');
     for (const capabilityClass of route.requiredCapabilityClasses || []) {
       if (!capabilitySet.has(capabilityClass)) reasonCodes.push('unknown_capability');
@@ -73,7 +88,6 @@ export function validateCapabilityRegistry(registry = {}) {
     for (const pluginId of route.eligiblePlugins || []) {
       if (!pluginSet.has(pluginId)) reasonCodes.push('unknown_plugin');
     }
-    if (!taskClass) reasonCodes.push('unknown_task_route');
   }
   return { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes };
 }

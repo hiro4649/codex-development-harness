@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { canonicalJson, sha256 } from './codex-v129-goal-contract.mjs';
+import { canonicalJson, parseJsonRejectDuplicateKeys, sha256 } from './codex-v129-goal-contract.mjs';
 
 const RECEIPT_FIELDS = new Set([
   'schemaVersion',
@@ -28,11 +28,16 @@ const RECEIPT_FIELDS = new Set([
   'pluginResultDigest',
   'workerOutputDigest',
   'inputDigest',
+  'inputBytes',
   'maxOutputBytes',
   'workspaceDigest',
   'fixture',
   'authorityCreated',
 ]);
+
+function digestLike(value) {
+  return /^sha256:[a-f0-9]{64}$/.test(String(value || ''));
+}
 
 export function digestFile(file) {
   return `sha256:${crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')}`;
@@ -64,22 +69,29 @@ export function validateInvocationReceipt(receipt = {}, context = {}) {
     if (!RECEIPT_FIELDS.has(key)) reasonCodes.push(`receipt_unknown_field_${key}`);
   }
   if (receipt.schemaVersion !== '1.2.9') reasonCodes.push('receipt_schema_invalid');
-  for (const key of ['runId', 'goalDigest', 'classificationDigest', 'routeDecisionDigest', 'registryDigest', 'hostAdapterDigest', 'capabilityClass', 'resolvedModelId', 'inputDigest', 'maxOutputBytes', 'workspaceDigest']) {
-    if (!receipt[key]) reasonCodes.push(`receipt_${key}_missing`);
+  for (const key of ['runId', 'goalDigest', 'classificationDigest', 'routeDecisionDigest', 'registryDigest', 'hostAdapterDigest', 'capabilityClass', 'resolvedModelId', 'modelInvocationObserved', 'modelInputBytes', 'modelOutputBytes', 'modelOutputDigest', 'workerOutputDigest', 'inputDigest', 'inputBytes', 'maxOutputBytes', 'workspaceDigest', 'selectedPluginIds', 'pluginRefs', 'pluginInvocationObserved']) {
+    if (!Object.prototype.hasOwnProperty.call(receipt, key)) reasonCodes.push(`receipt_${key}_missing`);
   }
+  if (receipt.modelInvocationObserved !== true) reasonCodes.push('model_invocation_observed_required');
   if (receipt.authorityCreated !== false) reasonCodes.push('authority_created_forbidden');
   if (receipt.modelInvocationObserved === true && !receipt.resolvedModelId) reasonCodes.push('fake_model_invocation');
-  if (receipt.pluginInvocationObserved === true && !receipt.pluginResultDigest) reasonCodes.push('fake_plugin_invocation');
   if ((receipt.selectedPluginIds || []).length > 1) reasonCodes.push('plugin_invocation_count_exceeded');
   if (receipt.fixture === true && context.production === true) reasonCodes.push('fixture_in_production');
+  if (!Number.isInteger(receipt.modelInputBytes) || receipt.modelInputBytes < 0) reasonCodes.push('model_input_bytes_invalid');
+  if (!Number.isInteger(receipt.modelOutputBytes) || receipt.modelOutputBytes < 0) reasonCodes.push('model_output_bytes_invalid');
+  if (Number.isInteger(receipt.modelOutputBytes) && Number.isInteger(receipt.maxOutputBytes) && receipt.modelOutputBytes > receipt.maxOutputBytes) reasonCodes.push('model_output_byte_overflow');
+  if (!digestLike(receipt.modelOutputDigest)) reasonCodes.push('model_output_digest_invalid');
+  if (!digestLike(receipt.workerOutputDigest)) reasonCodes.push('worker_output_digest_invalid');
   const request = context.request || {};
   for (const [receiptKey, requestKey = receiptKey] of [
+    ['runId'],
     ['goalDigest'],
     ['classificationDigest'],
     ['routeDecisionDigest'],
     ['registryDigest'],
     ['capabilityClass'],
     ['inputDigest'],
+    ['inputBytes'],
     ['maxOutputBytes'],
     ['workspaceDigest'],
   ]) {
@@ -87,7 +99,15 @@ export function validateInvocationReceipt(receipt = {}, context = {}) {
   }
   if (context.hostAdapterDigest && receipt.hostAdapterDigest !== context.hostAdapterDigest) reasonCodes.push('receipt_host_adapter_digest_mismatch');
   const expectedPlugins = JSON.stringify(request.pluginRefs || []);
-  if (JSON.stringify(receipt.pluginRefs || receipt.selectedPluginIds || []) !== expectedPlugins) reasonCodes.push('receipt_plugin_refs_mismatch');
+  if (JSON.stringify(receipt.pluginRefs || []) !== expectedPlugins) reasonCodes.push('receipt_plugin_refs_mismatch');
+  if (JSON.stringify(receipt.selectedPluginIds || []) !== expectedPlugins) reasonCodes.push('receipt_selected_plugin_refs_mismatch');
+  if ((request.pluginRefs || []).length > 0) {
+    if (receipt.pluginInvocationObserved !== true) reasonCodes.push('plugin_selected_but_not_invoked');
+    if (!digestLike(receipt.pluginResultDigest)) reasonCodes.push('plugin_result_digest_missing');
+  } else {
+    if (receipt.pluginInvocationObserved !== false) reasonCodes.push('plugin_unselected_observed_invalid');
+    if (receipt.pluginResultDigest !== null) reasonCodes.push('plugin_unselected_result_digest_must_be_null');
+  }
   return {
     status: reasonCodes.length ? 'fail' : 'pass',
     reasonCodes,
@@ -140,7 +160,7 @@ export function dispatchHost(request, env = process.env) {
   }
   let receipt;
   try {
-    receipt = JSON.parse(stdout);
+    receipt = parseJsonRejectDuplicateKeys(stdout);
   } catch {
     return { schemaVersion: '1.2.9', status: 'fail', reasonCodes: ['malformed_receipt'], authorityCreated: false, safeSummaryOnly: true };
   }

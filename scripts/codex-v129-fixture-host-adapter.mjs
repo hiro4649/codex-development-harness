@@ -33,6 +33,7 @@ const receipt = {
   pluginResultDigest: (request.pluginRefs || []).length ? `sha256:${'2'.repeat(64)}` : null,
   workerOutputDigest: `sha256:${sha256(canonicalJson(output))}`,
   inputDigest: request.inputDigest,
+  inputBytes: request.inputBytes,
   maxOutputBytes: request.maxOutputBytes,
   workspaceDigest: request.workspaceDigest,
   fixture: true,
