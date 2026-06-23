@@ -177,6 +177,12 @@ function hasDuplicates(values) {
   return new Set(values).size !== values.length;
 }
 
+function unknownFields(value, allowedFields) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+  const allowed = new Set(allowedFields);
+  return Object.keys(value).filter((key) => !allowed.has(key));
+}
+
 function isSha256Digest(value) {
   return /^sha256:[a-f0-9]{64}$/.test(String(value || ''));
 }
@@ -209,8 +215,36 @@ function validateStringArray(reasonCodes, name, value, { maxItems = V129_CONTRAC
   }
 }
 
-function normalizedPath(value) {
-  return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+export function canonicalRelativePath(value) {
+  if (typeof value !== 'string') return null;
+  if (!value || value.includes('\0')) return null;
+  if (/^[A-Za-z]:[\\/]/.test(value) || value.startsWith('/') || value.startsWith('\\')) return null;
+  const normalized = value.replace(/\\/g, '/').replace(/\/+/g, '/');
+  const parts = [];
+  for (const part of normalized.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') return null;
+    parts.push(part);
+  }
+  if (!parts.length) return null;
+  return parts.join('/');
+}
+
+function pathIdentity(value) {
+  const canonical = canonicalRelativePath(value);
+  return canonical ? canonical.toLowerCase() : null;
+}
+
+function validatePath(reasonCodes, name, value, sink) {
+  validateString(reasonCodes, name, value, V129_CONTRACT_LIMITS.pathBytes);
+  const canonical = canonicalRelativePath(value);
+  if (!canonical) {
+    reasonCodes.push(`${name}_canonical_relative_invalid`);
+    return null;
+  }
+  if (canonical !== value) reasonCodes.push(`${name}_not_canonical_relative`);
+  if (sink) sink.push(pathIdentity(value));
+  return canonical;
 }
 
 export function validateGoalContract(goal = {}) {
@@ -232,11 +266,9 @@ export function validateGoalContract(goal = {}) {
   if (truthOwnerRefs.length > V129_CONTRACT_LIMITS.truthOwnerRefsMax) reasonCodes.push('truth_owner_refs_count_limit_exceeded');
   const truthOwnerPaths = [];
   for (const ref of truthOwnerRefs) {
+    for (const field of unknownFields(ref, ['path', 'digest'])) reasonCodes.push(`truth_owner_unknown_field_${field}`);
     if (!ref || typeof ref.path !== 'string' || !ref.path) reasonCodes.push('truth_owner_path_missing');
-    else {
-      validateString(reasonCodes, 'truth_owner_path', ref.path, V129_CONTRACT_LIMITS.pathBytes);
-      truthOwnerPaths.push(normalizedPath(ref.path));
-    }
+    else validatePath(reasonCodes, 'truth_owner_path', ref.path, truthOwnerPaths);
     if (!isSha256Digest(ref?.digest)) reasonCodes.push('truth_owner_digest_missing');
   }
   if (hasDuplicates(truthOwnerPaths)) reasonCodes.push('truth_owner_path_duplicate');
@@ -248,6 +280,7 @@ export function validateGoalContract(goal = {}) {
   if (hasDuplicates(criteriaIds)) reasonCodes.push('acceptance_criterion_id_duplicate');
   for (let index = 0; index < criteria.length; index += 1) {
     const criterion = criteria[index];
+    for (const field of unknownFields(criterion, ['id', 'description', 'required'])) reasonCodes.push(`acceptance_criterion_unknown_field_${field}`);
     if (!criterion?.id || !/^AC[1-9][0-9]*$/.test(criterion.id) || criterion.id !== `AC${index + 1}` || !criterion?.description || typeof criterion.required !== 'boolean') {
       reasonCodes.push('acceptance_criterion_invalid');
     }
@@ -259,10 +292,15 @@ export function validateGoalContract(goal = {}) {
   validateStringArray(reasonCodes, 'forbidden_files', goal.forbiddenFiles, { maxItems: 96, maxItemBytes: V129_CONTRACT_LIMITS.pathBytes });
   validateStringArray(reasonCodes, 'evidence_plan', goal.evidencePlan, { maxItems: 24 });
   validateStringArray(reasonCodes, 'kill_criteria', goal.killCriteria, { maxItems: 12 });
-  const allowedFiles = new Set(goal.allowedFiles || []);
-  for (const file of goal.forbiddenFiles || []) {
-    if (allowedFiles.has(file)) reasonCodes.push('allowed_forbidden_overlap');
-  }
+  const allowedPathKeys = [];
+  const forbiddenPathKeys = [];
+  for (const file of goal.allowedFiles || []) validatePath(reasonCodes, 'allowed_file_path', file, allowedPathKeys);
+  for (const file of goal.forbiddenFiles || []) validatePath(reasonCodes, 'forbidden_file_path', file, forbiddenPathKeys);
+  if (hasDuplicates(allowedPathKeys)) reasonCodes.push('allowed_file_path_duplicate');
+  if (hasDuplicates(forbiddenPathKeys)) reasonCodes.push('forbidden_file_path_duplicate');
+  const forbiddenPathSet = new Set(forbiddenPathKeys);
+  for (const file of allowedPathKeys) if (forbiddenPathSet.has(file)) reasonCodes.push('allowed_forbidden_overlap');
+  for (const field of unknownFields(goal.repairBudget, ['maxRepairIterations', 'sameBlockerMax'])) reasonCodes.push(`repair_budget_unknown_field_${field}`);
   if (!goal.repairBudget || !Number.isInteger(goal.repairBudget.maxRepairIterations) || goal.repairBudget.maxRepairIterations < 0 || goal.repairBudget.maxRepairIterations > 1) {
     reasonCodes.push('repair_budget_iterations_invalid');
   }
@@ -270,6 +308,7 @@ export function validateGoalContract(goal = {}) {
     reasonCodes.push('repair_budget_same_blocker_invalid');
   }
   if (!goal.binding || typeof goal.binding !== 'object') reasonCodes.push('binding_missing');
+  for (const field of unknownFields(goal.binding, ['repositoryId', 'baseSha', 'scopeDigest'])) reasonCodes.push(`binding_unknown_field_${field}`);
   if (!Number.isInteger(goal.binding?.repositoryId) || goal.binding.repositoryId < 1) reasonCodes.push('binding_repository_id_invalid');
   if (!isFullSha(goal.binding?.baseSha)) reasonCodes.push('binding_base_sha_invalid');
   if (!isSha256Digest(goal.binding?.scopeDigest)) reasonCodes.push('binding_scope_digest_invalid');

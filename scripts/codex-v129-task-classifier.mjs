@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
 import {
+  canonicalRelativePath,
   canonicalJson,
   parseJsonRejectDuplicateKeys,
   sha256,
@@ -45,12 +46,32 @@ const ROUTES = {
 export const V129_AUTHORITY_SENSITIVE_PATHS = Object.freeze([
   'CODEX_SOURCE_HARNESS_MANIFEST.json',
   'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
-  'docs/process/CODEX_V128_SPEC.md',
   'scripts/codex-final-decision-kernel.mjs',
   'scripts/codex-local-quality-gate.mjs',
-  'scripts/codex-source-ratifier.mjs',
-  '.github/workflows/quality-gate.yml',
+  'scripts/codex-v129-capability-router.mjs',
+  'scripts/codex-v129-plugin-broker.mjs',
+  'scripts/codex-v129-host-dispatch.mjs',
+  'scripts/codex-v129-independent-verifier.mjs',
+  'scripts/codex-v129-goal-finalizer.mjs',
 ].map((item) => item.toLowerCase()));
+
+export const V129_AUTHORITY_SENSITIVE_PREFIXES = Object.freeze([
+  'docs/process/codex_v128_',
+  'docs/process/codex_v129_',
+  '.github/workflows/',
+].map((item) => item.toLowerCase()));
+
+export const V129_AUTHORITY_SENSITIVE_TERMS = Object.freeze([
+  'merge authority',
+  'owner authority',
+  'protected policy',
+  'protected ratifier',
+  'protected executor',
+  'authority epoch',
+  'final decision authority',
+  'activeharnessversion',
+  'activeselftestsuite',
+]);
 
 function textOf(goal = {}) {
   return [
@@ -79,19 +100,25 @@ function narrativeTextOf(goal = {}) {
 }
 
 function pathText(goal = {}) {
-  return [...(goal.allowedFiles || []), ...(goal.forbiddenFiles || []), ...(goal.truthOwnerRefs || []).map((ref) => ref.path || '')].join('\n').toLowerCase();
+  return [...(goal.allowedFiles || []), ...(goal.forbiddenFiles || [])].join('\n').toLowerCase();
 }
 
 function normalizedPath(value) {
-  return String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+  const canonical = canonicalRelativePath(value);
+  return canonical ? canonical.toLowerCase() : String(value || '').replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
 }
 
 function exactPaths(goal = {}) {
-  return [...(goal.allowedFiles || []), ...(goal.forbiddenFiles || []), ...(goal.truthOwnerRefs || []).map((ref) => ref.path || '')].map(normalizedPath);
+  return [...(goal.allowedFiles || []), ...(goal.forbiddenFiles || [])].map(normalizedPath);
 }
 
 function includesAny(text, words) {
   return words.some((word) => text.includes(word));
+}
+
+function authorityPath(pathName) {
+  return V129_AUTHORITY_SENSITIVE_PATHS.includes(pathName)
+    || V129_AUTHORITY_SENSITIVE_PREFIXES.some((prefix) => pathName.startsWith(prefix));
 }
 
 function candidateClasses(goal = {}) {
@@ -100,7 +127,7 @@ function candidateClasses(goal = {}) {
   const paths = pathText(goal);
   const exact = exactPaths(goal);
   const candidates = new Set();
-  if (exact.some((item) => V129_AUTHORITY_SENSITIVE_PATHS.includes(item)) || includesAny(narrativeText, ['final decision', 'authority', 'receipt', 'merge executor', 'protected ratifier', 'activeharnessversion', 'activeselftestsuite'])) candidates.add('authority_change');
+  if (exact.some(authorityPath) || includesAny(narrativeText, V129_AUTHORITY_SENSITIVE_TERMS)) candidates.add('authority_change');
   if (includesAny(text + paths, ['wallet', 'rpc', 'secret', 'deploy', 'release', 'restricted asset'])) candidates.add('restricted_asset');
   if (includesAny(text + paths, ['runtime', 'production readiness', 'mainnet', 'testnet', 'staging'])) candidates.add('runtime_sensitive');
   if (includesAny(text + paths, ['vulnerability', 'exploit', 'cve', 'attack path', 'security remediation', 'patch vulnerable'])) candidates.add('security_remediation');

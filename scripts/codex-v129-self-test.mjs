@@ -83,6 +83,29 @@ function contractTests() {
       const goal = baseGoal({ forbiddenFiles: ['docs/process/CODEX_V129_SPEC.md'] });
       return failed(compileGoalContract(asText(goal)));
     }),
+    test('v129_normalized_path_overlap_fails', () => {
+      const goal = baseGoal({
+        allowedFiles: ['docs/process/CODEX_V129_SPEC.md'],
+        forbiddenFiles: ['docs\\process\\CODEX_V129_SPEC.md'],
+      });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_absolute_path_fails', () => {
+      const goal = baseGoal({ allowedFiles: ['C:/Users/konto/Documents/Codex/HAENESS/HARNESS/scripts/codex-v129-goal-contract.mjs'] });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_parent_traversal_path_fails', () => {
+      const goal = baseGoal({ allowedFiles: ['docs/process/../CODEX_V129_SPEC.md'] });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_empty_path_fails', () => {
+      const goal = baseGoal({ allowedFiles: [''] });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_nul_path_fails', () => {
+      const goal = baseGoal({ allowedFiles: ['docs/process/CODEX_V129_SPEC.md\u0000'] });
+      return failed(compileGoalContract(asText(goal)));
+    }),
     test('v129_acceptance_id_duplicate_fails', () => {
       const goal = baseGoal({ acceptanceCriteria: [
         { id: 'AC1', description: 'one', required: true },
@@ -113,6 +136,10 @@ function contractTests() {
       ] });
       return failed(compileGoalContract(asText(goal)));
     }),
+    test('v129_truth_owner_unknown_field_fails', () => {
+      const goal = baseGoal({ truthOwnerRefs: [{ path: 'docs/process/CODEX_V129_SPEC.md', digest: 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', extra: true }] });
+      return failed(compileGoalContract(asText(goal)));
+    }),
     test('v129_truth_owner_digest_missing_fails', () => {
       const goal = baseGoal({ truthOwnerRefs: [{ path: 'docs/process/CODEX_V129_SPEC.md' }] });
       return failed(compileGoalContract(asText(goal)));
@@ -124,6 +151,18 @@ function contractTests() {
       ] });
       return failed(compileGoalContract(asText(goal)));
     }),
+    test('v129_acceptance_unknown_field_fails', () => {
+      const goal = baseGoal({ acceptanceCriteria: [{ id: 'AC1', description: 'one', required: true, extra: true }] });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_repair_budget_unknown_field_fails', () => {
+      const goal = baseGoal({ repairBudget: { maxRepairIterations: 1, sameBlockerMax: 1, extra: true } });
+      return failed(compileGoalContract(asText(goal)));
+    }),
+    test('v129_binding_unknown_field_fails', () => {
+      const goal = baseGoal({ binding: { ...baseGoal().binding, extra: true } });
+      return failed(compileGoalContract(asText(goal)));
+    }),
     test('v129_array_count_limit_fails', () => {
       const goal = baseGoal({ constraints: Array.from({ length: 25 }, (_, index) => `constraint ${index}`) });
       return failed(compileGoalContract(asText(goal)));
@@ -133,6 +172,16 @@ function contractTests() {
       return failed(compileGoalContract(asText(goal)));
     }),
     test('v129_authority_file_classifies_authority_change', () => classifyGoalTask(baseGoal({ allowedFiles: ['scripts/codex-final-decision-kernel.mjs'] })).taskClass === 'authority_change'),
+    test('v129_authority_prefix_classifies_authority_change', () => classifyGoalTask(baseGoal({ allowedFiles: ['docs/process/CODEX_V129_CAPABILITY_POLICY.json'] })).taskClass === 'authority_change'),
+    test('v129_receipt_word_alone_does_not_classify_authority', () => classifyGoalTask(baseGoal({
+      allowedFiles: ['README.md'],
+      forbiddenFiles: ['docs/private.md'],
+      desiredEndState: 'Document receipt formatting for a routine note.',
+      constraints: ['receipt word only'],
+      nonGoals: ['No release work.'],
+      evidencePlan: ['read README'],
+      killCriteria: ['stop once'],
+    })).taskClass !== 'authority_change'),
     test('v129_authority_like_filename_not_exact_path_does_not_classify_authority', () => classifyGoalTask(baseGoal({
       allowedFiles: ['docs/process/final-decision-kernel-not-authority.md'],
       forbiddenFiles: ['README.md'],
