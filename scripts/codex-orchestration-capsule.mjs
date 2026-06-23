@@ -1797,6 +1797,7 @@ export function buildOrchestrationCapsule(input = {}) {
     activeHarnessVersion: input.activeHarnessVersion || '1.2.8',
     candidateHarnessVersion: input.candidateHarnessVersion || '1.2.8',
     candidateActivationState: input.candidateActivationState || 'active',
+    v129ShadowPointer: input.v129ShadowPointer || null,
     finalAuthority: 'v1.1.8_final_decision_kernel',
     orchestrationMode: input.orchestrationMode || 'single_repo_task',
     stateDelta: input.stateDelta === true,

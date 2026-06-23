@@ -1,18 +1,28 @@
 #!/usr/bin/env node
-// CODEX_QUALITY_HARNESS_FILE v1.2.9
+// CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import { canonicalJson, computeGoalDigest, sha256 } from './codex-v129-goal-contract.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { classifyGoalTask } from './codex-v129-task-classifier.mjs';
 import { defaultTestRegistry, digestRegistry, routeCapability } from './codex-v129-capability-router.mjs';
 import { selectPlugins } from './codex-v129-plugin-broker.mjs';
 import { buildDispatchRequest, digestFile, dispatchHost } from './codex-v129-host-dispatch.mjs';
-import { verifyV129IndependentReview } from './codex-v129-independent-verifier.mjs';
+import { computeWorkspaceTreeDigest } from './codex-v129-independent-verifier.mjs';
 import { buildGoalCompletionProof } from './codex-v129-goal-finalizer.mjs';
 
 function digest(value) {
   return `sha256:${sha256(canonicalJson(value))}`;
+}
+
+function makeShadowWorkspace(prefix, candidateHeadSha, extraFileName) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  fs.writeFileSync(path.join(root, 'CANDIDATE_HEAD'), `${candidateHeadSha}\n`);
+  fs.writeFileSync(path.join(root, extraFileName), `${prefix}:${candidateHeadSha}\n`);
+  return root;
 }
 
 function fixtureGoal() {
@@ -31,7 +41,7 @@ function fixtureGoal() {
     killCriteria: ['stop once'],
     repairBudget: { maxRepairIterations: 1, sameBlockerMax: 1 },
     binding: {
-      repositoryId: 'hiro4649/codex-development-harness',
+      repositoryId: 1243452288,
       baseSha: '8e74e8d4843dea7ca41bfc50d2e66ad9079fc87d',
       scopeDigest: `sha256:${'b'.repeat(64)}`,
     },
@@ -68,10 +78,13 @@ export function runV129ShadowFixture(env = process.env) {
     goalDigest: goal.goalDigest,
     classificationDigest: classification.classificationDigest,
     routeDecisionDigest: routeDecision.routeDecisionDigest,
+    registryDigest: routeDecision.registryDigest,
     capabilityClass: routeDecision.capabilityClass,
     resolvedModelRef: routeDecision.resolvedModelRef,
     pluginRefs: pluginDecision.selectedPluginIds,
     safeInput: { goalDigest: goal.goalDigest, classificationDigest: classification.classificationDigest },
+    maxOutputBytes: routeDecision.maxOutputBytes,
+    timeoutMs: 5000,
     workspaceDigest: `sha256:${'c'.repeat(64)}`,
   });
   const dispatch = dispatchHost(dispatchRequest, {
@@ -81,12 +94,30 @@ export function runV129ShadowFixture(env = process.env) {
     CODEX_V129_TRUSTED_HOST_ADAPTER_DIGEST: adapterDigest,
   });
   const workerReceiptDigest = digest(dispatch.invocationReceipt || {});
-  const verifierReceipt = {
+  const evidence = {
+    schemaVersion: '1.2.9',
+    goalDigest: goal.goalDigest,
+    routeDecisionDigest: routeDecision.routeDecisionDigest,
+    invocationReceiptDigest: workerReceiptDigest,
+  };
+  const evidenceDigest = digest(evidence);
+  const workerWorkspacePath = makeShadowWorkspace('v129-worker-', goal.binding.baseSha, 'worker-proof.json');
+  const verifierWorkspacePath = makeShadowWorkspace('v129-verifier-', goal.binding.baseSha, 'verifier-proof.json');
+  const verifierInput = {
     schemaVersion: '1.2.9',
     workerId: 'worker-a',
     verifierId: 'verifier-b',
-    workerWorkspaceDigest: `sha256:${'d'.repeat(64)}`,
-    verifierWorkspaceDigest: `sha256:${'e'.repeat(64)}`,
+    workerWorkspacePath,
+    verifierWorkspacePath,
+    workerWorkspaceDigest: computeWorkspaceTreeDigest(workerWorkspacePath),
+    verifierWorkspaceDigest: computeWorkspaceTreeDigest(verifierWorkspacePath),
+    candidateHeadSha: goal.binding.baseSha,
+    goalDigest: goal.goalDigest,
+    goalContract: goal,
+    workerReceipt: dispatch.invocationReceipt || {},
+    workerReceiptDigest,
+    evidence,
+    evidenceDigest,
     worker: {
       goalDigest: goal.goalDigest,
       candidateHeadSha: goal.binding.baseSha,
@@ -102,22 +133,35 @@ export function runV129ShadowFixture(env = process.env) {
     criteriaResults: [{ id: 'AC1', required: true, status: 'pass', evidenceDigest: workerReceiptDigest }],
     verifierMergeAuthority: false,
   };
-  const verifier = verifyV129IndependentReview(verifierReceipt);
-  const verifierReceiptDigest = digest(verifierReceipt);
+  const verifierStdout = execFileSync(process.execPath, [fileURLToPath(new URL('./codex-v129-independent-verifier.mjs', import.meta.url))], {
+    input: canonicalJson(verifierInput),
+    encoding: 'utf8',
+    timeout: 5000,
+    maxBuffer: 8192,
+    env: { CODEX_QUALITY_REPORT: 'json' },
+  });
+  const verifier = JSON.parse(verifierStdout);
+  const verifierReceiptDigest = digest(verifier);
+  const truthOwnerDigest = digest(goal.truthOwnerRefs);
   const finalizer = buildGoalCompletionProof({
+    goalContract: goal,
     goalDigest: goal.goalDigest,
     candidateHeadSha: goal.binding.baseSha,
     baseSha: goal.binding.baseSha,
     scopeDigest: goal.binding.scopeDigest,
-    truthOwnerDigestMatch: true,
+    truthOwnerDigest,
     routeDecisionDigest: routeDecision.routeDecisionDigest,
+    workerReceipt: dispatch.invocationReceipt || {},
     workerReceiptDigest,
+    verifierReceipt: verifier,
     verifierReceiptDigest,
-    criteriaResults: verifierReceipt.criteriaResults,
+    evidence,
+    evidenceDigest,
+    criteriaResults: verifierInput.criteriaResults,
+    headBindings: [goal.binding.baseSha, goal.binding.baseSha, goal.binding.baseSha],
     repairIterationCount: 0,
     sameBlockerCount: 0,
-    tokenBudgetStatus: { status: 'pass' },
-    sameHead: true,
+    tokenBudget: { usedBytes: Buffer.byteLength(canonicalJson(verifier), 'utf8'), maxBytes: 4096 },
   });
   const statuses = [classification, routeDecision, pluginDecision, dispatch, verifier, finalizer];
   const reasonCodes = statuses.flatMap((item) => item.reasonCodes || []);
@@ -140,7 +184,7 @@ export function runV129ShadowFixture(env = process.env) {
       safeNextAction: finalizer.goalCompletionProof.safeNextAction,
       authorityCreated: false,
     },
-    tokenBudgetStatus: { status: Buffer.byteLength(canonicalJson(finalizer.goalCompletionProof), 'utf8') <= 1200 ? 'pass' : 'fail' },
+    tokenBudgetStatus: { status: Buffer.byteLength(canonicalJson(finalizer.goalCompletionProof), 'utf8') <= 4096 ? 'pass' : 'fail' },
     activeOutputChanged: false,
     authorityCreated: false,
     status: reasonCodes.length ? 'fail' : 'pass',

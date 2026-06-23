@@ -1,4 +1,4 @@
-# CODEX_QUALITY_HARNESS_FILE v1.2.9
+# CODEX_QUALITY_HARNESS_FILE v1.2.8
 name: v129-shadow-gate
 
 on:
@@ -34,6 +34,11 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - run: node scripts/codex-v129-self-test.mjs --stage=verifier
+  v129-negative:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - run: node scripts/codex-v129-self-test.mjs --stage=negative
   v128-compatibility:
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +46,7 @@ jobs:
       - run: node scripts/codex-v128-self-test.mjs
   v129-shadow-aggregate:
     runs-on: ubuntu-latest
-    needs: [v129-contract, v129-routing, v129-verifier, v128-compatibility]
+    needs: [v129-contract, v129-routing, v129-verifier, v129-negative, v128-compatibility]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
       - run: CODEX_V129_TEST_MODE=1 CODEX_V129_SHADOW=1 node scripts/codex-v129-shadow-runner.mjs --fixture > v129-shadow-safe-summary.json

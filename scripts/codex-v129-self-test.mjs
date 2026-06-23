@@ -2,6 +2,11 @@
 // CODEX_QUALITY_HARNESS_FILE v1.2.8
 
 import { writeJsonReport, exitFor } from './codex-v080-lib.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import {
   canonicalJson,
   compileGoalContract,
@@ -22,13 +27,16 @@ import {
   dispatchHost,
   validateInvocationReceipt,
 } from './codex-v129-host-dispatch.mjs';
-import { verifyV129IndependentReview } from './codex-v129-independent-verifier.mjs';
+import { computeWorkspaceTreeDigest, verifyV129IndependentReview } from './codex-v129-independent-verifier.mjs';
 import { buildGoalCompletionProof } from './codex-v129-goal-finalizer.mjs';
 import { runV129ShadowFixture } from './codex-v129-shadow-runner.mjs';
 import {
+  buildOrchestrationCapsule,
   buildV129ShadowRoutingMetadata,
   validateV129ShadowRoutingMetadata,
 } from './codex-orchestration-capsule.mjs';
+import { buildWorkerProofCapsule } from './codex-worker-proof-capsule.mjs';
+import { buildOwnerDecisionBrief } from './codex-owner-decision-brief.mjs';
 
 function test(name, fn) {
   try {
@@ -420,6 +428,7 @@ function routingTests() {
 function verifierTests() {
   const goal = baseGoal({
     desiredEndState: 'Complete shadow verifier fixture.',
+    acceptanceCriteria: [{ id: 'AC1', description: 'shadow verifier proof passes', required: true }],
     constraints: ['keep current active authority'],
     nonGoals: ['No merge authority.'],
     allowedFiles: ['scripts/codex-v129-shadow-runner.mjs'],
@@ -431,14 +440,56 @@ function verifierTests() {
   const registry = defaultTestRegistry();
   const route = routeCapability(classification, registryEnv(registry));
   const workerOutputDigest = `sha256:${'5'.repeat(64)}`;
-  const workerReceiptDigest = `sha256:${'6'.repeat(64)}`;
-  const verifierReceiptDigest = `sha256:${'7'.repeat(64)}`;
+  const workerReceipt = {
+    schemaVersion: '1.2.9',
+    runId: 'fixture-worker',
+    goalDigest: goal.goalDigest,
+    classificationDigest: classification.classificationDigest,
+    routeDecisionDigest: route.routeDecisionDigest,
+    registryDigest: route.registryDigest,
+    hostAdapterDigest: `sha256:${'1'.repeat(64)}`,
+    capabilityClass: route.capabilityClass,
+    resolvedModelId: 'registry:model:standard',
+    inputDigest: `sha256:${'2'.repeat(64)}`,
+    maxOutputBytes: route.maxOutputBytes,
+    workspaceDigest: `sha256:${'3'.repeat(64)}`,
+    workerOutputDigest,
+    modelInvocationObserved: true,
+    selectedPluginIds: [],
+    pluginRefs: [],
+    authorityCreated: false,
+  };
+  const evidence = {
+    schemaVersion: '1.2.9',
+    goalDigest: goal.goalDigest,
+    routeDecisionDigest: route.routeDecisionDigest,
+    workerOutputDigest,
+  };
+  const workerReceiptDigest = `sha256:${sha256(canonicalJson(workerReceipt))}`;
+  const evidenceDigest = `sha256:${sha256(canonicalJson(evidence))}`;
   const criterion = { id: 'AC1', required: true, status: 'pass', evidenceDigest: workerReceiptDigest };
+  function makeWorkspace(label) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), `v129-${label}-`));
+    fs.writeFileSync(path.join(root, 'CANDIDATE_HEAD'), `${goal.binding.baseSha}\n`);
+    fs.writeFileSync(path.join(root, `${label}.json`), canonicalJson({ label, goalDigest: goal.goalDigest }));
+    return root;
+  }
+  const workerWorkspacePath = makeWorkspace('worker');
+  const verifierWorkspacePath = makeWorkspace('verifier');
   const reviewInput = {
     workerId: 'worker-a',
     verifierId: 'verifier-b',
-    workerWorkspaceDigest: `sha256:${'8'.repeat(64)}`,
-    verifierWorkspaceDigest: `sha256:${'9'.repeat(64)}`,
+    workerWorkspacePath,
+    verifierWorkspacePath,
+    workerWorkspaceDigest: computeWorkspaceTreeDigest(workerWorkspacePath),
+    verifierWorkspaceDigest: computeWorkspaceTreeDigest(verifierWorkspacePath),
+    candidateHeadSha: goal.binding.baseSha,
+    goalDigest: goal.goalDigest,
+    goalContract: goal,
+    workerReceipt,
+    workerReceiptDigest,
+    evidence,
+    evidenceDigest,
     worker: {
       goalDigest: goal.goalDigest,
       candidateHeadSha: goal.binding.baseSha,
@@ -454,35 +505,77 @@ function verifierTests() {
     criteriaResults: [criterion],
     verifierMergeAuthority: false,
   };
+  const verifierReport = verifyV129IndependentReview(reviewInput);
+  const verifierReceiptDigest = `sha256:${sha256(canonicalJson(verifierReport))}`;
+  const verifierScript = fileURLToPath(new URL('./codex-v129-independent-verifier.mjs', import.meta.url));
   const finalizerInput = {
+    goalContract: goal,
     goalDigest: goal.goalDigest,
     candidateHeadSha: goal.binding.baseSha,
     baseSha: goal.binding.baseSha,
     scopeDigest: goal.binding.scopeDigest,
-    truthOwnerDigestMatch: true,
+    truthOwnerDigest: `sha256:${sha256(canonicalJson(goal.truthOwnerRefs))}`,
+    routeDecisionDigest: route.routeDecisionDigest,
+    workerReceipt,
+    workerReceiptDigest,
+    verifierReceipt: verifierReport,
+    verifierReceiptDigest,
+    evidence,
+    evidenceDigest,
+    criteriaResults: [criterion],
+    headBindings: [goal.binding.baseSha, goal.binding.baseSha, goal.binding.baseSha],
+    repairIterationCount: 0,
+    sameBlockerCount: 0,
+    tokenBudget: { usedBytes: 1000, maxBytes: 4096 },
+  };
+  const v129ShadowPointer = {
+    candidateHarnessVersion: '1.2.9',
+    candidateActivationState: 'source_shadow_candidate',
+    goalDigest: goal.goalDigest,
     routeDecisionDigest: route.routeDecisionDigest,
     workerReceiptDigest,
     verifierReceiptDigest,
-    criteriaResults: [criterion],
-    repairIterationCount: 0,
-    sameBlockerCount: 0,
-    tokenBudgetStatus: { status: 'pass' },
-    sameHead: true,
+    evidenceDigest,
   };
   return [
     test('v129_independent_verifier_passes_distinct_worker_workspace', () => verifyV129IndependentReview(reviewInput).status === 'pass'),
+    test('v129_independent_verifier_runs_in_subprocess', () => {
+      const stdout = execFileSync(process.execPath, [verifierScript], {
+        input: canonicalJson(reviewInput),
+        encoding: 'utf8',
+        timeout: 5000,
+        maxBuffer: 8192,
+        env: { CODEX_QUALITY_REPORT: 'json' },
+      });
+      return JSON.parse(stdout).status === 'pass';
+    }),
     test('v129_same_worker_verifier_fails', () => verifyV129IndependentReview({ ...reviewInput, verifierId: 'worker-a' }).status === 'fail'),
-    test('v129_same_workspace_fails', () => verifyV129IndependentReview({ ...reviewInput, verifierWorkspaceDigest: reviewInput.workerWorkspaceDigest }).status === 'fail'),
-    test('v129_goal_digest_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, verifier: { ...reviewInput.verifier, goalDigest: `sha256:${'a'.repeat(64)}` } }).status === 'fail'),
+    test('v129_same_workspace_fails', () => verifyV129IndependentReview({ ...reviewInput, verifierWorkspacePath: workerWorkspacePath }).status === 'fail'),
+    test('v129_workspace_digest_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, workerWorkspaceDigest: `sha256:${'8'.repeat(64)}` }).status === 'fail'),
+    test('v129_goal_digest_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, goalDigest: `sha256:${'a'.repeat(64)}` }).status === 'fail'),
     test('v129_route_decision_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, verifier: { ...reviewInput.verifier, routeDecisionDigest: `sha256:${'b'.repeat(64)}` } }).status === 'fail'),
+    test('v129_worker_receipt_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, workerReceiptDigest: `sha256:${'c'.repeat(64)}` }).status === 'fail'),
+    test('v129_evidence_digest_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, evidenceDigest: `sha256:${'d'.repeat(64)}` }).status === 'fail'),
     test('v129_required_criterion_missing_fails', () => verifyV129IndependentReview({ ...reviewInput, criteriaResults: [{ id: 'AC1', required: true, status: 'missing' }] }).status === 'fail'),
     test('v129_verifier_merge_authority_fails', () => verifyV129IndependentReview({ ...reviewInput, verifierMergeAuthority: true }).status === 'fail'),
     test('v129_goal_completion_proof_passes', () => buildGoalCompletionProof(finalizerInput).status === 'pass'),
     test('v129_goal_finalizer_does_not_compute_merge_allowed', () => buildGoalCompletionProof(finalizerInput).mergeAllowedComputed === false),
-    test('v129_truth_owner_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, truthOwnerDigestMatch: false }).status === 'fail'),
-    test('v129_token_overflow_blocks', () => buildGoalCompletionProof({ ...finalizerInput, tokenBudgetStatus: { status: 'fail' } }).status === 'fail'),
+    test('v129_acceptance_criteria_id_mismatch_blocks', () => buildGoalCompletionProof({ ...finalizerInput, criteriaResults: [{ ...criterion, id: 'AC2' }] }).status === 'fail'),
+    test('v129_truth_owner_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, truthOwnerDigest: `sha256:${'f'.repeat(64)}` }).status === 'fail'),
+    test('v129_scope_digest_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, scopeDigest: `sha256:${'0'.repeat(64)}` }).status === 'fail'),
+    test('v129_receipt_digest_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, workerReceiptDigest: `sha256:${'1'.repeat(64)}` }).status === 'fail'),
+    test('v129_same_head_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, headBindings: [goal.binding.baseSha, '0'.repeat(40)] }).status === 'fail'),
+    test('v129_token_overflow_blocks', () => buildGoalCompletionProof({ ...finalizerInput, tokenBudget: { usedBytes: 4097, maxBytes: 4096 } }).status === 'fail'),
     test('v129_repair_iteration_two_blocks', () => buildGoalCompletionProof({ ...finalizerInput, repairIterationCount: 2 }).status === 'fail'),
     test('v129_same_blocker_repeat_blocks', () => buildGoalCompletionProof({ ...finalizerInput, sameBlockerCount: 2 }).status === 'fail'),
+    test('v129_cold_capsules_bind_shadow_pointer', () => {
+      const orchestration = buildOrchestrationCapsule({ v129ShadowPointer });
+      const workerProof = buildWorkerProofCapsule({ v129ShadowPointer });
+      const ownerBrief = buildOwnerDecisionBrief({ v129ShadowPointer });
+      return orchestration.v129ShadowPointer?.goalDigest === goal.goalDigest
+        && workerProof.v129ShadowPointer?.routeDecisionDigest === route.routeDecisionDigest
+        && ownerBrief.v129ShadowPointer?.verifierReceiptDigest === verifierReceiptDigest;
+    }),
     test('v129_authority_created_shadow_metadata_fails', () => validateV129ShadowRoutingMetadata({ ...buildV129ShadowRoutingMetadata({ goalDigest: goal.goalDigest, classificationDigest: classification.classificationDigest, routeDecisionDigest: route.routeDecisionDigest, routingState: 'routed' }), authorityCreated: true }).status === 'fail'),
     test('v129_shadow_runner_requires_shadow_env', () => runV129ShadowFixture({}).status === 'blocked'),
     test('v129_shadow_runner_fixture_passes', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1' }).status === 'pass'),
@@ -490,11 +583,25 @@ function verifierTests() {
   ];
 }
 
+function negativeTests() {
+  const registry = defaultTestRegistry();
+  const env = registryEnv(registry);
+  const goal = baseGoal({ desiredEndState: 'Negative v129 shadow checks.', allowedFiles: ['scripts/codex-v129-shadow-runner.mjs'] });
+  const classification = classifyGoalTask(goal);
+  const route = routeCapability(classification, env);
+  return [
+    test('v129_negative_goal_unknown_field', () => failed(compileGoalContract(asText({ ...goal, unexpected: true, goalDigest: computeGoalDigest({ ...goal, unexpected: true }) })))),
+    test('v129_negative_registry_missing_fail_closed', () => routeCapability(classification, {}).status === 'fail'),
+    test('v129_negative_requested_plugin_ignored', () => selectPlugins({ ...classification, requestedPlugins: ['codex-security'] }, route, env).selectedPluginIds.length === 0),
+    test('v129_negative_shadow_without_env_blocked', () => runV129ShadowFixture({ CODEX_V129_TEST_MODE: '1' }).status === 'blocked'),
+  ];
+}
+
 function selectedStages() {
   const arg = process.argv.find((item) => item.startsWith('--stage='));
   if (!arg) return new Set(['contract', 'routing', 'verifier']);
   const stage = arg.split('=')[1];
-  if (stage === 'all') return new Set(['contract', 'routing', 'verifier']);
+  if (stage === 'all') return new Set(['contract', 'routing', 'verifier', 'negative']);
   return new Set(stage.split(',').map((item) => item.trim()).filter(Boolean));
 }
 
@@ -503,6 +610,7 @@ const cases = [
   ...(stages.has('contract') ? contractTests() : []),
   ...(stages.has('routing') ? routingTests() : []),
   ...(stages.has('verifier') ? verifierTests() : []),
+  ...(stages.has('negative') ? negativeTests() : []),
 ];
 const failures = cases.filter((item) => item.status !== 'pass');
 const report = {
