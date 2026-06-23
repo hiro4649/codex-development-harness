@@ -156,6 +156,10 @@
     "normalAutoMergeAllowedChangedFileClasses": [
       "normal_harness_only"
     ],
+    "normalAutoMergeAllowedExactFiles": [
+      "README.md",
+      ".github/pull_request_template.md"
+    ],
     "normalAutoMergeForbiddenChangedFileClasses": [
       "workflow",
       "ratifier",
@@ -169,9 +173,15 @@
       "source_manifest",
       "product_runtime",
       "package_or_lockfile",
-      "deploy_wallet_rpc_secret_contract"
+      "deploy_wallet_rpc_secret_contract",
+      "rename",
+      "deleted",
+      "unknown"
     ],
     "unknownChangedFileNormalAutoMergePolicy": "auto_quarantine",
+    "renamedOrDeletedFileNormalAutoMergePolicy": "auto_quarantine",
+    "previousFilenameMustBePreserved": true,
+    "docsCodexWildcardNormalAutoMergeAllowed": false,
     "targetRolloutLaneRequiredForBundleMutation": true,
     "authorityChangeLaneRequiredForAuthoritySensitiveMutation": true,
     "mergeApiResponseRequired": {
