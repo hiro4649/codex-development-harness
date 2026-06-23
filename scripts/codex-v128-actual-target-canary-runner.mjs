@@ -414,7 +414,12 @@ function v127QualityGateDecisionInfluence(gate = {}) {
 }
 
 function changedFiles(root) {
-  const raw = gitValue(root, ['status', '--porcelain=v1']);
+  let raw = '';
+  try {
+    raw = execFileSync('git', ['status', '--porcelain=v1'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    raw = '';
+  }
   if (!raw) return [];
   return raw.split(/\r?\n/).filter(Boolean).map((line) => normalizeRel(line.slice(3).trim() || line.trim()));
 }
