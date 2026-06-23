@@ -4,17 +4,6 @@ name: v128-actual-target-canary
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - '.github/workflows/v128-actual-target-canary.yml'
-      - 'scripts/codex-v128-actual-target-canary-contract.mjs'
-      - 'scripts/codex-v128-actual-target-canary-runner.mjs'
-      - 'scripts/codex-v128-projection-reader.mjs'
-      - 'scripts/codex-v128-managed-context-emitter.mjs'
-      - 'scripts/codex-v128-serialized-cache-canary.mjs'
-      - 'scripts/codex-v128-validation-execution-plan.mjs'
-      - 'scripts/codex-local-quality-gate.mjs'
-      - 'docs/process/CODEX_V128_SPEC.md'
-      - 'docs/process/CODEX_V128_CONTRACT_SCHEMA.json'
 
 permissions:
   contents: read
