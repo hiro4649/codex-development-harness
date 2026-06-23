@@ -478,9 +478,14 @@ function readLedgerDigest(reads) {
   });
 }
 
+function isHarnessManagedTargetFile(file) {
+  const normalized = normalizeRel(file);
+  return /^(AGENTS\.md|CODEX_SOURCE_HARNESS_MANIFEST\.json|docs\/process\/|docs\/codex\/|scripts\/codex-|\.github\/pull_request_template\.md)/.test(normalized)
+    || /^codex-[^/]+\.json$/.test(normalized);
+}
+
 function productRuntimeMutationCount(files) {
-  const harnessLike = /^(AGENTS\.md|CODEX_SOURCE_HARNESS_MANIFEST\.json|docs\/process\/|docs\/codex\/|scripts\/codex-|\.github\/pull_request_template\.md)/;
-  return files.filter((file) => !harnessLike.test(normalizeRel(file))).length;
+  return files.filter((file) => !isHarnessManagedTargetFile(file)).length;
 }
 
 function observedForeignProfileLoadCount(reads) {
@@ -492,7 +497,8 @@ function observedLegacyActiveReadCount(reads) {
 }
 
 function deployWalletRpcSecretContractMutationCount(files) {
-  return files.filter((file) => /\b(contract|deploy|wallet|rpc|secret|\.env)\b/i.test(normalizeRel(file))).length;
+  return files.filter((file) => !isHarnessManagedTargetFile(file))
+    .filter((file) => /\b(contract|deploy|wallet|rpc|secret|\.env)\b/i.test(normalizeRel(file))).length;
 }
 
 function manifestPreservesV127Authority(manifest) {
