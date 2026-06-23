@@ -28,6 +28,14 @@ const DEFAULT_REQUIRED_CHECKS = [
     workflowPath: '.github/workflows/v128-actual-target-canary.yml',
   },
 ];
+const REQUIRED_CHECK_BINDING_KEYS = new Set([
+  'name',
+  'workflowName',
+  'workflowPath',
+  'workflowId',
+  'workflowFileDigest',
+  'appId',
+]);
 const DEFAULT_POLICY_PATH = 'docs/process/CODEX_V128_STANDING_AUTONOMY_POLICY.json';
 const RATIFIER_FILES = [
   '.github/workflows/v128-protected-ratifier.yml',
@@ -120,15 +128,58 @@ function isDigest(value) {
 
 function parseRequiredChecks() {
   const raw = env('CODEX_V128_REQUIRED_CHECK_BINDINGS_JSON');
-  if (!raw) return DEFAULT_REQUIRED_CHECKS;
-  const parsed = JSON.parse(raw);
-  if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('required_check_bindings_invalid');
-  return parsed.map((item) => ({
-    name: String(item.name || ''),
-    workflowName: String(item.workflowName || ''),
-    workflowPath: String(item.workflowPath || ''),
-    appId: item.appId === undefined || item.appId === null ? null : Number(item.appId),
-  }));
+  const reasons = [];
+  if (!raw) {
+    return {
+      checks: DEFAULT_REQUIRED_CHECKS.map((item) => ({
+        ...item,
+        workflowId: null,
+        workflowFileDigest: null,
+        appId: null,
+      })),
+      reasons: ['required_check_bindings_missing'],
+    };
+  }
+  let parsed = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { checks: [], reasons: ['required_check_bindings_json_invalid'] };
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    return { checks: [], reasons: ['required_check_bindings_invalid'] };
+  }
+  const seenNames = new Set();
+  const checks = parsed.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      reasons.push(`required_check_binding_not_object:${index}`);
+      return { name: '', workflowName: '', workflowPath: '', workflowId: null, workflowFileDigest: null, appId: null };
+    }
+    for (const key of Object.keys(item)) {
+      if (!REQUIRED_CHECK_BINDING_KEYS.has(key)) reasons.push(`required_check_binding_extra_field:${index}:${key}`);
+    }
+    for (const key of REQUIRED_CHECK_BINDING_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(item, key)) reasons.push(`required_check_binding_missing_field:${index}:${key}`);
+    }
+    const check = {
+      name: String(item.name || '').trim(),
+      workflowName: String(item.workflowName || '').trim(),
+      workflowPath: String(item.workflowPath || '').trim().replace(/\\/g, '/'),
+      workflowId: Number(item.workflowId),
+      workflowFileDigest: String(item.workflowFileDigest || '').trim(),
+      appId: Number(item.appId),
+    };
+    if (!check.name) reasons.push(`required_check_binding_empty_name:${index}`);
+    if (seenNames.has(check.name)) reasons.push(`required_check_binding_duplicate_name:${check.name}`);
+    seenNames.add(check.name);
+    if (!check.workflowName) reasons.push(`required_check_binding_empty_workflow_name:${check.name || index}`);
+    if (!check.workflowPath) reasons.push(`required_check_binding_empty_workflow_path:${check.name || index}`);
+    if (!Number.isInteger(check.workflowId) || check.workflowId <= 0) reasons.push(`required_check_binding_workflow_id_invalid:${check.name || index}`);
+    if (!isDigest(check.workflowFileDigest)) reasons.push(`required_check_binding_workflow_digest_invalid:${check.name || index}`);
+    if (!Number.isInteger(check.appId) || check.appId <= 0) reasons.push(`required_check_binding_app_id_invalid:${check.name || index}`);
+    return check;
+  });
+  return { checks, reasons };
 }
 
 function extractRunId(detailsUrl = '') {
@@ -295,6 +346,16 @@ function printTrustVariables() {
   process.stdout.write(`${canonicalJson(output)}\n`);
 }
 
+function printRequiredCheckBindingTemplate() {
+  const output = DEFAULT_REQUIRED_CHECKS.map((check) => ({
+    ...check,
+    workflowId: null,
+    workflowFileDigest: fs.existsSync(check.workflowPath) ? fileDigest(check.workflowPath).digest : null,
+    appId: Number(env('CODEX_V128_REQUIRED_CHECK_APP_ID') || '15368'),
+  }));
+  process.stdout.write(`${canonicalJson(output)}\n`);
+}
+
 function safeError(error) {
   return {
     name: error?.name || 'Error',
@@ -308,6 +369,10 @@ async function main() {
     printTrustVariables();
     return;
   }
+  if (hasFlag('print-required-check-binding-template')) {
+    printRequiredCheckBindingTemplate();
+    return;
+  }
 
   const execute = hasFlag('execute') || env('CODEX_V128_EXECUTE_MERGE') === '1';
   const prNumber = Number(argValue('pr', env('CODEX_PR_NUMBER')));
@@ -316,7 +381,8 @@ async function main() {
   const defaultBranch = String(env('GITHUB_REF_NAME') || env('GITHUB_DEFAULT_BRANCH') || 'main').trim();
   const repository = env('GITHUB_REPOSITORY', 'hiro4649/codex-development-harness');
   const repositoryId = env('GITHUB_REPOSITORY_ID');
-  const requiredChecks = parseRequiredChecks();
+  const parsedRequiredChecks = parseRequiredChecks();
+  const requiredChecks = parsedRequiredChecks.checks;
   const expectedAppId = Number(env('CODEX_V128_REQUIRED_CHECK_APP_ID') || '0') || null;
   const { owner, repo } = parseRepo(repository);
   const reasons = [];
@@ -329,6 +395,7 @@ async function main() {
   if (defaultBranch !== 'main') reasons.push('default_branch_ref_required');
   if (!repositoryId) reasons.push('repository_id_missing');
   if (!expectedAppId) reasons.push('required_check_app_id_missing');
+  reasons.push(...parsedRequiredChecks.reasons);
   reasons.push(...trustRootReasons(trustRoot));
 
   let pr = null;
@@ -354,14 +421,19 @@ async function main() {
         if (run.status !== 'completed' && run.status !== 'COMPLETED') reasons.push(`required_check_not_completed:${check.name}`);
         if (run.conclusion !== 'success' && run.conclusion !== 'SUCCESS') reasons.push(`required_check_not_success:${check.name}`);
         if (expectedAppId && Number(run.appId) !== expectedAppId) reasons.push(`required_check_app_mismatch:${check.name}`);
+        if (check.appId && Number(run.appId) !== check.appId) reasons.push(`required_check_binding_app_mismatch:${check.name}`);
         const workflowRun = await getWorkflowRun(owner, repo, run.runId);
+        const workflowFileDigest = check.workflowPath && fs.existsSync(check.workflowPath) ? fileDigest(check.workflowPath).digest : null;
         requiredWorkflowRuns[check.name] = workflowRun ? {
           event: workflowRun.event,
           headSha: workflowRun.head_sha,
           headBranch: workflowRun.head_branch,
           path: workflowRun.path,
           workflowId: workflowRun.workflow_id,
+          expectedWorkflowId: check.workflowId,
           name: workflowRun.name,
+          workflowFileDigest,
+          expectedWorkflowFileDigest: check.workflowFileDigest,
         } : null;
         if (!workflowRun) reasons.push(`required_check_workflow_run_missing:${check.name}`);
         else {
@@ -369,10 +441,11 @@ async function main() {
           if (String(workflowRun.head_sha || '').toLowerCase() !== expectedHead.toLowerCase()) reasons.push(`required_check_head_mismatch:${check.name}`);
           if (check.workflowName && workflowRun.name !== check.workflowName) reasons.push(`required_check_workflow_name_mismatch:${check.name}`);
           if (check.workflowPath && workflowRun.path !== check.workflowPath) reasons.push(`required_check_workflow_path_mismatch:${check.name}`);
+          if (Number(workflowRun.workflow_id) !== Number(check.workflowId)) reasons.push(`required_check_workflow_id_mismatch:${check.name}`);
         }
         if (check.workflowPath) {
-          const workflowDigest = fs.existsSync(check.workflowPath) ? fileDigest(check.workflowPath).digest : null;
-          if (!workflowDigest) reasons.push(`required_check_workflow_digest_missing:${check.name}`);
+          if (!workflowFileDigest) reasons.push(`required_check_workflow_digest_missing:${check.name}`);
+          else if (workflowFileDigest !== check.workflowFileDigest) reasons.push(`required_check_workflow_digest_mismatch:${check.name}`);
         }
       }
     }
@@ -385,6 +458,13 @@ async function main() {
         pr = await githubApi(`/repos/${owner}/${repo}/pulls/${prNumber}`);
         if (pr.draft === true) reasons.push('pr_ready_transition_failed');
         if (String(pr.head?.sha || '').toLowerCase() !== expectedHead.toLowerCase()) reasons.push('pr_head_changed_after_ready');
+        if (String(pr.base?.sha || '').toLowerCase() !== expectedBase.toLowerCase()) reasons.push('pr_base_changed_after_ready');
+      }
+      if (!reasons.length) {
+        pr = await githubApi(`/repos/${owner}/${repo}/pulls/${prNumber}`);
+        if (pr.draft === true) reasons.push('pr_draft_before_merge');
+        if (String(pr.head?.sha || '').toLowerCase() !== expectedHead.toLowerCase()) reasons.push('pr_head_changed_before_merge');
+        if (String(pr.base?.sha || '').toLowerCase() !== expectedBase.toLowerCase()) reasons.push('pr_base_changed_before_merge');
       }
       if (!reasons.length) {
         mergeResult = await githubApi(`/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {

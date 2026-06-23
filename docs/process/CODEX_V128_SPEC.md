@@ -1087,6 +1087,34 @@ developer auth dependency, the runner may provide a fixed dummy token value. The
 dummy token is not a secret, must not authorize GitHub API access, and must not
 be treated as owner approval, deployment authority, or target rollout authority.
 
+## Portfolio Completion Control Plane
+
+Source v1.2.8 completion is separate from portfolio completion. The Source
+manifest owns the canonical `registeredTargetRepositories` set. Only repositories
+listed there are eligible for automated target rollout; repositories not listed
+there, including lite or experimental repositories, are excluded until an
+explicit enrollment update lands in Source under the protected control plane.
+Target rollout automation must not infer enrollment from historical docs,
+thread memory, PR text, or local checkout discovery.
+
+Per-PR human judgment is not required for eligible harness-only PRs, but the
+replacement authority is the protected ratifier, not the candidate PR head. The
+ratifier must bind each required check to the expected GitHub App, workflow
+event, head SHA, workflow name, workflow path, protected workflow ID, and
+protected workflow file digest. Empty, duplicate, missing, or extra check
+binding fields fail closed. The ratifier must re-check head and base after any
+draft-to-ready transition and again immediately before exact-head CAS merge.
+Required check success remains non-owner-overridable when a protected binding
+mismatch is observed.
+
+Model and plugin routing is P1. The v1.2.8 core may record an invocation receipt
+for the selected worker class or plugin, but it must not make model identity,
+Codex Security, GPT-5.5-Cyber, or any third-party plugin a merge authority.
+Security-specialist tools are reserved for security scan, threat model,
+validation, attack-path, and patch-verification tasks. Routine harness rollout,
+receipt validation, same-head checks, and merge execution stay under the
+protected Source control plane.
+
 The bounded Projection reader verifies the extracted Projection schema, head,
 and Projection payload digest without reading additional cold artifacts. The
 source binding is generated from the v128 Projection/state-matrix contract

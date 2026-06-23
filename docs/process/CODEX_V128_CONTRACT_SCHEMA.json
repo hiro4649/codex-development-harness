@@ -103,6 +103,42 @@
     "preflightMaySatisfyActualCanary": false,
     "sourceActivationBlockedUntilPass": true
   },
+  "portfolioCompletionControlPlane": {
+    "sourceCompletionEqualsPortfolioCompletion": false,
+    "canonicalTargetRegistry": "CODEX_SOURCE_HARNESS_MANIFEST.json#registeredTargetRepositories",
+    "registeredTargetCount": 6,
+    "unenrolledRepositoryInferenceAllowed": false,
+    "perPrHumanJudgmentRequiredForEligibleHarnessOnlyPr": false,
+    "replacementAuthority": "protected_ratifier",
+    "candidatePrHeadMayAuthorizeItself": false,
+    "requiredCheckBindingFields": [
+      "name",
+      "workflowName",
+      "workflowPath",
+      "workflowId",
+      "workflowFileDigest",
+      "appId"
+    ],
+    "requiredCheckBindingFieldPolicy": {
+      "emptyFieldAllowed": false,
+      "duplicateNameAllowed": false,
+      "extraFieldAllowed": false,
+      "protectedWorkflowIdRequired": true,
+      "protectedWorkflowFileDigestRequired": true
+    },
+    "modelPluginRouting": {
+      "phase": "P1_after_portfolio_post_merge_pass",
+      "mayCreateMergeAuthority": false,
+      "codexSecurityRoutineRolloutAuthority": false,
+      "securitySpecialistUseCases": [
+        "security_scan",
+        "threat_model",
+        "finding_validation",
+        "attack_path_analysis",
+        "patch_verification"
+      ]
+    }
+  },
   "releaseDrill": {
     "script": "scripts/codex-v128-release-drill.mjs",
     "routineFixtureMode": "contract_fixture_self_test_only",

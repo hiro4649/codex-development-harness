@@ -19,6 +19,56 @@
     "iris",
     "iris-live2d-renderer"
   ],
+  "registeredTargetRepositories": [
+    {
+      "repositoryFullName": "hiro4649/CRIPTO-TIP",
+      "targetProfileId": "cripto_tip_no_crypto_youtube_runtime",
+      "currentTargetHarnessVersion": "1.2.7",
+      "desiredTargetHarnessVersion": "1.2.8",
+      "rolloutClass": "complex",
+      "rolloutAuthority": "protected_source_control_plane"
+    },
+    {
+      "repositoryFullName": "hiro4649/VGC-FUNKY-TOKEN",
+      "targetProfileId": "vgc_token_no_deploy_no_value_transfer",
+      "currentTargetHarnessVersion": "1.2.7",
+      "desiredTargetHarnessVersion": "1.2.8",
+      "rolloutClass": "restricted_token",
+      "rolloutAuthority": "protected_source_control_plane"
+    },
+    {
+      "repositoryFullName": "hiro4649/VOXWEAVE",
+      "targetProfileId": "voxweave_no_tts_asr_runtime",
+      "currentTargetHarnessVersion": "1.2.7",
+      "desiredTargetHarnessVersion": "1.2.8",
+      "rolloutClass": "standard",
+      "rolloutAuthority": "protected_source_control_plane"
+    },
+    {
+      "repositoryFullName": "hiro4649/iris",
+      "targetProfileId": "iris_priority1_no_production_go",
+      "currentTargetHarnessVersion": "1.2.7",
+      "desiredTargetHarnessVersion": "1.2.8",
+      "rolloutClass": "standard",
+      "rolloutAuthority": "protected_source_control_plane"
+    },
+    {
+      "repositoryFullName": "hiro4649/disco-funky-repair",
+      "targetProfileId": "disco_funky_repair_no_deploy",
+      "currentTargetHarnessVersion": "1.2.7",
+      "desiredTargetHarnessVersion": "1.2.8",
+      "rolloutClass": "standard",
+      "rolloutAuthority": "protected_source_control_plane"
+    },
+    {
+      "repositoryFullName": "hiro4649/iris-live2d-renderer",
+      "targetProfileId": "iris_live2d_renderer_no_runtime_write",
+      "currentTargetHarnessVersion": "1.2.7",
+      "desiredTargetHarnessVersion": "1.2.8",
+      "rolloutClass": "standard",
+      "rolloutAuthority": "protected_source_control_plane"
+    }
+  ],
   "managedFiles": [
     ".github/pull_request_template.md",
     ".github/workflows/quality-gate.yml",

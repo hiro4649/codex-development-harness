@@ -3112,6 +3112,51 @@ function actualTargetCanaryWorkflowHasReadOnlyTargetMatrix() {
     && text.includes('codex-v128-actual-target-canary.safe.json');
 }
 
+function sourceManifestRegistersCanonicalPortfolioTargets() {
+  const manifest = JSON.parse(fs.readFileSync('CODEX_SOURCE_HARNESS_MANIFEST.json', 'utf8'));
+  const targets = Array.isArray(manifest.registeredTargetRepositories) ? manifest.registeredTargetRepositories : [];
+  const names = targets.map((target) => target.repositoryFullName).sort();
+  const expected = [
+    'hiro4649/CRIPTO-TIP',
+    'hiro4649/VGC-FUNKY-TOKEN',
+    'hiro4649/VOXWEAVE',
+    'hiro4649/disco-funky-repair',
+    'hiro4649/iris',
+    'hiro4649/iris-live2d-renderer',
+  ].sort();
+  return JSON.stringify(names) === JSON.stringify(expected)
+    && targets.every((target) => target.currentTargetHarnessVersion === '1.2.7')
+    && targets.every((target) => target.desiredTargetHarnessVersion === '1.2.8')
+    && targets.every((target) => target.rolloutAuthority === 'protected_source_control_plane')
+    && !names.includes('hiro4649/APS-GATE');
+}
+
+function protectedRatifierRequiresWorkflowIdAndDigestBindings() {
+  const text = fs.readFileSync('scripts/codex-v128-protected-ratifier.mjs', 'utf8');
+  return text.includes("'workflowId'")
+    && text.includes("'workflowFileDigest'")
+    && text.includes('required_check_binding_workflow_id_invalid')
+    && text.includes('required_check_binding_workflow_digest_invalid')
+    && text.includes('required_check_workflow_id_mismatch')
+    && text.includes('required_check_workflow_digest_mismatch')
+    && text.includes('required_check_binding_duplicate_name')
+    && text.includes('required_check_binding_extra_field');
+}
+
+function protectedRatifierRechecksBaseAfterReadyAndBeforeMerge() {
+  const text = fs.readFileSync('scripts/codex-v128-protected-ratifier.mjs', 'utf8');
+  return text.includes('pr_base_changed_after_ready')
+    && text.includes('pr_base_changed_before_merge')
+    && text.includes('pr_head_changed_before_merge')
+    && text.includes('pr_draft_before_merge');
+}
+
+function protectedRatifierWorkflowChecksOutExecutionCommit() {
+  const text = fs.readFileSync('.github/workflows/v128-protected-ratifier.yml', 'utf8');
+  return text.includes('ref: ${{ github.sha }}')
+    && text.includes('CODEX_V128_REQUIRED_CHECK_BINDINGS_JSON');
+}
+
 function nonAuthoritativeProjectionStatusDoesNotBlockActiveGate() {
   const summary = buildCompactReasonSummary(buildV127ActiveGateReasonSummaryInput({
     status: 'pass',
@@ -3408,6 +3453,10 @@ const cases = [
   ['actual_target_canary_runner_requires_restricted_readonly_validation', () => actualTargetCanaryRunnerRequiresRestrictedReadonlyValidation()],
   ['actual_target_canary_runner_does_not_use_preflight_as_v128_pass', () => actualTargetCanaryRunnerDoesNotUsePreflightAsV128Pass()],
   ['actual_target_canary_workflow_has_read_only_target_matrix', () => actualTargetCanaryWorkflowHasReadOnlyTargetMatrix()],
+  ['source_manifest_registers_canonical_portfolio_targets', () => sourceManifestRegistersCanonicalPortfolioTargets()],
+  ['protected_ratifier_requires_workflow_id_and_digest_bindings', () => protectedRatifierRequiresWorkflowIdAndDigestBindings()],
+  ['protected_ratifier_rechecks_base_after_ready_and_before_merge', () => protectedRatifierRechecksBaseAfterReadyAndBeforeMerge()],
+  ['protected_ratifier_workflow_checks_out_execution_commit', () => protectedRatifierWorkflowChecksOutExecutionCommit()],
   ['release_drill_executes_exact_fixed_scenarios', () => releaseDrillExecutesExactScenarios()],
   ['release_drill_missing_scenario_fails', () => releaseDrillMissingScenarioFails()],
   ['release_drill_extra_scenario_fails', () => releaseDrillExtraScenarioFails()],
