@@ -54,14 +54,21 @@ jobs:
           CODEX_V129_TEST_MODE=1 CODEX_V129_SHADOW=1 node scripts/codex-v129-shadow-runner.mjs --fixture > v129-shadow-safe-artifacts/v129-shadow-safe-summary.json
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          import { buildOrchestrationCapsule } from './scripts/codex-orchestration-capsule.mjs';
-          import { buildWorkerProofCapsule } from './scripts/codex-worker-proof-capsule.mjs';
-          import { buildOwnerDecisionBrief } from './scripts/codex-owner-decision-brief.mjs';
+          import { canonicalJson } from './scripts/codex-v129-goal-contract.mjs';
+          import {
+            buildV129ShadowColdArtifacts,
+            validateV129ShadowColdArtifactBudgets,
+          } from './scripts/codex-v129-shadow-runner.mjs';
           const summary = JSON.parse(fs.readFileSync('v129-shadow-safe-artifacts/v129-shadow-safe-summary.json', 'utf8'));
-          const input = { v129ShadowPointer: summary.v129ShadowPointer };
-          fs.writeFileSync('v129-shadow-safe-artifacts/codex-orchestration-capsule.safe.json', `${JSON.stringify(buildOrchestrationCapsule(input), null, 2)}\n`);
-          fs.writeFileSync('v129-shadow-safe-artifacts/codex-worker-proof.safe.json', `${JSON.stringify(buildWorkerProofCapsule(input), null, 2)}\n`);
-          fs.writeFileSync('v129-shadow-safe-artifacts/codex-owner-decision-brief.safe.json', `${JSON.stringify(buildOwnerDecisionBrief(input), null, 2)}\n`);
+          const coldArtifacts = buildV129ShadowColdArtifacts(summary);
+          const validation = validateV129ShadowColdArtifactBudgets(summary, coldArtifacts);
+          if (validation.status !== 'pass') {
+            console.error(canonicalJson(validation));
+            process.exit(1);
+          }
+          fs.writeFileSync('v129-shadow-safe-artifacts/codex-orchestration-capsule.safe.json', `${canonicalJson(coldArtifacts.orchestration)}\n`);
+          fs.writeFileSync('v129-shadow-safe-artifacts/codex-worker-proof.safe.json', `${canonicalJson(coldArtifacts.workerProof)}\n`);
+          fs.writeFileSync('v129-shadow-safe-artifacts/codex-owner-decision-brief.safe.json', `${canonicalJson(coldArtifacts.ownerDecisionBrief)}\n`);
           NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

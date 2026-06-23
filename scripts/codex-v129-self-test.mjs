@@ -29,7 +29,15 @@ import {
 } from './codex-v129-host-dispatch.mjs';
 import { computeWorkspaceTreeDigest, verifyV129IndependentReview } from './codex-v129-independent-verifier.mjs';
 import { buildGoalCompletionProof } from './codex-v129-goal-finalizer.mjs';
-import { runV129ShadowFixture } from './codex-v129-shadow-runner.mjs';
+import {
+  buildV129ShadowColdArtifacts,
+  buildV129ShadowCompactPointer,
+  canonicalBytes,
+  runV129ShadowFixture,
+  validateV129ShadowColdArtifactBudgets,
+  validateV129ShadowOrchestrationBudget,
+  validateV129ShadowPointerBudget,
+} from './codex-v129-shadow-runner.mjs';
 import {
   buildOrchestrationCapsule,
   buildV129ShadowRoutingMetadata,
@@ -52,6 +60,16 @@ function passed(report) {
 
 function failed(report) {
   return report?.status === 'fail' || report?.goalContractStatus?.status === 'fail' || report?.classificationStatus?.status === 'fail';
+}
+
+function sizedCanonicalObject(targetBytes) {
+  let value = { payload: '' };
+  let delta = targetBytes - canonicalBytes(value);
+  if (delta < 0) throw new Error(`target too small: ${targetBytes}`);
+  value = { payload: 'x'.repeat(delta) };
+  while (canonicalBytes(value) < targetBytes) value.payload += 'x';
+  while (canonicalBytes(value) > targetBytes) value.payload = value.payload.slice(0, -1);
+  return value;
 }
 
 function baseGoal(overrides = {}) {
@@ -631,14 +649,35 @@ function verifierTests() {
     test('v129_failed_verifier_receipt_blocks', () => buildGoalCompletionProof({ ...finalizerInput, independentVerifier: { status: 'fail' } }).status === 'fail'),
     test('v129_repair_iteration_two_blocks', () => buildGoalCompletionProof({ ...finalizerInput, repairIterationCount: 2 }).status === 'fail'),
     test('v129_same_blocker_repeat_blocks', () => buildGoalCompletionProof({ ...finalizerInput, sameBlockerCount: 2 }).status === 'fail'),
-    test('v129_cold_capsules_bind_shadow_pointer', () => {
-      const orchestration = buildOrchestrationCapsule({ v129ShadowPointer });
-      const workerProof = buildWorkerProofCapsule({ v129ShadowPointer });
-      const ownerBrief = buildOwnerDecisionBrief({ v129ShadowPointer });
-      return orchestration.v129ShadowPointer?.goalDigest === goal.goalDigest
-        && workerProof.v129ShadowPointer?.routeDecisionDigest === route.routeDecisionDigest
-        && ownerBrief.v129ShadowPointer?.verifierReceiptDigest === verifierReceiptDigest;
+    test('v129_cold_capsules_store_compact_shadow_pointer_only', () => {
+      const summary = { v129ShadowPointer };
+      const cold = buildV129ShadowColdArtifacts(summary);
+      const expected = buildV129ShadowCompactPointer(v129ShadowPointer);
+      return canonicalJson(cold.orchestration) === canonicalJson(expected)
+        && canonicalJson(cold.workerProof) === canonicalJson(expected)
+        && canonicalJson(cold.ownerDecisionBrief) === canonicalJson(expected)
+        && !canonicalJson(cold.orchestration).includes(goal.goalDigest)
+        && validateV129ShadowColdArtifactBudgets(summary, cold).status === 'pass';
     }),
+    test('v129_compact_pointer_384_bytes_passes', () => validateV129ShadowPointerBudget(sizedCanonicalObject(384)).status === 'pass'),
+    test('v129_compact_pointer_385_bytes_fails', () => validateV129ShadowPointerBudget(sizedCanonicalObject(385)).reasonCodes.includes('v129_shadow_pointer_budget_exceeded')),
+    test('v129_shadow_orchestration_48000_bytes_passes', () => validateV129ShadowOrchestrationBudget(sizedCanonicalObject(48000)).status === 'pass'),
+    test('v129_shadow_orchestration_48001_bytes_fails', () => validateV129ShadowOrchestrationBudget(sizedCanonicalObject(48001)).reasonCodes.includes('v129_shadow_orchestration_budget_exceeded')),
+    test('v129_binding_digest_tamper_fails', () => {
+      const cold = buildV129ShadowColdArtifacts({ v129ShadowPointer });
+      return validateV129ShadowColdArtifactBudgets({ v129ShadowPointer: { ...v129ShadowPointer, goalDigest: `sha256:${'0'.repeat(64)}` } }, cold).reasonCodes.includes('v129_shadow_cold_pointer_mismatch');
+    }),
+    test('v129_three_cold_pointer_mismatch_fails', () => {
+      const cold = buildV129ShadowColdArtifacts({ v129ShadowPointer });
+      return validateV129ShadowColdArtifactBudgets({ v129ShadowPointer }, {
+        ...cold,
+        workerProof: { ...cold.workerProof, bindingDigest: `sha256:${'1'.repeat(64)}` },
+      }).reasonCodes.includes('v129_shadow_cold_pointer_mismatch');
+    }),
+    test('v129_active_pointer_leakage_fails_budget_validation', () => validateV129ShadowColdArtifactBudgets({
+      v129ShadowPointer,
+      activeV128Pointers: { orchestration: buildV129ShadowCompactPointer(v129ShadowPointer) },
+    }).reasonCodes.includes('v129_shadow_active_pointer_leakage')),
     test('v129_cold_pointer_missing_in_shadow_blocks', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1' }).v129ShadowPointer !== null),
     test('v129_cold_pointer_leakage_in_active_mode_fails', () => {
       const orchestration = buildOrchestrationCapsule({});

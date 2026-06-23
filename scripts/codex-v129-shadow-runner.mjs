@@ -18,6 +18,152 @@ function digest(value) {
   return `sha256:${sha256(canonicalJson(value))}`;
 }
 
+export const V129_SHADOW_TOKEN_BUDGETS = Object.freeze({
+  compactPointerBytes: 384,
+  shadowOrchestrationCapsuleBytes: 48000,
+  goalCompletionProofSummaryBytes: 1200,
+  safeSummaryBytes: 5600,
+  routineReadSurfaceBytes: 2500,
+});
+
+export function canonicalBytes(value) {
+  return Buffer.byteLength(canonicalJson(value), 'utf8');
+}
+
+export function buildV129ShadowCompactPointer(fullBinding = {}) {
+  return {
+    schemaVersion: '1.2.9',
+    bindingDigest: digest(fullBinding),
+    safeSummaryOnly: true,
+  };
+}
+
+function buildRoutineReadSurface(report, compactPointer) {
+  return {
+    schemaVersion: report.schemaVersion,
+    candidateHarnessVersion: report.candidateHarnessVersion,
+    candidateActivationState: report.candidateActivationState,
+    status: report.status,
+    reasonCodes: report.reasonCodes || [],
+    executionMode: report.executionMode,
+    actualModelInvocationState: report.actualModelInvocationState,
+    actualPluginInvocationState: report.actualPluginInvocationState,
+    authorityCreated: report.authorityCreated === true,
+    goalCompletionProofSummary: report.goalCompletionProofSummary,
+    v129ShadowPointer: compactPointer,
+    safeSummaryOnly: true,
+  };
+}
+
+function oversizedReason(value, maxBytes, reasonCode) {
+  return canonicalBytes(value) > maxBytes ? [reasonCode] : [];
+}
+
+export function validateV129ShadowPointerBudget(pointer) {
+  const reasonCodes = oversizedReason(pointer, V129_SHADOW_TOKEN_BUDGETS.compactPointerBytes, 'v129_shadow_pointer_budget_exceeded');
+  return {
+    schemaVersion: '1.2.9',
+    status: reasonCodes.length ? 'fail' : 'pass',
+    reasonCodes,
+    canonicalBytes: canonicalBytes(pointer),
+    safeSummaryOnly: true,
+  };
+}
+
+export function validateV129ShadowOrchestrationBudget(orchestration) {
+  const reasonCodes = oversizedReason(orchestration, V129_SHADOW_TOKEN_BUDGETS.shadowOrchestrationCapsuleBytes, 'v129_shadow_orchestration_budget_exceeded');
+  return {
+    schemaVersion: '1.2.9',
+    status: reasonCodes.length ? 'fail' : 'pass',
+    reasonCodes,
+    canonicalBytes: canonicalBytes(orchestration),
+    safeSummaryOnly: true,
+  };
+}
+
+export function buildV129ShadowColdArtifacts(summary = {}) {
+  const fullBinding = summary.v129ShadowPointer || {};
+  const compactPointer = buildV129ShadowCompactPointer(fullBinding);
+  return {
+    orchestration: compactPointer,
+    workerProof: compactPointer,
+    ownerDecisionBrief: compactPointer,
+  };
+}
+
+export function validateV129ShadowColdArtifactBudgets(summary = {}, coldArtifacts = buildV129ShadowColdArtifacts(summary)) {
+  const fullBinding = summary.v129ShadowPointer || {};
+  const expectedPointer = buildV129ShadowCompactPointer(fullBinding);
+  const artifacts = [
+    coldArtifacts.orchestration,
+    coldArtifacts.workerProof,
+    coldArtifacts.ownerDecisionBrief,
+  ];
+  const reasonCodes = [];
+  for (const artifact of artifacts) {
+    if (canonicalJson(artifact) !== canonicalJson(expectedPointer)) reasonCodes.push('v129_shadow_cold_pointer_mismatch');
+    reasonCodes.push(...oversizedReason(artifact, V129_SHADOW_TOKEN_BUDGETS.compactPointerBytes, 'v129_shadow_pointer_budget_exceeded'));
+  }
+  reasonCodes.push(...oversizedReason(coldArtifacts.orchestration, V129_SHADOW_TOKEN_BUDGETS.shadowOrchestrationCapsuleBytes, 'v129_shadow_orchestration_budget_exceeded'));
+  if (expectedPointer.bindingDigest !== digest(fullBinding)) reasonCodes.push('v129_shadow_binding_digest_mismatch');
+  const activePointers = summary.activeV128Pointers || {};
+  if ([activePointers.orchestration, activePointers.workerProof, activePointers.ownerDecisionBrief].some((value) => value !== null && value !== undefined)) {
+    reasonCodes.push('v129_shadow_active_pointer_leakage');
+  }
+  return {
+    schemaVersion: '1.2.9',
+    status: reasonCodes.length ? 'fail' : 'pass',
+    reasonCodes: [...new Set(reasonCodes)],
+    measurements: {
+      v129ShadowPointerCanonicalBytes: canonicalBytes(expectedPointer),
+      shadowOrchestrationCanonicalBytes: canonicalBytes(coldArtifacts.orchestration),
+    },
+    safeSummaryOnly: true,
+  };
+}
+
+function attachTokenBudgetMeasurements(report) {
+  const compactPointer = buildV129ShadowCompactPointer(report.v129ShadowPointer || {});
+  const routineReadSurface = buildRoutineReadSurface(report, compactPointer);
+  const initialMeasurements = {
+    v129ShadowPointerCanonicalBytes: canonicalBytes(compactPointer),
+    shadowOrchestrationCanonicalBytes: canonicalBytes(compactPointer),
+    goalCompletionProofSummaryCanonicalBytes: canonicalBytes(report.goalCompletionProofSummary || {}),
+    routineReadSurfaceCanonicalBytes: canonicalBytes(routineReadSurface),
+    safeSummaryCanonicalBytes: 0,
+  };
+  let measured = {
+    ...report,
+    tokenBudgetMeasurements: initialMeasurements,
+  };
+  for (let index = 0; index < 4; index += 1) {
+    const nextBytes = canonicalBytes(measured);
+    if (nextBytes === measured.tokenBudgetMeasurements.safeSummaryCanonicalBytes) break;
+    measured = {
+      ...measured,
+      tokenBudgetMeasurements: {
+        ...measured.tokenBudgetMeasurements,
+        safeSummaryCanonicalBytes: nextBytes,
+      },
+    };
+  }
+  const budgetReasons = [
+    ...oversizedReason(compactPointer, V129_SHADOW_TOKEN_BUDGETS.compactPointerBytes, 'v129_shadow_pointer_budget_exceeded'),
+    ...oversizedReason(compactPointer, V129_SHADOW_TOKEN_BUDGETS.shadowOrchestrationCapsuleBytes, 'v129_shadow_orchestration_budget_exceeded'),
+    ...oversizedReason(report.goalCompletionProofSummary || {}, V129_SHADOW_TOKEN_BUDGETS.goalCompletionProofSummaryBytes, 'v129_shadow_goal_completion_summary_budget_exceeded'),
+    ...oversizedReason(routineReadSurface, V129_SHADOW_TOKEN_BUDGETS.routineReadSurfaceBytes, 'v129_shadow_routine_surface_budget_exceeded'),
+    ...(measured.tokenBudgetMeasurements.safeSummaryCanonicalBytes > V129_SHADOW_TOKEN_BUDGETS.safeSummaryBytes ? ['v129_shadow_safe_summary_budget_exceeded'] : []),
+  ];
+  const reasonCodes = [...new Set([...(measured.reasonCodes || []), ...budgetReasons])];
+  const status = measured.status === 'pass' && reasonCodes.length === 0 ? 'pass' : 'fail';
+  return {
+    ...measured,
+    status,
+    reasonCodes,
+    tokenBudgetStatus: { status: measured.tokenBudgetStatus?.status === 'pass' && budgetReasons.length === 0 ? 'pass' : 'fail' },
+  };
+}
+
 function repoRoot() {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 }
@@ -234,7 +380,7 @@ export function runV129ShadowFixture(env = process.env) {
     const statuses = [classification, routeDecision, pluginDecision, dispatch, verifier, finalizer];
     const reasonCodes = collectStageReasonCodes(statuses);
     const allStagesPass = statuses.every((stage) => stageStatus(stage) === 'pass');
-    return {
+    const report = {
       schemaVersion: '1.2.9',
       candidateHarnessVersion: '1.2.9',
       candidateActivationState: 'source_shadow_candidate',
@@ -276,6 +422,7 @@ export function runV129ShadowFixture(env = process.env) {
       reasonCodes,
       safeSummaryOnly: true,
     };
+    return attachTokenBudgetMeasurements(report);
   } finally {
     removeShadowWorktree(workerWorkspacePath);
     removeShadowWorktree(verifierWorkspacePath);
@@ -284,6 +431,6 @@ export function runV129ShadowFixture(env = process.env) {
 
 if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
   const report = runV129ShadowFixture(process.env);
-  process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  process.stdout.write(`${canonicalJson(report)}\n`);
   process.exit(report.status === 'pass' ? 0 : 1);
 }
