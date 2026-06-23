@@ -1099,7 +1099,11 @@ thread memory, PR text, or local checkout discovery. Each registered target must
 carry `repositoryId`, `defaultBranch`, and `enrollmentDigest`; the
 `currentTargetHarnessVersion` field is a planning hint and is not live target
 authority. Live target version and rollout state must be observed from the target
-repository before target mutation or merge.
+repository before target mutation or merge. The `enrollmentDigest` must be
+recomputed from `repositoryFullName`, `repositoryId`, `defaultBranch`,
+`targetProfileId`, `desiredTargetHarnessVersion`, `rolloutClass`, and
+`rolloutAuthority`. It must not include `currentTargetHarnessVersion`, because
+that field is a live observation hint rather than enrollment authority.
 
 Per-PR human judgment is not required for eligible harness-only PRs, but the
 replacement authority is the protected ratifier, not the candidate PR head. The
@@ -1112,8 +1116,10 @@ root and ratifier result. The ratifier must re-check head and base after any
 draft-to-ready transition and again immediately before exact-head CAS merge.
 Required check success remains non-owner-overridable when a protected binding
 mismatch is observed. Candidate PRs that change workflows, ratifier code,
-standing policy, Source manifest, product/runtime files, package or lock files,
-or deploy/wallet/RPC/secret/contract surfaces are not eligible for the normal
+standing policy, Source manifest, active quality gate, Final Decision kernel,
+Decision/Evidence Capsules, artifact consistency contract, trust closure, v128
+contract/spec/policy files, product/runtime files, package or lock files, or
+deploy/wallet/RPC/secret/contract surfaces are not eligible for the normal
 auto-merge lane. Merge API success must be verified from the returned
 `merged=true` state and a valid merge commit SHA before the result can be
 reported as merged.

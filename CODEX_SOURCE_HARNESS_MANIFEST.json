@@ -29,7 +29,7 @@
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "complex",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:63258e3c5f77a9208672c3da30415a350e3368e022987a9ac1259f54de74857d"
+      "enrollmentDigest": "sha256:fb317eaa244825b15a591cf6d63bb8c0fd0be84e82127b586fb8d57f2128b1b2"
     },
     {
       "repositoryFullName": "hiro4649/VGC-FUNKY-TOKEN",
@@ -40,7 +40,7 @@
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "restricted_token",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:cd11486cf9103498e32a815f79e2924dce4c6d49c2704016a37f7d62adad2a4c"
+      "enrollmentDigest": "sha256:10547b2fb139d8beb995d2efd2378d6aadd15bab0aabf1a81695a4c8ebeedd02"
     },
     {
       "repositoryFullName": "hiro4649/VOXWEAVE",
@@ -51,7 +51,7 @@
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "standard",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:7f1693af22d54f98952cf0b40ad578d6fe36066ce9b159c74c9b6eb5a19e8b9c"
+      "enrollmentDigest": "sha256:549d924d1e5bc0f9ab53f1e8bcca9ef92d706f7f73a1fa1042ba210edc13cb90"
     },
     {
       "repositoryFullName": "hiro4649/iris",
@@ -62,7 +62,7 @@
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "standard",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:0c096653ca8c48d9055c44f1735c8383b99351ad0154603699de1f3a3469b851"
+      "enrollmentDigest": "sha256:bd857f9dc7ca186db75e669ae49fe9b448d63d9daa86b050cd062a2afa238dbe"
     },
     {
       "repositoryFullName": "hiro4649/disco-funky-repair",
@@ -73,7 +73,7 @@
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "standard",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:dcfb06233d81998e044e03f272e4009c1b3934a0873dc852b899fadcabdb085e"
+      "enrollmentDigest": "sha256:e012f426ee992eff14bb82efd28367d63da353be4e2adf5cf70893ab7a272858"
     },
     {
       "repositoryFullName": "hiro4649/iris-live2d-renderer",
@@ -84,7 +84,7 @@
       "desiredTargetHarnessVersion": "1.2.8",
       "rolloutClass": "standard",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:f8903cec62409a6efaa9d21b1db6ec40deddcf54de9c495286ce87b3f2717dff"
+      "enrollmentDigest": "sha256:938f259973a763a3a71dec0f2a1e60055ca3ec50259393e909fd6cb36852f0f4"
     }
   ],
   "managedFiles": [

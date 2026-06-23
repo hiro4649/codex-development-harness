@@ -3112,6 +3112,18 @@ function actualTargetCanaryWorkflowHasReadOnlyTargetMatrix() {
     && text.includes('codex-v128-actual-target-canary.safe.json');
 }
 
+function targetEnrollmentDigestInput(target) {
+  return {
+    repositoryFullName: target.repositoryFullName,
+    repositoryId: target.repositoryId,
+    defaultBranch: target.defaultBranch,
+    targetProfileId: target.targetProfileId,
+    desiredTargetHarnessVersion: target.desiredTargetHarnessVersion,
+    rolloutClass: target.rolloutClass,
+    rolloutAuthority: target.rolloutAuthority,
+  };
+}
+
 function sourceManifestRegistersCanonicalPortfolioTargets() {
   const manifest = JSON.parse(fs.readFileSync('CODEX_SOURCE_HARNESS_MANIFEST.json', 'utf8'));
   const targets = Array.isArray(manifest.registeredTargetRepositories) ? manifest.registeredTargetRepositories : [];
@@ -3127,7 +3139,8 @@ function sourceManifestRegistersCanonicalPortfolioTargets() {
   return JSON.stringify(names) === JSON.stringify(expected)
     && targets.every((target) => Number.isInteger(target.repositoryId) && target.repositoryId > 0)
     && targets.every((target) => target.defaultBranch === 'main')
-    && targets.every((target) => /^sha256:[a-f0-9]{64}$/.test(target.enrollmentDigest))
+    && targets.every((target) => target.enrollmentDigest === sha256Canonical(targetEnrollmentDigestInput(target)))
+    && targets.every((target) => !Object.prototype.hasOwnProperty.call(targetEnrollmentDigestInput(target), 'currentTargetHarnessVersion'))
     && targets.every((target) => target.currentTargetHarnessVersion === '1.2.7')
     && targets.every((target) => target.desiredTargetHarnessVersion === '1.2.8')
     && targets.every((target) => target.rolloutAuthority === 'protected_source_control_plane')
@@ -3170,6 +3183,13 @@ function protectedRatifierBlocksNormalAutoMergeForbiddenFiles() {
     && text.includes('candidateChangedFilesDigest')
     && text.includes('candidateForbiddenFileCount')
     && text.includes('scripts/codex-v128-protected-ratifier')
+    && text.includes('scripts\\/codex-local-quality-gate')
+    && text.includes('scripts\\/codex-final-decision-kernel')
+    && text.includes('scripts\\/codex-(?:decision|evidence)-capsule')
+    && text.includes('scripts\\/codex-artifact-consistency-contract')
+    && text.includes('scripts\\/codex-v128-standing-autonomy-policy')
+    && text.includes('scripts\\/codex-v128-trust-closure')
+    && text.includes('docs\\/process\\/CODEX_V128_.*')
     && text.includes('CODEX_SOURCE_HARNESS_MANIFEST');
 }
 

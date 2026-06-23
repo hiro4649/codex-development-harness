@@ -117,6 +117,18 @@
       "rolloutAuthority",
       "enrollmentDigest"
     ],
+    "enrollmentDigestCanonicalFields": [
+      "repositoryFullName",
+      "repositoryId",
+      "defaultBranch",
+      "targetProfileId",
+      "desiredTargetHarnessVersion",
+      "rolloutClass",
+      "rolloutAuthority"
+    ],
+    "enrollmentDigestExcludedFields": [
+      "currentTargetHarnessVersion"
+    ],
     "currentTargetHarnessVersionAuthority": "planning_hint_only",
     "liveTargetVersionObservationRequired": true,
     "unenrolledRepositoryInferenceAllowed": false,
@@ -144,6 +156,12 @@
       "workflow",
       "ratifier",
       "standing_policy",
+      "active_quality_gate",
+      "final_decision_kernel",
+      "decision_or_evidence_capsule",
+      "artifact_consistency_contract",
+      "trust_closure",
+      "v128_contract_spec_or_policy",
       "source_manifest",
       "product_runtime",
       "package_or_lockfile",
