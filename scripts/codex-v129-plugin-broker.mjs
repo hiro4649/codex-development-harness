@@ -70,6 +70,17 @@ export function selectPlugins(classification = {}, routeDecision = {}, env = pro
   const derived = ['security_scan', 'security_remediation'].includes(taskClass)
     ? plugins.filter((plugin) => eligible.has(plugin.pluginId) && plugin.authorizedTaskClasses.includes(taskClass)).map((plugin) => plugin.pluginId).slice(0, 1)
     : [];
+  if (derived.length && !/^[a-f0-9]{40}$/.test(String(classification.candidateHeadSha || ''))) {
+    return {
+      schemaVersion: '1.2.9',
+      status: 'fail',
+      reasonCodes: ['plugin_candidate_head_required'],
+      selectedPluginIds: [],
+      pluginInvocationAllowed: false,
+      pluginSelectionState: 'unavailable',
+      safeSummaryOnly: true,
+    };
+  }
   if (!derived.length) {
     return {
       schemaVersion: '1.2.9',

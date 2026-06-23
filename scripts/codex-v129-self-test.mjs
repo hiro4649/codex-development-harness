@@ -75,6 +75,12 @@ function asText(goal) {
   return canonicalJson(goal);
 }
 
+const RUNTIME_CANDIDATE_HEAD = '1'.repeat(40);
+
+function classify(goal, options = {}) {
+  return classifyGoalTask(goal, { candidateHeadSha: RUNTIME_CANDIDATE_HEAD, ...options });
+}
+
 function contractTests() {
   const valid = baseGoal();
   const reordered = {};
@@ -92,6 +98,10 @@ function contractTests() {
       }
     }),
     test('v129_unknown_field_fails', () => failed(compileGoalContract(asText({ ...valid, extraField: true, goalDigest: computeGoalDigest({ ...valid, extraField: true }) })))),
+    test('v129_goal_candidate_head_unknown_field_fails', () => {
+      const goal = { ...valid, candidateHeadSha: RUNTIME_CANDIDATE_HEAD };
+      return failed(compileGoalContract(asText({ ...goal, goalDigest: computeGoalDigest(goal) })));
+    }),
     test('v129_allowed_forbidden_overlap_fails', () => {
       const goal = baseGoal({ forbiddenFiles: ['docs/process/CODEX_V129_SPEC.md'] });
       return failed(compileGoalContract(asText(goal)));
@@ -184,9 +194,9 @@ function contractTests() {
       const goal = baseGoal({ desiredEndState: 'x'.repeat(1201) });
       return failed(compileGoalContract(asText(goal)));
     }),
-    test('v129_authority_file_classifies_authority_change', () => classifyGoalTask(baseGoal({ allowedFiles: ['scripts/codex-final-decision-kernel.mjs'] })).taskClass === 'authority_change'),
-    test('v129_authority_prefix_classifies_authority_change', () => classifyGoalTask(baseGoal({ allowedFiles: ['docs/process/CODEX_V129_CAPABILITY_POLICY.json'] })).taskClass === 'authority_change'),
-    test('v129_receipt_word_alone_does_not_classify_authority', () => classifyGoalTask(baseGoal({
+    test('v129_authority_file_classifies_authority_change', () => classify(baseGoal({ allowedFiles: ['scripts/codex-final-decision-kernel.mjs'] })).taskClass === 'authority_change'),
+    test('v129_authority_prefix_classifies_authority_change', () => classify(baseGoal({ allowedFiles: ['docs/process/CODEX_V129_CAPABILITY_POLICY.json'] })).taskClass === 'authority_change'),
+    test('v129_receipt_word_alone_does_not_classify_authority', () => classify(baseGoal({
       allowedFiles: ['README.md'],
       forbiddenFiles: ['docs/private.md'],
       desiredEndState: 'Document receipt formatting for a routine note.',
@@ -195,7 +205,7 @@ function contractTests() {
       evidencePlan: ['read README'],
       killCriteria: ['stop once'],
     })).taskClass !== 'authority_change'),
-    test('v129_authority_like_filename_not_exact_path_does_not_classify_authority', () => classifyGoalTask(baseGoal({
+    test('v129_authority_like_filename_not_exact_path_does_not_classify_authority', () => classify(baseGoal({
       allowedFiles: ['docs/process/final-decision-kernel-not-authority.md'],
       forbiddenFiles: ['README.md'],
       desiredEndState: 'Change a source helper.',
@@ -204,7 +214,7 @@ function contractTests() {
       evidencePlan: ['run focused self-test'],
       killCriteria: ['stop once'],
     })).taskClass !== 'authority_change'),
-    test('v129_security_file_classifies_security_task', () => classifyGoalTask(baseGoal({
+    test('v129_security_file_classifies_security_task', () => classify(baseGoal({
       allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'],
       forbiddenFiles: ['README.md'],
       desiredEndState: 'Run a security scan contract.',
@@ -214,7 +224,7 @@ function contractTests() {
       killCriteria: ['stop once'],
     })).taskClass === 'security_scan'),
     test('v129_metadata_task_classifies_low', () => {
-      const report = classifyGoalTask(baseGoal({
+      const report = classify(baseGoal({
         taskClass: 'routine_metadata',
         allowedFiles: ['README.md'],
         forbiddenFiles: ['docs/private.md'],
@@ -226,7 +236,12 @@ function contractTests() {
       }));
       return report.taskClass === 'routine_metadata' && report.difficulty === 'low';
     }),
-    test('v129_model_self_claim_difficulty_upgrade_fails', () => failed(classifyGoalTask(valid, { modelClaimedDifficulty: 'critical' }))),
+    test('v129_model_self_claim_difficulty_upgrade_fails', () => failed(classify(valid, { modelClaimedDifficulty: 'critical' }))),
+    test('v129_runtime_candidate_head_missing_fails_with_reason_codes', () => {
+      const report = classifyGoalTask(valid);
+      return report.status === 'fail' && Array.isArray(report.reasonCodes) && report.reasonCodes.includes('runtime_candidate_head_invalid');
+    }),
+    test('v129_runtime_candidate_head_invalid_fails', () => classifyGoalTask(valid, { candidateHeadSha: 'not-a-sha' }).status === 'fail'),
   ];
 }
 
@@ -250,7 +265,7 @@ function routingTests() {
     evidencePlan: ['run focused self-test'],
     killCriteria: ['stop once'],
   });
-  const classification = classifyGoalTask(goal);
+  const classification = classify(goal);
   const route = routeCapability(classification, env);
   const adapterPath = new URL('./codex-v129-fixture-host-adapter.mjs', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
   const adapterDigest = digestFile(adapterPath);
@@ -285,7 +300,7 @@ function routingTests() {
   }
   return [
     test('v129_lowest_sufficient_capability_selected', () => {
-      const report = routeCapability(classifyGoalTask(baseGoal({ taskClass: 'routine_metadata', allowedFiles: ['README.md'], forbiddenFiles: ['docs/private.md'], desiredEndState: 'metadata update', constraints: ['keep current behavior'], nonGoals: ['No product change.'], evidencePlan: ['read README'], killCriteria: ['stop once'] })), env);
+      const report = routeCapability(classify(baseGoal({ taskClass: 'routine_metadata', allowedFiles: ['README.md'], forbiddenFiles: ['docs/private.md'], desiredEndState: 'metadata update', constraints: ['keep current behavior'], nonGoals: ['No product change.'], evidencePlan: ['read README'], killCriteria: ['stop once'] })), env);
       return report.status === 'pass' && report.capabilityClass === 'low_cost_worker';
     }),
     test('v129_registry_missing_fails_closed', () => routeCapability(classification, {}).status === 'fail'),
@@ -343,27 +358,32 @@ function routingTests() {
       return routeCapability(classification, registryEnv(missingVerifier)).status === 'fail';
     }),
     test('v129_security_plugin_eligible', () => {
-      const securityClassification = classifyGoalTask(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
+      const securityClassification = classify(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
       const securityRoute = routeCapability(securityClassification, env);
       const report = selectPlugins(securityClassification, securityRoute, authorityEnvFor(securityClassification));
       return report.status === 'pass' && report.selectedPluginIds[0] === 'codex-security';
+    }),
+    test('v129_security_plugin_missing_runtime_candidate_head_fails', () => {
+      const securityClassification = classifyGoalTask(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
+      const securityRoute = routeCapability(securityClassification, env);
+      return selectPlugins(securityClassification, securityRoute, authorityEnvFor({ ...securityClassification, candidateHeadSha: RUNTIME_CANDIDATE_HEAD })).status === 'fail';
     }),
     test('v129_requested_plugins_ignored_for_routine', () => {
       const report = selectPlugins({ ...classification, requestedPlugins: ['codex-security'] }, route, env);
       return report.status === 'pass' && report.selectedPluginIds.length === 0;
     }),
     test('v129_plugin_requires_trusted_defensive_evidence', () => {
-      const securityClassification = classifyGoalTask(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
+      const securityClassification = classify(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
       const securityRoute = routeCapability(securityClassification, env);
       return selectPlugins({ ...securityClassification, authorizedDefensiveScope: true }, securityRoute, env).status === 'fail';
     }),
     test('v129_authority_evidence_digest_mismatch_fails', () => {
-      const securityClassification = classifyGoalTask(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
+      const securityClassification = classify(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
       const securityRoute = routeCapability(securityClassification, env);
       return selectPlugins(securityClassification, securityRoute, { ...authorityEnvFor(securityClassification), CODEX_V129_TRUSTED_AUTHORITY_EVIDENCE_DIGEST: `sha256:${'f'.repeat(64)}` }).status === 'fail';
     }),
     test('v129_authority_evidence_stale_head_fails', () => {
-      const securityClassification = classifyGoalTask(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
+      const securityClassification = classify(baseGoal({ allowedFiles: ['docs/process/CODEX_SECURITY_LIFECYCLE_POLICY.md'], forbiddenFiles: ['README.md'], desiredEndState: 'security scan', constraints: ['security scan'], nonGoals: ['No product change.'], evidencePlan: ['safe report'], killCriteria: ['stop once'] }));
       const securityRoute = routeCapability(securityClassification, env);
       return selectPlugins(securityClassification, securityRoute, authorityEnvFor(securityClassification, { candidateHeadSha: '0'.repeat(40) })).status === 'fail';
     }),
