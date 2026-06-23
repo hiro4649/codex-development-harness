@@ -1,0 +1,75 @@
+# CODEX_QUALITY_HARNESS_FILE v1.2.8
+name: v128-protected-ratifier
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to ratify.
+        required: true
+      expected_head:
+        description: Exact PR head SHA to merge.
+        required: true
+      execute_merge:
+        description: Execute exact-head CAS merge after ratification.
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+  checks: read
+
+concurrency:
+  group: v128-protected-ratifier-${{ github.event.inputs.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  ratify:
+    name: protected ratifier
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout protected default branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Ratify exact-head candidate
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CODEX_PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          CODEX_EXPECTED_HEAD_SHA: ${{ github.event.inputs.expected_head }}
+          CODEX_V128_EXECUTE_MERGE: ${{ github.event.inputs.execute_merge == 'true' && '1' || '0' }}
+          CODEX_V128_TRUSTED_POLICY_SOURCE: ${{ vars.CODEX_V128_TRUSTED_POLICY_SOURCE }}
+          CODEX_V128_TRUSTED_POLICY_DIGEST: ${{ vars.CODEX_V128_TRUSTED_POLICY_DIGEST }}
+          CODEX_V128_TRUSTED_EVALUATOR_DIGEST: ${{ vars.CODEX_V128_TRUSTED_EVALUATOR_DIGEST }}
+          CODEX_V128_TRUSTED_VERIFIER_BUNDLE_DIGEST: ${{ vars.CODEX_V128_TRUSTED_VERIFIER_BUNDLE_DIGEST }}
+          CODEX_V128_TRUSTED_PROVIDER_ADAPTER_DIGEST: ${{ vars.CODEX_V128_TRUSTED_PROVIDER_ADAPTER_DIGEST }}
+          CODEX_V128_TRUSTED_SCOPE_CLASSIFIER_DIGEST: ${{ vars.CODEX_V128_TRUSTED_SCOPE_CLASSIFIER_DIGEST }}
+          CODEX_V128_TRUSTED_MERGE_EXECUTOR_DIGEST: ${{ vars.CODEX_V128_TRUSTED_MERGE_EXECUTOR_DIGEST }}
+          CODEX_V128_TRUSTED_CANONICALIZER_DIGEST: ${{ vars.CODEX_V128_TRUSTED_CANONICALIZER_DIGEST }}
+          CODEX_V128_TRUSTED_FINAL_DECISION_AUTHORITY_DIGEST: ${{ vars.CODEX_V128_TRUSTED_FINAL_DECISION_AUTHORITY_DIGEST }}
+          CODEX_V128_TRUSTED_RATIFIER_DIGEST: ${{ vars.CODEX_V128_TRUSTED_RATIFIER_DIGEST }}
+          CODEX_V128_AUTHORITY_EPOCH: ${{ vars.CODEX_V128_AUTHORITY_EPOCH }}
+          CODEX_V128_TRUSTED_AUTHORITY_EPOCH: ${{ vars.CODEX_V128_TRUSTED_AUTHORITY_EPOCH }}
+          CODEX_V128_REVOCATION_NONCE: ${{ vars.CODEX_V128_REVOCATION_NONCE }}
+          CODEX_V128_TRUSTED_REVOCATION_NONCE: ${{ vars.CODEX_V128_TRUSTED_REVOCATION_NONCE }}
+          CODEX_V128_RATIFIER_RESULT_PATH: ${{ runner.temp }}/codex-v128-ratifier-result.safe.json
+        run: |
+          set -euo pipefail
+          node scripts/codex-v128-protected-ratifier.mjs
+      - name: Upload ratifier result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-v128-ratifier-result
+          path: ${{ runner.temp }}/codex-v128-ratifier-result.safe.json
+          if-no-files-found: warn
