@@ -22,6 +22,14 @@ function sameArray(a = [], b = []) {
   return a.length === b.length && a.every((value, index) => value === b[index]);
 }
 
+function sameCriteriaContract(goalCriteria = [], criteria = []) {
+  if (goalCriteria.length !== criteria.length) return false;
+  return goalCriteria.every((criterion, index) => {
+    const result = criteria[index] || {};
+    return criterion.id === result.id && criterion.required === result.required;
+  });
+}
+
 export function buildGoalCompletionProof(input = {}) {
   const goal = input.goalContract || {};
   const goalDigest = computeGoalDigest(goal);
@@ -33,10 +41,13 @@ export function buildGoalCompletionProof(input = {}) {
   const truthOwnerDigest = digestValue(goal.truthOwnerRefs || []);
   const headBindings = Array.isArray(input.headBindings) ? input.headBindings : [];
   const sameHead = headBindings.length > 0 && headBindings.every((head) => head && head === input.candidateHeadSha);
+  const tokenBudgetProvided = input.tokenBudget && typeof input.tokenBudget === 'object';
+  const tokenUsed = Number(input.tokenBudget?.usedBytes);
+  const tokenMax = Number(input.tokenBudget?.maxBytes);
   const tokenBudgetStatus = {
-    status: Number(input.tokenBudget?.usedBytes || 0) <= Number(input.tokenBudget?.maxBytes || 0) ? 'pass' : 'fail',
-    usedBytes: Number(input.tokenBudget?.usedBytes || 0),
-    maxBytes: Number(input.tokenBudget?.maxBytes || 0),
+    status: tokenBudgetProvided && Number.isInteger(tokenUsed) && Number.isInteger(tokenMax) && tokenUsed >= 0 && tokenMax > 0 && tokenUsed <= tokenMax ? 'pass' : 'fail',
+    usedBytes: Number.isFinite(tokenUsed) ? tokenUsed : null,
+    maxBytes: Number.isFinite(tokenMax) ? tokenMax : null,
   };
   const unresolvedCriterionCount = criteria.filter((criterion) => criterion.required !== false && criterion.status !== 'pass').length;
   const proof = {
@@ -64,6 +75,9 @@ export function buildGoalCompletionProof(input = {}) {
   const reasons = [];
   if (input.goalDigest && input.goalDigest !== goalDigest) reasons.push('goal_digest_mismatch');
   if (!sameArray(criteriaIds(goalCriteria), criteriaIds(criteria))) reasons.push('acceptance_criteria_id_or_count_mismatch');
+  if (!sameCriteriaContract(goalCriteria, criteria)) reasons.push('acceptance_criteria_required_or_order_mismatch');
+  if (input.validatedWorkerReceipt?.status !== 'pass') reasons.push('validated_worker_receipt_required');
+  if (input.independentVerifier?.status !== 'pass') reasons.push('independent_verifier_required');
   for (const key of ['goalDigest', 'scopeDigest', 'truthOwnerDigest', 'routeDecisionDigest', 'workerReceiptDigest', 'verifierReceiptDigest', 'evidenceDigest']) {
     if (!digestLike(proof[key])) reasons.push(`${key}_invalid`);
   }
@@ -77,6 +91,8 @@ export function buildGoalCompletionProof(input = {}) {
   if (proof.unresolvedCriterionCount !== 0) reasons.push('unresolved_criteria');
   if (proof.tokenBudgetStatus.status !== 'pass') reasons.push('token_budget_failed');
   if (!proof.sameHead) reasons.push('same_head_missing');
+  if (!Number.isInteger(input.repairIterationCount) || input.repairIterationCount < 0) reasons.push('repair_iteration_invalid');
+  if (!Number.isInteger(input.sameBlockerCount) || input.sameBlockerCount < 0) reasons.push('same_blocker_count_invalid');
   if (proof.repairIterationCount > 1) reasons.push('repair_iteration_overflow');
   if (proof.sameBlockerCount > 1) reasons.push('same_blocker_repeat');
   for (const criterion of criteria) {

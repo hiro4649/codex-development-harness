@@ -426,15 +426,42 @@ function routingTests() {
 }
 
 function verifierTests() {
+  const tempWorktrees = [];
+  function git(args, cwd = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')) {
+    return execFileSync('git', args, { cwd, encoding: 'utf8', timeout: 10000, maxBuffer: 16384 }).trim();
+  }
+  function makeGitWorktree(label, headSha) {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), `v129-${label}-`));
+    fs.rmSync(root, { recursive: true, force: true });
+    git(['worktree', 'add', '--quiet', '--detach', root, headSha]);
+    tempWorktrees.push(root);
+    return root;
+  }
+  process.once('exit', () => {
+    for (const root of tempWorktrees) {
+      try {
+        git(['worktree', 'remove', '--force', root]);
+      } catch {
+        fs.rmSync(root, { recursive: true, force: true });
+      }
+    }
+  });
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const headSha = git(['rev-parse', 'HEAD']);
+  const truthOwnerPath = 'docs/process/CODEX_V129_SPEC.md';
+  const truthOwnerDigest = `sha256:${sha256(fs.readFileSync(path.join(repoRoot, truthOwnerPath)))}`;
   const goal = baseGoal({
     desiredEndState: 'Complete shadow verifier fixture.',
     acceptanceCriteria: [{ id: 'AC1', description: 'shadow verifier proof passes', required: true }],
+    truthOwnerRefs: [{ path: truthOwnerPath, digest: truthOwnerDigest }],
     constraints: ['keep current active authority'],
     nonGoals: ['No merge authority.'],
     allowedFiles: ['scripts/codex-v129-shadow-runner.mjs'],
     forbiddenFiles: ['scripts/codex-final-decision-kernel.mjs'],
     evidencePlan: ['safe fixture proof'],
     killCriteria: ['stop once'],
+    binding: { ...baseGoal().binding, baseSha: headSha },
+    candidateHeadSha: headSha,
   });
   const classification = classifyGoalTask(goal);
   const registry = defaultTestRegistry();
@@ -450,13 +477,19 @@ function verifierTests() {
     hostAdapterDigest: `sha256:${'1'.repeat(64)}`,
     capabilityClass: route.capabilityClass,
     resolvedModelId: 'registry:model:standard',
+    modelInvocationObserved: true,
+    modelInputBytes: 100,
+    modelOutputBytes: 20,
+    modelOutputDigest: `sha256:${'4'.repeat(64)}`,
+    selectedPluginIds: [],
+    pluginRefs: [],
+    pluginInvocationObserved: false,
+    pluginResultDigest: null,
     inputDigest: `sha256:${'2'.repeat(64)}`,
+    inputBytes: 100,
     maxOutputBytes: route.maxOutputBytes,
     workspaceDigest: `sha256:${'3'.repeat(64)}`,
     workerOutputDigest,
-    modelInvocationObserved: true,
-    selectedPluginIds: [],
-    pluginRefs: [],
     authorityCreated: false,
   };
   const evidence = {
@@ -468,14 +501,8 @@ function verifierTests() {
   const workerReceiptDigest = `sha256:${sha256(canonicalJson(workerReceipt))}`;
   const evidenceDigest = `sha256:${sha256(canonicalJson(evidence))}`;
   const criterion = { id: 'AC1', required: true, status: 'pass', evidenceDigest: workerReceiptDigest };
-  function makeWorkspace(label) {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), `v129-${label}-`));
-    fs.writeFileSync(path.join(root, 'CANDIDATE_HEAD'), `${goal.binding.baseSha}\n`);
-    fs.writeFileSync(path.join(root, `${label}.json`), canonicalJson({ label, goalDigest: goal.goalDigest }));
-    return root;
-  }
-  const workerWorkspacePath = makeWorkspace('worker');
-  const verifierWorkspacePath = makeWorkspace('verifier');
+  const workerWorkspacePath = makeGitWorktree('worker', headSha);
+  const verifierWorkspacePath = makeGitWorktree('verifier', headSha);
   const reviewInput = {
     workerId: 'worker-a',
     verifierId: 'verifier-b',
@@ -483,22 +510,23 @@ function verifierTests() {
     verifierWorkspacePath,
     workerWorkspaceDigest: computeWorkspaceTreeDigest(workerWorkspacePath),
     verifierWorkspaceDigest: computeWorkspaceTreeDigest(verifierWorkspacePath),
-    candidateHeadSha: goal.binding.baseSha,
+    candidateHeadSha: headSha,
     goalDigest: goal.goalDigest,
     goalContract: goal,
     workerReceipt,
     workerReceiptDigest,
     evidence,
     evidenceDigest,
+    truthOwnerDigest: `sha256:${sha256(canonicalJson(goal.truthOwnerRefs))}`,
     worker: {
       goalDigest: goal.goalDigest,
-      candidateHeadSha: goal.binding.baseSha,
+      candidateHeadSha: headSha,
       routeDecisionDigest: route.routeDecisionDigest,
       workerOutputDigest,
     },
     verifier: {
       goalDigest: goal.goalDigest,
-      candidateHeadSha: goal.binding.baseSha,
+      candidateHeadSha: headSha,
       routeDecisionDigest: route.routeDecisionDigest,
       workerOutputDigest,
     },
@@ -511,7 +539,7 @@ function verifierTests() {
   const finalizerInput = {
     goalContract: goal,
     goalDigest: goal.goalDigest,
-    candidateHeadSha: goal.binding.baseSha,
+    candidateHeadSha: headSha,
     baseSha: goal.binding.baseSha,
     scopeDigest: goal.binding.scopeDigest,
     truthOwnerDigest: `sha256:${sha256(canonicalJson(goal.truthOwnerRefs))}`,
@@ -523,7 +551,9 @@ function verifierTests() {
     evidence,
     evidenceDigest,
     criteriaResults: [criterion],
-    headBindings: [goal.binding.baseSha, goal.binding.baseSha, goal.binding.baseSha],
+    headBindings: [headSha, headSha, headSha],
+    validatedWorkerReceipt: { status: 'pass', digest: workerReceiptDigest },
+    independentVerifier: { status: verifierReport.status, digest: verifierReceiptDigest },
     repairIterationCount: 0,
     sameBlockerCount: 0,
     tokenBudget: { usedBytes: 1000, maxBytes: 4096 },
@@ -556,16 +586,31 @@ function verifierTests() {
     test('v129_route_decision_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, verifier: { ...reviewInput.verifier, routeDecisionDigest: `sha256:${'b'.repeat(64)}` } }).status === 'fail'),
     test('v129_worker_receipt_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, workerReceiptDigest: `sha256:${'c'.repeat(64)}` }).status === 'fail'),
     test('v129_evidence_digest_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, evidenceDigest: `sha256:${'d'.repeat(64)}` }).status === 'fail'),
+    test('v129_fake_candidate_head_file_fails', () => {
+      const fake = fs.mkdtempSync(path.join(os.tmpdir(), 'v129-fake-head-'));
+      fs.writeFileSync(path.join(fake, 'CANDIDATE_HEAD'), `${headSha}\n`);
+      return verifyV129IndependentReview({ ...reviewInput, verifierWorkspacePath: fake, verifierWorkspaceDigest: null }).status === 'fail';
+    }),
+    test('v129_non_git_workspace_fails', () => {
+      const nonGit = fs.mkdtempSync(path.join(os.tmpdir(), 'v129-non-git-'));
+      fs.writeFileSync(path.join(nonGit, 'note.txt'), 'not git');
+      return verifyV129IndependentReview({ ...reviewInput, workerWorkspacePath: nonGit, workerWorkspaceDigest: null }).status === 'fail';
+    }),
     test('v129_required_criterion_missing_fails', () => verifyV129IndependentReview({ ...reviewInput, criteriaResults: [{ id: 'AC1', required: true, status: 'missing' }] }).status === 'fail'),
     test('v129_verifier_merge_authority_fails', () => verifyV129IndependentReview({ ...reviewInput, verifierMergeAuthority: true }).status === 'fail'),
     test('v129_goal_completion_proof_passes', () => buildGoalCompletionProof(finalizerInput).status === 'pass'),
     test('v129_goal_finalizer_does_not_compute_merge_allowed', () => buildGoalCompletionProof(finalizerInput).mergeAllowedComputed === false),
     test('v129_acceptance_criteria_id_mismatch_blocks', () => buildGoalCompletionProof({ ...finalizerInput, criteriaResults: [{ ...criterion, id: 'AC2' }] }).status === 'fail'),
+    test('v129_required_criterion_downgrade_blocks', () => buildGoalCompletionProof({ ...finalizerInput, criteriaResults: [{ ...criterion, required: false }] }).status === 'fail'),
     test('v129_truth_owner_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, truthOwnerDigest: `sha256:${'f'.repeat(64)}` }).status === 'fail'),
     test('v129_scope_digest_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, scopeDigest: `sha256:${'0'.repeat(64)}` }).status === 'fail'),
     test('v129_receipt_digest_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, workerReceiptDigest: `sha256:${'1'.repeat(64)}` }).status === 'fail'),
     test('v129_same_head_tamper_blocks', () => buildGoalCompletionProof({ ...finalizerInput, headBindings: [goal.binding.baseSha, '0'.repeat(40)] }).status === 'fail'),
+    test('v129_missing_token_budget_blocks', () => buildGoalCompletionProof({ ...finalizerInput, tokenBudget: undefined }).status === 'fail'),
+    test('v129_zero_max_token_budget_blocks', () => buildGoalCompletionProof({ ...finalizerInput, tokenBudget: { usedBytes: 0, maxBytes: 0 } }).status === 'fail'),
     test('v129_token_overflow_blocks', () => buildGoalCompletionProof({ ...finalizerInput, tokenBudget: { usedBytes: 4097, maxBytes: 4096 } }).status === 'fail'),
+    test('v129_failed_worker_receipt_blocks', () => buildGoalCompletionProof({ ...finalizerInput, validatedWorkerReceipt: { status: 'fail' } }).status === 'fail'),
+    test('v129_failed_verifier_receipt_blocks', () => buildGoalCompletionProof({ ...finalizerInput, independentVerifier: { status: 'fail' } }).status === 'fail'),
     test('v129_repair_iteration_two_blocks', () => buildGoalCompletionProof({ ...finalizerInput, repairIterationCount: 2 }).status === 'fail'),
     test('v129_same_blocker_repeat_blocks', () => buildGoalCompletionProof({ ...finalizerInput, sameBlockerCount: 2 }).status === 'fail'),
     test('v129_cold_capsules_bind_shadow_pointer', () => {
@@ -575,6 +620,13 @@ function verifierTests() {
       return orchestration.v129ShadowPointer?.goalDigest === goal.goalDigest
         && workerProof.v129ShadowPointer?.routeDecisionDigest === route.routeDecisionDigest
         && ownerBrief.v129ShadowPointer?.verifierReceiptDigest === verifierReceiptDigest;
+    }),
+    test('v129_cold_pointer_missing_in_shadow_blocks', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1' }).v129ShadowPointer !== null),
+    test('v129_cold_pointer_leakage_in_active_mode_fails', () => {
+      const orchestration = buildOrchestrationCapsule({});
+      const workerProof = buildWorkerProofCapsule({});
+      const ownerBrief = buildOwnerDecisionBrief({});
+      return orchestration.v129ShadowPointer === null && workerProof.v129ShadowPointer === null && ownerBrief.v129ShadowPointer === null;
     }),
     test('v129_authority_created_shadow_metadata_fails', () => validateV129ShadowRoutingMetadata({ ...buildV129ShadowRoutingMetadata({ goalDigest: goal.goalDigest, classificationDigest: classification.classificationDigest, routeDecisionDigest: route.routeDecisionDigest, routingState: 'routed' }), authorityCreated: true }).status === 'fail'),
     test('v129_shadow_runner_requires_shadow_env', () => runV129ShadowFixture({}).status === 'blocked'),

@@ -49,9 +49,22 @@ jobs:
     needs: [v129-contract, v129-routing, v129-verifier, v129-negative, v128-compatibility]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - run: CODEX_V129_TEST_MODE=1 CODEX_V129_SHADOW=1 node scripts/codex-v129-shadow-runner.mjs --fixture > v129-shadow-safe-summary.json
+      - run: |
+          mkdir -p v129-shadow-safe-artifacts
+          CODEX_V129_TEST_MODE=1 CODEX_V129_SHADOW=1 node scripts/codex-v129-shadow-runner.mjs --fixture > v129-shadow-safe-artifacts/v129-shadow-safe-summary.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import { buildOrchestrationCapsule } from './scripts/codex-orchestration-capsule.mjs';
+          import { buildWorkerProofCapsule } from './scripts/codex-worker-proof-capsule.mjs';
+          import { buildOwnerDecisionBrief } from './scripts/codex-owner-decision-brief.mjs';
+          const summary = JSON.parse(fs.readFileSync('v129-shadow-safe-artifacts/v129-shadow-safe-summary.json', 'utf8'));
+          const input = { v129ShadowPointer: summary.v129ShadowPointer };
+          fs.writeFileSync('v129-shadow-safe-artifacts/codex-orchestration-capsule.safe.json', `${JSON.stringify(buildOrchestrationCapsule(input), null, 2)}\n`);
+          fs.writeFileSync('v129-shadow-safe-artifacts/codex-worker-proof.safe.json', `${JSON.stringify(buildWorkerProofCapsule(input), null, 2)}\n`);
+          fs.writeFileSync('v129-shadow-safe-artifacts/codex-owner-decision-brief.safe.json', `${JSON.stringify(buildOwnerDecisionBrief(input), null, 2)}\n`);
+          NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: v129-shadow-safe-artifacts
-          path: v129-shadow-safe-summary.json
+          path: v129-shadow-safe-artifacts
           if-no-files-found: error

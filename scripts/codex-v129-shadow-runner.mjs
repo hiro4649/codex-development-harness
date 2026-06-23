@@ -18,19 +18,45 @@ function digest(value) {
   return `sha256:${sha256(canonicalJson(value))}`;
 }
 
-function makeShadowWorkspace(prefix, candidateHeadSha, extraFileName) {
+function repoRoot() {
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+}
+
+function git(args, cwd = repoRoot()) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8', timeout: 10000, maxBuffer: 16384 }).trim();
+}
+
+function makeShadowWorktree(prefix, candidateHeadSha) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
-  fs.writeFileSync(path.join(root, 'CANDIDATE_HEAD'), `${candidateHeadSha}\n`);
-  fs.writeFileSync(path.join(root, extraFileName), `${prefix}:${candidateHeadSha}\n`);
+  fs.rmSync(root, { recursive: true, force: true });
+  git(['worktree', 'add', '--quiet', '--detach', root, candidateHeadSha]);
   return root;
 }
 
+function removeShadowWorktree(root) {
+  if (!root) return;
+  try {
+    git(['worktree', 'remove', '--force', root]);
+  } catch {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+}
+
+function currentHead() {
+  return git(['rev-parse', 'HEAD']);
+}
+
+function fileDigest(relativePath) {
+  return `sha256:${sha256(fs.readFileSync(path.join(repoRoot(), relativePath)))}`;
+}
+
 function fixtureGoal() {
+  const headSha = currentHead();
   const goal = {
     goalId: 'goal-v129-shadow-fixture',
     goalVersion: 1,
     taskClass: 'code_change',
-    truthOwnerRefs: [{ path: 'docs/process/CODEX_V129_SPEC.md', digest: `sha256:${'a'.repeat(64)}` }],
+    truthOwnerRefs: [{ path: 'docs/process/CODEX_V129_SPEC.md', digest: fileDigest('docs/process/CODEX_V129_SPEC.md') }],
     desiredEndState: 'Run v129 shadow fixture without changing active authority.',
     acceptanceCriteria: [{ id: 'AC1', description: 'shadow completion proof passes', required: true }],
     constraints: ['No active version change.'],
@@ -42,9 +68,10 @@ function fixtureGoal() {
     repairBudget: { maxRepairIterations: 1, sameBlockerMax: 1 },
     binding: {
       repositoryId: 1243452288,
-      baseSha: '8e74e8d4843dea7ca41bfc50d2e66ad9079fc87d',
+      baseSha: headSha,
       scopeDigest: `sha256:${'b'.repeat(64)}`,
     },
+    candidateHeadSha: headSha,
     goalDigest: 'placeholder',
   };
   goal.goalDigest = computeGoalDigest(goal);
@@ -101,8 +128,9 @@ export function runV129ShadowFixture(env = process.env) {
     invocationReceiptDigest: workerReceiptDigest,
   };
   const evidenceDigest = digest(evidence);
-  const workerWorkspacePath = makeShadowWorkspace('v129-worker-', goal.binding.baseSha, 'worker-proof.json');
-  const verifierWorkspacePath = makeShadowWorkspace('v129-verifier-', goal.binding.baseSha, 'verifier-proof.json');
+  const workerWorkspacePath = makeShadowWorktree('v129-worker-', goal.candidateHeadSha);
+  const verifierWorkspacePath = makeShadowWorktree('v129-verifier-', goal.candidateHeadSha);
+  let report;
   const verifierInput = {
     schemaVersion: '1.2.9',
     workerId: 'worker-a',
@@ -111,7 +139,7 @@ export function runV129ShadowFixture(env = process.env) {
     verifierWorkspacePath,
     workerWorkspaceDigest: computeWorkspaceTreeDigest(workerWorkspacePath),
     verifierWorkspaceDigest: computeWorkspaceTreeDigest(verifierWorkspacePath),
-    candidateHeadSha: goal.binding.baseSha,
+    candidateHeadSha: goal.candidateHeadSha,
     goalDigest: goal.goalDigest,
     goalContract: goal,
     workerReceipt: dispatch.invocationReceipt || {},
@@ -120,13 +148,13 @@ export function runV129ShadowFixture(env = process.env) {
     evidenceDigest,
     worker: {
       goalDigest: goal.goalDigest,
-      candidateHeadSha: goal.binding.baseSha,
+      candidateHeadSha: goal.candidateHeadSha,
       routeDecisionDigest: routeDecision.routeDecisionDigest,
       workerOutputDigest: dispatch.invocationReceipt?.workerOutputDigest,
     },
     verifier: {
       goalDigest: goal.goalDigest,
-      candidateHeadSha: goal.binding.baseSha,
+      candidateHeadSha: goal.candidateHeadSha,
       routeDecisionDigest: routeDecision.routeDecisionDigest,
       workerOutputDigest: dispatch.invocationReceipt?.workerOutputDigest,
     },
@@ -143,10 +171,19 @@ export function runV129ShadowFixture(env = process.env) {
   const verifier = JSON.parse(verifierStdout);
   const verifierReceiptDigest = digest(verifier);
   const truthOwnerDigest = digest(goal.truthOwnerRefs);
+  const v129ShadowPointer = {
+    candidateHarnessVersion: '1.2.9',
+    candidateActivationState: 'source_shadow_candidate',
+    goalDigest: goal.goalDigest,
+    routeDecisionDigest: routeDecision.routeDecisionDigest,
+    workerReceiptDigest,
+    verifierReceiptDigest,
+    evidenceDigest,
+  };
   const finalizer = buildGoalCompletionProof({
     goalContract: goal,
     goalDigest: goal.goalDigest,
-    candidateHeadSha: goal.binding.baseSha,
+    candidateHeadSha: goal.candidateHeadSha,
     baseSha: goal.binding.baseSha,
     scopeDigest: goal.binding.scopeDigest,
     truthOwnerDigest,
@@ -158,14 +195,16 @@ export function runV129ShadowFixture(env = process.env) {
     evidence,
     evidenceDigest,
     criteriaResults: verifierInput.criteriaResults,
-    headBindings: [goal.binding.baseSha, goal.binding.baseSha, goal.binding.baseSha],
+    headBindings: [goal.candidateHeadSha, goal.candidateHeadSha, goal.candidateHeadSha],
+    validatedWorkerReceipt: { status: dispatch.status, digest: workerReceiptDigest },
+    independentVerifier: { status: verifier.status, digest: verifierReceiptDigest },
     repairIterationCount: 0,
     sameBlockerCount: 0,
     tokenBudget: { usedBytes: Buffer.byteLength(canonicalJson(verifier), 'utf8'), maxBytes: 4096 },
   });
   const statuses = [classification, routeDecision, pluginDecision, dispatch, verifier, finalizer];
   const reasonCodes = statuses.flatMap((item) => item.reasonCodes || []);
-  return {
+  report = {
     schemaVersion: '1.2.9',
     candidateHarnessVersion: '1.2.9',
     candidateActivationState: 'source_shadow_candidate',
@@ -174,6 +213,7 @@ export function runV129ShadowFixture(env = process.env) {
     goalRef: { goalId: goal.goalId, goalVersion: goal.goalVersion, goalDigest: goal.goalDigest },
     classificationDigest: classification.classificationDigest,
     routeDecisionDigest: routeDecision.routeDecisionDigest,
+    v129ShadowPointer,
     routingState: routeDecision.status === 'pass' ? 'routed' : 'blocked',
     invocationReceiptDigest: workerReceiptDigest,
     verifierReceiptDigest,
@@ -184,6 +224,17 @@ export function runV129ShadowFixture(env = process.env) {
       safeNextAction: finalizer.goalCompletionProof.safeNextAction,
       authorityCreated: false,
     },
+    verifierWorkspace: {
+      workerVerifierDistinctGitWorktrees: path.resolve(workerWorkspacePath) !== path.resolve(verifierWorkspacePath),
+      workerHeadSha: verifier.recomputed?.workerCandidateHeadSha || null,
+      verifierHeadSha: verifier.recomputed?.verifierCandidateHeadSha || null,
+      workerTreeSha: verifier.recomputed?.workerTreeSha || null,
+      verifierTreeSha: verifier.recomputed?.verifierTreeSha || null,
+    },
+    invocationState: {
+      actualModelReceiptState: dispatch.invocationReceipt?.fixture === true ? 'unavailable_fixture_only' : 'observed',
+      actualPluginReceiptState: (dispatch.invocationReceipt?.pluginRefs || []).length ? 'observed' : 'unavailable_not_selected',
+    },
     tokenBudgetStatus: { status: Buffer.byteLength(canonicalJson(finalizer.goalCompletionProof), 'utf8') <= 4096 ? 'pass' : 'fail' },
     activeOutputChanged: false,
     authorityCreated: false,
@@ -191,6 +242,9 @@ export function runV129ShadowFixture(env = process.env) {
     reasonCodes,
     safeSummaryOnly: true,
   };
+  removeShadowWorktree(workerWorkspacePath);
+  removeShadowWorktree(verifierWorkspacePath);
+  return report;
 }
 
 if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])) {
