@@ -83,13 +83,14 @@ export function verifyV129IndependentReview(input = {}) {
     goalDigest: input.goalContract ? computeGoalDigest(goal) : null,
     workerReceiptDigest: input.workerReceipt ? digestValue(input.workerReceipt) : null,
     workerReceiptValidation: input.workerReceipt ? validateInvocationReceipt(input.workerReceipt, {
-      request: input.dispatchRequest || {},
+      request: input.dispatchRequest,
       hostAdapterDigest: input.workerReceipt.hostAdapterDigest,
     }) : null,
     evidenceDigest: input.evidence ? digestValue(input.evidence) : null,
   };
   if (!input.workerId || !input.verifierId) reasonCodes.push('worker_or_verifier_missing');
   if (input.workerId && input.workerId === input.verifierId) reasonCodes.push('same_worker_verifier');
+  if (!input.dispatchRequest || typeof input.dispatchRequest !== 'object') reasonCodes.push('dispatch_request_missing');
   if (!input.workerWorkspacePath || !input.verifierWorkspacePath || !recomputed.workerWorkspaceDigest || !recomputed.verifierWorkspaceDigest) reasonCodes.push('workspace_digest_missing');
   if (!recomputed.workerCandidateHeadSha || !recomputed.verifierCandidateHeadSha || !recomputed.workerTreeSha || !recomputed.verifierTreeSha) reasonCodes.push('git_workspace_required');
   if (input.workerWorkspacePath && input.verifierWorkspacePath && path.resolve(input.workerWorkspacePath) === path.resolve(input.verifierWorkspacePath)) reasonCodes.push('same_workspace_path');

@@ -71,11 +71,36 @@ function fixtureGoal() {
       baseSha: headSha,
       scopeDigest: `sha256:${'b'.repeat(64)}`,
     },
-    candidateHeadSha: headSha,
     goalDigest: 'placeholder',
   };
   goal.goalDigest = computeGoalDigest(goal);
   return goal;
+}
+
+function stageStatus(stage) {
+  return stage?.status || stage?.classificationStatus?.status || stage?.goalContractStatus?.status || 'fail';
+}
+
+function collectStageReasonCodes(stages = []) {
+  const reasonCodes = [];
+  for (const stage of stages) {
+    reasonCodes.push(...(stage?.reasonCodes || []));
+    reasonCodes.push(...(stage?.classificationStatus?.reasonCodes || []));
+    reasonCodes.push(...(stage?.goalContractStatus?.reasonCodes || []));
+    if (stageStatus(stage) !== 'pass' && !(stage?.reasonCodes?.length || stage?.classificationStatus?.reasonCodes?.length || stage?.goalContractStatus?.reasonCodes?.length)) {
+      reasonCodes.push('v129_shadow_stage_failed');
+    }
+  }
+  return reasonCodes;
+}
+
+function applyTestStageOverride(stageName, stages) {
+  if (!stageName) return stages;
+  const failEmpty = { schemaVersion: '1.2.9', status: 'fail', reasonCodes: [], safeSummaryOnly: true };
+  return {
+    ...stages,
+    [stageName]: failEmpty,
+  };
 }
 
 export function runV129ShadowFixture(env = process.env) {
@@ -89,7 +114,8 @@ export function runV129ShadowFixture(env = process.env) {
     };
   }
   const goal = fixtureGoal();
-  const classification = classifyGoalTask(goal);
+  const candidateHeadSha = currentHead();
+  let classification = classifyGoalTask(goal, { candidateHeadSha });
   const registry = defaultTestRegistry();
   const registryDigest = digestRegistry(registry);
   const routingEnv = {
@@ -97,8 +123,8 @@ export function runV129ShadowFixture(env = process.env) {
     CODEX_V129_CAPABILITY_REGISTRY_JSON: canonicalJson(registry),
     CODEX_V129_TRUSTED_CAPABILITY_REGISTRY_DIGEST: registryDigest,
   };
-  const routeDecision = routeCapability(classification, routingEnv);
-  const pluginDecision = selectPlugins(classification, routeDecision, routingEnv);
+  let routeDecision = routeCapability(classification, routingEnv);
+  let pluginDecision = selectPlugins(classification, routeDecision, routingEnv);
   const adapterPath = new URL('./codex-v129-fixture-host-adapter.mjs', import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
   const adapterDigest = digestFile(adapterPath);
   const dispatchRequest = buildDispatchRequest({
@@ -114,7 +140,7 @@ export function runV129ShadowFixture(env = process.env) {
     timeoutMs: 5000,
     workspaceDigest: `sha256:${'c'.repeat(64)}`,
   });
-  const dispatch = dispatchHost(dispatchRequest, {
+  let dispatch = dispatchHost(dispatchRequest, {
     ...routingEnv,
     CODEX_V129_TEST_MODE: '1',
     CODEX_V129_HOST_ADAPTER_PATH: adapterPath,
@@ -128,8 +154,8 @@ export function runV129ShadowFixture(env = process.env) {
     invocationReceiptDigest: workerReceiptDigest,
   };
   const evidenceDigest = digest(evidence);
-  const workerWorkspacePath = makeShadowWorktree('v129-worker-', goal.candidateHeadSha);
-  const verifierWorkspacePath = makeShadowWorktree('v129-verifier-', goal.candidateHeadSha);
+  const workerWorkspacePath = makeShadowWorktree('v129-worker-', candidateHeadSha);
+  const verifierWorkspacePath = makeShadowWorktree('v129-verifier-', candidateHeadSha);
   try {
     const verifierInput = {
       schemaVersion: '1.2.9',
@@ -139,22 +165,23 @@ export function runV129ShadowFixture(env = process.env) {
       verifierWorkspacePath,
       workerWorkspaceDigest: computeWorkspaceTreeDigest(workerWorkspacePath),
       verifierWorkspaceDigest: computeWorkspaceTreeDigest(verifierWorkspacePath),
-      candidateHeadSha: goal.candidateHeadSha,
+      candidateHeadSha,
       goalDigest: goal.goalDigest,
       goalContract: goal,
       workerReceipt: dispatch.invocationReceipt || {},
       workerReceiptDigest,
+      dispatchRequest,
       evidence,
       evidenceDigest,
       worker: {
         goalDigest: goal.goalDigest,
-        candidateHeadSha: goal.candidateHeadSha,
+        candidateHeadSha,
         routeDecisionDigest: routeDecision.routeDecisionDigest,
         workerOutputDigest: dispatch.invocationReceipt?.workerOutputDigest,
       },
       verifier: {
         goalDigest: goal.goalDigest,
-        candidateHeadSha: goal.candidateHeadSha,
+        candidateHeadSha,
         routeDecisionDigest: routeDecision.routeDecisionDigest,
         workerOutputDigest: dispatch.invocationReceipt?.workerOutputDigest,
       },
@@ -168,7 +195,7 @@ export function runV129ShadowFixture(env = process.env) {
       maxBuffer: 8192,
       env: { CODEX_QUALITY_REPORT: 'json' },
     });
-    const verifier = JSON.parse(verifierStdout);
+    let verifier = JSON.parse(verifierStdout);
     const verifierReceiptDigest = digest(verifier);
     const truthOwnerDigest = digest(goal.truthOwnerRefs);
     const v129ShadowPointer = {
@@ -180,10 +207,10 @@ export function runV129ShadowFixture(env = process.env) {
       verifierReceiptDigest,
       evidenceDigest,
     };
-    const finalizer = buildGoalCompletionProof({
+    let finalizer = buildGoalCompletionProof({
       goalContract: goal,
       goalDigest: goal.goalDigest,
-      candidateHeadSha: goal.candidateHeadSha,
+      candidateHeadSha,
       baseSha: goal.binding.baseSha,
       scopeDigest: goal.binding.scopeDigest,
       truthOwnerDigest,
@@ -195,15 +222,18 @@ export function runV129ShadowFixture(env = process.env) {
       evidence,
       evidenceDigest,
       criteriaResults: verifierInput.criteriaResults,
-      headBindings: [goal.candidateHeadSha, goal.candidateHeadSha, goal.candidateHeadSha],
-      validatedWorkerReceipt: { status: dispatch.status, digest: workerReceiptDigest },
+      headBindings: [candidateHeadSha, candidateHeadSha, candidateHeadSha],
+      validatedWorkerReceipt: verifier.recomputed?.workerReceiptValidation || { status: 'fail' },
       independentVerifier: { status: verifier.status, digest: verifierReceiptDigest },
       repairIterationCount: 0,
       sameBlockerCount: 0,
       tokenBudget: { usedBytes: Buffer.byteLength(canonicalJson(verifier), 'utf8'), maxBytes: 4096 },
     });
+    const overridden = applyTestStageOverride(env.CODEX_V129_TEST_FORCE_STAGE, { classification, routeDecision, pluginDecision, dispatch, verifier, finalizer });
+    ({ classification, routeDecision, pluginDecision, dispatch, verifier, finalizer } = overridden);
     const statuses = [classification, routeDecision, pluginDecision, dispatch, verifier, finalizer];
-    const reasonCodes = statuses.flatMap((item) => item.reasonCodes || []);
+    const reasonCodes = collectStageReasonCodes(statuses);
+    const allStagesPass = statuses.every((stage) => stageStatus(stage) === 'pass');
     return {
       schemaVersion: '1.2.9',
       candidateHarnessVersion: '1.2.9',
@@ -222,10 +252,10 @@ export function runV129ShadowFixture(env = process.env) {
       invocationReceiptDigest: workerReceiptDigest,
       verifierReceiptDigest,
       goalCompletionProofSummary: {
-        completionState: finalizer.goalCompletionProof.completionState,
-        proofDigest: finalizer.goalCompletionProof.proofDigest,
-        unresolvedCriterionCount: finalizer.goalCompletionProof.unresolvedCriterionCount,
-        safeNextAction: finalizer.goalCompletionProof.safeNextAction,
+        completionState: finalizer.goalCompletionProof?.completionState || 'blocked',
+        proofDigest: finalizer.goalCompletionProof?.proofDigest || null,
+        unresolvedCriterionCount: finalizer.goalCompletionProof?.unresolvedCriterionCount ?? null,
+        safeNextAction: finalizer.goalCompletionProof?.safeNextAction || 'blocked',
         authorityCreated: false,
       },
       verifierWorkspace: {
@@ -239,10 +269,10 @@ export function runV129ShadowFixture(env = process.env) {
         actualModelReceiptState: dispatch.invocationReceipt?.fixture === true ? 'unavailable_fixture_only' : 'observed',
         actualPluginReceiptState: (dispatch.invocationReceipt?.pluginRefs || []).length ? 'observed' : 'unavailable_not_selected',
       },
-      tokenBudgetStatus: { status: Buffer.byteLength(canonicalJson(finalizer.goalCompletionProof), 'utf8') <= 4096 ? 'pass' : 'fail' },
+      tokenBudgetStatus: { status: finalizer.goalCompletionProof && Buffer.byteLength(canonicalJson(finalizer.goalCompletionProof), 'utf8') <= 4096 ? 'pass' : 'fail' },
       activeOutputChanged: false,
       authorityCreated: false,
-      status: reasonCodes.length ? 'fail' : 'pass',
+      status: allStagesPass && reasonCodes.length === 0 ? 'pass' : 'fail',
       reasonCodes,
       safeSummaryOnly: true,
     };

@@ -461,11 +461,23 @@ function verifierTests() {
     evidencePlan: ['safe fixture proof'],
     killCriteria: ['stop once'],
     binding: { ...baseGoal().binding, baseSha: headSha },
-    candidateHeadSha: headSha,
   });
-  const classification = classifyGoalTask(goal);
+  const classification = classify(goal, { candidateHeadSha: headSha });
   const registry = defaultTestRegistry();
   const route = routeCapability(classification, registryEnv(registry));
+  const dispatchRequest = {
+    runId: 'fixture-worker',
+    goalDigest: goal.goalDigest,
+    classificationDigest: classification.classificationDigest,
+    routeDecisionDigest: route.routeDecisionDigest,
+    registryDigest: route.registryDigest,
+    capabilityClass: route.capabilityClass,
+    inputDigest: `sha256:${'2'.repeat(64)}`,
+    inputBytes: 100,
+    maxOutputBytes: route.maxOutputBytes,
+    workspaceDigest: `sha256:${'3'.repeat(64)}`,
+    pluginRefs: [],
+  };
   const workerOutputDigest = `sha256:${'5'.repeat(64)}`;
   const workerReceipt = {
     schemaVersion: '1.2.9',
@@ -515,6 +527,7 @@ function verifierTests() {
     goalContract: goal,
     workerReceipt,
     workerReceiptDigest,
+    dispatchRequest,
     evidence,
     evidenceDigest,
     truthOwnerDigest: `sha256:${sha256(canonicalJson(goal.truthOwnerRefs))}`,
@@ -552,7 +565,7 @@ function verifierTests() {
     evidenceDigest,
     criteriaResults: [criterion],
     headBindings: [headSha, headSha, headSha],
-    validatedWorkerReceipt: { status: 'pass', digest: workerReceiptDigest },
+    validatedWorkerReceipt: verifierReport.recomputed.workerReceiptValidation,
     independentVerifier: { status: verifierReport.status, digest: verifierReceiptDigest },
     repairIterationCount: 0,
     sameBlockerCount: 0,
@@ -586,6 +599,11 @@ function verifierTests() {
     test('v129_route_decision_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, verifier: { ...reviewInput.verifier, routeDecisionDigest: `sha256:${'b'.repeat(64)}` } }).status === 'fail'),
     test('v129_worker_receipt_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, workerReceiptDigest: `sha256:${'c'.repeat(64)}` }).status === 'fail'),
     test('v129_evidence_digest_tamper_fails', () => verifyV129IndependentReview({ ...reviewInput, evidenceDigest: `sha256:${'d'.repeat(64)}` }).status === 'fail'),
+    test('v129_dispatch_request_missing_fails', () => {
+      const { dispatchRequest: _dispatchRequest, ...withoutDispatchRequest } = reviewInput;
+      return verifyV129IndependentReview(withoutDispatchRequest).status === 'fail';
+    }),
+    test('v129_receipt_dispatch_request_mismatch_fails', () => verifyV129IndependentReview({ ...reviewInput, dispatchRequest: { ...dispatchRequest, inputBytes: 101 } }).status === 'fail'),
     test('v129_fake_candidate_head_file_fails', () => {
       const fake = fs.mkdtempSync(path.join(os.tmpdir(), 'v129-fake-head-'));
       fs.writeFileSync(path.join(fake, 'CANDIDATE_HEAD'), `${headSha}\n`);
@@ -631,6 +649,15 @@ function verifierTests() {
     test('v129_authority_created_shadow_metadata_fails', () => validateV129ShadowRoutingMetadata({ ...buildV129ShadowRoutingMetadata({ goalDigest: goal.goalDigest, classificationDigest: classification.classificationDigest, routeDecisionDigest: route.routeDecisionDigest, routingState: 'routed' }), authorityCreated: true }).status === 'fail'),
     test('v129_shadow_runner_requires_shadow_env', () => runV129ShadowFixture({}).status === 'blocked'),
     test('v129_shadow_runner_fixture_passes', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1' }).status === 'pass'),
+    test('v129_shadow_classification_empty_fail_fails_closed', () => {
+      const report = runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1', CODEX_V129_TEST_FORCE_STAGE: 'classification' });
+      return report.status === 'fail' && report.reasonCodes.includes('v129_shadow_stage_failed');
+    }),
+    test('v129_shadow_route_fail_fails_closed', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1', CODEX_V129_TEST_FORCE_STAGE: 'routeDecision' }).status === 'fail'),
+    test('v129_shadow_plugin_fail_fails_closed', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1', CODEX_V129_TEST_FORCE_STAGE: 'pluginDecision' }).status === 'fail'),
+    test('v129_shadow_dispatch_fail_fails_closed', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1', CODEX_V129_TEST_FORCE_STAGE: 'dispatch' }).status === 'fail'),
+    test('v129_shadow_verifier_fail_fails_closed', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1', CODEX_V129_TEST_FORCE_STAGE: 'verifier' }).status === 'fail'),
+    test('v129_shadow_finalizer_fail_fails_closed', () => runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1', CODEX_V129_TEST_FORCE_STAGE: 'finalizer' }).status === 'fail'),
     test('v129_shadow_runner_marks_fixture_invocation_unavailable', () => {
       const report = runV129ShadowFixture({ CODEX_V129_SHADOW: '1', CODEX_V129_TEST_MODE: '1' });
       return report.executionMode === 'fixture'
@@ -646,7 +673,7 @@ function negativeTests() {
   const registry = defaultTestRegistry();
   const env = registryEnv(registry);
   const goal = baseGoal({ desiredEndState: 'Negative v129 shadow checks.', allowedFiles: ['scripts/codex-v129-shadow-runner.mjs'] });
-  const classification = classifyGoalTask(goal);
+  const classification = classify(goal);
   const route = routeCapability(classification, env);
   return [
     test('v129_negative_goal_unknown_field', () => failed(compileGoalContract(asText({ ...goal, unexpected: true, goalDigest: computeGoalDigest({ ...goal, unexpected: true }) })))),
