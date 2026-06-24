@@ -3468,13 +3468,13 @@ const cases = [
   ['v128_adds_no_new_p0_artifact', () => V128_P0_ARTIFACTS.length === 3 && V128_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
   ['v128_adds_no_new_top_level_status', () => V128_OPERATOR_STATUS_KEYS.length === 8 && !V128_OPERATOR_STATUS_KEYS.includes('deterministicDecisionProjectionStatus')],
   ['v128_preserves_v118_final_decision', () => buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
-  ['v128_source_activation_sets_v128_active_authority', () => {
+  ['v128_source_activation_sets_current_active_authority', () => {
     const tuple = buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple;
-    return tuple.manifestActiveHarnessVersion === '1.2.8'
-      && tuple.activeSelfTestSuite === 'v128'
-      && tuple.activeSpecPath === 'docs/process/CODEX_V128_SPEC.md'
-      && tuple.candidateHarnessVersion === '1.2.8'
-      && tuple.candidateSelfTestSuite === 'v128'
+    return tuple.manifestActiveHarnessVersion === '1.2.9'
+      && tuple.activeSelfTestSuite === 'v129'
+      && tuple.activeSpecPath === 'docs/process/CODEX_V129_SPEC.md'
+      && tuple.candidateHarnessVersion === '1.2.9'
+      && tuple.candidateSelfTestSuite === 'v129'
       && tuple.candidateActivationState === 'active';
   }],
   ['manifest_declares_v128_source_activation', () => manifestDeclaresSourceActivation()],

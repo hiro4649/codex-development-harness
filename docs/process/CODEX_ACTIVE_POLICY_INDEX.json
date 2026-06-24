@@ -15,10 +15,11 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V127_SPEC.md"
+        "docs/process/CODEX_V129_SPEC.md"
       ],
       "deferredReads": [
         "docs/process/CODEX_V128_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -36,6 +37,7 @@
       ],
       "deferredReads": [
         "docs/process/CODEX_V128_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -48,11 +50,12 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V127_SPEC.md",
+        "docs/process/CODEX_V129_SPEC.md",
         "owner_rollout_instruction"
       ],
       "deferredReads": [
         "docs/process/CODEX_V128_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -65,10 +68,11 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V127_SPEC.md"
+        "docs/process/CODEX_V129_SPEC.md"
       ],
       "deferredReads": [
         "docs/process/CODEX_V128_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
         "README.md",
         "legacy_specs",
         "pr_history_docs"
@@ -119,10 +123,11 @@
   "requiredReads": [
     "AGENTS.md",
     "docs/process/CODEX_HARNESS_MANIFEST.json",
-    "docs/process/CODEX_V127_SPEC.md"
+    "docs/process/CODEX_V129_SPEC.md"
   ],
   "deferredReads": [
     "docs/process/CODEX_V128_SPEC.md",
+    "docs/process/CODEX_V127_SPEC.md",
     "README.md",
     "legacy_specs",
     "pr_history_docs"

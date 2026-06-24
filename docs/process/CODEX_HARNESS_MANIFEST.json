@@ -27,8 +27,9 @@
     "v114": "blocking_compatibility",
     "v113": "selected_critical",
     "v080_v112": "target_shadow_legacy_count_only",
-    "v127": "blocking_compatibility_rollback",
-    "v128": "blocking_current_active_authority"
+    "v127": "blocking_compatibility",
+    "v128": "blocking_compatibility_rollback",
+    "v129": "blocking_current_active_authority"
   },
   "sourceOnlyRelease": true,
   "targetRollout": "not_started",
