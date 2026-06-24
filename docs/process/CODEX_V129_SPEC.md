@@ -39,7 +39,7 @@ The repository records only safe metadata and digests. It must not store raw pro
 
 ## Goal Contract
 
-Goal Contract is strict JSON with duplicate-key rejection and unknown-field rejection. The active source marker remains `CODEX_QUALITY_HARNESS_FILE v1.2.8`; v1.2.9 identity is carried only by `candidateHarnessVersion=1.2.9` and `candidateActivationState=source_shadow_candidate`. Required fields:
+Goal Contract is strict JSON with duplicate-key rejection and unknown-field rejection. The active source marker is `CODEX_QUALITY_HARNESS_FILE v1.2.9`; v1.2.9 identity is carried by `activeHarnessVersion=1.2.9`, `candidateHarnessVersion=1.2.9`, and `candidateActivationState=active`. Required fields:
 
 - `goalId`
 - `goalVersion`
@@ -112,6 +112,43 @@ The v129 shadow profile uses:
 - full history: forbidden
 - raw logs: forbidden
 
+## Target Materialization Contract
+
+Portfolio rollout is a protected target phase. The router does not create rollout authority by itself, and target repositories do not store the Source full bundle.
+
+Target classes:
+
+- `complex`: `target_quality_gate_active_path`
+- `standard`: `target_quality_gate_active_path`
+- `restricted_token`: `metadata_only_readonly`
+
+All classes share these invariants:
+
+- `sourceFullBundleCopied=false`
+- `modelIdPinnedInTarget=false`
+- `hostAdapterStoredInTarget=false`
+- real model execution uses the user-local trusted adapter
+- Final Decision authority remains `v1.1.8_final_decision_kernel`
+- Plugin default is `none`
+- Plugin unavailable is explicit and nonblocking
+- v1.2.8 rollback is retained
+- v1.2.7 compatibility is retained
+- routine cold artifact reads remain `0`
+- routine selected skill max remains `1`
+- product, runtime, package, lockfile, workflow, deploy, wallet, RPC, secret, and readiness claim mutation are forbidden by rollout
+
+The Source registry records each enrolled target with `currentTargetHarnessVersion=1.2.8`, `desiredTargetHarnessVersion=1.2.9`, live GitHub `repositoryId`, live default branch, rollout class, rollout authority, and an `enrollmentDigest` computed from:
+
+- `repositoryFullName`
+- `repositoryId`
+- `defaultBranch`
+- `targetProfileId`
+- `desiredTargetHarnessVersion`
+- `rolloutClass`
+- `rolloutAuthority`
+
+`currentTargetHarnessVersion` is deliberately excluded from the enrollment digest.
+
 ## Non-Goals
 
-v1.2.9 does not add P0 artifacts, top-level operator statuses, Skills, raw prompt storage, raw model output storage, raw log storage, merge authority, deployment authority, wallet/RPC authority, target repository mutation, or target rollout.
+v1.2.9 does not add P0 artifacts, top-level operator statuses, Skills, raw prompt storage, raw model output storage, raw log storage, merge authority, deployment authority, wallet/RPC authority, product/runtime mutation, package/lockfile mutation, or model/plugin authority stored in target repositories.

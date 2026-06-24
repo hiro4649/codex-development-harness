@@ -733,6 +733,26 @@ function activationTests() {
   const versionRegistry = buildHarnessVersionRegistry();
   const v129 = sourceManifest.v129SourceShadowCandidate || {};
   const realHost = v129.realHostQualification || {};
+  const targets = Array.isArray(sourceManifest.registeredTargetRepositories) ? sourceManifest.registeredTargetRepositories : [];
+  const expectedTargets = [
+    'hiro4649/CRIPTO-TIP',
+    'hiro4649/VGC-FUNKY-TOKEN',
+    'hiro4649/VOXWEAVE',
+    'hiro4649/disco-funky-repair',
+    'hiro4649/iris',
+    'hiro4649/iris-live2d-renderer',
+  ].sort();
+  const targetDigestInput = (target) => ({
+    repositoryFullName: target.repositoryFullName,
+    repositoryId: target.repositoryId,
+    defaultBranch: target.defaultBranch,
+    targetProfileId: target.targetProfileId,
+    desiredTargetHarnessVersion: target.desiredTargetHarnessVersion,
+    rolloutClass: target.rolloutClass,
+    rolloutAuthority: target.rolloutAuthority,
+  });
+  const targetEnrollmentDigest = (target) => `sha256:${sha256(canonicalJson(targetDigestInput(target)))}`;
+  const activeSpecText = fs.readFileSync('docs/process/CODEX_V129_SPEC.md', 'utf8');
   return [
     test('v129_active_harness_version_pass', () => versionRegistry.activeHarnessVersion === '1.2.9' && sourceManifest.activeHarnessVersion === '1.2.9'),
     test('v129_active_self_test_suite_pass', () => versionRegistry.activeSelfTestSuite === 'v129' && sourceManifest.activeSelfTestSuite === 'v129'),
@@ -750,7 +770,14 @@ function activationTests() {
     test('v129_authority_created_true_fails_activation', () => realHost.authorityCreated === false),
     test('v129_fixture_actual_claim_fails_activation', () => realHost.actualModelInvocationState !== 'fixture' && realHost.actualPluginInvocationState !== 'fixture'),
     test('v129_target_rollout_not_started_pass', () => sourceManifest.targetRollout === 'not_started' && v129.targetRollout === 'not_started'),
-    test('v129_target_registry_unchanged_pass', () => Array.isArray(sourceManifest.registeredTargetRepositories) && sourceManifest.registeredTargetRepositories.every((item) => item.targetHarnessVersion !== '1.2.9')),
+    test('v129_active_spec_marker_pass', () => activeSpecText.includes('CODEX_QUALITY_HARNESS_FILE v1.2.9')),
+    test('v129_active_spec_no_shadow_activation_stale_text', () => !activeSpecText.includes('active source marker remains `CODEX_QUALITY_HARNESS_FILE v1.2.8`') && !activeSpecText.includes('candidateActivationState=source_shadow_candidate')),
+    test('v129_target_registry_count_pass', () => targets.length === 6 && JSON.stringify(targets.map((target) => target.repositoryFullName).sort()) === JSON.stringify(expectedTargets)),
+    test('v129_target_registry_current_128_pass', () => targets.every((item) => item.currentTargetHarnessVersion === '1.2.8')),
+    test('v129_target_registry_desired_129_pass', () => targets.every((item) => item.desiredTargetHarnessVersion === '1.2.9')),
+    test('v129_target_registry_live_identity_shape_pass', () => targets.every((item) => Number.isInteger(item.repositoryId) && item.repositoryId > 0 && item.defaultBranch === 'main')),
+    test('v129_target_registry_enrollment_digest_pass', () => targets.every((item) => item.enrollmentDigest === targetEnrollmentDigest(item))),
+    test('v129_target_registry_current_excluded_from_digest_pass', () => targets.every((item) => !Object.prototype.hasOwnProperty.call(targetDigestInput(item), 'currentTargetHarnessVersion'))),
   ];
 }
 
