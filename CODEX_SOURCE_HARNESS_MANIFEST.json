@@ -25,66 +25,66 @@
       "repositoryId": 1256870006,
       "defaultBranch": "main",
       "targetProfileId": "cripto_tip_no_crypto_youtube_runtime",
-      "currentTargetHarnessVersion": "1.2.7",
-      "desiredTargetHarnessVersion": "1.2.8",
+      "currentTargetHarnessVersion": "1.2.8",
+      "desiredTargetHarnessVersion": "1.2.9",
       "rolloutClass": "complex",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:fb317eaa244825b15a591cf6d63bb8c0fd0be84e82127b586fb8d57f2128b1b2"
+      "enrollmentDigest": "sha256:84bda369ee6c5668831d2c537c2395e3887898f39173317b166b39d04b8ac1af"
     },
     {
       "repositoryFullName": "hiro4649/VGC-FUNKY-TOKEN",
       "repositoryId": 1257029490,
       "defaultBranch": "main",
       "targetProfileId": "vgc_token_no_deploy_no_value_transfer",
-      "currentTargetHarnessVersion": "1.2.7",
-      "desiredTargetHarnessVersion": "1.2.8",
+      "currentTargetHarnessVersion": "1.2.8",
+      "desiredTargetHarnessVersion": "1.2.9",
       "rolloutClass": "restricted_token",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:10547b2fb139d8beb995d2efd2378d6aadd15bab0aabf1a81695a4c8ebeedd02"
+      "enrollmentDigest": "sha256:d93a42320304bc9f051680a7cb7d2c40ba9cc6aff7a75aece46b1fdabbc89da7"
     },
     {
       "repositoryFullName": "hiro4649/VOXWEAVE",
       "repositoryId": 1255020469,
       "defaultBranch": "main",
       "targetProfileId": "voxweave_no_tts_asr_runtime",
-      "currentTargetHarnessVersion": "1.2.7",
-      "desiredTargetHarnessVersion": "1.2.8",
+      "currentTargetHarnessVersion": "1.2.8",
+      "desiredTargetHarnessVersion": "1.2.9",
       "rolloutClass": "standard",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:549d924d1e5bc0f9ab53f1e8bcca9ef92d706f7f73a1fa1042ba210edc13cb90"
+      "enrollmentDigest": "sha256:adb37e96b4bb01946e06349af45f226671dfa6929beb83f40a65efdaa270fd27"
     },
     {
       "repositoryFullName": "hiro4649/iris",
       "repositoryId": 1239764352,
       "defaultBranch": "main",
       "targetProfileId": "iris_priority1_no_production_go",
-      "currentTargetHarnessVersion": "1.2.7",
-      "desiredTargetHarnessVersion": "1.2.8",
+      "currentTargetHarnessVersion": "1.2.8",
+      "desiredTargetHarnessVersion": "1.2.9",
       "rolloutClass": "standard",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:bd857f9dc7ca186db75e669ae49fe9b448d63d9daa86b050cd062a2afa238dbe"
+      "enrollmentDigest": "sha256:a69a2f5da42c8fb852f870cafddbce8aa5f41fe7d24fea084890165ede0f2671"
     },
     {
       "repositoryFullName": "hiro4649/disco-funky-repair",
       "repositoryId": 1239326977,
       "defaultBranch": "main",
       "targetProfileId": "disco_funky_repair_no_deploy",
-      "currentTargetHarnessVersion": "1.2.7",
-      "desiredTargetHarnessVersion": "1.2.8",
+      "currentTargetHarnessVersion": "1.2.8",
+      "desiredTargetHarnessVersion": "1.2.9",
       "rolloutClass": "standard",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:e012f426ee992eff14bb82efd28367d63da353be4e2adf5cf70893ab7a272858"
+      "enrollmentDigest": "sha256:0e8d3ca7c80af90e483397154cab589109731785a713cb680d7c2f50f4f80c24"
     },
     {
       "repositoryFullName": "hiro4649/iris-live2d-renderer",
       "repositoryId": 1239765322,
       "defaultBranch": "main",
       "targetProfileId": "iris_live2d_renderer_no_runtime_write",
-      "currentTargetHarnessVersion": "1.2.7",
-      "desiredTargetHarnessVersion": "1.2.8",
+      "currentTargetHarnessVersion": "1.2.8",
+      "desiredTargetHarnessVersion": "1.2.9",
       "rolloutClass": "standard",
       "rolloutAuthority": "protected_source_control_plane",
-      "enrollmentDigest": "sha256:938f259973a763a3a71dec0f2a1e60055ca3ec50259393e909fd6cb36852f0f4"
+      "enrollmentDigest": "sha256:c4e320756055bccd1d972d681b4636437d0d7fbaef58ec45d827dbc6488e4279"
     }
   ],
   "managedFiles": [
@@ -1470,7 +1470,7 @@
     "vgcBscScanVerificationBoundaryStatus",
     "vgcMainnetReadinessBoundaryStatus"
   ],
-  "targetHarnessVersion": "1.2.7",
+  "targetHarnessVersion": "1.2.8",
   "evidenceSchemaVersion": 6,
   "theme": "Goal-Contracted Capability Router",
   "requiredStatuses": [
@@ -1911,7 +1911,7 @@
       "walletRpcDeployAccess": false
     }
   },
-  "upgradePath": "v127_to_v128_shadow_candidate_then_activation",
+  "upgradePath": "v128_to_v129_goal_contracted_capability_router",
   "deterministicDecisionProjectionAndTokenMinimalLoopClosure": {
     "version": "1.2.8",
     "name": "Deterministic Decision Projection and Token-Minimal Loop Closure",

@@ -4,11 +4,11 @@
   "sourceHarnessVersion": "1.2.9",
   "harnessVersion": "1.2.9",
   "activeHarnessVersion": "1.2.9",
-  "targetHarnessVersion": "1.2.7",
+  "targetHarnessVersion": "1.2.8",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
-  "upgradePath": "v127_to_v128_shadow_candidate_then_activation",
+  "upgradePath": "v128_to_v129_goal_contracted_capability_router",
   "activeSelfTestSuite": "v129",
   "activeSelfTestStatusKey": "v129SelfTestStatus",
   "legacySelfTests": {
