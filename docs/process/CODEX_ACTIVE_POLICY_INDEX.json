@@ -249,7 +249,7 @@
     "name": "Goal-Contracted Capability Router",
     "activationState": "active",
     "sourceActivation": "active",
-    "targetRollout": "not_started",
+    "targetRollout": "completed",
     "newP0Artifact": false,
     "newTopLevelStatus": false,
     "newSkill": false,
@@ -288,7 +288,7 @@
   "candidateSelfTestStatusKey": "v129SelfTestStatus",
   "candidateActivationState": "active",
   "sourceActivation": "active",
-  "targetRollout": "not_started",
+  "targetRollout": "completed",
   "finalAuthority": "v1.1.8_final_decision_kernel",
   "versionAuthority": {
     "v128": "blocking_compatibility_rollback",

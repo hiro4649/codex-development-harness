@@ -3185,7 +3185,7 @@ function sourceManifestRegistersCanonicalPortfolioTargets() {
     && targets.every((target) => target.defaultBranch === 'main')
     && targets.every((target) => target.enrollmentDigest === sha256Canonical(targetEnrollmentDigestInput(target)))
     && targets.every((target) => !Object.prototype.hasOwnProperty.call(targetEnrollmentDigestInput(target), 'currentTargetHarnessVersion'))
-    && targets.every((target) => target.currentTargetHarnessVersion === '1.2.8')
+    && targets.every((target) => target.currentTargetHarnessVersion === '1.2.9')
     && targets.every((target) => target.desiredTargetHarnessVersion === '1.2.9')
     && targets.every((target) => target.rolloutAuthority === 'protected_source_control_plane')
     && !names.includes('hiro4649/APS-GATE');

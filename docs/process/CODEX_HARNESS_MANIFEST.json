@@ -4,7 +4,7 @@
   "sourceHarnessVersion": "1.2.9",
   "harnessVersion": "1.2.9",
   "activeHarnessVersion": "1.2.9",
-  "targetHarnessVersion": "1.2.8",
+  "targetHarnessVersion": "1.2.9",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
@@ -32,7 +32,7 @@
     "v129": "blocking_current_active_authority"
   },
   "sourceOnlyRelease": true,
-  "targetRollout": "not_started",
+  "targetRollout": "completed",
   "representativeRealPrValidation": "not_started",
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
