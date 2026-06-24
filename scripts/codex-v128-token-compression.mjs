@@ -235,8 +235,11 @@ function finalizeCompression(summaryBase) {
 export function buildV128CompactQualityGateSafeSummary(input = {}) {
   const report = input.report || {};
   const head = input.head || report.head || report.decisionCapsule?.headSha || 'unknown';
+  const marker = input.marker || 'CODEX_QUALITY_HARNESS_FILE v1.2.8';
   const finalDecision = input.finalDecision || report.finalDecision || {};
   const routineDecisionProjection = input.routineDecisionProjection || report.routineDecisionProjection || null;
+  const activeV129Summary = marker === 'CODEX_QUALITY_HARNESS_FILE v1.2.9'
+    || routineDecisionProjection?.activeHarnessVersion === '1.2.9';
   const reasonSummaryStatus = input.reasonSummaryStatus || report.reasonSummaryStatus || {};
   const v128ValidationExecutionPlan = input.v128ValidationExecutionPlan || report.v128ValidationExecutionPlan || {};
   const v128ValidationExecutionPlanStatus = input.v128ValidationExecutionPlanStatus || report.v128ValidationExecutionPlanStatus || {};
@@ -252,9 +255,9 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
     || standingAutonomy.automationDisposition
     || 'auto_wait';
   const summaryBase = {
-    marker: input.marker || 'CODEX_QUALITY_HARNESS_FILE v1.2.8',
+    marker,
     artifactName: 'codex-quality-gate-safe-summary.json',
-    summaryKind: 'v128_token_minimal_safe_summary',
+    summaryKind: activeV129Summary ? 'v129_token_minimal_safe_summary' : 'v128_token_minimal_safe_summary',
     loadBearing: true,
     status: report.status || 'unknown',
     qualityScore: report.qualityScore ?? report.qualityScoreStatus?.score ?? null,
@@ -271,7 +274,9 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
       finalDecisionStatus: compactStatus(report.finalDecisionStatus),
       orchestrationCapsuleBudgetStatus: report.routineDecisionProjectionStatus?.orchestrationCapsuleStoredBytesStatus || 'unknown',
       reasonSummaryStatus: compactReasonSummary(reasonSummaryStatus),
-      v127SelfTestStatus: compactStatus(report.v127SelfTestStatus),
+      ...(activeV129Summary
+        ? { v129SelfTestStatus: compactStatus(report.v129SelfTestStatus) }
+        : { v127SelfTestStatus: compactStatus(report.v127SelfTestStatus) }),
       v128SelfTestStatus: compactStatus(report.v128SelfTestStatus),
       safeArtifactValidation: compactStatus(report.safeArtifactValidation),
       safeSummaryOnly: true,

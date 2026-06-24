@@ -87,12 +87,12 @@ const cases = [
   ['v127_adds_no_new_p0_artifact', () => V127_P0_ARTIFACTS.length === 3 && V127_P0_ARTIFACTS.includes('codex-orchestration-capsule.safe.json')],
   ['v127_adds_no_new_top_level_status', () => V127_OPERATOR_STATUS_KEYS.length === 8 && !V127_OPERATOR_STATUS_KEYS.includes('decisionEvidenceEnvelopeStatus')],
   ['v127_preserves_v118_final_decision', () => buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
-  ['v127_compatibility_survives_v128_active_authority', () => {
+  ['v127_compatibility_survives_current_active_authority', () => {
     const tuple = buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple;
-    return ['CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8'].includes(tuple.agentsMarker)
-      && ['1.2.7', '1.2.8'].includes(tuple.manifestActiveHarnessVersion)
-      && ['v127', 'v128'].includes(tuple.activeSelfTestSuite)
-      && ['docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md'].includes(tuple.activeSpecPath);
+    return ['CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9'].includes(tuple.agentsMarker)
+      && ['1.2.7', '1.2.8', '1.2.9'].includes(tuple.manifestActiveHarnessVersion)
+      && ['v127', 'v128', 'v129'].includes(tuple.activeSelfTestSuite)
+      && ['docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md'].includes(tuple.activeSpecPath);
   }],
   ['process_receipt_survives_in_scope_commit_head_changes', () => passed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
     typedOwnerProcessReceiptAndContinuationKernel: {
