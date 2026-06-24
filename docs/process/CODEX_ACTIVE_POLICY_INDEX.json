@@ -293,5 +293,24 @@
   "versionAuthority": {
     "v128": "blocking_compatibility_rollback",
     "v129": "blocking_current_active_authority"
+  },
+  "v130SourceShadowCandidate": {
+    "version": "1.3.0",
+    "name": "Verified Goal Intake, Adaptive Capability Escalation, and Transactional Agent Teams",
+    "candidateHarnessVersion": "1.3.0",
+    "candidateSelfTestSuite": "v130",
+    "candidateActivationState": "source_shadow_candidate",
+    "sourceActivation": "forbidden",
+    "targetRollout": "forbidden",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "authorityCreated": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "policy": "docs/process/CODEX_V130_POLICY.json",
+    "schema": "docs/process/CODEX_V130_SCHEMA.json",
+    "spec": "docs/process/CODEX_V130_SPEC.md",
+    "selfTest": "scripts/codex-v130-self-test.mjs",
+    "safeSummaryOnly": true
   }
 }
