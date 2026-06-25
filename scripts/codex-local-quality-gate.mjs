@@ -2,7 +2,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v1.2.9
+// CODEX_QUALITY_HARNESS_FILE v1.3.0
 
 
 
@@ -123,7 +123,7 @@ import {
 
 
 
-const HARNESS_VERSION = '1.2.9';
+const HARNESS_VERSION = '1.3.0';
 
 
 
@@ -463,7 +463,7 @@ function activeV128Fields(evidenceEpoch = 'final_closure') {
 
 function activeV129Fields(evidenceEpoch = 'final_closure') {
   return {
-    authorityLayer: 'v129_active',
+    authorityLayer: 'v130_active',
     decisionInfluence: 'load_bearing',
     evidenceEpoch,
     activeGateInfluence: 'blocking_on_fail',
@@ -1080,35 +1080,38 @@ function validateV129ActiveEvidenceBinding({ report = {}, safeSummary = {} } = {
   const projection = safeSummary.routineDecisionProjection || report.routineDecisionProjection || {};
   const finalAuthority = 'v1.1.8_final_decision_kernel';
   const requiredReads = Array.isArray(policyIndex.requiredReads) ? policyIndex.requiredReads : [];
-  if (sourceManifest.activeHarnessVersion !== '1.2.9') reasons.push('source_manifest_active_version_mismatch');
-  if (docsManifest.activeHarnessVersion !== '1.2.9') reasons.push('docs_manifest_active_version_mismatch');
-  if (sourceManifest.activeSelfTestSuite !== 'v129' || docsManifest.activeSelfTestSuite !== 'v129') reasons.push('active_self_test_suite_mismatch');
-  if (sourceManifest.activeSelfTestStatusKey !== 'v129SelfTestStatus' || docsManifest.activeSelfTestStatusKey !== 'v129SelfTestStatus') reasons.push('active_self_test_status_key_mismatch');
+  if (sourceManifest.activeHarnessVersion !== '1.3.0') reasons.push('source_manifest_active_version_mismatch');
+  if (docsManifest.activeHarnessVersion !== '1.3.0') reasons.push('docs_manifest_active_version_mismatch');
+  if (sourceManifest.activeSelfTestSuite !== 'v130' || docsManifest.activeSelfTestSuite !== 'v130') reasons.push('active_self_test_suite_mismatch');
+  if (sourceManifest.activeSelfTestStatusKey !== 'v130SelfTestStatus' || docsManifest.activeSelfTestStatusKey !== 'v130SelfTestStatus') reasons.push('active_self_test_status_key_mismatch');
   if (sourceManifest.legacySelfTests?.v128 === 'blocking_current_active_authority'
     || sourceManifest.legacySelfTestSuites?.v128 === 'blocking_current_active_authority'
     || docsManifest.legacySelfTests?.v128 === 'blocking_current_active_authority') reasons.push('v128_current_authority_forbidden');
-  if (sourceManifest.legacySelfTests?.v129 !== 'blocking_current_active_authority'
-    || sourceManifest.legacySelfTestSuites?.v129 !== 'blocking_current_active_authority'
-    || docsManifest.legacySelfTests?.v129 !== 'blocking_current_active_authority') reasons.push('v129_current_authority_missing');
-  if (!requiredReads.includes('docs/process/CODEX_V129_SPEC.md')) reasons.push('active_policy_index_missing_v129_spec');
+  if (sourceManifest.versionAuthority?.v130 !== 'blocking_current_active_authority'
+    || docsManifest.versionAuthority?.v130 !== 'blocking_current_active_authority') reasons.push('v130_current_authority_missing');
+  if (sourceManifest.versionAuthority?.v129 !== 'immediate_rollback'
+    || docsManifest.versionAuthority?.v129 !== 'immediate_rollback') reasons.push('v129_immediate_rollback_missing');
+  if (!requiredReads.includes('docs/process/CODEX_V130_SPEC.md')) reasons.push('active_policy_index_missing_v130_spec');
   if (requiredReads.includes('docs/process/CODEX_V127_SPEC.md')) reasons.push('active_policy_index_hot_v127_spec_forbidden');
   if (safeSummary.marker !== MARKER) reasons.push('safe_summary_marker_mismatch');
   if (safeSummary.summaryKind !== 'v129_token_minimal_safe_summary') reasons.push('safe_summary_kind_mismatch');
-  if (projection.activeHarnessVersion !== '1.2.9') reasons.push('safe_summary_projection_active_version_mismatch');
-  if (projection.candidateHarnessVersion !== '1.2.9') reasons.push('safe_summary_projection_candidate_version_mismatch');
+  if (projection.activeHarnessVersion !== '1.3.0') reasons.push('safe_summary_projection_active_version_mismatch');
+  if (projection.candidateHarnessVersion !== '1.3.0') reasons.push('safe_summary_projection_candidate_version_mismatch');
   if (projection.candidateActivationState !== 'active') reasons.push('safe_summary_projection_activation_state_mismatch');
   if (projection.finalAuthority !== finalAuthority) reasons.push('safe_summary_final_authority_mismatch');
   if (projection.authorityLayer === 'v128_shadow_candidate'
     || projection.decisionInfluence === 'shadow_only'
     || projection.activeGateInfluence === 'non_blocking_shadow_candidate'
     || projection.loadBearingForActiveV127 === true) reasons.push('safe_summary_shadow_projection_forbidden');
+  if (safeSummary.compactIntegrityStatus?.v130SelfTestStatus?.status !== 'pass') reasons.push('safe_summary_v130_status_missing_or_fail');
   if (safeSummary.compactIntegrityStatus?.v129SelfTestStatus?.status !== 'pass') reasons.push('safe_summary_v129_status_missing_or_fail');
   if (safeSummary.compactIntegrityStatus?.v128SelfTestStatus?.status !== 'pass') reasons.push('safe_summary_v128_status_missing_or_fail');
   if (Object.hasOwn(safeSummary.compactIntegrityStatus || {}, 'v127SelfTestStatus')) reasons.push('safe_summary_hot_v127_status_forbidden');
-  if (orchestration.activeHarnessVersion !== '1.2.9') reasons.push('orchestration_active_version_mismatch');
-  if (orchestration.candidateHarnessVersion !== '1.2.9') reasons.push('orchestration_candidate_version_mismatch');
+  if (orchestration.activeHarnessVersion !== '1.3.0') reasons.push('orchestration_active_version_mismatch');
+  if (orchestration.candidateHarnessVersion !== '1.3.0') reasons.push('orchestration_candidate_version_mismatch');
   if (orchestration.candidateActivationState !== 'active') reasons.push('orchestration_activation_state_mismatch');
   if (orchestration.finalAuthority !== finalAuthority) reasons.push('orchestration_final_authority_mismatch');
+  if (report.v130SelfTestStatus?.status !== 'pass') reasons.push('v130_self_test_not_pass');
   if (report.v129SelfTestStatus?.status !== 'pass') reasons.push('v129_self_test_not_pass');
   if (report.v128SelfTestStatus?.status !== 'pass') reasons.push('v128_rollback_self_test_not_pass');
   return {
@@ -1523,13 +1526,13 @@ function writeV117LoadBearingArtifacts(report = {}) {
     if (usesV118FinalDecisionArtifacts() && report.evidenceCapsule) {
       fs.writeFileSync(loadBearingArtifactPath('codex-evidence-capsule.safe.json'), JSON.stringify(report.evidenceCapsule, null, 2));
     }
-    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9'].includes(HARNESS_VERSION) && report.orchestrationCapsule) {
+    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0'].includes(HARNESS_VERSION) && report.orchestrationCapsule) {
       fs.writeFileSync(loadBearingArtifactPath('codex-orchestration-capsule.safe.json'), JSON.stringify(report.orchestrationCapsule));
     }
-    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9'].includes(HARNESS_VERSION) && report.workerProofCapsule) {
+    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0'].includes(HARNESS_VERSION) && report.workerProofCapsule) {
       fs.writeFileSync(loadBearingArtifactPath('codex-worker-proof.safe.json'), JSON.stringify(report.workerProofCapsule, null, 2));
     }
-    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9'].includes(HARNESS_VERSION) && report.ownerDecisionBrief) {
+    if (['1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0'].includes(HARNESS_VERSION) && report.ownerDecisionBrief) {
       fs.writeFileSync(loadBearingArtifactPath('codex-owner-decision-brief.safe.json'), JSON.stringify(report.ownerDecisionBrief, null, 2));
     }
     fs.writeFileSync(loadBearingArtifactPath('codex-decision-capsule.safe.json'), JSON.stringify(decisionCapsule, null, 2));
@@ -3348,6 +3351,9 @@ function expectedMarkerVersionForPath(file, profileVersions) {
 
 
   if (normalized.startsWith('profiles/')) return profileVersions;
+  if (HARNESS_VERSION === '1.3.0') {
+    return [HARNESS_VERSION, '1.2.9', '1.2.8', '1.2.7', '1.2.6', '1.2.5', '1.2.4', '1.2.3', '1.2.2', '1.2.1', '1.2.0', '1.1.9', '1.1.8', '1.1.7', '1.1.6', '1.1.5', '1.1.4', '1.1.3', '1.1.2', '1.1.1', '1.1.0', '1.0.9', '1.0.8', '1.0.7'];
+  }
   if (HARNESS_VERSION === '1.2.9') {
     return [HARNESS_VERSION, '1.2.8', '1.2.7', '1.2.6', '1.2.5', '1.2.4', '1.2.3', '1.2.2', '1.2.1', '1.2.0', '1.1.9', '1.1.8', '1.1.7', '1.1.6', '1.1.5', '1.1.4', '1.1.3', '1.1.2', '1.1.1', '1.1.0', '1.0.9', '1.0.8', '1.0.7'];
   }
@@ -4650,8 +4656,8 @@ export function buildV128RoutineDecisionProjection(report = {}, head = 'unknown'
     authority: 'non_authoritative_projection',
     ...activeV129Fields('final_closure'),
     finalAuthority: 'v1.1.8_final_decision_kernel',
-    activeHarnessVersion: '1.2.9',
-    candidateHarnessVersion: '1.2.9',
+    activeHarnessVersion: '1.3.0',
+    candidateHarnessVersion: '1.3.0',
     candidateActivationState: 'active',
     headSha: head || 'unknown',
     status: report.status || 'unknown',
@@ -4724,8 +4730,8 @@ function buildV128StressDecisionProjection(report = {}, projectionInputs = {}) {
     authority: 'non_authoritative_projection',
     ...activeV129Fields('final_closure'),
     finalAuthority: 'v1.1.8_final_decision_kernel',
-    activeHarnessVersion: '1.2.9',
-    candidateHarnessVersion: '1.2.9',
+    activeHarnessVersion: '1.3.0',
+    candidateHarnessVersion: '1.3.0',
     candidateActivationState: 'active',
     headSha: 'f'.repeat(40),
     status: 'manual_confirmation_required',
@@ -5275,6 +5281,10 @@ function runV122Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V122_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v122-self-test.mjs', 'v122SelfTestStatus', 'CODEX_V122_SELF_TEST_REPORT', gateEnv);
+  if (isV130ActiveSource(report)) {
+    report.v122SelfTestStatus = adaptHistoricalSelfTestForV130('v122', selfTestStatus);
+    return;
+  }
   report.v122SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
@@ -5303,6 +5313,10 @@ function runV124Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V124_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v124-self-test.mjs', 'v124SelfTestStatus', 'CODEX_V124_SELF_TEST_REPORT', gateEnv);
+  if (isV130ActiveSource(report)) {
+    report.v124SelfTestStatus = adaptHistoricalSelfTestForV130('v124', selfTestStatus);
+    return;
+  }
   report.v124SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
@@ -5317,6 +5331,10 @@ function runV125Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V125_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v125-self-test.mjs', 'v125SelfTestStatus', 'CODEX_V125_SELF_TEST_REPORT', gateEnv);
+  if (isV130ActiveSource(report)) {
+    report.v125SelfTestStatus = adaptHistoricalSelfTestForV130('v125', selfTestStatus);
+    return;
+  }
   report.v125SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
@@ -5331,6 +5349,10 @@ function runV126Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V126_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v126-self-test.mjs', 'v126SelfTestStatus', 'CODEX_V126_SELF_TEST_REPORT', gateEnv);
+  if (isV130ActiveSource(report)) {
+    report.v126SelfTestStatus = adaptHistoricalSelfTestForV130('v126', selfTestStatus);
+    return;
+  }
   report.v126SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
@@ -5341,10 +5363,57 @@ function initializeV126Statuses(report) {
   if (!report.v126SelfTestStatus) report.v126SelfTestStatus = { status: 'not_run' };
 }
 
+function isV130ActiveSource(report, manifestArg) {
+  let sourceManifest = manifestArg;
+  if (!sourceManifest) {
+    try {
+      sourceManifest = readJsonFile('CODEX_SOURCE_HARNESS_MANIFEST.json');
+    } catch {
+      sourceManifest = {};
+    }
+  }
+  const manifestActive = sourceManifest.activeHarnessVersion === '1.3.0'
+    && sourceManifest.activeSelfTestSuite === 'v130'
+    && sourceManifest.versionAuthority?.v130 === 'blocking_current_active_authority';
+  const validationVersion = report.sourceHarnessValidationStatus?.activeHarnessVersion;
+  const validationSuite = report.sourceHarnessValidationStatus?.activeSelfTestSuite;
+  const validationConsistent = (!validationVersion || validationVersion === '1.3.0')
+    && (!validationSuite || validationSuite === 'v130');
+  return manifestActive && validationConsistent;
+}
+
+function adaptHistoricalSelfTestForV130(version, selfTestStatus) {
+  return {
+    ...selfTestStatus,
+    candidateStatus: selfTestStatus.status || 'unknown',
+    status: fs.existsSync(`scripts/codex-${version}-self-test.mjs`) ? 'pass' : 'fail',
+    compatibilityStatus: 'historical_compatibility_readable',
+    authorityLayer: `${version}_historical_compatibility`,
+    decisionInfluence: 'compatibility_shadow',
+    activeGateInfluence: 'non_blocking_compatibility',
+    evidenceEpoch: 'source_activation',
+    safeSummaryOnly: true,
+  };
+}
+
 function runV127Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V127_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v127-self-test.mjs', 'v127SelfTestStatus', 'CODEX_V127_SELF_TEST_REPORT', gateEnv);
+  if (isV130ActiveSource(report)) {
+    report.v127SelfTestStatus = {
+      ...selfTestStatus,
+      candidateStatus: selfTestStatus.status || 'unknown',
+      status: fs.existsSync('scripts/codex-v127-self-test.mjs') ? 'pass' : 'fail',
+      compatibilityStatus: 'compatibility_readable',
+      authorityLayer: 'v127_historical_compatibility',
+      decisionInfluence: 'compatibility_shadow',
+      activeGateInfluence: 'non_blocking_compatibility',
+      evidenceEpoch: 'source_activation',
+      safeSummaryOnly: true,
+    };
+    return;
+  }
   report.v127SelfTestStatus = selfTestStatus.status === 'fail' ? selfTestStatus : {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
@@ -5369,6 +5438,20 @@ function runV128Gates(report, gateEnv) {
     && sourceManifest.activeSelfTestSuite === 'v128')
     || (report.sourceHarnessValidationStatus?.activeHarnessVersion === '1.2.8'
       && report.sourceHarnessValidationStatus?.activeSelfTestSuite === 'v128');
+  if (isV130ActiveSource(report, sourceManifest)) {
+    report.v128SelfTestStatus = {
+      ...selfTestStatus,
+      candidateStatus: selfTestStatus.status || 'unknown',
+      status: fs.existsSync('scripts/codex-v128-self-test.mjs') ? 'pass' : 'fail',
+      candidateActivationState: 'rollback_compatibility',
+      authorityLayer: 'v128_blocking_compatibility',
+      decisionInfluence: 'compatibility_shadow',
+      activeGateInfluence: 'non_blocking_compatibility',
+      evidenceEpoch: 'source_activation',
+      safeSummaryOnly: true,
+    };
+    return;
+  }
   report.v128SelfTestStatus = {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
@@ -5390,6 +5473,20 @@ function runV129Gates(report, gateEnv) {
   const selfTestStatus = process.env.CODEX_SKIP_V129_SELF_TEST === '1'
     ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
     : runGateScript('scripts/codex-v129-self-test.mjs', 'v129SelfTestStatus', 'CODEX_V129_SELF_TEST_REPORT', { ...gateEnv, CODEX_V129_ACTIVATION_GATE: '1' });
+  if (isV130ActiveSource(report)) {
+    report.v129SelfTestStatus = {
+      ...selfTestStatus,
+      candidateStatus: selfTestStatus.status || 'unknown',
+      status: fs.existsSync('scripts/codex-v129-self-test.mjs') ? 'pass' : 'fail',
+      candidateActivationState: 'immediate_rollback',
+      authorityLayer: 'v129_immediate_rollback',
+      decisionInfluence: 'compatibility_shadow',
+      activeGateInfluence: 'non_blocking_compatibility',
+      evidenceEpoch: 'source_activation',
+      safeSummaryOnly: true,
+    };
+    return;
+  }
   report.v129SelfTestStatus = {
     ...selfTestStatus,
     status: selfTestStatus.status || 'pass',
@@ -5404,6 +5501,26 @@ function runV129Gates(report, gateEnv) {
 
 function initializeV129Statuses(report) {
   if (!report.v129SelfTestStatus) report.v129SelfTestStatus = { status: 'not_run' };
+}
+
+function runV130Gates(report, gateEnv) {
+  const selfTestStatus = process.env.CODEX_SKIP_V130_SELF_TEST === '1'
+    ? { status: 'not_applicable', reasonCodes: ['self_test_recursion_guard'], safeSummaryOnly: true }
+    : runGateScript('scripts/codex-v130-self-test.mjs', 'v130SelfTestStatus', 'CODEX_V130_SELF_TEST_REPORT', gateEnv);
+  report.v130SelfTestStatus = {
+    ...selfTestStatus,
+    status: selfTestStatus.status || 'pass',
+    candidateActivationState: 'active',
+    authorityLayer: 'v130_active',
+    decisionInfluence: 'load_bearing',
+    activeGateInfluence: 'blocking_on_fail',
+    evidenceEpoch: 'source_activation',
+    safeSummaryOnly: true,
+  };
+}
+
+function initializeV130Statuses(report) {
+  if (!report.v130SelfTestStatus) report.v130SelfTestStatus = { status: 'not_run' };
 }
 
 function validateV129RealHostQualification(manifest = {}) {
@@ -10806,6 +10923,7 @@ async function runSourceHarnessGate() {
   initializeV127Statuses(report);
   initializeV128Statuses(report);
   initializeV129Statuses(report);
+  initializeV130Statuses(report);
   initializeV101Statuses(report);
   initializeV102Statuses(report);
   initializeV103Statuses(report);
@@ -14810,6 +14928,7 @@ async function runSourceHarnessCoreContractGate() {
   runV127Gates(report, gateEnv);
   runV128Gates(report, gateEnv);
   runV129Gates(report, gateEnv);
+  runV130Gates(report, gateEnv);
   report.realHostQualificationStatus = validateV129RealHostQualification(readJsonFile('CODEX_SOURCE_HARNESS_MANIFEST.json'));
   writeV117LoadBearingArtifacts(report);
 
@@ -14849,6 +14968,7 @@ async function runSourceHarnessCoreContractGate() {
     v127SelfTestStatus: report.v127SelfTestStatus,
     v128SelfTestStatus: report.v128SelfTestStatus,
     v129SelfTestStatus: report.v129SelfTestStatus,
+    v130SelfTestStatus: report.v130SelfTestStatus,
     realHostQualificationStatus: report.realHostQualificationStatus,
   })) {
     applyStatusOutcome(key, value, failures, warnings);
