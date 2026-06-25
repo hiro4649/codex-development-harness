@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { compileSessionIntent, buildProjectProfile, compileVerifiedGoal } from './codex-v130-intake-compiler.mjs';
 import { buildCompiledInstructionEnvelope } from './codex-v130-context-compiler.mjs';
 import { defaultTestRegistry, digestRegistry } from './codex-v129-capability-router.mjs';
-import { applyAvailabilityMask, buildConstrainedDag, compileAgentRole, evaluateEscalation } from './codex-v130-orchestration.mjs';
+import { applyAvailabilityMask, buildConstrainedDag, compileAgentRole, evaluateEscalation, validateConstrainedDag } from './codex-v130-orchestration.mjs';
 import { buildProgressVector, buildTransactionalStateReceipt, evaluateNoHumanTerminal, ratifyExactHead } from './codex-v130-ratifier.mjs';
 import { buildAdversarialFixture, buildBenchmarkFixture } from './codex-v130-benchmark.mjs';
 
@@ -364,6 +364,34 @@ function orchestrationAutonomyTests() {
   const security = buildConstrainedDag(policy, { taskClass: 'security_remediation' });
   const naturalLanguage = buildConstrainedDag(policy, { taskClass: 'code_change', naturalLanguageWorkflow: true });
   const secondReplan = buildConstrainedDag(policy, { taskClass: 'architecture', replanCount: 2 });
+  const cycleDag = validateConstrainedDag(policy, {
+    nodes: [
+      { nodeId: 'writer', roleId: 'code_worker', inputHandles: ['verifier'], outputSchemaRef: 'change_receipt', timeoutMs: 1 },
+      { nodeId: 'verifier', roleId: 'independent_verifier', inputHandles: ['writer'], outputSchemaRef: 'verification_receipt', timeoutMs: 1 },
+    ],
+    edges: [
+      { from: 'writer', to: 'verifier', handleType: 'evidence_handle' },
+      { from: 'verifier', to: 'writer', handleType: 'evidence_handle' },
+    ],
+  });
+  const twoWriterDag = validateConstrainedDag(policy, {
+    nodes: [
+      { nodeId: 'writer1', roleId: 'code_worker', inputHandles: ['goal'], outputSchemaRef: 'change_receipt', timeoutMs: 1 },
+      { nodeId: 'writer2', roleId: 'test_worker', inputHandles: ['writer1'], outputSchemaRef: 'change_receipt', timeoutMs: 1 },
+      { nodeId: 'verifier', roleId: 'independent_verifier', inputHandles: ['writer2'], outputSchemaRef: 'verification_receipt', timeoutMs: 1 },
+    ],
+    edges: [
+      { from: 'writer1', to: 'writer2', handleType: 'evidence_handle' },
+      { from: 'writer2', to: 'verifier', handleType: 'evidence_handle' },
+    ],
+  });
+  const rawBroadcastDag = validateConstrainedDag(policy, {
+    nodes: [
+      { nodeId: 'writer', roleId: 'code_worker', inputHandles: ['goal'], outputSchemaRef: 'change_receipt', timeoutMs: 1, modelId: 'forbidden-model' },
+      { nodeId: 'verifier', roleId: 'independent_verifier', inputHandles: ['writer'], outputSchemaRef: 'verification_receipt', timeoutMs: 1 },
+    ],
+    edges: [{ from: 'writer', to: 'verifier', handleType: 'raw_output' }],
+  }, { goalMutation: true, gateRemoval: true, budgetExpansion: true, finalDecisionReplacement: true });
   const role = compileAgentRole(policy, 'code_worker');
   const missingVerifierMask = applyAvailabilityMask(policy, {
     roles: [
@@ -387,6 +415,15 @@ function orchestrationAutonomyTests() {
     test('v130_security_lane_is_constrained', () => security.status === 'pass' && security.dag.lane === 'constrained_orchestrated' && security.dag.nodes.some((node) => node.roleId === 'independent_security_verifier')),
     test('v130_natural_language_workflow_forbidden', () => naturalLanguage.status === 'fail' && naturalLanguage.reasonCodes.includes('v130_natural_language_workflow_forbidden')),
     test('v130_second_replan_forbidden', () => secondReplan.status === 'fail' && secondReplan.reasonCodes.includes('v130_replan_limit_exceeded')),
+    test('v130_dag_cycle_forbidden', () => cycleDag.status === 'fail' && cycleDag.reasonCodes.includes('v130_dag_cycle_forbidden')),
+    test('v130_parallel_writer_forbidden', () => twoWriterDag.status === 'fail' && twoWriterDag.reasonCodes.includes('v130_parallel_writer_forbidden')),
+    test('v130_raw_output_model_id_goal_gate_budget_final_decision_forbidden', () => rawBroadcastDag.status === 'fail'
+      && rawBroadcastDag.reasonCodes.includes('v130_raw_output_broadcast_forbidden')
+      && rawBroadcastDag.reasonCodes.includes('v130_model_id_in_plan_forbidden')
+      && rawBroadcastDag.reasonCodes.includes('v130_goal_mutation_forbidden')
+      && rawBroadcastDag.reasonCodes.includes('v130_gate_removal_forbidden')
+      && rawBroadcastDag.reasonCodes.includes('v130_budget_expansion_forbidden')
+      && rawBroadcastDag.reasonCodes.includes('v130_final_decision_replacement_forbidden')),
     test('v130_code_worker_compiles_from_profile', () => role.status === 'pass' && role.compiledRole.sandboxMode === 'workspace_write' && role.compiledRole.authorityCreated === false),
     test('v130_availability_mask_requires_verifier', () => missingVerifierMask.status === 'fail' && missingVerifierMask.reasonCodes.includes('v130_mask_removed_verifier')),
     test('v130_availability_mask_passes_complete_stable_inventory', () => fullMask.status === 'pass' && fullMask.silentFallback === false),

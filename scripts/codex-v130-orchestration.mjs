@@ -46,23 +46,81 @@ export function buildConstrainedDag(policy, input = {}) {
   const lane = orchestrated ? 'constrained_orchestrated' : 'direct_verified';
   const nodes = lane === 'direct_verified'
     ? [
-        { nodeId: 'writer', roleId: 'code_worker', inputHandles: ['goal'], outputSchemaRef: 'change_receipt' },
-        { nodeId: 'verifier', roleId: 'independent_verifier', inputHandles: ['writer'], outputSchemaRef: 'verification_receipt' },
+        { nodeId: 'writer', roleId: 'code_worker', inputHandles: ['goal'], outputSchemaRef: 'change_receipt', timeoutMs: 120000 },
+        { nodeId: 'verifier', roleId: 'independent_verifier', inputHandles: ['writer'], outputSchemaRef: 'verification_receipt', timeoutMs: 120000 },
       ]
     : [
-        { nodeId: 'diagnosis', roleId: taskClass.startsWith('security') ? 'threat_modeler' : 'architecture_reviewer', inputHandles: ['goal'], outputSchemaRef: 'finding_receipt' },
-        { nodeId: 'writer', roleId: taskClass === 'security_remediation' ? 'security_patch_worker' : 'code_worker', inputHandles: ['diagnosis'], outputSchemaRef: 'change_receipt' },
-        { nodeId: 'verifier', roleId: taskClass === 'security_remediation' ? 'independent_security_verifier' : 'independent_verifier', inputHandles: ['writer'], outputSchemaRef: 'verification_receipt' },
+        { nodeId: 'diagnosis', roleId: taskClass.startsWith('security') ? 'threat_modeler' : 'architecture_reviewer', inputHandles: ['goal'], outputSchemaRef: 'finding_receipt', timeoutMs: 120000 },
+        { nodeId: 'writer', roleId: taskClass === 'security_remediation' ? 'security_patch_worker' : 'code_worker', inputHandles: ['diagnosis'], outputSchemaRef: 'change_receipt', timeoutMs: 120000 },
+        { nodeId: 'verifier', roleId: taskClass === 'security_remediation' ? 'independent_security_verifier' : 'independent_verifier', inputHandles: ['writer'], outputSchemaRef: 'verification_receipt', timeoutMs: 120000 },
       ];
+  if (input.naturalLanguageWorkflow === true) reasonCodes.push('v130_natural_language_workflow_forbidden');
+  if (input.replanCount > policy.constrainedDagPolicy.replanMax) reasonCodes.push('v130_replan_limit_exceeded');
+  const writerCount = nodes.filter((node) => ['code_worker', 'test_worker', 'security_patch_worker'].includes(node.roleId)).length;
+  const dag = { schemaVersion: '1.3.0', lane, nodes, edges: nodes.slice(1).map((node, i) => ({ from: nodes[i].nodeId, to: node.nodeId, handleType: 'evidence_handle' })), singleWriter: writerCount <= 1, verifierRequired: true, authorityCreated: false };
+  dag.dagDigest = sha256(canonicalJson(dag));
+  const validation = validateConstrainedDag(policy, dag, input);
+  reasonCodes.push(...validation.reasonCodes);
+  return { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes, dag, safeSummaryOnly: true };
+}
+
+export function validateConstrainedDag(policy, dag = {}, input = {}) {
+  const reasonCodes = [];
+  const nodes = Array.isArray(dag.nodes) ? dag.nodes : [];
+  const edges = Array.isArray(dag.edges) ? dag.edges : [];
+  const roleIds = new Set((policy.agentRoles || []).map((role) => role.roleId));
+  const nodeIds = new Set(nodes.map((node) => node.nodeId));
   const writerCount = nodes.filter((node) => ['code_worker', 'test_worker', 'security_patch_worker'].includes(node.roleId)).length;
   if (nodes.length > policy.constrainedDagPolicy.nodeCountMax) reasonCodes.push('v130_dag_node_limit_exceeded');
   if (writerCount > policy.constrainedDagPolicy.writerNodeMax) reasonCodes.push('v130_parallel_writer_forbidden');
-  if (!nodes.some((node) => node.roleId.includes('verifier'))) reasonCodes.push('v130_dag_missing_verifier');
-  if (input.naturalLanguageWorkflow === true) reasonCodes.push('v130_natural_language_workflow_forbidden');
+  if (!nodes.some((node) => String(node.roleId || '').includes('verifier'))) reasonCodes.push('v130_dag_missing_verifier');
+  for (const node of nodes) {
+    if (!roleIds.has(node.roleId)) reasonCodes.push('v130_dag_unknown_role');
+    if (!Number.isInteger(node.timeoutMs) || node.timeoutMs < 1) reasonCodes.push('v130_dag_timeout_missing');
+    if (!node.outputSchemaRef) reasonCodes.push('v130_dag_output_schema_missing');
+    if (node.modelId) reasonCodes.push('v130_model_id_in_plan_forbidden');
+    for (const handle of node.inputHandles || []) {
+      if (handle !== 'goal' && !nodeIds.has(handle)) reasonCodes.push('v130_dag_forward_reference_forbidden');
+    }
+  }
+  for (const edge of edges) {
+    const from = typeof edge === 'string' ? edge.split('->')[0] : edge.from;
+    const to = typeof edge === 'string' ? edge.split('->')[1] : edge.to;
+    if (!nodeIds.has(from) || !nodeIds.has(to)) reasonCodes.push('v130_dag_forward_reference_forbidden');
+    if (edge.handleType && edge.handleType !== 'evidence_handle') reasonCodes.push('v130_raw_output_broadcast_forbidden');
+  }
+  const graph = new Map(nodes.map((node) => [node.nodeId, []]));
+  for (const edge of edges) {
+    const from = typeof edge === 'string' ? edge.split('->')[0] : edge.from;
+    const to = typeof edge === 'string' ? edge.split('->')[1] : edge.to;
+    if (graph.has(from)) graph.get(from).push(to);
+  }
+  const visiting = new Set();
+  const visited = new Set();
+  function visit(id) {
+    if (visiting.has(id)) return false;
+    if (visited.has(id)) return true;
+    visiting.add(id);
+    for (const next of graph.get(id) || []) {
+      if (!visit(next)) return false;
+    }
+    visiting.delete(id);
+    visited.add(id);
+    return true;
+  }
+  for (const id of graph.keys()) {
+    if (!visit(id)) {
+      reasonCodes.push('v130_dag_cycle_forbidden');
+      break;
+    }
+  }
+  if (input.goalMutation === true) reasonCodes.push('v130_goal_mutation_forbidden');
+  if (input.gateRemoval === true) reasonCodes.push('v130_gate_removal_forbidden');
+  if (input.budgetExpansion === true) reasonCodes.push('v130_budget_expansion_forbidden');
+  if (input.finalDecisionReplacement === true) reasonCodes.push('v130_final_decision_replacement_forbidden');
   if (input.replanCount > policy.constrainedDagPolicy.replanMax) reasonCodes.push('v130_replan_limit_exceeded');
-  const dag = { schemaVersion: '1.3.0', lane, nodes, edges: nodes.slice(1).map((node, i) => `${nodes[i].nodeId}->${node.nodeId}`), singleWriter: writerCount <= 1, verifierRequired: true, authorityCreated: false };
-  dag.dagDigest = sha256(canonicalJson(dag));
-  return { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes, dag, safeSummaryOnly: true };
+  if (input.secondEscalation === true) reasonCodes.push('v130_second_escalation_forbidden');
+  return { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes, safeSummaryOnly: true };
 }
 
 export function applyAvailabilityMask(policy, inventory = {}, plan = {}) {
