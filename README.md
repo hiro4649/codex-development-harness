@@ -1,13 +1,13 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.3.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.2.9 -->
 # Codex Development Harness
 
-Active Source: v1.3.0
-Candidate: none
+Active Source: v1.2.9
+Candidate: v1.3.0 source_shadow_candidate
 Immediate rollback: v1.2.9
 Blocking compatibility: v1.2.8
 Legacy compatibility: v1.2.7
 Final Decision authority: v1.1.8_final_decision_kernel
-Target rollout: not started for v1.3.0; target harness remains v1.2.9
+Target rollout: completed for v1.2.9; v1.3.0 target rollout not started
 
 Codex Development Harness is an AI PR safety gate. It helps decide whether an
 AI-authored change can be trusted, what evidence supports that decision, who is
@@ -18,13 +18,12 @@ Current authority is:
 - `AGENTS.md`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
-- `docs/process/CODEX_V130_SPEC.md`
-- `docs/process/CODEX_V129_SPEC.md` (immediate rollback)
+- `docs/process/CODEX_V129_SPEC.md`
+- `docs/process/CODEX_V130_SPEC.md` (candidate, non-authority during shadow)
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 
-v1.3.0 is the active Source authority. v1.2.9 remains the immediate rollback
-authority. Target repositories remain on target harness v1.2.9 until a separate
-target rollout is explicitly authorized.
+v1.2.9 is the active Source authority. v1.3.0 is a source shadow candidate until
+an Activation PR changes the active manifest and passes fixed-head evidence.
 
 It does not add target rollout authority, new P0 artifacts, new top-level
 operator statuses, new Skills, scheduler authority, release/deploy/wallet/RPC

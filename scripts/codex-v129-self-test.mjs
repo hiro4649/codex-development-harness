@@ -610,7 +610,7 @@ function verifierTests() {
       const stdout = execFileSync(process.execPath, [verifierScript], {
         input: canonicalJson(reviewInput),
         encoding: 'utf8',
-        timeout: 30000,
+        timeout: 5000,
         maxBuffer: 8192,
         env: { CODEX_QUALITY_REPORT: 'json' },
       });
@@ -754,10 +754,10 @@ function activationTests() {
   const targetEnrollmentDigest = (target) => `sha256:${sha256(canonicalJson(targetDigestInput(target)))}`;
   const activeSpecText = fs.readFileSync('docs/process/CODEX_V129_SPEC.md', 'utf8');
   return [
-    test('v129_active_harness_version_pass', () => versionRegistry.activeHarnessVersion === '1.3.0' && sourceManifest.activeHarnessVersion === '1.3.0'),
-    test('v129_active_self_test_suite_pass', () => versionRegistry.activeSelfTestSuite === 'v130' && sourceManifest.activeSelfTestSuite === 'v130'),
-    test('v129_current_active_authority_pass', () => sourceManifest.versionAuthority?.v130 === 'blocking_current_active_authority' && sourceManifest.versionAuthority?.v129 === 'immediate_rollback'),
-    test('v129_v128_compatibility_rollback_pass', () => sourceManifest.versionAuthority?.v128 === 'blocking_compatibility'),
+    test('v129_active_harness_version_pass', () => versionRegistry.activeHarnessVersion === '1.2.9' && sourceManifest.activeHarnessVersion === '1.2.9'),
+    test('v129_active_self_test_suite_pass', () => versionRegistry.activeSelfTestSuite === 'v129' && sourceManifest.activeSelfTestSuite === 'v129'),
+    test('v129_current_active_authority_pass', () => sourceManifest.versionAuthority?.v129 === 'blocking_current_active_authority'),
+    test('v129_v128_compatibility_rollback_pass', () => sourceManifest.versionAuthority?.v128 === 'blocking_compatibility_rollback'),
     test('v129_final_decision_authority_unchanged', () => v129.finalAuthority === 'v1.1.8_final_decision_kernel' && sourceManifest.finalAuthority === 'v1.1.8_final_decision_kernel'),
     test('v129_receipt_digest_exact_match_pass', () => realHost.receiptDigest === 'sha256:d42c41eb94ed1c4a14e2f4050b1efbaf6464734e97d70b4e568dee276bfa40b4'),
     test('v129_qualified_source_sha_exact_match_pass', () => realHost.qualifiedSourceMainSha === '1b48b20fb911d34141953adc8e8886d3775340be'),
@@ -769,7 +769,7 @@ function activationTests() {
     test('v129_plugin_unavailable_invoked_fails', () => !(realHost.pluginSelectionState === 'unavailable' && realHost.pluginInvocationObserved === true)),
     test('v129_authority_created_true_fails_activation', () => realHost.authorityCreated === false),
     test('v129_fixture_actual_claim_fails_activation', () => realHost.actualModelInvocationState !== 'fixture' && realHost.actualPluginInvocationState !== 'fixture'),
-    test('v129_target_rollout_completed_pass', () => sourceManifest.targetRollout === 'not_started' && v129.targetRollout === 'completed'),
+    test('v129_target_rollout_completed_pass', () => sourceManifest.targetRollout === 'completed' && v129.targetRollout === 'completed'),
     test('v129_active_spec_marker_pass', () => activeSpecText.includes('CODEX_QUALITY_HARNESS_FILE v1.2.9')),
     test('v129_active_spec_no_shadow_activation_stale_text', () => !activeSpecText.includes('active source marker remains `CODEX_QUALITY_HARNESS_FILE v1.2.8`') && !activeSpecText.includes('candidateActivationState=source_shadow_candidate')),
     test('v129_target_registry_count_pass', () => targets.length === 6 && JSON.stringify(targets.map((target) => target.repositoryFullName).sort()) === JSON.stringify(expectedTargets)),
