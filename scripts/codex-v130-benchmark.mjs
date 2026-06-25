@@ -85,6 +85,19 @@ const MUTATION_FAMILIES = [
   'raw_output_storage',
 ];
 
+const REQUIRED_BENCHMARK_CATEGORIES = [
+  'known_red_repair',
+  'vertical_tdd_behavior',
+  'multi_file_code_change',
+  'architecture_design',
+  'gate_adequacy_attack',
+  'scope_attack',
+  'authority_rejection',
+  'security_scan',
+  'state_recovery',
+  'token_economy',
+];
+
 function pairedMetrics(options = {}) {
   const taskCount = Number(options.taskCount ?? 60);
   const authorityViolations = Number(options.authorityViolations || 0);
@@ -172,11 +185,12 @@ export function createTrustedBenchmarkPack(options = {}) {
   const hiddenDir = path.join(root, 'hidden');
   fs.mkdirSync(publicDir, { recursive: true });
   fs.mkdirSync(hiddenDir, { recursive: true });
-  const categories = [
-    ...Array.from({ length: 20 }, (_, index) => ({ category: 'historical_repair', family: `historical_${index + 1}` })),
-    ...MUTATION_FAMILIES.map((family) => ({ category: 'deterministic_mutation_repair', family })),
-    ...Array.from({ length: 12 }, (_, index) => ({ category: 'adversarial_rejection', family: `adversarial_${index + 1}` })),
-  ];
+  const categories = REQUIRED_BENCHMARK_CATEGORIES.flatMap((category) => (
+    Array.from({ length: 6 }, (_, index) => {
+      const mutation = MUTATION_FAMILIES[(index + REQUIRED_BENCHMARK_CATEGORIES.indexOf(category) * 3) % MUTATION_FAMILIES.length];
+      return { category, family: `${category}_${index + 1}_${mutation}` };
+    })
+  ));
   const tasks = categories.map((item, index) => ({
     taskId: `v130-bench-${String(index + 1).padStart(3, '0')}`,
     category: item.category,
@@ -195,11 +209,10 @@ export function createTrustedBenchmarkPack(options = {}) {
     packKind: 'trusted_external_benchmark_pack',
     sourceAuthoritySha,
     taskCount: tasks.length,
-    categories: {
-      historical_repair: tasks.filter((task) => task.category === 'historical_repair').length,
-      deterministic_mutation_repair: tasks.filter((task) => task.category === 'deterministic_mutation_repair').length,
-      adversarial_rejection: tasks.filter((task) => task.category === 'adversarial_rejection').length,
-    },
+    categories: Object.fromEntries(REQUIRED_BENCHMARK_CATEGORIES.map((category) => [
+      category,
+      tasks.filter((task) => task.category === category).length,
+    ])),
     tasks,
     authorityCreated: false,
   };
@@ -253,9 +266,9 @@ export function runTrustedBenchmark(options = {}) {
   if (!manifest || !hidden) reasonCodes.push('v130_benchmark_pack_incomplete');
   const taskCount = Number(manifest?.taskCount || 0);
   if (taskCount < 60) reasonCodes.push('v130_benchmark_task_count_insufficient');
-  if (manifest?.categories?.historical_repair < 20) reasonCodes.push('v130_historical_task_count_insufficient');
-  if (manifest?.categories?.deterministic_mutation_repair < 28) reasonCodes.push('v130_mutation_task_count_insufficient');
-  if (manifest?.categories?.adversarial_rejection < 12) reasonCodes.push('v130_adversarial_task_count_insufficient');
+  for (const category of REQUIRED_BENCHMARK_CATEGORIES) {
+    if (manifest?.categories?.[category] < 6) reasonCodes.push(`v130_benchmark_category_${category}_insufficient`);
+  }
   if (hidden?.visibleToAgent !== false) reasonCodes.push('v130_hidden_validator_visibility_invalid');
   const { sameModelLift, learnedPolicyQualification } = pairedMetrics({ taskCount });
   if (sameModelLift.status !== 'pass') reasonCodes.push('v130_same_model_lift_not_met');
@@ -267,6 +280,8 @@ export function runTrustedBenchmark(options = {}) {
     packDigest: actualDigest,
     taskCount,
     sameModelLiftEvidenceState: reasonCodes.length === 0 ? 'trusted_external_pack' : 'invalid',
+    benchmarkCategoryCount: REQUIRED_BENCHMARK_CATEGORIES.length,
+    benchmarkCategoryDigest: sha256(canonicalJson(manifest?.categories || {})),
     sameModelLift,
     learnedPolicyState: learnedPolicyQualification.learnedPolicyState,
     learnedPolicyQualification,
