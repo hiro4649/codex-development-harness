@@ -43,19 +43,22 @@
     "noProgressTerminal": "auto_quarantine"
   },
   "baselineModes": [
-    "same_model_lift",
-    "external_frontier_comparator"
+    "green_required",
+    "known_red_repair",
+    "bootstrap_generate_only",
+    "not_applicable"
   ],
   "stopPriority": [
-    "authority",
-    "safety",
+    "authority_boundary",
+    "safety_boundary",
+    "scope_boundary",
     "regression",
-    "unmet_criteria",
-    "baseline_failures",
-    "confirmed_findings",
-    "evidence_contradictions",
-    "scope_deltas",
-    "coverage"
+    "observation_invalid",
+    "baseline_contradiction",
+    "success",
+    "repair_exhausted",
+    "no_progress",
+    "budget_exhausted"
   ],
   "contextAuthorityOrder": [
     "platform_policy",
@@ -91,880 +94,510 @@
   "agentRoles": [
     {
       "roleId": "project_profiler",
-      "capabilityClass": "general",
+      "profileRef": "read_only_low_cost",
+      "capabilityClass": "low_cost_worker",
       "allowedTaskClasses": [
         "routine_metadata",
         "repository_discovery",
         "code_change",
         "bug_repair",
         "architecture",
+        "migration",
         "security_scan",
         "security_remediation",
-        "authority_change"
+        "runtime_sensitive",
+        "target_rollout",
+        "authority_change",
+        "research"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
-      "maxInputBytes": 8192,
-      "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
+      "outputSchemaRef": "project_profile_receipt",
       "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxInputBytes": 4096,
+      "maxOutputBytes": 2048,
+      "maxToolCalls": 12,
       "authorityCreated": false
     },
     {
       "roleId": "goal_synthesizer",
-      "capabilityClass": "general",
+      "profileRef": "read_only_high_reasoning",
+      "capabilityClass": "high_reasoning_planner",
       "allowedTaskClasses": [
         "routine_metadata",
         "repository_discovery",
         "code_change",
         "bug_repair",
         "architecture",
+        "migration",
         "security_scan",
         "security_remediation",
-        "authority_change"
+        "runtime_sensitive",
+        "target_rollout",
+        "authority_change",
+        "research"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "goal_candidate_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "contract_verifier",
-      "capabilityClass": "general",
+      "profileRef": "independent_verifier_profile",
+      "capabilityClass": "independent_verifier",
       "allowedTaskClasses": [
         "routine_metadata",
         "repository_discovery",
         "code_change",
         "bug_repair",
         "architecture",
+        "migration",
         "security_scan",
         "security_remediation",
-        "authority_change"
+        "runtime_sensitive",
+        "target_rollout",
+        "authority_change",
+        "research"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "contract_verification_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "code_path_explorer",
-      "capabilityClass": "general",
+      "profileRef": "read_only_low_cost",
+      "capabilityClass": "low_cost_worker",
       "allowedTaskClasses": [
         "routine_metadata",
         "repository_discovery",
         "code_change",
         "bug_repair",
         "architecture",
+        "migration",
         "security_scan",
         "security_remediation",
-        "authority_change"
+        "runtime_sensitive",
+        "target_rollout",
+        "authority_change",
+        "research"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
-      "maxInputBytes": 8192,
-      "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
+      "outputSchemaRef": "exploration_receipt",
       "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxInputBytes": 4096,
+      "maxOutputBytes": 2048,
+      "maxToolCalls": 12,
       "authorityCreated": false
     },
     {
       "roleId": "code_worker",
-      "capabilityClass": "general",
+      "profileRef": "bounded_code_writer",
+      "capabilityClass": "standard_code_worker",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
         "code_change",
         "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "migration",
+        "target_rollout"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "goal_scope_only",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "change_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
       "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
       "authorityCreated": false
     },
     {
       "roleId": "test_worker",
-      "capabilityClass": "general",
+      "profileRef": "bounded_code_writer",
+      "capabilityClass": "standard_code_worker",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
         "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "code_change"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
-      "writeScope": "goal_scope_only",
-      "selectedSkillPolicy": "registry_selected_only",
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
+      "writeScope": "test_scope_only",
+      "outputSchemaRef": "test_change_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
       "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
       "authorityCreated": false
     },
     {
       "roleId": "correctness_reviewer",
-      "capabilityClass": "general",
+      "profileRef": "independent_verifier_profile",
+      "capabilityClass": "independent_verifier",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
         "code_change",
         "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "migration"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "finding_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "test_adequacy_reviewer",
-      "capabilityClass": "general",
+      "profileRef": "independent_verifier_profile",
+      "capabilityClass": "independent_verifier",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
         "code_change",
-        "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "bug_repair"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "gate_adequacy_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "regression_flakiness_reviewer",
-      "capabilityClass": "general",
+      "profileRef": "independent_verifier_profile",
+      "capabilityClass": "independent_verifier",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
         "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "code_change",
+        "runtime_sensitive"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "flakiness_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "concurrency_reviewer",
-      "capabilityClass": "general",
+      "profileRef": "read_only_high_reasoning",
+      "capabilityClass": "high_reasoning_planner",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
         "code_change",
         "bug_repair",
         "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "runtime_sensitive"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "concurrency_finding_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "architecture_reviewer",
-      "capabilityClass": "general",
+      "profileRef": "read_only_high_reasoning",
+      "capabilityClass": "high_reasoning_planner",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
         "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "migration",
+        "code_change"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "architecture_finding_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "api_docs_researcher",
-      "capabilityClass": "general",
+      "profileRef": "read_only_low_cost",
+      "capabilityClass": "low_cost_worker",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
+        "research",
         "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "migration",
+        "code_change"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
-      "maxInputBytes": 8192,
-      "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
+      "outputSchemaRef": "documentation_receipt",
       "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxInputBytes": 4096,
+      "maxOutputBytes": 2048,
+      "maxToolCalls": 12,
       "authorityCreated": false
     },
     {
       "roleId": "supply_chain_reviewer",
-      "capabilityClass": "general",
+      "profileRef": "read_only_security",
+      "capabilityClass": "security_specialist",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
         "security_scan",
         "security_remediation",
-        "authority_change"
+        "code_change"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "supply_chain_finding_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "privacy_secret_reviewer",
-      "capabilityClass": "general",
+      "profileRef": "read_only_security",
+      "capabilityClass": "security_specialist",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
         "security_scan",
         "security_remediation",
-        "authority_change"
+        "runtime_sensitive"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "privacy_finding_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "performance_reviewer",
-      "capabilityClass": "general",
+      "profileRef": "read_only_high_reasoning",
+      "capabilityClass": "high_reasoning_planner",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
         "code_change",
-        "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "runtime_sensitive",
+        "architecture"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "performance_finding_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "threat_modeler",
-      "capabilityClass": "security",
+      "profileRef": "read_only_security",
+      "capabilityClass": "security_specialist",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
         "security_scan",
-        "security_remediation",
-        "authority_change"
+        "security_remediation"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "threat_model_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "vulnerability_finder",
-      "capabilityClass": "security",
+      "profileRef": "read_only_security",
+      "capabilityClass": "security_specialist",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
         "security_scan",
-        "security_remediation",
-        "authority_change"
+        "security_remediation"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "security_finding_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "exploitability_validator",
-      "capabilityClass": "security",
+      "profileRef": "read_only_security",
+      "capabilityClass": "security_specialist",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
         "security_scan",
-        "security_remediation",
-        "authority_change"
+        "security_remediation"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "exploitability_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "security_patch_worker",
-      "capabilityClass": "security",
+      "profileRef": "bounded_security_writer",
+      "capabilityClass": "security_specialist",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "security_remediation"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "goal_scope_only",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "security_change_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
       "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
       "authorityCreated": false
     },
     {
       "roleId": "security_patch_reviewer",
-      "capabilityClass": "security",
+      "profileRef": "independent_verifier_profile",
+      "capabilityClass": "independent_verifier",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
-        "authority_change"
+        "security_remediation"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "security_patch_review_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "independent_security_verifier",
-      "capabilityClass": "security",
+      "profileRef": "independent_verifier_profile",
+      "capabilityClass": "independent_verifier",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
         "security_scan",
-        "security_remediation",
-        "authority_change"
+        "security_remediation"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "security_verification_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     },
     {
       "roleId": "authority_reviewer",
-      "capabilityClass": "authority",
+      "profileRef": "authority_reviewer_profile",
+      "capabilityClass": "authority_reviewer",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
-        "code_change",
-        "bug_repair",
-        "architecture",
-        "security_scan",
-        "security_remediation",
         "authority_change"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
-      "maxInputBytes": 8192,
-      "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
+      "outputSchemaRef": "authority_review_receipt",
       "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxInputBytes": 4096,
+      "maxOutputBytes": 2048,
+      "maxToolCalls": 8,
       "authorityCreated": false
     },
     {
       "roleId": "independent_verifier",
-      "capabilityClass": "general",
+      "profileRef": "independent_verifier_profile",
+      "capabilityClass": "independent_verifier",
       "allowedTaskClasses": [
-        "routine_metadata",
-        "repository_discovery",
         "code_change",
         "bug_repair",
         "architecture",
+        "migration",
         "security_scan",
         "security_remediation",
-        "authority_change"
+        "runtime_sensitive",
+        "target_rollout"
       ],
-      "sandboxMode": "workspace",
-      "networkMode": "disabled_by_default",
-      "allowedTools": [
-        "read",
-        "rg",
-        "test"
-      ],
-      "forbiddenTools": [
-        "deploy",
-        "wallet",
-        "rpc",
-        "secret_read",
-        "approval_review"
-      ],
+      "allowedToolsDelta": [],
+      "forbiddenToolsDelta": [],
       "writeScope": "none",
-      "selectedSkillPolicy": "registry_selected_only",
+      "outputSchemaRef": "verification_receipt",
+      "timeoutMs": 180000,
       "maxInputBytes": 8192,
       "maxOutputBytes": 4096,
-      "maxToolCalls": 20,
-      "timeoutMs": 120000,
-      "canSpawn": false,
-      "outputSchemaRef": "agentRoleOutput",
+      "maxToolCalls": 16,
       "authorityCreated": false
     }
   ],
   "roleIncompatibilities": [
     [
+      "goal_synthesizer",
+      "contract_verifier"
+    ],
+    [
+      "code_worker",
+      "correctness_reviewer"
+    ],
+    [
       "code_worker",
       "independent_verifier"
     ],
     [
-      "security_patch_worker",
-      "security_patch_reviewer"
+      "test_worker",
+      "test_adequacy_reviewer"
     ],
     [
       "vulnerability_finder",
       "exploitability_validator"
     ],
     [
-      "vulnerability_finder",
+      "security_patch_worker",
+      "security_patch_reviewer"
+    ],
+    [
+      "security_patch_worker",
       "independent_security_verifier"
     ],
     [
-      "goal_synthesizer",
-      "contract_verifier"
+      "threat_modeler",
+      "authority_reviewer"
     ],
     [
-      "authority_reviewer",
-      "protected_executor"
+      "plugin_invoker",
+      "plugin_receipt_verifier"
     ]
   ],
   "minimumSufficientTeamPolicy": {
@@ -1427,5 +1060,302 @@
       },
       "failureCode": "v130_featureMaturityPolicy_invalid"
     }
-  ]
+  ],
+  "benchmarkModes": [
+    "same_model_lift",
+    "external_frontier_comparator",
+    "strongest_single_route",
+    "deterministic_router",
+    "constrained_learned_router",
+    "constrained_conductor"
+  ],
+  "progressVectorPriority": [
+    "authority_violation",
+    "safety_violation",
+    "regression",
+    "unmet_required_criteria",
+    "baseline_failures",
+    "confirmed_findings",
+    "evidence_contradictions",
+    "scope_deltas",
+    "validation_coverage"
+  ],
+  "roleProfiles": {
+    "read_only_low_cost": {
+      "sandboxMode": "read_only",
+      "networkMode": "off",
+      "allowedTools": [
+        "read",
+        "git",
+        "search"
+      ],
+      "forbiddenTools": [
+        "edit",
+        "deploy",
+        "wallet",
+        "rpc",
+        "secret_read",
+        "approval_review"
+      ],
+      "writeScope": "none",
+      "selectedSkillPolicy": "none",
+      "maxInputBytes": 4096,
+      "maxOutputBytes": 2048,
+      "maxToolCalls": 12,
+      "timeoutMs": 120000,
+      "canSpawn": false
+    },
+    "read_only_high_reasoning": {
+      "sandboxMode": "read_only",
+      "networkMode": "off",
+      "allowedTools": [
+        "read",
+        "git",
+        "search",
+        "test"
+      ],
+      "forbiddenTools": [
+        "edit",
+        "deploy",
+        "wallet",
+        "rpc",
+        "secret_read",
+        "approval_review"
+      ],
+      "writeScope": "none",
+      "selectedSkillPolicy": "none",
+      "maxInputBytes": 8192,
+      "maxOutputBytes": 4096,
+      "maxToolCalls": 16,
+      "timeoutMs": 180000,
+      "canSpawn": false
+    },
+    "read_only_security": {
+      "sandboxMode": "read_only",
+      "networkMode": "off",
+      "allowedTools": [
+        "read",
+        "git",
+        "test",
+        "security_scan",
+        "security_validate",
+        "secret_scan"
+      ],
+      "forbiddenTools": [
+        "edit",
+        "deploy",
+        "wallet",
+        "rpc",
+        "secret_read",
+        "approval_review"
+      ],
+      "writeScope": "none",
+      "selectedSkillPolicy": "registry_selected_only",
+      "maxInputBytes": 8192,
+      "maxOutputBytes": 4096,
+      "maxToolCalls": 16,
+      "timeoutMs": 180000,
+      "canSpawn": false
+    },
+    "bounded_code_writer": {
+      "sandboxMode": "workspace_write",
+      "networkMode": "off",
+      "allowedTools": [
+        "read",
+        "git",
+        "edit",
+        "test"
+      ],
+      "forbiddenTools": [
+        "deploy",
+        "wallet",
+        "rpc",
+        "secret_read",
+        "approval_review"
+      ],
+      "writeScope": "goal_scope_only",
+      "selectedSkillPolicy": "registry_selected_only",
+      "maxInputBytes": 8192,
+      "maxOutputBytes": 4096,
+      "maxToolCalls": 20,
+      "timeoutMs": 180000,
+      "canSpawn": false
+    },
+    "bounded_security_writer": {
+      "sandboxMode": "workspace_write",
+      "networkMode": "off",
+      "allowedTools": [
+        "read",
+        "git",
+        "edit",
+        "test",
+        "security_validate"
+      ],
+      "forbiddenTools": [
+        "deploy",
+        "wallet",
+        "rpc",
+        "secret_read",
+        "approval_review"
+      ],
+      "writeScope": "goal_scope_only",
+      "selectedSkillPolicy": "registry_selected_only",
+      "maxInputBytes": 8192,
+      "maxOutputBytes": 4096,
+      "maxToolCalls": 20,
+      "timeoutMs": 180000,
+      "canSpawn": false
+    },
+    "independent_verifier_profile": {
+      "sandboxMode": "read_only",
+      "networkMode": "off",
+      "allowedTools": [
+        "read",
+        "git",
+        "test",
+        "security_validate"
+      ],
+      "forbiddenTools": [
+        "edit",
+        "deploy",
+        "wallet",
+        "rpc",
+        "secret_read",
+        "approval_review"
+      ],
+      "writeScope": "none",
+      "selectedSkillPolicy": "none",
+      "maxInputBytes": 8192,
+      "maxOutputBytes": 4096,
+      "maxToolCalls": 16,
+      "timeoutMs": 180000,
+      "canSpawn": false
+    },
+    "authority_reviewer_profile": {
+      "sandboxMode": "read_only",
+      "networkMode": "off",
+      "allowedTools": [
+        "read",
+        "git"
+      ],
+      "forbiddenTools": [
+        "edit",
+        "test",
+        "deploy",
+        "wallet",
+        "rpc",
+        "secret_read",
+        "approval_review"
+      ],
+      "writeScope": "none",
+      "selectedSkillPolicy": "none",
+      "maxInputBytes": 4096,
+      "maxOutputBytes": 2048,
+      "maxToolCalls": 8,
+      "timeoutMs": 120000,
+      "canSpawn": false
+    }
+  },
+  "compiledAgentRoleContract": {
+    "requiredFields": [
+      "roleId",
+      "capabilityClass",
+      "allowedTaskClasses",
+      "sandboxMode",
+      "networkMode",
+      "allowedTools",
+      "forbiddenTools",
+      "writeScope",
+      "selectedSkillPolicy",
+      "maxInputBytes",
+      "maxOutputBytes",
+      "maxToolCalls",
+      "timeoutMs",
+      "canSpawn",
+      "outputSchemaRef",
+      "authorityCreated"
+    ],
+    "failureCode": "agent_role_incomplete"
+  },
+  "roleIndependenceRequired": {
+    "sameAgentId": false,
+    "sameThreadId": false,
+    "sameWorktree": false
+  },
+  "orchestrationPlane": {
+    "lanes": [
+      "direct_verified",
+      "constrained_orchestrated"
+    ],
+    "defaultLane": "direct_verified",
+    "conductorCallForRoutineMetadata": 0
+  },
+  "constrainedDagPolicy": {
+    "nodeCountMax": 5,
+    "writerNodeMax": 1,
+    "verifierRequired": true,
+    "cycleForbidden": true,
+    "forwardReferenceForbidden": true,
+    "replanMax": 1,
+    "contextEdgeType": "evidence_handle",
+    "rawWorkerOutputBroadcast": false,
+    "naturalLanguageWorkflowExecutionAllowed": false,
+    "roleRegistryOnly": true,
+    "modelIdInPlanForbidden": true,
+    "budgetExpansionForbidden": true,
+    "goalMutationForbidden": true,
+    "gateRemovalForbidden": true,
+    "finalizer": "existing_v129_goal_finalizer",
+    "authorityCreated": false
+  },
+  "orchestrationValueGate": {
+    "constrainedOrchestratedTaskClasses": [
+      "architecture",
+      "migration",
+      "security_scan",
+      "security_remediation",
+      "runtime_sensitive"
+    ],
+    "rootCauseAmbiguityAdmits": true,
+    "evidenceContradictionCountAdmitsAbove": 0
+  },
+  "availabilityMaskPolicy": {
+    "requiredRuntimeInventory": [
+      "model/list",
+      "skills/list",
+      "app/list",
+      "experimentalFeature/list"
+    ],
+    "loadBearingFeatureStage": "stable",
+    "beta": "shadow_only",
+    "experimental": "advisory_only",
+    "underDevelopment": "forbidden",
+    "silentFallback": false
+  },
+  "complementarityPolicy": {
+    "sampleCountMin": 30,
+    "marginalAcceptedChangeLiftLowerConfidenceBoundMinExclusive": 0,
+    "failureCorrelationMaxExclusive": 0.9,
+    "duplicateAgentFanoutAllowed": false
+  },
+  "offlineLearningPolicy": {
+    "learnedPolicyState": "shadow",
+    "onlineSelfUpdateAllowed": false,
+    "modelIdStoredInRepository": false,
+    "deterministicFallbackForUnknownBucket": true,
+    "silentFallback": false
+  },
+  "expertImprovementPolicy": {
+    "sameRunChangeForbidden": true,
+    "maxImprovementProposalsPerRolePerEvalCycle": 1,
+    "separatePrRequired": true,
+    "previousTrustedPolicyRatificationRequired": true,
+    "sameRunSkillActivationForbidden": true
+  },
+  "goalQueuePolicy": {
+    "maxConcurrentGoals": 2,
+    "sameRepoWriterLease": 1,
+    "blockedGoalDoesNotBlockIndependentGoal": true,
+    "authorityCreated": false
+  }
 }

@@ -43,7 +43,31 @@ function schemaRejectsUnknownFields(schema) {
   return Object.values(defs).every((def) => def && def.additionalProperties === false);
 }
 
-function roleComplete(role) {
+function compileRole(policy, role) {
+  const profile = policy.roleProfiles?.[role.profileRef];
+  if (!profile) return null;
+  return {
+    roleId: role.roleId,
+    capabilityClass: role.capabilityClass,
+    allowedTaskClasses: role.allowedTaskClasses,
+    sandboxMode: profile.sandboxMode,
+    networkMode: profile.networkMode,
+    allowedTools: [...new Set([...(profile.allowedTools || []), ...(role.allowedToolsDelta || [])])],
+    forbiddenTools: [...new Set([...(profile.forbiddenTools || []), ...(role.forbiddenToolsDelta || [])])],
+    writeScope: role.writeScope || profile.writeScope,
+    selectedSkillPolicy: profile.selectedSkillPolicy,
+    maxInputBytes: role.maxInputBytes || profile.maxInputBytes,
+    maxOutputBytes: role.maxOutputBytes || profile.maxOutputBytes,
+    maxToolCalls: role.maxToolCalls || profile.maxToolCalls,
+    timeoutMs: role.timeoutMs || profile.timeoutMs,
+    canSpawn: profile.canSpawn,
+    outputSchemaRef: role.outputSchemaRef,
+    authorityCreated: role.authorityCreated,
+  };
+}
+
+function roleComplete(role, policy) {
+  const compiled = compileRole(policy, role);
   const required = [
     'roleId',
     'capabilityClass',
@@ -62,7 +86,10 @@ function roleComplete(role) {
     'outputSchemaRef',
     'authorityCreated',
   ];
-  return required.every((key) => Object.hasOwn(role, key)) && role.authorityCreated === false;
+  return compiled
+    && required.every((key) => Object.hasOwn(compiled, key))
+    && compiled.authorityCreated === false
+    && compiled.canSpawn === false;
 }
 
 function contractTests() {
@@ -75,6 +102,8 @@ function contractTests() {
   const reqIds = (policy.requirements || []).map((item) => item.requirementId);
   const roleIds = (policy.agentRoles || []).map((item) => item.roleId);
   const incompatibilities = (policy.roleIncompatibilities || []).map((pair) => pair.join('!='));
+  const schemaDefs = schema.definitions || {};
+  const exact = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
   return [
     test('v130_policy_marker_pass', () => policy.marker === 'CODEX_QUALITY_HARNESS_FILE v1.3.0' && policy.schemaVersion === '1.3.0'),
     test('v130_shadow_candidate_state_pass', () => policy.candidateHarnessVersion === '1.3.0' && policy.candidateActivationState === 'source_shadow_candidate' && policy.sourceActivation === 'forbidden'),
@@ -82,19 +111,37 @@ function contractTests() {
     test('v130_no_authority_created', () => policy.authorityCreated === false),
     test('v130_monotonic_versions_pass', () => policy.monotonicInheritance?.immediateRollback === '1.2.9' && policy.monotonicInheritance?.blockingCompatibility === '1.2.8' && policy.monotonicInheritance?.legacyCompatibility === '1.2.7'),
     test('v130_no_budget_increase_pass', () => policy.monotonicInheritance?.safeSummaryBudgetIncreaseAllowed === false && policy.tokenBudgets?.safeSummaryBytes === 5600 && policy.tokenBudgets?.routineReadSurfaceBytes === 2500 && policy.tokenBudgets?.routineColdArtifactRead === 0),
+    test('v130_baseline_modes_are_execution_modes', () => exact(policy.baselineModes, ['green_required', 'known_red_repair', 'bootstrap_generate_only', 'not_applicable'])),
+    test('v130_benchmark_modes_are_separate', () => ['same_model_lift', 'external_frontier_comparator', 'strongest_single_route', 'deterministic_router', 'constrained_learned_router', 'constrained_conductor'].every((mode) => policy.benchmarkModes?.includes(mode)) && !policy.baselineModes.includes('same_model_lift')),
+    test('v130_stop_priority_order_pass', () => exact(policy.stopPriority, ['authority_boundary', 'safety_boundary', 'scope_boundary', 'regression', 'observation_invalid', 'baseline_contradiction', 'success', 'repair_exhausted', 'no_progress', 'budget_exhausted'])),
+    test('v130_progress_vector_priority_separate', () => exact(policy.progressVectorPriority, ['authority_violation', 'safety_violation', 'regression', 'unmet_required_criteria', 'baseline_failures', 'confirmed_findings', 'evidence_contradictions', 'scope_deltas', 'validation_coverage'])),
     test('v130_no_new_p0_or_status_family', () => policy.monotonicInheritance?.newP0ArtifactCount === 0 && policy.monotonicInheritance?.newTopLevelStatusFamilyCount === 0),
     test('v130_requirements_unique', () => reqIds.length > 10 && hasUnique(reqIds)),
     test('v130_requirements_complete', () => (policy.requirements || []).every((item) => ['requirementId', 'subject', 'condition', 'obligation', 'parameters', 'failureCode'].every((key) => Object.hasOwn(item, key)))),
     test('v130_machine_requirements_no_banned_terms', () => noMachineBannedTerms(policy)),
     test('v130_schema_rejects_unknown_fields', () => schema.duplicateKeyRejectingParseRequired === true && schemaRejectsUnknownFields(schema)),
-    test('v130_all_roles_complete', () => roleIds.length >= 20 && (policy.agentRoles || []).every(roleComplete)),
+    test('v130_deep_schema_definitions_present', () => ['v130Policy', 'roleProfile', 'agentRole', 'compiledAgentRole', 'requirement', 'sessionIntent', 'projectProfile', 'gateProvenance', 'goalSoundness', 'acceptanceTrace', 'compiledInstructionEnvelope', 'failureCapsule', 'progressVector', 'contextRequest', 'evidenceHandle', 'typedDag', 'dagNode', 'routeCandidate', 'orchestrationDecision', 'complementarityEntry', 'modelInventory', 'skillInventory', 'pluginInventory', 'escalationReceipt', 'standingDelegation', 'ratificationReceipt', 'stateReceipt', 'environmentAttestation', 'benchmarkResult'].every((key) => schemaDefs[key]?.type === 'object' && schemaDefs[key]?.additionalProperties === false)),
+    test('v130_schema_definitions_are_not_empty', () => Object.values(schemaDefs).every((def) => Object.keys(def.properties || {}).length > 0)),
+    test('v130_all_roles_compile_complete', () => roleIds.length >= 20 && (policy.agentRoles || []).every((role) => roleComplete(role, policy))),
     test('v130_role_ids_unique', () => hasUnique(roleIds)),
     test('v130_role_incompatibilities_present', () => ['code_worker!=independent_verifier', 'security_patch_worker!=security_patch_reviewer', 'vulnerability_finder!=exploitability_validator'].every((item) => incompatibilities.includes(item))),
+    test('v130_role_profiles_present', () => ['read_only_low_cost', 'read_only_high_reasoning', 'read_only_security', 'bounded_code_writer', 'bounded_security_writer', 'independent_verifier_profile', 'authority_reviewer_profile'].every((key) => policy.roleProfiles?.[key])),
+    test('v130_code_worker_is_bounded_writer', () => {
+      const role = compileRole(policy, policy.agentRoles.find((item) => item.roleId === 'code_worker'));
+      return role.sandboxMode === 'workspace_write' && role.writeScope === 'goal_scope_only' && role.networkMode === 'off';
+    }),
+    test('v130_authority_reviewer_read_only', () => {
+      const role = compileRole(policy, policy.agentRoles.find((item) => item.roleId === 'authority_reviewer'));
+      return role.sandboxMode === 'read_only' && role.writeScope === 'none' && !role.allowedTools.includes('edit');
+    }),
     test('v130_minimum_team_bounds_pass', () => policy.minimumSufficientTeamPolicy?.maxThreads === 4 && policy.minimumSufficientTeamPolicy?.maxDepth === 1 && policy.minimumSufficientTeamPolicy?.parallelWritersMax === 1),
     test('v130_skill_policy_routine_zero', () => policy.skillTrustPolicy?.routineSelectedSkillCount === 0 && policy.tokenBudgets?.routineSkillCount === 0),
     test('v130_plugin_policy_registry_derived', () => policy.pluginTrustPolicy?.requestedPluginsTrusted === false && policy.pluginTrustPolicy?.registryDerivedOnly === true),
     test('v130_cyber_policy_defensive_bound', () => policy.cyberRoutingPolicy?.authorizedDefensiveScopeRequired === true && policy.cyberRoutingPolicy?.secretAccessRequired === false),
     test('v130_escalation_one_time', () => policy.adaptiveEscalationPolicy?.repairIterationMax === 1 && policy.adaptiveEscalationPolicy?.sameBlockerMax === 1),
+    test('v130_constrained_dag_policy_pass', () => policy.constrainedDagPolicy?.nodeCountMax === 5 && policy.constrainedDagPolicy?.writerNodeMax === 1 && policy.constrainedDagPolicy?.verifierRequired === true && policy.constrainedDagPolicy?.naturalLanguageWorkflowExecutionAllowed === false),
+    test('v130_availability_mask_pass', () => policy.availabilityMaskPolicy?.loadBearingFeatureStage === 'stable' && policy.availabilityMaskPolicy?.silentFallback === false && policy.availabilityMaskPolicy?.underDevelopment === 'forbidden'),
+    test('v130_learned_policy_shadow_only', () => policy.offlineLearningPolicy?.learnedPolicyState === 'shadow' && policy.offlineLearningPolicy?.onlineSelfUpdateAllowed === false && policy.offlineLearningPolicy?.modelIdStoredInRepository === false),
     test('v130_no_human_terminals_removed', () => !(policy.noHumanTerminalPolicy?.allowedTerminals || []).includes('human_confirmation_needed') && (policy.noHumanTerminalPolicy?.forbiddenTerminals || []).includes('manual_merge_required')),
     test('v130_source_manifest_shadow_registered', () => source.activeHarnessVersion === '1.2.9' && source.activeSelfTestSuite === 'v129' && source.v130SourceShadowCandidate?.candidateHarnessVersion === '1.3.0'),
     test('v130_docs_manifest_shadow_registered', () => docsManifest.activeHarnessVersion === '1.2.9' && docsManifest.v130SourceShadowCandidate?.candidateActivationState === 'source_shadow_candidate'),

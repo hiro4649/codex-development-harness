@@ -39,6 +39,18 @@ simple work to single-shot execution and rejects or constrains unsuitable work.
 The minimum sufficient team is selected from a protected role registry. Worker
 and verifier roles are incompatible when independence is required.
 
+Baseline modes are execution states only: `green_required`,
+`known_red_repair`, `bootstrap_generate_only`, and `not_applicable`. Benchmark
+modes are separate and cannot be treated as baseline modes. Stop priority is
+authority, safety, scope, regression, observation validity, baseline
+contradiction, success, repair exhaustion, no progress, then budget exhaustion.
+Progress-vector scoring is separate from stop priority.
+
+Agent roles are compiled from role profiles plus explicit per-role deltas. A
+compiled role must include sandbox, network, tools, write scope, output schema,
+timeouts, byte limits, tool-call limits, spawn permission, and
+`authorityCreated=false`.
+
 Adaptive escalation is allowed at most once per Goal version and only for
 reasoning, capability, or domain mismatch classes. Escalation is forbidden for
 authority, safety, scope, provider transient, tool, and environment drift
