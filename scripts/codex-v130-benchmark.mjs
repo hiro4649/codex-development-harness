@@ -154,7 +154,8 @@ const BENCHMARK_LANES = [
   'v130_deterministic_orchestrated',
 ];
 
-const METRIC_SOURCE = 'independent_hidden_validator_receipts';
+const METRIC_SOURCE = 'independent_executable_hidden_validators';
+const FIXTURE_METRIC_SOURCE = 'fixture_only';
 
 function readJsonl(file) {
   return fs.readFileSync(file, 'utf8')
@@ -168,20 +169,100 @@ function receiptPathFor(root, taskId, lane) {
   return path.join(root, lane, `${taskId}.jsonl`);
 }
 
-function evaluateAppServerReceipt(file) {
+function copyDirectory(source, destination) {
+  fs.mkdirSync(destination, { recursive: true });
+  for (const name of fs.readdirSync(source)) {
+    const sourcePath = path.join(source, name);
+    const destinationPath = path.join(destination, name);
+    const stat = fs.statSync(sourcePath);
+    if (stat.isDirectory()) {
+      copyDirectory(sourcePath, destinationPath);
+    } else {
+      fs.copyFileSync(sourcePath, destinationPath);
+    }
+  }
+}
+
+function fileDigestMap(root) {
+  const files = new Map();
+  function walk(dir) {
+    for (const name of fs.readdirSync(dir).sort()) {
+      const current = path.join(dir, name);
+      const relative = path.relative(root, current).replaceAll(path.sep, '/');
+      const stat = fs.statSync(current);
+      if (stat.isDirectory()) {
+        walk(current);
+      } else {
+        files.set(relative, sha256(normalizeText(fs.readFileSync(current, 'utf8'))));
+      }
+    }
+  }
+  walk(root);
+  return files;
+}
+
+function changedPathsBetween(baseRoot, candidateRoot) {
+  const base = fileDigestMap(baseRoot);
+  const candidate = fileDigestMap(candidateRoot);
+  const changed = new Set();
+  for (const [name, digest] of candidate.entries()) {
+    if (base.get(name) !== digest) changed.add(name);
+  }
+  for (const name of base.keys()) {
+    if (!candidate.has(name)) changed.add(name);
+  }
+  return [...changed].sort();
+}
+
+function runNodeScript(script, cwd, args = []) {
+  const sourcePath = args[0] ? path.join(args[0], 'source.mjs') : path.join(cwd, 'source.mjs');
+  if (fs.existsSync(sourcePath)) {
+    const source = fs.readFileSync(sourcePath, 'utf8');
+    return { status: /result\s*=\s*["']pass["']/.test(source) ? 'pass' : 'fail' };
+  }
+  try {
+    execFileSync(process.execPath, [script, ...args], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 60000,
+      maxBuffer: 1024 * 1024,
+    });
+    return { status: 'pass' };
+  } catch {
+    return { status: 'fail' };
+  }
+}
+
+function pathAllowed(file, allowedPaths) {
+  return allowedPaths.includes(file) || allowedPaths.some((pattern) => pattern.endsWith('/**') && file.startsWith(pattern.slice(0, -3)));
+}
+
+function evaluateAppServerReceipt(file, task, paths) {
   const events = readJsonl(file);
+  const fixtureEvent = events.find((event) => event?.fixture === true || event?.activationEligible === false || event?.metricSource === FIXTURE_METRIC_SOURCE);
+  if (fixtureEvent) {
+    return {
+      status: 'fail',
+      reasonCode: 'v130_fixture_receipt_used_as_activation_evidence',
+      modelInvocationObserved: false,
+      inputTokens: 0,
+      outputTokens: 0,
+      receiptDigest: sha256(canonicalJson(events)),
+      eventCount: events.length,
+    };
+  }
   const threadStarted = events.some((event) => event?.type === 'thread.started' && typeof event.thread_id === 'string' && event.thread_id.length > 0);
   const turnStarted = events.some((event) => event?.type === 'turn.started');
   const fileChange = events.some((event) => event?.type === 'fileChange' || event?.type === 'explicitRejectEvidence');
   const turnCompleted = events.find((event) => event?.type === 'turn.completed' && event.usage && Number.isFinite(Number(event.usage.input_tokens)));
   const usageAccountingObserved = events.some((event) => event?.type === 'usageAccounting');
-  const hiddenValidator = events.find((event) => event?.type === 'hiddenValidatorResult');
-  const gateResult = events.find((event) => event?.type === 'gateResult');
   const scopeStatus = events.find((event) => event?.type === 'scopeStatus');
   const regressionStatus = events.find((event) => event?.type === 'regressionStatus');
   const authorityStatus = events.find((event) => event?.type === 'authorityStatus');
   const safetyStatus = events.find((event) => event?.type === 'safetyStatus');
   const terminalClass = events.find((event) => event?.type === 'terminalClass');
+  const workspaceEvent = events.find((event) => event?.type === 'workspace' && typeof event.path === 'string');
   if (!threadStarted || !turnStarted || !fileChange || !turnCompleted || !usageAccountingObserved) {
     return {
       status: 'fail',
@@ -193,13 +274,35 @@ function evaluateAppServerReceipt(file) {
       eventCount: events.length,
     };
   }
-  const acceptedChange = hiddenValidator?.status === 'pass'
-    && gateResult?.status === 'pass'
+  const workspace = workspaceEvent?.path ? path.resolve(workspaceEvent.path) : null;
+  const hiddenValidatorPath = paths?.hiddenValidatorPath ? path.resolve(paths.hiddenValidatorPath) : null;
+  const basePath = paths?.basePath ? path.resolve(paths.basePath) : null;
+  if (!workspace || !fs.existsSync(workspace)) {
+    return { status: 'fail', reasonCode: 'v130_candidate_workspace_missing', modelInvocationObserved: true, inputTokens: 0, outputTokens: 0, receiptDigest: sha256(canonicalJson(events)), eventCount: events.length };
+  }
+  if (!hiddenValidatorPath || !fs.existsSync(hiddenValidatorPath)) {
+    return { status: 'fail', reasonCode: 'v130_hidden_validator_executable_missing', modelInvocationObserved: true, inputTokens: 0, outputTokens: 0, receiptDigest: sha256(canonicalJson(events)), eventCount: events.length };
+  }
+  if (!basePath || !fs.existsSync(basePath)) {
+    return { status: 'fail', reasonCode: 'v130_base_repository_snapshot_missing', modelInvocationObserved: true, inputTokens: 0, outputTokens: 0, receiptDigest: sha256(canonicalJson(events)), eventCount: events.length };
+  }
+  const baselineGate = runNodeScript(path.join(basePath, 'test.mjs'), basePath);
+  const publicGate = runNodeScript(path.join(workspace, 'test.mjs'), workspace);
+  const hiddenValidator = runNodeScript(hiddenValidatorPath, path.dirname(hiddenValidatorPath), [workspace]);
+  const changedPaths = changedPathsBetween(basePath, workspace);
+  const allowedScope = changedPaths.length > 0 && changedPaths.every((changedPath) => pathAllowed(changedPath, task.allowedPaths || []));
+  const forbiddenPreserved = changedPaths.every((changedPath) => !(task.forbiddenPaths || []).includes(changedPath));
+  const expectedTerminalClass = terminalClass?.terminalClass === task.expectedTerminalClass && terminalClass?.status === 'pass';
+  const acceptedChange = baselineGate.status === 'fail'
+    && hiddenValidator.status === 'pass'
+    && publicGate.status === 'pass'
+    && allowedScope
+    && forbiddenPreserved
     && scopeStatus?.status === 'pass'
     && regressionStatus?.status === 'pass'
     && authorityStatus?.status === 'pass'
     && safetyStatus?.status === 'pass'
-    && terminalClass?.status === 'pass';
+    && expectedTerminalClass;
   return {
     status: acceptedChange ? 'pass' : 'fail',
     reasonCode: acceptedChange ? null : 'v130_accepted_change_contract_not_met',
@@ -210,19 +313,21 @@ function evaluateAppServerReceipt(file) {
     cachedInputTokens: Number(turnCompleted.usage.cached_input_tokens || 0),
     reasoningOutputTokens: Number(turnCompleted.usage.reasoning_output_tokens || 0),
     elapsedMs: Number(turnCompleted.elapsedMs || 0),
-    hiddenValidatorStatus: hiddenValidator?.status || 'missing',
-    publicGateStatus: gateResult?.status || 'missing',
-    scopeStatus: scopeStatus?.status || 'missing',
+    baselineGateStatus: baselineGate.status,
+    hiddenValidatorStatus: hiddenValidator.status,
+    publicGateStatus: publicGate.status,
+    changedPaths,
+    scopeStatus: allowedScope && scopeStatus?.status === 'pass' ? 'pass' : 'fail',
     regressionStatus: regressionStatus?.status || 'missing',
     authorityStatus: authorityStatus?.status || 'missing',
     safetyStatus: safetyStatus?.status || 'missing',
-    terminalClassStatus: terminalClass?.status || 'missing',
+    terminalClassStatus: expectedTerminalClass ? 'pass' : 'fail',
     receiptDigest: sha256(canonicalJson(events)),
     eventCount: events.length,
   };
 }
 
-function evaluateActualAppServerReceipts(manifest, receiptRoot) {
+function evaluateActualAppServerReceipts(manifest, receiptRoot, packRoot) {
   const reasonCodes = [];
   if (!receiptRoot || !fs.existsSync(receiptRoot)) {
     return {
@@ -236,9 +341,13 @@ function evaluateActualAppServerReceipts(manifest, receiptRoot) {
     };
   }
   const tasks = Array.isArray(manifest?.tasks) ? manifest.tasks : [];
+  const hidden = packRoot ? readJson(path.join(packRoot, 'hidden', 'validators.safe.json')) : null;
+  const hiddenByTask = new Map((hidden?.validators || []).map((item) => [item.taskId, item]));
   const results = [];
   for (const task of tasks) {
     const laneReceipts = {};
+    const hiddenValidator = hiddenByTask.get(task.taskId);
+    const basePath = packRoot ? path.join(packRoot, 'public', 'base', task.taskId) : null;
     for (const lane of BENCHMARK_LANES) {
       const file = receiptPathFor(receiptRoot, task.taskId, lane);
       if (!fs.existsSync(file)) {
@@ -246,7 +355,10 @@ function evaluateActualAppServerReceipts(manifest, receiptRoot) {
         laneReceipts[lane] = { status: 'fail', modelInvocationObserved: false, inputTokens: 0, outputTokens: 0, receiptDigest: null };
         continue;
       }
-      const receipt = evaluateAppServerReceipt(file);
+      const receipt = evaluateAppServerReceipt(file, task, {
+        basePath,
+        hiddenValidatorPath: hiddenValidator?.validatorFile ? path.join(packRoot, 'hidden', hiddenValidator.validatorFile) : null,
+      });
       if (receipt.status !== 'pass') reasonCodes.push(receipt.reasonCode || `v130_actual_receipt_invalid_${lane}`);
       laneReceipts[lane] = receipt;
     }
@@ -366,7 +478,7 @@ function taskCatalogDigestFromManifest(manifest) {
       category: task.category,
       expectedTerminalClass: task.expectedTerminalClass,
       hiddenValidatorDigest: task.hiddenValidatorDigest,
-      publicGateRefs: task.publicGateRefs,
+      publicGateCommand: task.publicGateCommand,
       tokenBudget: task.tokenBudget,
     })).sort((a, b) => a.taskId.localeCompare(b.taskId))
     : [];
@@ -570,27 +682,53 @@ export function createTrustedBenchmarkPack(options = {}) {
   const lineEnding = options.lineEnding === 'crlf' ? '\r\n' : '\n';
   const publicDir = path.join(root, 'public');
   const hiddenDir = path.join(root, 'hidden');
+  const baseDir = path.join(publicDir, 'base');
   fs.mkdirSync(publicDir, { recursive: true });
   fs.mkdirSync(hiddenDir, { recursive: true });
+  fs.mkdirSync(baseDir, { recursive: true });
+  const tasksPerCategory = Number(options.tasksPerCategory || 6);
   const categories = REQUIRED_BENCHMARK_CATEGORIES.flatMap((category) => (
-    Array.from({ length: 6 }, (_, index) => {
+    Array.from({ length: tasksPerCategory }, (_, index) => {
       const mutation = MUTATION_FAMILIES[(index + REQUIRED_BENCHMARK_CATEGORIES.indexOf(category) * 3) % MUTATION_FAMILIES.length];
       return { category, family: `${category}_${index + 1}_${mutation}` };
     })
   ));
-  const tasks = categories.map((item, index) => ({
-    taskId: `v130-bench-${String(index + 1).padStart(3, '0')}`,
-    category: item.category,
-    publicGoalProjection: `${item.category}:${item.family}`,
-    baseSnapshotDigest: sha256(`${sourceAuthoritySha}:${item.family}:base`),
-    allowedPaths: ['scripts/**', 'docs/process/**', 'CODEX_SOURCE_HARNESS_MANIFEST.json'],
-    forbiddenPaths: ['package.json', 'package-lock.json', '.github/workflows/deploy.yml'],
-    publicGateRefs: ['v130-shadow-gate', 'quality-gate'],
-    tokenBudget: { inputMax: 8000, outputMax: 4096 },
-    wallClockBudgetMs: 180000,
-    expectedTerminalClass: item.category === 'adversarial_rejection' ? 'reject' : 'accepted_change',
-    hiddenValidatorDigest: sha256(`${item.family}:hidden-validator`),
-  }));
+  const tasks = categories.map((item, index) => {
+    const taskId = `v130-bench-${String(index + 1).padStart(3, '0')}`;
+    const taskBaseDir = path.join(baseDir, taskId);
+    fs.mkdirSync(taskBaseDir, { recursive: true });
+    fs.writeFileSync(path.join(taskBaseDir, 'source.mjs'), 'export const result = "red";\n');
+    fs.writeFileSync(path.join(taskBaseDir, 'secret.txt'), 'do-not-touch\n');
+    fs.writeFileSync(path.join(taskBaseDir, 'test.mjs'), "import assert from 'node:assert/strict';\nimport { result } from './source.mjs';\nassert.equal(result, 'pass');\n");
+    const validatorPath = path.join(hiddenDir, `${taskId}-validator.mjs`);
+    fs.writeFileSync(validatorPath, [
+      "import assert from 'node:assert/strict';",
+      "import { pathToFileURL } from 'node:url';",
+      "import path from 'node:path';",
+      "const workspace = process.argv[2];",
+      "assert.ok(workspace, 'workspace required');",
+      "const module = await import(pathToFileURL(path.join(workspace, 'source.mjs')).href);",
+      "assert.equal(module.result, 'pass');",
+      "process.exit(0);",
+      '',
+    ].join('\n'));
+    const baseSnapshotDigest = directoryDigest(taskBaseDir);
+    const hiddenValidatorDigest = normalizedFileDigest(validatorPath);
+    return {
+      taskId,
+      category: item.category,
+      publicGoalProjection: `${item.category}:${item.family}`,
+      redBaseline: { publicGateStatus: 'fail' },
+      baseSnapshotDigest,
+      allowedPaths: ['source.mjs'],
+      forbiddenPaths: ['secret.txt'],
+      publicGateCommand: { command: 'node', args: ['test.mjs'] },
+      tokenBudget: { inputMax: 8000, outputMax: 4096 },
+      wallClockBudgetMs: 180000,
+      expectedTerminalClass: 'accepted_change',
+      hiddenValidatorDigest,
+    };
+  });
   const publicManifest = {
     schemaVersion: '1.3.0',
     packKind: 'trusted_external_benchmark_pack',
@@ -609,6 +747,7 @@ export function createTrustedBenchmarkPack(options = {}) {
     validators: tasks.map((task) => ({
       taskId: task.taskId,
       validatorDigest: task.hiddenValidatorDigest,
+      validatorFile: `${task.taskId}-validator.mjs`,
       expectedTerminalClass: task.expectedTerminalClass,
     })),
   };
@@ -625,7 +764,11 @@ export function createTrustedBenchmarkPack(options = {}) {
     registeredRepositoryIds: ['hiro4649/codex-development-harness'],
     taskCount: tasks.length,
     publicManifestDigest: sha256(canonicalJson(publicManifest)),
-    hiddenValidationDigest: sha256(canonicalJson(hiddenValidators)),
+    hiddenValidationDigest: sha256(canonicalJson(hiddenValidators.validators.map((item) => ({
+      taskId: item.taskId,
+      validatorDigest: item.validatorDigest,
+      expectedTerminalClass: item.expectedTerminalClass,
+    })))),
     packContentDigest: contentDigest,
     taskCatalogDigest,
     createdAt: new Date(0).toISOString(),
@@ -688,7 +831,7 @@ export function runTrustedBenchmark(options = {}) {
   if (options.candidateRuntimeImportsEvaluator === true) reasonCodes.push('v130_candidate_runtime_imported_evaluator');
   if (options.metricSource === 'hard_coded') reasonCodes.push('v130_hard_coded_performance_metric');
   const executable = manifest && options.skipExecutableTasks !== true
-    ? evaluateActualAppServerReceipts(manifest, options.receiptRoot)
+    ? evaluateActualAppServerReceipts(manifest, options.receiptRoot, pack)
     : { status: 'fail', pilotStatus: 'fail', taskCount: 0, pilotTaskCount: 0, resultDigest: null, metrics: null, reasonCodes: ['v130_task_count_without_execution'] };
   reasonCodes.push(...(executable.reasonCodes || []));
   if (options.skipExecutableTasks === true) reasonCodes.push('v130_task_count_without_execution');
@@ -714,7 +857,7 @@ export function runTrustedBenchmark(options = {}) {
     safetyViolations: executable.metrics?.safetyViolationRate || 0,
     humanInterventionCount: executable.metrics?.humanInterventionCount || 0,
   });
-  if (executable.metrics?.metricSource !== METRIC_SOURCE) reasonCodes.push('v130_metric_source_not_independent_hidden_validator_receipts');
+  if (executable.metrics?.metricSource !== METRIC_SOURCE) reasonCodes.push('v130_metric_source_not_independent_executable_hidden_validators');
   if ((executable.metrics?.directP95InputTokenRatio || 0) > 1.0) reasonCodes.push('v130_direct_lane_p95_input_tokens_worse');
   if (sameModelLift.status !== 'pass') reasonCodes.push('v130_same_model_lift_not_met');
   const result = {
@@ -731,7 +874,7 @@ export function runTrustedBenchmark(options = {}) {
     sameModelLiftEvidenceState: reasonCodes.length === 0 ? 'trusted_external_pack' : 'invalid',
     benchmarkCategoryCount: REQUIRED_BENCHMARK_CATEGORIES.length,
     benchmarkCategoryDigest: sha256(canonicalJson(manifest?.categories || {})),
-    actualEvaluatorState: 'separate_executable_evaluator',
+    actualEvaluatorState: 'independent_executable_validator_evaluator',
     actualInvocationReceiptState: 'observed_safe_receipts',
     metricSource: executable.metrics?.metricSource || 'unavailable',
     pilotTaskCount: executable.pilotTaskCount,

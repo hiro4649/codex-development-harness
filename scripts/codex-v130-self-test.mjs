@@ -84,14 +84,47 @@ function byteLength(value) {
   return Buffer.byteLength(String(value), 'utf8');
 }
 
-function writeAppServerReceipt(file, { inputTokens, outputTokens = 80 }) {
+function copyDirectory(source, destination) {
+  fs.mkdirSync(destination, { recursive: true });
+  for (const name of fs.readdirSync(source)) {
+    const sourcePath = path.join(source, name);
+    const destinationPath = path.join(destination, name);
+    const stat = fs.statSync(sourcePath);
+    if (stat.isDirectory()) {
+      copyDirectory(sourcePath, destinationPath);
+    } else {
+      fs.copyFileSync(sourcePath, destinationPath);
+    }
+  }
+}
+
+function writeFixtureAppServerReceipt(file, { inputTokens, outputTokens = 80 }) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const events = [
-    { type: 'thread.started', thread_id: `thread-${sha256(file).slice(0, 12)}` },
+    { type: 'thread.started', thread_id: `thread-${sha256(file).slice(0, 12)}`, fixture: true, activationEligible: false, metricSource: 'fixture_only' },
     { type: 'turn.started' },
     { type: 'fileChange', changedTreeDigest: `sha256:${sha256(`${file}:tree`)}` },
     { type: 'gateResult', status: 'pass', digest: `sha256:${sha256(`${file}:gate`)}` },
     { type: 'hiddenValidatorResult', status: 'pass', digest: `sha256:${sha256(`${file}:hidden`)}` },
+    { type: 'scopeStatus', status: 'pass' },
+    { type: 'regressionStatus', status: 'pass' },
+    { type: 'authorityStatus', status: 'pass' },
+    { type: 'safetyStatus', status: 'pass' },
+    { type: 'terminalClass', status: 'pass', terminalClass: 'accepted_change' },
+    { type: 'usageAccounting', inputTokens, cachedInputTokens: 0, outputTokens, reasoningOutputTokens: 0 },
+    { type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: 'SAFE_SUMMARY_ONLY' } },
+    { type: 'turn.completed', elapsedMs: inputTokens + outputTokens, usage: { input_tokens: inputTokens, cached_input_tokens: 0, output_tokens: outputTokens, reasoning_output_tokens: 0 } },
+  ];
+  fs.writeFileSync(file, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
+}
+
+function writeAppServerReceipt(file, { inputTokens, outputTokens = 80, workspace }) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const events = [
+    { type: 'thread.started', thread_id: `thread-${sha256(file).slice(0, 12)}`, fixture: false, activationEligible: true, metricSource: 'independent_executable_hidden_validators' },
+    { type: 'turn.started' },
+    { type: 'workspace', path: workspace },
+    { type: 'fileChange', changedTreeDigest: `sha256:${sha256(`${file}:tree`)}` },
     { type: 'scopeStatus', status: 'pass' },
     { type: 'regressionStatus', status: 'pass' },
     { type: 'authorityStatus', status: 'pass' },
@@ -111,13 +144,35 @@ function createActualAppServerReceiptSet(pack, options = {}) {
     const baselineInput = manifest.tasks.length + 940;
     const directInput = options.directRegression === true ? Math.round(baselineInput * 1.1) : Math.round(baselineInput * 0.99);
     const orchestratedInput = Math.round(baselineInput * (index < manifest.tasks.length * 0.8 ? 0.76 : 0.88));
-    writeAppServerReceipt(path.join(root, 'v129_deterministic_runtime', `${task.taskId}.jsonl`), { inputTokens: baselineInput, outputTokens: Math.round(baselineInput * 0.15) });
-    writeAppServerReceipt(path.join(root, 'v130_direct_verified', `${task.taskId}.jsonl`), { inputTokens: directInput, outputTokens: Math.round(baselineInput * 0.14) });
-    writeAppServerReceipt(path.join(root, 'v130_deterministic_orchestrated', `${task.taskId}.jsonl`), { inputTokens: orchestratedInput, outputTokens: Math.round(baselineInput * 0.132) });
+    for (const [lane, inputTokens, outputTokens] of [
+      ['v129_deterministic_runtime', baselineInput, Math.round(baselineInput * 0.15)],
+      ['v130_direct_verified', directInput, Math.round(baselineInput * 0.14)],
+      ['v130_deterministic_orchestrated', orchestratedInput, Math.round(baselineInput * 0.132)],
+    ]) {
+      const workspace = path.join(root, 'workspaces', lane, task.taskId);
+      copyDirectory(path.join(pack.packRoot, 'public', 'base', task.taskId), workspace);
+      const result = options.noValidatorPass === true && lane === 'v130_deterministic_orchestrated' && index === 0 ? 'red' : 'pass';
+      fs.writeFileSync(path.join(workspace, 'source.mjs'), `export const result = ${JSON.stringify(result)};\n`);
+      if (options.outsideScope === true && lane === 'v130_deterministic_orchestrated' && index === 0) {
+        fs.writeFileSync(path.join(workspace, 'secret.txt'), 'changed\n');
+      }
+      writeAppServerReceipt(path.join(root, lane, `${task.taskId}.jsonl`), { inputTokens, outputTokens, workspace });
+    }
   }
   if (options.incomplete === true) {
     const first = manifest.tasks[0];
     fs.writeFileSync(path.join(root, 'v130_direct_verified', `${first.taskId}.jsonl`), '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}\n');
+  }
+  return root;
+}
+
+function createFixtureAppServerReceiptSet(pack) {
+  const manifest = readJson(path.join(pack.packRoot, 'public', 'manifest.safe.json'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v130-fixture-receipts-'));
+  for (const task of manifest.tasks) {
+    for (const lane of ['v129_deterministic_runtime', 'v130_direct_verified', 'v130_deterministic_orchestrated']) {
+      writeFixtureAppServerReceipt(path.join(root, lane, `${task.taskId}.jsonl`), { inputTokens: 1000, outputTokens: 80 });
+    }
   }
   return root;
 }
@@ -658,33 +713,48 @@ function tokenDifferentialTests() {
   const packRepeat = createTrustedBenchmarkPack();
   const packCrlf = createTrustedBenchmarkPack({ lineEnding: 'crlf' });
   const receiptRoot = createActualAppServerReceiptSet(pack);
-  const incompleteReceiptRoot = createActualAppServerReceiptSet(pack, { incomplete: true });
-  const directRegressionReceiptRoot = createActualAppServerReceiptSet(pack, { directRegression: true });
+  const fixtureReceiptRoot = createFixtureAppServerReceiptSet(pack);
   const trusted = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot });
   const trustedBlackBox = evaluateBenchmarkBlackBox({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot });
+  const fixtureAsActual = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot: fixtureReceiptRoot });
   const missingReceipts = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest });
-  const incompleteReceipts = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot: incompleteReceiptRoot });
-  const directRegression = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot: directRegressionReceiptRoot });
+  const smallPack = createTrustedBenchmarkPack({ tasksPerCategory: 1 });
+  const incompleteReceipts = runTrustedBenchmark({ pack: smallPack.packRoot, packBindingDigest: smallPack.packBindingDigest, receiptRoot: createActualAppServerReceiptSet(smallPack, { incomplete: true }) });
+  const directRegression = runTrustedBenchmark({ pack: smallPack.packRoot, packBindingDigest: smallPack.packBindingDigest, receiptRoot: createActualAppServerReceiptSet(smallPack, { directRegression: true }) });
+  const hiddenValidatorFail = runTrustedBenchmark({ pack: smallPack.packRoot, packBindingDigest: smallPack.packBindingDigest, receiptRoot: createActualAppServerReceiptSet(smallPack, { noValidatorPass: true }) });
+  const outsideScope = runTrustedBenchmark({ pack: smallPack.packRoot, packBindingDigest: smallPack.packBindingDigest, receiptRoot: createActualAppServerReceiptSet(smallPack, { outsideScope: true }) });
   const digestMismatch = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: 'sha256:0000000000000000000000000000000000000000000000000000000000000000' });
   const receiptIncluded = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot, testIncludeReceiptInContentDigest: true });
   const rawSourceIdentity = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot, testRawSourceBuilderIdentity: true });
   const runtimeImport = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot, candidateRuntimeImportsEvaluator: true });
   const hardCodedMetric = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot, metricSource: 'hard_coded' });
   const taskCountOnly = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, skipExecutableTasks: true });
-  const visibleHiddenPack = createTrustedBenchmarkPack();
+  const visibleHiddenPack = createTrustedBenchmarkPack({ tasksPerCategory: 1 });
   const hiddenPath = `${visibleHiddenPack.packRoot}/hidden/validators.safe.json`;
   const hidden = JSON.parse(fs.readFileSync(hiddenPath, 'utf8'));
   fs.writeFileSync(hiddenPath, `${canonicalJson({ ...hidden, visibleToAgent: true })}\n`);
   const hiddenVisible = runTrustedBenchmark({ pack: visibleHiddenPack.packRoot, packBindingDigest: visibleHiddenPack.packBindingDigest, receiptRoot: createActualAppServerReceiptSet(visibleHiddenPack) });
+  const missingHiddenPack = createTrustedBenchmarkPack({ tasksPerCategory: 1 });
+  const hiddenMissingPath = path.join(missingHiddenPack.packRoot, 'hidden', 'validators.safe.json');
+  const hiddenMissing = JSON.parse(fs.readFileSync(hiddenMissingPath, 'utf8'));
+  fs.writeFileSync(hiddenMissingPath, `${canonicalJson({ ...hiddenMissing, validators: hiddenMissing.validators.slice(1) })}\n`);
+  const hiddenMissingResult = runTrustedBenchmark({ pack: missingHiddenPack.packRoot, packBindingDigest: missingHiddenPack.packBindingDigest, receiptRoot: createActualAppServerReceiptSet(missingHiddenPack) });
+  const initiallyGreenPack = createTrustedBenchmarkPack({ tasksPerCategory: 1 });
+  const initiallyGreenManifest = readJson(path.join(initiallyGreenPack.packRoot, 'public', 'manifest.safe.json'));
+  fs.writeFileSync(path.join(initiallyGreenPack.packRoot, 'public', 'base', initiallyGreenManifest.tasks[0].taskId, 'source.mjs'), 'export const result = "pass";\n');
+  const initiallyGreen = runTrustedBenchmark({ pack: initiallyGreenPack.packRoot, packBindingDigest: initiallyGreenPack.packBindingDigest, receiptRoot: createActualAppServerReceiptSet(initiallyGreenPack) });
   return [
     test('v130_same_model_lift_fixture_is_not_activation_eligible', () => pass.status === 'pass' && pass.result.fixture === true && pass.result.activationEligible === false && pass.result.sameModelLiftEvidenceState === 'fixture_only'),
     test('v130_fable_comparator_unavailable_no_superiority_claim', () => pass.result.externalComparator.comparatorState === 'unavailable' && pass.result.externalComparator.superiorityClaimState === 'not_proven'),
     test('v130_fixture_learned_policy_shadow_only', () => pass.result.learnedPolicyQualification.learnedPolicyState === 'shadow_only' && pass.result.learnedPolicyState === 'shadow_only'),
     test('v130_external_trusted_pack_passes_activation_benchmark', () => trusted.status === 'pass' && trusted.result.fixture === false && trusted.result.activationEligible === true && trusted.result.taskCount >= 60),
     test('v130_independent_evaluator_runs_candidate_as_black_box', () => trustedBlackBox.status === 'pass' && trustedBlackBox.evaluatorKind === 'black_box_subprocess' && trustedBlackBox.candidateRuntimeImported === false),
-    test('v130_external_trusted_pack_metrics_are_receipt_derived', () => trusted.result.metricSource === 'independent_hidden_validator_receipts' && trusted.result.metrics.inputTokensPerAcceptedChangeP50Ratio <= 0.80 && trusted.result.metrics.inputTokensPerAcceptedChangeP95Ratio <= 0.90),
+    test('v130_external_trusted_pack_metrics_are_executable_validator_derived', () => trusted.result.metricSource === 'independent_executable_hidden_validators' && trusted.result.metrics.inputTokensPerAcceptedChangeP50Ratio <= 0.80 && trusted.result.metrics.inputTokensPerAcceptedChangeP95Ratio <= 0.90),
+    test('v130_fixture_receipt_used_as_actual_fails', () => fixtureAsActual.status === 'fail' && fixtureAsActual.reasonCodes.includes('v130_fixture_receipt_used_as_activation_evidence')),
     test('v130_missing_actual_receipts_fail_activation_benchmark', () => missingReceipts.status === 'fail' && missingReceipts.reasonCodes.includes('v130_independent_hidden_validator_receipts_missing')),
     test('v130_incomplete_actual_receipt_fails_observation', () => incompleteReceipts.status === 'fail' && incompleteReceipts.reasonCodes.includes('v130_model_invocation_receipt_incomplete')),
+    test('v130_accepted_change_without_hidden_validator_pass_fails', () => hiddenValidatorFail.status === 'fail' && hiddenValidatorFail.reasonCodes.includes('v130_accepted_change_contract_not_met')),
+    test('v130_accepted_change_outside_allowed_scope_fails', () => outsideScope.status === 'fail' && outsideScope.reasonCodes.includes('v130_accepted_change_contract_not_met')),
     test('v130_direct_lane_p95_regression_fails', () => directRegression.status === 'fail' && directRegression.reasonCodes.includes('v130_direct_lane_p95_input_tokens_worse')),
     test('v130_pack_protocol_repeats_stably', () => pack.packContentDigest === packRepeat.packContentDigest && pack.builderReceiptDigest === packRepeat.builderReceiptDigest && pack.packBindingDigest === packRepeat.packBindingDigest && pack.taskCatalogDigest === packRepeat.taskCatalogDigest),
     test('v130_pack_protocol_normalizes_line_endings', () => pack.packContentDigest === packCrlf.packContentDigest && pack.builderReceiptDigest === packCrlf.builderReceiptDigest && pack.packBindingDigest === packCrlf.packBindingDigest),
@@ -694,6 +764,8 @@ function tokenDifferentialTests() {
     test('v130_candidate_runtime_imports_evaluator_fails', () => runtimeImport.status === 'fail' && runtimeImport.reasonCodes.includes('v130_candidate_runtime_imported_evaluator')),
     test('v130_hard_coded_performance_metric_fails', () => hardCodedMetric.status === 'fail' && hardCodedMetric.reasonCodes.includes('v130_hard_coded_performance_metric')),
     test('v130_hidden_validator_visible_fails', () => hiddenVisible.status === 'fail' && hiddenVisible.reasonCodes.includes('v130_hidden_validator_visibility_invalid')),
+    test('v130_hidden_validator_missing_fails', () => hiddenMissingResult.status === 'fail' && hiddenMissingResult.reasonCodes.includes('v130_hidden_validator_executable_missing')),
+    test('v130_initially_green_repair_task_fails', () => initiallyGreen.status === 'fail' && initiallyGreen.reasonCodes.includes('v130_accepted_change_contract_not_met')),
     test('v130_task_count_without_execution_fails', () => taskCountOnly.status === 'fail' && taskCountOnly.reasonCodes.includes('v130_task_count_without_execution')),
     test('v130_insufficient_task_count_fails_lift', () => insufficientTasks.result.sameModelLift.status === 'fail'),
     test('v130_token_regression_fails_lift', () => tokenRegression.result.sameModelLift.status === 'fail'),
