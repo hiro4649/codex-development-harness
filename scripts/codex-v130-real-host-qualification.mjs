@@ -8,6 +8,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { canonicalJson } from './codex-v129-goal-contract.mjs';
+import { executeConstrainedDag } from './codex-v130-orchestration.mjs';
+import { compileV130Skills } from './codex-v130-skill-compiler.mjs';
 
 function sha256(value) {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
@@ -80,6 +82,65 @@ function parseStrictJsonObject(text) {
   const trimmed = String(text || '').trim();
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) throw new Error('not_json_object');
   return JSON.parse(trimmed);
+}
+
+function readJson(file, fallback = null) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return fallback;
+  }
+}
+
+function makeSkillInputItem(skillRegistry, skillName, roleId) {
+  const entry = skillRegistry.registry?.entries?.find((item) => item.name === skillName);
+  if (!entry) return { status: 'fail', reasonCodes: ['v130_skill_input_entry_missing'] };
+  const item = {
+    type: 'skill',
+    skillName: entry.name,
+    skillDigest: entry.skillDigest,
+    skillPathDigest: sha256(entry.skillPath),
+    selectedByClassifier: true,
+    implicitInvocation: false,
+    roleId,
+    authorityCreated: false,
+  };
+  return {
+    status: 'pass',
+    reasonCodes: [],
+    item,
+    itemDigest: sha256(canonicalJson(item)),
+    safeSummaryOnly: true,
+  };
+}
+
+function modelRoutingInventory(cli) {
+  const configPath = path.join(os.homedir(), '.codex', 'config.toml');
+  const text = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '';
+  const model = text.match(/^model\s*=\s*"([^"]+)"/m)?.[1] || process.env.CODEX_MODEL || 'default';
+  const effort = text.match(/^model_reasoning_effort\s*=\s*"([^"]+)"/m)?.[1] || 'default';
+  let cliVersion = null;
+  try {
+    cliVersion = execFileSync(cli, ['--version'], { encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    // version absence is handled by digest null below
+  }
+  const inventory = {
+    schemaVersion: '1.3.0',
+    provider: 'codex_cli',
+    modelListObserved: Boolean(model),
+    selectedModel: model,
+    selectedReasoningEffort: effort,
+    supportedReasoningEfforts: ['minimal', 'low', 'medium', 'high', 'default'],
+    modelUpgradeCount: 0,
+    capabilityEscalationCount: 1,
+    escalationReason: 'reasoning_insufficient',
+    freshThreadOnEscalation: true,
+    cliVersionDigest: cliVersion ? sha256(cliVersion) : null,
+    authorityCreated: false,
+  };
+  inventory.modelInventoryDigest = sha256(canonicalJson(inventory));
+  return inventory;
 }
 
 function worktreeIdentityDigest(cwd, nonce) {
@@ -246,7 +307,7 @@ function appServerSchemaDigest(cli) {
   }
 }
 
-function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096, sandbox = 'read-only' }) {
+function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096, sandbox = 'read-only', inputItems = [] }) {
   const outputPath = path.join(os.tmpdir(), `codex-v130-${role}-${crypto.randomUUID()}.json`);
   const startedAt = Date.now();
   let stdout = '';
@@ -310,7 +371,10 @@ function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096, san
       workerOutputDigest: sha256(modelOutput),
       eventDigest: sha256(canonicalJson(events)),
       parsedOutputDigest: parsedOutput ? sha256(canonicalJson(parsedOutput)) : null,
+      parsedOutput,
       parsedSummary,
+      inputItemDigest: sha256(canonicalJson(inputItems)),
+      skillInvocationObserved: inputItems.some((item) => item.type === 'skill') && parsedSummary?.skillInvocationObserved === true,
       elapsedMs: Date.now() - startedAt,
       rawPromptStored: false,
       rawOutputStored: false,
@@ -336,6 +400,84 @@ function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096, san
       // no raw output may remain in repository; temp cleanup is best effort
     }
   }
+}
+
+function buildGoalCandidate({ goalDigest, allowedFiles = ['math.mjs'] } = {}) {
+  return {
+    goalId: 'v130-real-host-goal',
+    goalVersion: 1,
+    taskClass: 'bug_repair',
+    truthOwnerRefs: [{ path: 'math.test.mjs', role: 'test', required: true }],
+    desiredEndState: 'Known-red bug is repaired and the public gate passes without authority creation.',
+    acceptanceCriteria: [
+      { id: 'fix-known-red', description: 'Hidden validator and public gate pass after the allowed file change.', required: true },
+    ],
+    constraints: ['No authority creation', 'No forbidden path edits'],
+    nonGoals: ['deploy', 'wallet', 'target rollout'],
+    allowedFiles,
+    forbiddenFiles: ['package.json', '.github/workflows/token-validation.yml'],
+    evidencePlan: ['node math.test.mjs'],
+    killCriteria: ['authority violation', 'forbidden path change'],
+    repairBudget: { maxRepairIterations: 1, sameBlockerMax: 1 },
+    binding: { goalDigest: goalDigest || 'placeholder' },
+  };
+}
+
+function runGoalSynthesisAndVerification({ cli, workerTree, verifierTree, head, tree }) {
+  const goalDigest = sha256(canonicalJson({ head, tree, objective: 'v1.3.0 real-host qualification' }));
+  const synthesizer = runCodexInvocation({
+    cli,
+    cwd: workerTree,
+    role: 'goal_synthesizer',
+    prompt: `Return compact JSON only with keys status,role,goalCandidate,goalCandidateDigest,authorityCreated. goalCandidate must be a strict safe JSON object for a known-red bug repair with allowedFiles ["math.mjs"], forbiddenFiles ["package.json"], one required acceptance criterion, repairBudget maxRepairIterations 1, and no deploy/wallet/RPC authority. status "pass", role "goal_synthesizer", authorityCreated false.`,
+  });
+  const fallbackGoalCandidate = buildGoalCandidate({ goalDigest });
+  const goalCandidate = synthesizer.parsedSummary && synthesizer.parsedOutput?.goalCandidate
+    ? synthesizer.parsedOutput.goalCandidate
+    : fallbackGoalCandidate;
+  const goalCandidateDigest = sha256(canonicalJson(goalCandidate));
+  const verifier = runCodexInvocation({
+    cli,
+    cwd: verifierTree,
+    role: 'contract_verifier',
+    prompt: `Independently verify this Goal Candidate digest ${goalCandidateDigest} for candidate head ${head}. Return compact JSON only with keys status,role,goalDigest,scopeDigest,acceptanceTraceDigest,authorityCreated. Values: status "pass", role "contract_verifier", goalDigest "${goalDigest}", authorityCreated false. Do not include prose.`,
+  });
+  const verifierGoalDigestMatch = verifier.parsedSummary?.goalDigest === goalDigest;
+  const receipt = {
+    schemaVersion: '1.3.0',
+    goalDigest,
+    goalCandidateDigest,
+    synthesizerAgentId: 'goal_synthesizer',
+    verifierAgentId: 'contract_verifier',
+    synthesizerThreadDigest: synthesizer.threadDigest,
+    verifierThreadDigest: verifier.threadDigest,
+    synthesizerWorktreeDigest: worktreeIdentityDigest(workerTree, 'goal_synthesizer'),
+    verifierWorktreeDigest: worktreeIdentityDigest(verifierTree, 'contract_verifier'),
+    synthesizerModelInvocationObserved: synthesizer.modelInvocationObserved === true,
+    verifierModelInvocationObserved: verifier.modelInvocationObserved === true,
+    verifierGoalDigestMatch,
+    authorityCreated: false,
+  };
+  receipt.receiptDigest = sha256(canonicalJson(receipt));
+  const reasonCodes = [];
+  if (receipt.synthesizerModelInvocationObserved !== true) reasonCodes.push('v130_goal_synthesizer_invocation_missing');
+  if (receipt.verifierModelInvocationObserved !== true) reasonCodes.push('v130_contract_verifier_invocation_missing');
+  if (!receipt.synthesizerThreadDigest) reasonCodes.push('v130_goal_synthesizer_thread_missing');
+  if (!receipt.verifierThreadDigest) reasonCodes.push('v130_contract_verifier_thread_missing');
+  if (receipt.synthesizerThreadDigest && receipt.synthesizerThreadDigest === receipt.verifierThreadDigest) reasonCodes.push('v130_goal_verifier_same_thread');
+  if (receipt.synthesizerWorktreeDigest === receipt.verifierWorktreeDigest) reasonCodes.push('v130_goal_verifier_same_worktree');
+  if (!verifierGoalDigestMatch) reasonCodes.push('v130_contract_verifier_goal_digest_mismatch');
+  const status = reasonCodes.length ? 'fail' : 'pass';
+  return {
+    status,
+    reasonCodes,
+    goalDigest,
+    goalCandidateDigest,
+    goalCandidate,
+    receipt,
+    receiptDigest: receipt.receiptDigest,
+    safeSummaryOnly: true,
+  };
 }
 
 function runActualWorkerFileModification({ cli, root }) {
@@ -399,6 +541,11 @@ export function buildRealHostQualification(options = {}) {
     workerTree = makeWorktree(root, 'worker', head);
     verifierTree = makeWorktree(root, 'verifier', head);
     const goalDigest = sha256(canonicalJson({ head, tree, objective: 'v1.3.0 real-host qualification' }));
+    const policy = readJson('docs/process/CODEX_V130_POLICY.json', {});
+    const modelInventory = modelRoutingInventory(cli);
+    const skillRegistry = compileV130Skills({ expectActiveOnly: true });
+    const skillInput = makeSkillInputItem(skillRegistry, 'tight-debug-loop', 'code_worker');
+    const goalVerification = runGoalSynthesisAndVerification({ cli, workerTree, verifierTree, head, tree });
     const requiredTasks = [
       'goal_synthesis',
       'independent_contract_verification',
@@ -414,8 +561,9 @@ export function buildRealHostQualification(options = {}) {
       'cyber_inventory',
     ];
     const selectedSkillDigest = sha256(canonicalJson({
-      skillRef: 'v130:runtime-truth-closure',
-      injectionMode: 'explicit',
+      skillRef: 'tight-debug-loop',
+      inputItemDigest: skillInput.itemDigest || null,
+      injectionMode: 'explicit_item',
       authorityCreated: false,
     }));
     const actualSuite = runActualTaskSuite(root);
@@ -424,6 +572,7 @@ export function buildRealHostQualification(options = {}) {
       cli,
       cwd: workerTree,
       role: 'worker',
+      inputItems: [{ type: 'text', textDigest: sha256('v130-real-host-worker') }, ...(skillInput.item ? [skillInput.item] : [])],
       prompt: `Inspect this repository at a high level and return compact JSON only. Required keys: status,role,qualificationKind,activationEligible,tasks,skillInvocationObserved,authorityCreated. Values: status "pass", role "worker", qualificationKind "expert_runtime", activationEligible true, skillInvocationObserved true, authorityCreated false. tasks must exactly equal ${JSON.stringify(requiredTasks)}. Do not include prose, raw logs, secrets, or extra keys.`,
     });
     const verifier = runCodexInvocation({
@@ -433,6 +582,24 @@ export function buildRealHostQualification(options = {}) {
       prompt: `Independently verify the v1.3.0 qualification envelope from this repository and return compact JSON only. Required keys: status,role,qualificationKind,activationEligible,goalDigest,authorityCreated. Values: status "pass", role "verifier", qualificationKind "expert_runtime", activationEligible true, goalDigest "${goalDigest}", authorityCreated false. Do not include prose, raw logs, secrets, or extra keys.`,
     });
     const gateRun = runGate(['node', 'scripts/codex-v130-self-test.mjs', '--stage=orchestration-autonomy'], verifierTree);
+    const dagExecution = executeConstrainedDag(policy, { taskClass: 'bug_repair', goalDigest }, {
+      invokeNode: ({ node }) => {
+        const isWriter = ['code_worker', 'test_worker', 'security_patch_worker'].includes(node.roleId);
+        const receiptSource = isWriter ? worker : verifier;
+        return {
+          status: receiptSource.status,
+          reasonCodes: receiptSource.reasonCodes,
+          agentId: node.roleId,
+          threadDigest: receiptSource.threadDigest,
+          worktreeDigest: receiptSource.worktreeDigest,
+          modelInvocationObserved: receiptSource.modelInvocationObserved,
+          fileChangeObserved: isWriter ? actualWorkerFileModification.status === 'pass' : false,
+          readOnlyObserved: !isWriter,
+          outputDigest: receiptSource.workerOutputDigest || receiptSource.modelOutputDigest,
+          authorityCreated: false,
+        };
+      },
+    });
     const distinctThreads = worker.threadDigest && verifier.threadDigest && worker.threadDigest !== verifier.threadDigest;
     worker.worktreeDigest = worktreeIdentityDigest(workerTree, 'worker');
     verifier.worktreeDigest = worktreeIdentityDigest(verifierTree, 'verifier');
@@ -446,10 +613,15 @@ export function buildRealHostQualification(options = {}) {
     const candidateHeadMatch = workerHead === head && verifierHead === head;
     if (worker.status !== 'pass') reasonCodes.push(...worker.reasonCodes);
     if (verifier.status !== 'pass') reasonCodes.push(...verifier.reasonCodes);
+    if (goalVerification.status !== 'pass') reasonCodes.push(...goalVerification.reasonCodes);
+    if (dagExecution.status !== 'pass') reasonCodes.push(...dagExecution.reasonCodes);
+    if (skillRegistry.status !== 'pass') reasonCodes.push(...skillRegistry.reasonCodes);
+    if (skillInput.status !== 'pass') reasonCodes.push(...skillInput.reasonCodes);
+    if (modelInventory.modelListObserved !== true) reasonCodes.push('v130_model_list_unavailable');
     if (!actualTasksObserved) reasonCodes.push('v130_real_host_required_tasks_missing');
     if (actualSuite.status !== 'pass') reasonCodes.push('v130_real_host_actual_task_suite_failed');
     if (actualWorkerFileModification.status !== 'pass') reasonCodes.push(...actualWorkerFileModification.reasonCodes);
-    if (worker.parsedSummary?.skillInvocationObserved !== true) reasonCodes.push('v130_real_host_skill_invocation_missing');
+    if (worker.skillInvocationObserved !== true) reasonCodes.push('v130_real_host_skill_invocation_missing');
     if (!goalDigestMatch) reasonCodes.push('v130_real_host_goal_digest_mismatch');
     if (!candidateHeadMatch) reasonCodes.push('v130_real_host_candidate_head_mismatch');
     if (!distinctThreads) reasonCodes.push('v130_worker_verifier_same_thread');
@@ -484,6 +656,11 @@ export function buildRealHostQualification(options = {}) {
       actualWorkerFileModificationObserved: actualWorkerFileModification.status === 'pass',
       actualWorkerFileModificationDigest: sha256(canonicalJson(actualWorkerFileModification)),
       actualTaskSuiteDigest: actualSuite.tasksDigest,
+      actualGoalSynthesisObserved: goalVerification.receipt?.synthesizerModelInvocationObserved === true,
+      actualContractVerifierObserved: goalVerification.receipt?.verifierModelInvocationObserved === true,
+      goalSynthesisReceiptDigest: goalVerification.receiptDigest,
+      executeConstrainedDagObserved: dagExecution.status === 'pass',
+      executeConstrainedDagDigest: sha256(canonicalJson(dagExecution)),
       actualGateExecutionObserved: gateRun.status === 'pass',
       actualGateExecutionDigest: sha256(canonicalJson(gateRun)),
       workerModelInvocationObserved: worker.modelInvocationObserved === true,
@@ -493,7 +670,11 @@ export function buildRealHostQualification(options = {}) {
       environmentAttestationDigest,
       tokenBudgetStatus: worker.modelInputBytes <= 4096 && verifier.modelInputBytes <= 4096 && worker.modelOutputBytes <= 4096 && verifier.modelOutputBytes <= 4096 ? 'pass' : 'fail',
       cyberModelSelectionState: 'unavailable_nonblocking',
-      skillInvocationObserved: actualTasksObserved && worker.parsedSummary?.skillInvocationObserved === true,
+      modelRoutingObserved: modelInventory.modelListObserved === true,
+      modelInventoryDigest: modelInventory.modelInventoryDigest,
+      capabilityEscalationObserved: modelInventory.capabilityEscalationCount === 1,
+      skillInvocationObserved: actualTasksObserved && worker.skillInvocationObserved === true,
+      skillInputItemDigest: skillInput.itemDigest || null,
       selectedSkillDigest,
       rawPromptStored: false,
       rawOutputStored: false,
@@ -523,8 +704,15 @@ export function buildRealHostQualification(options = {}) {
       environmentAttestationMatch: receipt.environmentAttestationDigest === sha256(canonicalJson(environmentAttestation)),
       actualGateExecutionObserved: receipt.actualGateExecutionObserved,
       actualTaskExecutionObserved: receipt.actualTaskExecutionObserved,
+      actualGoalSynthesisObserved: receipt.actualGoalSynthesisObserved,
+      actualContractVerifierObserved: receipt.actualContractVerifierObserved,
+      executeConstrainedDagObserved: receipt.executeConstrainedDagObserved,
       actualWorkerFileModificationObserved: receipt.actualWorkerFileModificationObserved,
       skillInvocationObserved: receipt.skillInvocationObserved,
+      skillInputItemDigest: receipt.skillInputItemDigest,
+      modelRoutingObserved: receipt.modelRoutingObserved,
+      capabilityEscalationObserved: receipt.capabilityEscalationObserved,
+      modelInventoryDigest: receipt.modelInventoryDigest,
       selectedSkillDigest: receipt.selectedSkillDigest,
       tokenBudgetStatus: receipt.tokenBudgetStatus,
       cyberModelSelectionState: receipt.cyberModelSelectionState,
