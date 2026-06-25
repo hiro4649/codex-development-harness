@@ -10,18 +10,135 @@ import { applyAvailabilityMask, buildConstrainedDag, compileAgentRole, evaluateE
 import { buildProgressVector, buildTransactionalStateReceipt, evaluateNoHumanTerminal, ratifyExactHead } from './codex-v130-ratifier.mjs';
 import { buildAdversarialFixture, buildBenchmarkFixture } from './codex-v130-benchmark.mjs';
 
-function readJson(path) {
-  return JSON.parse(fs.readFileSync(path, 'utf8'));
-}
-
 function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
   return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
 }
 
+function rejectDuplicateKeys(jsonText) {
+  const stack = [];
+  let inString = false;
+  let escaping = false;
+  let token = '';
+  let afterString = false;
+  for (let i = 0; i < jsonText.length; i += 1) {
+    const char = jsonText[i];
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (char === '\\') {
+        escaping = true;
+      } else if (char === '"') {
+        inString = false;
+        afterString = true;
+      } else {
+        token += char;
+      }
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      escaping = false;
+      token = '';
+      afterString = false;
+      continue;
+    }
+    if (char === '{') stack.push({ keys: new Set(), expectKey: true });
+    if (char === '}') stack.pop();
+    if (char === ',') {
+      const top = stack[stack.length - 1];
+      if (top) top.expectKey = true;
+    }
+    if (afterString && char === ':') {
+      const top = stack[stack.length - 1];
+      if (top?.expectKey) {
+        if (top.keys.has(token)) throw new Error(`duplicate key: ${token}`);
+        top.keys.add(token);
+        top.expectKey = false;
+      }
+    }
+    if (!/\s/.test(char)) afterString = false;
+  }
+}
+
+function parseJsonStrict(text) {
+  rejectDuplicateKeys(text);
+  return JSON.parse(text);
+}
+
+function readJson(path) {
+  return parseJsonStrict(fs.readFileSync(path, 'utf8'));
+}
+
 function sha256(value) {
   return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function byteLength(value) {
+  return Buffer.byteLength(String(value), 'utf8');
+}
+
+function validateSchemaValue(schema, rootName, value, rootSchema = schema, path = rootName) {
+  const reasons = [];
+  const fail = (code) => reasons.push(`${path}:${code}`);
+  const type = rootSchema.type;
+  if (rootSchema.$ref) {
+    const refName = rootSchema.$ref.replace('#/definitions/', '');
+    return validateSchemaValue(schema, rootName, value, schema.definitions?.[refName], path);
+  }
+  if (rootSchema.enum && !rootSchema.enum.some((item) => canonicalJson(item) === canonicalJson(value))) fail('enum');
+  if (type === 'object') {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) fail('type');
+    const props = rootSchema.properties || {};
+    for (const key of rootSchema.required || []) {
+      if (!Object.hasOwn(value || {}, key)) reasons.push(`${path}.${key}:required`);
+    }
+    if (rootSchema.additionalProperties === false) {
+      for (const key of Object.keys(value || {})) {
+        if (!Object.hasOwn(props, key)) reasons.push(`${path}.${key}:unknown`);
+      }
+    }
+    if (rootSchema.maxProperties !== undefined && Object.keys(value || {}).length > rootSchema.maxProperties) fail('maxProperties');
+    for (const [key, child] of Object.entries(props)) {
+      if (Object.hasOwn(value || {}, key)) reasons.push(...validateSchemaValue(schema, rootName, value[key], child, `${path}.${key}`));
+    }
+  }
+  if (type === 'array') {
+    if (!Array.isArray(value)) fail('type');
+    if (rootSchema.maxItems !== undefined && (value || []).length > rootSchema.maxItems) fail('maxItems');
+    if (rootSchema.uniqueItems === true && new Set((value || []).map(canonicalJson)).size !== (value || []).length) fail('uniqueItems');
+    for (const [index, item] of (value || []).entries()) reasons.push(...validateSchemaValue(schema, rootName, item, rootSchema.items || {}, `${path}[${index}]`));
+  }
+  if (type === 'string') {
+    if (typeof value !== 'string') fail('type');
+    if (rootSchema.minLength !== undefined && String(value).length < rootSchema.minLength) fail('minLength');
+    if (rootSchema.maxLength !== undefined && String(value).length > rootSchema.maxLength) fail('maxLength');
+    if (rootSchema.pattern && !(new RegExp(rootSchema.pattern).test(String(value)))) fail('pattern');
+  }
+  if (type === 'integer') {
+    if (!Number.isInteger(value)) fail('type');
+    if (rootSchema.minimum !== undefined && value < rootSchema.minimum) fail('minimum');
+    if (rootSchema.maximum !== undefined && value > rootSchema.maximum) fail('maximum');
+  }
+  if (type === 'number') {
+    if (typeof value !== 'number' || Number.isNaN(value)) fail('type');
+    if (rootSchema.minimum !== undefined && value < rootSchema.minimum) fail('minimum');
+    if (rootSchema.maximum !== undefined && value > rootSchema.maximum) fail('maximum');
+  }
+  if (type === 'boolean' && typeof value !== 'boolean') fail('type');
+  return reasons;
+}
+
+function validateByDefinition(schema, definitionName, value) {
+  const definition = schema.definitions?.[definitionName];
+  if (!definition) return [`${definitionName}:missing_definition`];
+  return validateSchemaValue(schema, definitionName, value, definition);
+}
+
+function validateByteBudget(value, maxBytes) {
+  const bytes = Buffer.byteLength(String(value), 'utf8');
+  return { status: bytes <= maxBytes ? 'pass' : 'fail', bytes, maxBytes };
 }
 
 function test(name, fn) {
@@ -104,11 +221,20 @@ function contractTests() {
   const docsManifest = readJson('docs/process/CODEX_HARNESS_MANIFEST.json');
   const activePolicy = readJson('docs/process/CODEX_ACTIVE_POLICY_INDEX.json');
   const readme = fs.readFileSync('README.md', 'utf8');
+  const agents = fs.readFileSync('AGENTS.md', 'utf8');
+  const policyBytes = byteLength(fs.readFileSync('docs/process/CODEX_V130_POLICY.json', 'utf8'));
+  const schemaBytes = byteLength(fs.readFileSync('docs/process/CODEX_V130_SCHEMA.json', 'utf8'));
+  const specBytes = byteLength(fs.readFileSync('docs/process/CODEX_V130_SPEC.md', 'utf8'));
   const reqIds = (policy.requirements || []).map((item) => item.requirementId);
   const roleIds = (policy.agentRoles || []).map((item) => item.roleId);
   const incompatibilities = (policy.roleIncompatibilities || []).map((pair) => pair.join('!='));
   const schemaDefs = schema.definitions || {};
   const exact = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
+  const policyUnknown = JSON.parse(JSON.stringify(policy));
+  policyUnknown.monotonicInheritance.extraNestedField = true;
+  const policyBadEnum = { ...policy, candidateActivationState: 'activated_by_candidate' };
+  const roleOverBudget = { ...policy.agentRoles[0], roleId: 'x'.repeat(97) };
+  const duplicateText = '{"a":1,"a":2}';
   return [
     test('v130_policy_marker_pass', () => policy.marker === 'CODEX_QUALITY_HARNESS_FILE v1.3.0' && policy.schemaVersion === '1.3.0'),
     test('v130_shadow_candidate_state_pass', () => policy.candidateHarnessVersion === '1.3.0' && policy.candidateActivationState === 'source_shadow_candidate' && policy.sourceActivation === 'forbidden'),
@@ -127,6 +253,24 @@ function contractTests() {
     test('v130_schema_rejects_unknown_fields', () => schema.duplicateKeyRejectingParseRequired === true && schemaRejectsUnknownFields(schema)),
     test('v130_deep_schema_definitions_present', () => ['v130Policy', 'roleProfile', 'agentRole', 'compiledAgentRole', 'requirement', 'sessionIntent', 'projectProfile', 'gateProvenance', 'goalSoundness', 'acceptanceTrace', 'compiledInstructionEnvelope', 'failureCapsule', 'progressVector', 'contextRequest', 'evidenceHandle', 'typedDag', 'dagNode', 'routeCandidate', 'orchestrationDecision', 'complementarityEntry', 'modelInventory', 'skillInventory', 'pluginInventory', 'escalationReceipt', 'standingDelegation', 'ratificationReceipt', 'stateReceipt', 'environmentAttestation', 'benchmarkResult'].every((key) => schemaDefs[key]?.type === 'object' && schemaDefs[key]?.additionalProperties === false)),
     test('v130_schema_definitions_are_not_empty', () => Object.values(schemaDefs).every((def) => Object.keys(def.properties || {}).length > 0)),
+    test('v130_policy_size_budget_pass', () => policyBytes <= 32768),
+    test('v130_schema_size_budget_pass', () => schemaBytes <= 24576),
+    test('v130_spec_size_budget_pass', () => specBytes <= 16384),
+    test('v130_agents_size_budget_pass', () => byteLength(agents) <= 3072),
+    test('v130_policy_deep_schema_validation_pass', () => validateByDefinition(schema, 'v130Policy', policy).length === 0),
+    test('v130_schema_rejects_nested_unknown_field', () => validateByDefinition(schema, 'v130Policy', policyUnknown).some((reason) => reason.includes('unknown'))),
+    test('v130_schema_rejects_wrong_enum', () => validateByDefinition(schema, 'v130Policy', policyBadEnum).some((reason) => reason.includes('enum'))),
+    test('v130_schema_rejects_over_budget_string', () => validateByDefinition(schema, 'agentRole', roleOverBudget).some((reason) => reason.includes('maxLength'))),
+    test('v130_duplicate_key_parser_rejects_duplicate', () => {
+      try {
+        parseJsonStrict(duplicateText);
+        return false;
+      } catch {
+        return true;
+      }
+    }),
+    test('v130_orchestration_48000_bytes_pass', () => validateByteBudget('x'.repeat(48000), 48000).status === 'pass'),
+    test('v130_orchestration_48001_bytes_fail', () => validateByteBudget('x'.repeat(48001), 48000).status === 'fail'),
     test('v130_all_roles_compile_complete', () => roleIds.length >= 20 && (policy.agentRoles || []).every((role) => roleComplete(role, policy))),
     test('v130_role_ids_unique', () => hasUnique(roleIds)),
     test('v130_role_incompatibilities_present', () => ['code_worker!=independent_verifier', 'security_patch_worker!=security_patch_reviewer', 'vulnerability_finder!=exploitability_validator'].every((item) => incompatibilities.includes(item))),
@@ -152,7 +296,7 @@ function contractTests() {
     test('v130_docs_manifest_shadow_registered', () => docsManifest.activeHarnessVersion === '1.2.9' && docsManifest.v130SourceShadowCandidate?.candidateActivationState === 'source_shadow_candidate'),
     test('v130_active_policy_shadow_registered', () => activePolicy.activeHarnessVersion === '1.2.9' && activePolicy.v130SourceShadowCandidate?.sourceActivation === 'forbidden'),
     test('v130_readme_state_current', () => readme.includes('Active Source: v1.2.9') && readme.includes('Candidate: v1.3.0 source_shadow_candidate')),
-    test('v130_agents_marker_preserves_active_v129', () => fs.readFileSync('AGENTS.md', 'utf8').includes('CODEX_QUALITY_HARNESS_FILE v1.2.9')),
+    test('v130_agents_marker_preserves_active_v129', () => agents.includes('CODEX_QUALITY_HARNESS_FILE v1.2.9') && agents.includes('Candidate Source: v1.3.0 source_shadow_candidate')),
     test('v130_policy_digest_stable', () => /^sha256:[a-f0-9]{64}$/.test(`sha256:${sha256(canonicalJson(policy))}`)),
   ];
 }

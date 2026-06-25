@@ -103,6 +103,7 @@ import {
 import {
   buildV128ReleaseDrillColdEvidence,
   buildV128CompactQualityGateSafeSummary,
+  canonicalBytes,
   compactV128ValidationExecutionPlanForStorage,
   V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX,
   validateV128OrchestrationCapsuleStoredBytes,
@@ -1434,6 +1435,31 @@ function writeV117LoadBearingArtifacts(report = {}) {
     ownerDecisionBrief: report.ownerDecisionBrief,
     marker: MARKER,
   });
+  const orchestrationStoredBytes = Buffer.byteLength(JSON.stringify(report.orchestrationCapsule || {}), 'utf8');
+  const orchestrationCanonicalBytes = canonicalBytes(report.orchestrationCapsule || {});
+  const orchestrationCapsuleBudgetStatus = orchestrationStoredBytes <= V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX
+    && orchestrationCanonicalBytes <= V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX
+    ? {
+      status: 'pass',
+      storedBytes: orchestrationStoredBytes,
+      canonicalBytes: orchestrationCanonicalBytes,
+      maxBytes: V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX,
+      safeSummaryOnly: true,
+    }
+    : {
+      status: 'fail',
+      storedBytes: orchestrationStoredBytes,
+      canonicalBytes: orchestrationCanonicalBytes,
+      maxBytes: V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX,
+      reasonCodes: ['orchestration_capsule_budget_exceeded'],
+      safeSummaryOnly: true,
+    };
+  report.orchestrationCapsuleBudgetStatus = orchestrationCapsuleBudgetStatus;
+  safeSummary.compactIntegrityStatus.orchestrationCapsuleBudgetStatus = orchestrationCapsuleBudgetStatus.status;
+  safeSummary.tokenCompression.orchestrationStoredBytes = orchestrationStoredBytes;
+  safeSummary.tokenCompression.orchestrationCanonicalBytes = orchestrationCanonicalBytes;
+  safeSummary.tokenCompression.orchestrationCapsuleBytesMax = V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX;
+  if (orchestrationCapsuleBudgetStatus.status !== 'pass') safeSummary.tokenCompression.status = 'fail';
   const releaseDrillHotColdBindingStatus = validateV128ReleaseDrillHotColdBinding(
     safeSummary.compactDiagnostics?.releaseDrill,
     report.orchestrationCapsule?.v128ReleaseDrillEvidence,
@@ -1443,7 +1469,7 @@ function writeV117LoadBearingArtifacts(report = {}) {
   report.routineDecisionProjectionStatus.tokenCompressionStatus = safeSummary.tokenCompression.status;
   report.routineDecisionProjectionStatus.storedSafeSummaryBytes = safeSummary.tokenCompression.storedSafeSummaryBytes;
   report.routineDecisionProjectionStatus.storedSafeSummaryBytesMax = safeSummary.tokenCompression.storedSafeSummaryBytesMax;
-  if (safeSummary.tokenCompression.status !== 'pass' || releaseDrillHotColdBindingStatus.status !== 'pass') {
+  if (safeSummary.tokenCompression.status !== 'pass' || releaseDrillHotColdBindingStatus.status !== 'pass' || orchestrationCapsuleBudgetStatus.status !== 'pass') {
     report.routineDecisionProjectionStatus.status = 'fail';
     safeSummary = buildV128CompactQualityGateSafeSummary({
       report,
@@ -1464,6 +1490,11 @@ function writeV117LoadBearingArtifacts(report = {}) {
       ownerDecisionBrief: report.ownerDecisionBrief,
       marker: MARKER,
     });
+    safeSummary.compactIntegrityStatus.orchestrationCapsuleBudgetStatus = orchestrationCapsuleBudgetStatus.status;
+    safeSummary.tokenCompression.orchestrationStoredBytes = orchestrationStoredBytes;
+    safeSummary.tokenCompression.orchestrationCanonicalBytes = orchestrationCanonicalBytes;
+    safeSummary.tokenCompression.orchestrationCapsuleBytesMax = V128_ORCHESTRATION_CAPSULE_BYTES_SOFT_MAX;
+    if (orchestrationCapsuleBudgetStatus.status !== 'pass') safeSummary.tokenCompression.status = 'fail';
   }
   const activeEvidenceBindingStatus = validateV129ActiveEvidenceBinding({ report, safeSummary });
   report.routineDecisionProjectionStatus.activeEvidenceBindingStatus = activeEvidenceBindingStatus.status;
@@ -3392,6 +3423,8 @@ function expectedMarkerVersionForPath(file, profileVersions) {
 
 
 function markerAllowedForPath(file, version, profileVersions) {
+  const normalized = normalizePath(file);
+  if (normalized === '.github/workflows/v130-shadow-gate.yml' && version === '1.3.0') return true;
 
 
 
