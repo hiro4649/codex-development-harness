@@ -4,6 +4,8 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { compileSessionIntent, buildProjectProfile, compileVerifiedGoal } from './codex-v130-intake-compiler.mjs';
+import { buildCompiledInstructionEnvelope } from './codex-v130-context-compiler.mjs';
 
 function readJson(path) {
   return JSON.parse(fs.readFileSync(path, 'utf8'));
@@ -152,17 +154,47 @@ function contractTests() {
   ];
 }
 
+function intakeContextTests() {
+  const candidateHeadSha = '1'.repeat(40);
+  const intent = compileSessionIntent({
+    currentGoal: 'Add v1.3.0 verified goal intake.',
+    explicitNonGoals: ['No target rollout.'],
+    safeEvidenceRefs: ['docs/process/CODEX_V130_POLICY.json'],
+  });
+  const profile = buildProjectProfile({ headSha: candidateHeadSha, baseSha: '0'.repeat(40) });
+  const goal = compileVerifiedGoal({
+    currentGoal: 'Add v1.3.0 verified goal intake.',
+    profile: { headSha: candidateHeadSha, baseSha: '0'.repeat(40) },
+  }, { candidateHeadSha });
+  const rawRejected = compileSessionIntent({ currentGoal: 'x', rawLogs: 'forbidden' });
+  const badHead = compileVerifiedGoal({ currentGoal: 'x' }, { candidateHeadSha: 'not-a-sha' });
+  const envelope = buildCompiledInstructionEnvelope();
+  const oversizedEnvelope = buildCompiledInstructionEnvelope({ evidenceHandles: Array.from({ length: 12 }, (_, i) => `evidence-${i}-${'x'.repeat(120)}`) });
+  return [
+    test('v130_session_intent_compiles_under_budget', () => intent.status === 'pass' && intent.canonicalBytes <= 1536 && /^sha256:[a-f0-9]{64}$/.test(intent.sessionIntent.intentDigest)),
+    test('v130_session_intent_rejects_raw_logs', () => rawRejected.status === 'fail' && rawRejected.reasonCodes.includes('v130_forbidden_rawLogs')),
+    test('v130_project_profile_read_only_bounded', () => profile.status === 'pass' && profile.canonicalBytes <= 8192 && profile.projectProfile.dirtyState !== undefined),
+    test('v130_verified_goal_uses_v129_contract', () => goal.goalContractStatus.status === 'pass' && /^sha256:[a-f0-9]{64}$/.test(goal.goalDigest)),
+    test('v130_verified_goal_requires_runtime_candidate_head', () => badHead.status === 'fail' && badHead.reasonCodes.includes('v130_candidate_head_invalid')),
+    test('v130_classification_receives_candidate_head', () => goal.classificationStatus.status === 'pass' && /^sha256:[a-f0-9]{64}$/.test(goal.classificationStatus.classificationDigest)),
+    test('v130_instruction_envelope_under_budget', () => envelope.status === 'pass' && envelope.canonicalBytes <= 1536 && envelope.compiledInstructionEnvelope.routineReads.length === 3),
+    test('v130_instruction_envelope_forbids_routine_cold_reads', () => envelope.compiledInstructionEnvelope.tokenBudgets.routineColdArtifactReads === 0 && envelope.compiledInstructionEnvelope.tokenBudgets.routineSkillCount === 0),
+    test('v130_instruction_envelope_over_budget_fails', () => oversizedEnvelope.status === 'fail' && oversizedEnvelope.reasonCodes.includes('v130_instruction_envelope_over_budget')),
+  ];
+}
+
 function selectedStages() {
   const arg = process.argv.find((item) => item.startsWith('--stage='));
   if (!arg) return new Set(['contracts']);
   const stage = arg.split('=')[1];
-  if (stage === 'all') return new Set(['contracts']);
+  if (stage === 'all') return new Set(['contracts', 'intake-context']);
   return new Set(stage.split(',').map((item) => item.trim()).filter(Boolean));
 }
 
 const stages = selectedStages();
 const cases = [
   ...(stages.has('contracts') || stages.has('contract') ? contractTests() : []),
+  ...(stages.has('intake-context') || stages.has('intake') || stages.has('context') ? intakeContextTests() : []),
 ];
 const failures = cases.filter((item) => item.status !== 'pass');
 const report = {
