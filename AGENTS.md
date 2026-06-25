@@ -1,7 +1,7 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.9
+CODEX_QUALITY_HARNESS_FILE v1.3.0
 
 <!-- CODEX_ACTIVE_BLOCK_BEGIN -->
 machineBindingId=FD_AUTH: Final Decision is pass/block/mergeAllowed/exit-code authority.
@@ -15,7 +15,7 @@ machineBindingId=NO_SELF_APPROVAL: AI must not self-approve.
 machineBindingId=NO_GH_APPROVAL_REVIEW: AI must not submit GitHub approval review.
 machineBindingId=RUNTIME_DEPLOY_WALLET_BOUNDARY: Product/runtime/workflow/deploy/wallet/RPC/secret scope is separate.
 machineBindingId=STOP_CIRCUIT: repeated architectural blocker stops expansion.
-machineBindingId=PROJECTION_NONAUTH: v1.2.8 Projection and v1.2.9 Goal/Router/Receipt surfaces are non-authoritative routine surfaces.
+machineBindingId=PROJECTION_NONAUTH: v1.2.8 Projection and v1.2.9 Goal/Router/Receipt surfaces stay non-final; v1.3.0 uses bounded compiled intake and role receipts without creating authority.
 <!-- CODEX_ACTIVE_BLOCK_END -->
 
 ## Prime Directive
@@ -229,10 +229,13 @@ claims.
 For v1.2.8 Deterministic Decision Projection and Token-Minimal Loop Closure,
 use `docs/process/CODEX_V128_SPEC.md` as compatibility and rollback authority.
 For v1.2.9 Goal-Contracted Capability Router, use
-`docs/process/CODEX_V129_SPEC.md` as the active Source spec. v1.2.9 activates
-Goal Contract, task classification, capability routing, receipt binding, and
-independent verifier contracts as load-bearing Source checks, while keeping
-v1.2.8 Projection non-authoritative and preserving Final Decision as final
+`docs/process/CODEX_V129_SPEC.md` as immediate rollback authority.
+For v1.3.0 Verified Goal Intake, Adaptive Capability Escalation, and
+Transactional Agent Teams, use `docs/process/CODEX_V130_SPEC.md` as the active
+Source spec. v1.3.0 activates bounded Session Intent, immutable Goal intake,
+compiled role profiles, constrained DAG orchestration, same-model differential
+evaluation, and exact-head autonomous ratification contracts as load-bearing
+Source checks, while preserving Final Decision as final
 pass/block/mergeAllowed/exit-code authority. Source activation does not start
 target rollout, does not mutate target repositories, and does not create owner,
 permission, provider-closure, merge, product/runtime/deploy/wallet/RPC/secret,

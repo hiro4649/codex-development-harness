@@ -2125,9 +2125,9 @@ export function validateFinalDecisionClosure(closure = {}) {
 
 export function validateWorkspaceIdentityGate(gate = {}) {
   const reasons = [];
-  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9'].includes(gate.workspaceIdentityVersion)) reasons.push('workspace_identity_version_invalid');
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
-  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9'].includes(gate.manifestActiveHarnessVersion)) reasons.push('workspace_identity_manifest_version_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0', '1.3.0'].includes(gate.workspaceIdentityVersion)) reasons.push('workspace_identity_version_invalid');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9', 'CODEX_QUALITY_HARNESS_FILE v1.3.0'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0', '1.3.0'].includes(gate.manifestActiveHarnessVersion)) reasons.push('workspace_identity_manifest_version_invalid');
   if (gate.wrongRepo === true && gate.readOnlyAudit !== true) reasons.push('wrong_workspace_blocked');
   if (gate.frozenBranchUsed === true) reasons.push('frozen_branch_blocked');
   if (gate.mutationTask === true && gate.repoResolvableOnGitHub !== true) reasons.push('unresolvable_remote_for_mutation');
@@ -2139,17 +2139,17 @@ export function validateWorkspaceIdentityGate(gate = {}) {
 
 export function validateActivePolicyIndex(index = {}) {
   const reasons = [];
-  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9'].includes(index.schemaVersion)) reasons.push('active_policy_index_schema_invalid');
+  if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0', '1.3.0'].includes(index.schemaVersion)) reasons.push('active_policy_index_schema_invalid');
   if (index.indexPath !== 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json') reasons.push('active_policy_index_path_invalid');
   for (const item of ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json']) {
     if (!Array.isArray(index.requiredReads) || !index.requiredReads.includes(item)) reasons.push(`active_policy_index_missing_${item}`);
   }
-  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
+  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md', 'docs/process/CODEX_V130_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
   if (Array.isArray(index.requiredReads) && index.requiredReads.some((item) => ['README.md', 'legacy_specs', 'pr_history_docs'].includes(item))) reasons.push('active_policy_index_required_reads_too_broad');
   if (Number(index.selectedSkillsMax || 0) > 3) reasons.push('active_policy_index_skill_budget_too_high');
-  if (['1.2.8', '1.2.9'].includes(index.schemaVersion) && Number(index.selectedSkillsMax || 0) > 1) reasons.push('active_policy_index_v128_routine_skill_budget_too_high');
-  if (['1.2.8', '1.2.9'].includes(index.schemaVersion) && Number(index.routineColdArtifactReadMax || 0) !== 0) reasons.push('active_policy_index_v128_cold_read_budget_invalid');
-  if (['1.2.8', '1.2.9'].includes(index.schemaVersion) && Number(index.routineManagedArtifactReadMax || 0) > 1) reasons.push('active_policy_index_v128_managed_read_budget_too_high');
+  if (['1.2.8', '1.2.9', '1.3.0'].includes(index.schemaVersion) && Number(index.selectedSkillsMax || 0) > 1) reasons.push('active_policy_index_v128_routine_skill_budget_too_high');
+  if (['1.2.8', '1.2.9', '1.3.0'].includes(index.schemaVersion) && Number(index.routineColdArtifactReadMax || 0) !== 0) reasons.push('active_policy_index_v128_cold_read_budget_invalid');
+  if (['1.2.8', '1.2.9', '1.3.0'].includes(index.schemaVersion) && Number(index.routineManagedArtifactReadMax || 0) > 1) reasons.push('active_policy_index_v128_managed_read_budget_too_high');
   if (Number(index.mdFilesReadMax || 0) > 6) reasons.push('active_policy_index_md_budget_too_high');
   return reasons.length ? fail(reasons) : pass({ taskProfile: index.taskProfile, requiredReads: Array.isArray(index.requiredReads) ? index.requiredReads.length : 0 });
 }
@@ -2694,7 +2694,7 @@ export function validateSkillContextRouting(routing = {}) {
   const effectiveMdFilesReadMax = Math.min(mdFilesReadMax, budget.mdFilesReadMax);
   const authority = routing.activeAuthorityTuple || {};
   const blockers = new Set(routing.blockerClasses || []);
-  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
+  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0', '1.3.0', '1.3.0'].includes(routing.schemaVersion)) reasons.push('skill_context_routing_schema_invalid');
   if (!TASK_PROFILES.has(routing.taskProfile)) reasons.push('task_profile_invalid');
   if (mandatorySafetyTrigger && routing.mandatorySafetyTriggerAllowlisted !== true) reasons.push('mandatory_safety_trigger_requires_allowlist');
   if (mandatorySafetyTrigger && !routing.mandatorySafetyTriggerId) reasons.push('mandatory_safety_trigger_requires_id');
@@ -2718,10 +2718,10 @@ export function validateSkillContextRouting(routing = {}) {
   if (!READ_BUDGET_STATUS.has(routing.readBudgetStatus)) reasons.push('read_budget_status_invalid');
   if (routing.readBudgetStatus === 'blocked') reasons.push('read_budget_blocked');
   for (const blocker of blockers) if (HARD_CONTEXT_BLOCKERS.has(blocker)) reasons.push(blocker);
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
-  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
-  if (!['v122', 'v123', 'v124', 'v125', 'v126', 'v127', 'v128', 'v129'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
-  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.2', 'CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9', 'CODEX_QUALITY_HARNESS_FILE v1.3.0', 'CODEX_QUALITY_HARNESS_FILE v1.3.0'].includes(authority.agentsMarker)) reasons.push('active_authority_agents_marker_missing');
+  if (!['1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0', '1.3.0', '1.3.0'].includes(authority.manifestActiveHarnessVersion)) reasons.push('active_authority_manifest_version_missing');
+  if (!['v122', 'v123', 'v124', 'v125', 'v126', 'v127', 'v128', 'v129', 'v130'].includes(authority.activeSelfTestSuite)) reasons.push('active_authority_self_test_missing');
+  if (!['docs/process/CODEX_V122_SPEC.md', 'docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md', 'docs/process/CODEX_V130_SPEC.md'].includes(authority.activeSpecPath)) reasons.push('active_authority_spec_path_missing');
   if (authority.finalAuthorityPointer !== 'v1.1.8_final_decision_kernel') reasons.push('active_authority_final_decision_pointer_missing');
   if (routing.ownerProvidedContext?.countedAsFileRead === true) reasons.push('owner_provided_context_not_file_read');
   return reasons.length ? fail(reasons) : pass({ taskProfile, selectedSkills: selectedSkills.length, mdFilesRead: mdFilesRead.length, readBudgetStatus: routing.readBudgetStatus });
