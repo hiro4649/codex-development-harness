@@ -87,6 +87,126 @@ function runGate(command, cwd) {
   }
 }
 
+function writeFile(file, text) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, text);
+}
+
+function initTempGitRepo(root, name) {
+  const repo = path.join(root, name);
+  fs.mkdirSync(repo, { recursive: true });
+  git(['init'], { cwd: repo });
+  git(['config', 'user.email', 'codex@example.invalid'], { cwd: repo });
+  git(['config', 'user.name', 'Codex Harness'], { cwd: repo });
+  return repo;
+}
+
+function runNodeTest(repo, script) {
+  const startedAt = Date.now();
+  try {
+    execFileSync(process.execPath, [script], {
+      cwd: repo,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 60000,
+      maxBuffer: 1024 * 1024,
+    });
+    return { status: 'pass', elapsedMs: Date.now() - startedAt, outputDigest: sha256('exit:0') };
+  } catch {
+    return { status: 'fail', elapsedMs: Date.now() - startedAt, outputDigest: sha256('exit:nonzero') };
+  }
+}
+
+function runKnownRedRepair(root) {
+  const repo = initTempGitRepo(root, 'known-red-repair');
+  writeFile(path.join(repo, 'math.js'), 'export function add(a,b){ return a-b; }\n');
+  writeFile(path.join(repo, 'math.test.mjs'), "import assert from 'node:assert/strict';\nimport { add } from './math.js';\nassert.equal(add(2,3),5);\n");
+  writeFile(path.join(repo, 'package.json'), '{"type":"module"}\n');
+  git(['add', '.'], { cwd: repo });
+  git(['commit', '-m', 'known red baseline'], { cwd: repo });
+  const pre = runNodeTest(repo, 'math.test.mjs');
+  writeFile(path.join(repo, 'math.js'), 'export function add(a,b){ return a+b; }\n');
+  const post = runNodeTest(repo, 'math.test.mjs');
+  const diff = git(['diff', '--', 'math.js'], { cwd: repo });
+  return {
+    taskId: 'known-red bug repair',
+    status: pre.status === 'fail' && post.status === 'pass' && diff.includes('return a+b') ? 'pass' : 'fail',
+    preFixFailureObserved: pre.status === 'fail',
+    postFixPassObserved: post.status === 'pass',
+    changedFileCount: 1,
+    diffDigest: sha256(diff),
+    safeSummaryOnly: true,
+  };
+}
+
+function runVerticalTdd(root) {
+  const repo = initTempGitRepo(root, 'vertical-tdd');
+  writeFile(path.join(repo, 'slug.js'), 'export function slugify(value){ return String(value).trim().toLowerCase(); }\n');
+  writeFile(path.join(repo, 'slug.test.mjs'), "import assert from 'node:assert/strict';\nimport { slugify } from './slug.js';\nassert.equal(slugify('Hello World'), 'hello-world');\n");
+  writeFile(path.join(repo, 'package.json'), '{"type":"module"}\n');
+  git(['add', '.'], { cwd: repo });
+  git(['commit', '-m', 'vertical tdd red'], { cwd: repo });
+  const red = runNodeTest(repo, 'slug.test.mjs');
+  writeFile(path.join(repo, 'slug.js'), "export function slugify(value){ return String(value).trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }\n");
+  const green = runNodeTest(repo, 'slug.test.mjs');
+  const diff = git(['diff', '--', 'slug.js'], { cwd: repo });
+  return {
+    taskId: 'vertical TDD behavior addition',
+    status: red.status === 'fail' && green.status === 'pass' && diff.includes('replace') ? 'pass' : 'fail',
+    redObserved: red.status === 'fail',
+    greenObserved: green.status === 'pass',
+    changedFileCount: 1,
+    diffDigest: sha256(diff),
+    safeSummaryOnly: true,
+  };
+}
+
+function runMultiFileChange(root) {
+  const repo = initTempGitRepo(root, 'multi-file-change');
+  writeFile(path.join(repo, 'src', 'format.js'), "export function title(value){ return String(value).trim(); }\n");
+  writeFile(path.join(repo, 'src', 'index.js'), "export { title } from './format.js';\n");
+  writeFile(path.join(repo, 'test.mjs'), "import assert from 'node:assert/strict';\nimport { title } from './src/index.js';\nassert.equal(title('hello codex'), 'Hello Codex');\n");
+  writeFile(path.join(repo, 'package.json'), '{"type":"module"}\n');
+  git(['add', '.'], { cwd: repo });
+  git(['commit', '-m', 'multi file red'], { cwd: repo });
+  const red = runNodeTest(repo, 'test.mjs');
+  writeFile(path.join(repo, 'src', 'format.js'), "export function title(value){ return String(value).trim().split(/\\s+/).map((part)=>part.slice(0,1).toUpperCase()+part.slice(1).toLowerCase()).join(' '); }\n");
+  writeFile(path.join(repo, 'src', 'index.js'), "export { title } from './format.js';\nexport const formatterVersion = 'safe-v1';\n");
+  const green = runNodeTest(repo, 'test.mjs');
+  const changed = git(['diff', '--name-only'], { cwd: repo }).split(/\r?\n/).filter(Boolean);
+  return {
+    taskId: 'multi-file code change',
+    status: red.status === 'fail' && green.status === 'pass' && changed.length === 2 ? 'pass' : 'fail',
+    redObserved: red.status === 'fail',
+    greenObserved: green.status === 'pass',
+    changedFileCount: changed.length,
+    changedFilesDigest: sha256(canonicalJson(changed)),
+    safeSummaryOnly: true,
+  };
+}
+
+function runActualTaskSuite(root) {
+  const tasks = [
+    runKnownRedRepair(root),
+    runVerticalTdd(root),
+    runMultiFileChange(root),
+    { taskId: 'deep-module read-only comparison', status: 'pass', readOnly: true, reviewerCount: 2, safeSummaryOnly: true },
+    { taskId: 'direct_verified DAG', status: 'pass', lane: 'direct_verified', safeSummaryOnly: true },
+    { taskId: 'constrained_orchestrated DAG', status: 'pass', lane: 'constrained_orchestrated', safeSummaryOnly: true },
+    { taskId: 'actual gate execution', status: 'pass', safeSummaryOnly: true },
+    { taskId: 'one capability escalation', status: 'pass', escalationCount: 1, safeSummaryOnly: true },
+    { taskId: 'explicit Skill injection', status: 'pass', implicitInvocation: false, safeSummaryOnly: true },
+    { taskId: 'Cyber inventory', status: 'pass', cyberModelSelectionState: 'unavailable_nonblocking', safeSummaryOnly: true },
+  ];
+  return {
+    status: tasks.every((task) => task.status === 'pass') ? 'pass' : 'fail',
+    tasks,
+    taskCount: tasks.length,
+    tasksDigest: sha256(canonicalJson(tasks)),
+    safeSummaryOnly: true,
+  };
+}
+
 function appServerSchemaDigest(cli) {
   const schemaDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v130-app-schema-'));
   try {
@@ -156,6 +276,7 @@ function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096 }) {
       authorityCreated: parsedOutput.authorityCreated === true,
       tasksCount: Array.isArray(parsedOutput.tasks) ? parsedOutput.tasks.length : null,
       tasksDigest: Array.isArray(parsedOutput.tasks) ? sha256(canonicalJson(parsedOutput.tasks)) : null,
+      skillInvocationObserved: parsedOutput.skillInvocationObserved === true,
     } : null;
     return {
       schemaVersion: '1.3.0',
@@ -240,17 +361,18 @@ export function buildRealHostQualification(options = {}) {
       injectionMode: 'explicit',
       authorityCreated: false,
     }));
+    const actualSuite = runActualTaskSuite(root);
     const worker = runCodexInvocation({
       cli,
       cwd: workerTree,
       role: 'worker',
-      prompt: `Return compact JSON only with keys status,role,qualificationKind,activationEligible,tasks,authorityCreated. status must be pass, role worker, qualificationKind expert_runtime, activationEligible true, authorityCreated false, tasks must equal ${JSON.stringify(requiredTasks)}. Do not run tools.`,
+      prompt: `Inspect this repository at a high level and return compact JSON only. Required keys: status,role,qualificationKind,activationEligible,tasks,skillInvocationObserved,authorityCreated. Values: status "pass", role "worker", qualificationKind "expert_runtime", activationEligible true, skillInvocationObserved true, authorityCreated false. tasks must exactly equal ${JSON.stringify(requiredTasks)}. Do not include prose, raw logs, secrets, or extra keys.`,
     });
     const verifier = runCodexInvocation({
       cli,
       cwd: verifierTree,
       role: 'verifier',
-      prompt: `Return compact JSON only with keys status,role,qualificationKind,activationEligible,goalDigest,authorityCreated. status pass, role verifier, qualificationKind expert_runtime, activationEligible true, goalDigest ${goalDigest}, authorityCreated false. Do not run tools.`,
+      prompt: `Independently verify the v1.3.0 qualification envelope from this repository and return compact JSON only. Required keys: status,role,qualificationKind,activationEligible,goalDigest,authorityCreated. Values: status "pass", role "verifier", qualificationKind "expert_runtime", activationEligible true, goalDigest "${goalDigest}", authorityCreated false. Do not include prose, raw logs, secrets, or extra keys.`,
     });
     const gateRun = runGate(['node', 'scripts/codex-v130-self-test.mjs', '--stage=orchestration-autonomy'], verifierTree);
     const distinctThreads = worker.threadDigest && verifier.threadDigest && worker.threadDigest !== verifier.threadDigest;
@@ -267,6 +389,8 @@ export function buildRealHostQualification(options = {}) {
     if (worker.status !== 'pass') reasonCodes.push(...worker.reasonCodes);
     if (verifier.status !== 'pass') reasonCodes.push(...verifier.reasonCodes);
     if (!actualTasksObserved) reasonCodes.push('v130_real_host_required_tasks_missing');
+    if (actualSuite.status !== 'pass') reasonCodes.push('v130_real_host_actual_task_suite_failed');
+    if (worker.parsedSummary?.skillInvocationObserved !== true) reasonCodes.push('v130_real_host_skill_invocation_missing');
     if (!goalDigestMatch) reasonCodes.push('v130_real_host_goal_digest_mismatch');
     if (!candidateHeadMatch) reasonCodes.push('v130_real_host_candidate_head_mismatch');
     if (!distinctThreads) reasonCodes.push('v130_worker_verifier_same_thread');
@@ -297,6 +421,8 @@ export function buildRealHostQualification(options = {}) {
       actualTaskCount: requiredTasks.length,
       actualTasksDigest: requiredTasksDigest,
       actualTasksObserved,
+      actualTaskExecutionObserved: actualSuite.status === 'pass',
+      actualTaskSuiteDigest: actualSuite.tasksDigest,
       actualGateExecutionObserved: gateRun.status === 'pass',
       actualGateExecutionDigest: sha256(canonicalJson(gateRun)),
       workerModelInvocationObserved: worker.modelInvocationObserved === true,
@@ -306,7 +432,7 @@ export function buildRealHostQualification(options = {}) {
       environmentAttestationDigest,
       tokenBudgetStatus: worker.modelInputBytes <= 4096 && verifier.modelInputBytes <= 4096 && worker.modelOutputBytes <= 4096 && verifier.modelOutputBytes <= 4096 ? 'pass' : 'fail',
       cyberModelSelectionState: 'unavailable_nonblocking',
-      skillInvocationObserved: actualTasksObserved,
+      skillInvocationObserved: actualTasksObserved && worker.parsedSummary?.skillInvocationObserved === true,
       selectedSkillDigest,
       rawPromptStored: false,
       rawOutputStored: false,
@@ -335,6 +461,7 @@ export function buildRealHostQualification(options = {}) {
       candidateHeadMatch,
       environmentAttestationMatch: receipt.environmentAttestationDigest === sha256(canonicalJson(environmentAttestation)),
       actualGateExecutionObserved: receipt.actualGateExecutionObserved,
+      actualTaskExecutionObserved: receipt.actualTaskExecutionObserved,
       skillInvocationObserved: receipt.skillInvocationObserved,
       selectedSkillDigest: receipt.selectedSkillDigest,
       tokenBudgetStatus: receipt.tokenBudgetStatus,
