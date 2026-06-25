@@ -23,7 +23,7 @@ function readText(file) {
 }
 
 function parseFrontMatter(text) {
-  const match = text.match(/^---\n([\s\S]*?)\n---\n/);
+  const match = text.replace(/\r\n/g, '\n').match(/^---\n([\s\S]*?)\n---\n/);
   const meta = {};
   if (!match) return meta;
   for (const line of match[1].split(/\r?\n/)) {
@@ -52,10 +52,11 @@ export function compileV130Skills(options = {}) {
       }
       if (!fs.existsSync(yamlPath)) reasonCodes.push(`v130_skill_openai_yaml_missing_${name}`);
       const text = readText(skillPath);
-      const meta = parseFrontMatter(text);
-      const skillBytes = bytes(text);
+      const normalizedText = text.replace(/\r\n/g, '\n');
+      const meta = parseFrontMatter(normalizedText);
+      const skillBytes = bytes(normalizedText);
       const descriptionBytes = bytes(meta.description || '');
-      const forbidden = /(human approval step|owner question step|creates merge authority|creates deploy authority|creates wallet authority|creates RPC authority|creates secret authority|raw log request|implicit invocation=true)/i.test(text);
+      const forbidden = /(human approval step|owner question step|creates merge authority|creates deploy authority|creates wallet authority|creates RPC authority|creates secret authority|raw log request|implicit invocation=true)/i.test(normalizedText);
       if (meta.name !== name) reasonCodes.push(`v130_skill_name_mismatch_${name}`);
       if (skillBytes > 3072) reasonCodes.push(`v130_skill_body_over_budget_${name}`);
       if (descriptionBytes > 180) reasonCodes.push(`v130_skill_description_over_budget_${name}`);
@@ -66,14 +67,14 @@ export function compileV130Skills(options = {}) {
         version: '1.3.0',
         skillPath,
         openaiYamlPath: yamlPath,
-        skillDigest: sha256(text),
+        skillDigest: sha256(normalizedText),
         sourceClass: 'repo_trusted',
         authorizedTaskClasses: name === 'tight-debug-loop' ? ['bug_repair'] : name === 'vertical-tdd' ? ['code_change'] : ['architecture'],
         allowedRoles: name === 'deep-module-design' ? ['architecture_reviewer', 'independent_verifier'] : ['code_worker', 'independent_verifier'],
         allowedTools: name === 'deep-module-design' ? ['read', 'git', 'search'] : ['read', 'git', 'test', 'edit'],
         allowedPaths: [],
         referencePaths: [],
-        completionCriteriaDigest: sha256(text.split('Completion criteria:')[1] || text),
+        completionCriteriaDigest: sha256(normalizedText.split('Completion criteria:')[1] || normalizedText),
         allowImplicitInvocation: false,
         authorityCreated: false,
         skillBytes,
