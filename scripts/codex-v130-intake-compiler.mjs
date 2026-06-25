@@ -204,18 +204,21 @@ export function evaluateGoalSoundness(goal, profile, options = {}) {
   }
   if (!profile.verificationGates?.length) reasonCodes.push('v130_goal_gate_missing');
   if (options.verifierReceipt?.status !== 'pass') reasonCodes.push('v130_independent_verifier_missing');
+  if (!goal.desiredEndState || /^subjective|looks good|lgtm$/i.test(goal.desiredEndState)) reasonCodes.push('v130_objective_completion_unverifiable');
+  if ((goal.acceptanceCriteria || []).some((criterion) => /subjective|looks good|lgtm|human opinion/i.test(criterion.description || ''))) reasonCodes.push('v130_subjective_completion_forbidden');
+  if ((goal.nonGoals || []).some((nonGoal) => (goal.desiredEndState || '').includes(nonGoal))) reasonCodes.push('v130_desired_state_contradicts_non_goal');
   return {
     status: reasonCodes.length ? 'fail' : 'pass',
     reasonCodes,
     checks: {
       nonContradiction: !reasonCodes.includes('v130_criterion_contradicts_non_goal'),
       satisfiable: !reasonCodes.includes('v130_allowed_forbidden_overlap'),
-      objectiveCompletion: true,
+      objectiveCompletion: !reasonCodes.includes('v130_objective_completion_unverifiable') && !reasonCodes.includes('v130_subjective_completion_forbidden'),
       scopeSufficiency: Boolean(goal.allowedFiles?.length),
       truthOwnerCompleteness: Boolean(goal.truthOwnerRefs?.length),
       gateExistence: Boolean(profile.verificationGates?.length),
       gateExecutability: !(profile.verificationGates || []).some((gate) => gate.safeToExecute !== true),
-      nonGoalConsistency: true,
+      nonGoalConsistency: !reasonCodes.includes('v130_desired_state_contradicts_non_goal'),
       stopPolicyConsistency: Boolean(goal.killCriteria?.length),
       budgetFeasibility: goal.repairBudget?.maxRepairIterations <= 1,
       authorityFeasibility: true,
@@ -223,27 +226,98 @@ export function evaluateGoalSoundness(goal, profile, options = {}) {
   };
 }
 
-export function buildAcceptanceTrace(goal, profile) {
+export function buildAcceptanceTrace(goal, profile, traceCandidate = null) {
   const reasonCodes = [];
   const gates = profile.verificationGates || [];
-  const trace = (goal.acceptanceCriteria || []).map((criterion, index) => {
-    const gate = gates[Math.min(index, Math.max(gates.length - 1, 0))];
-    const truthOwner = goal.truthOwnerRefs?.[0];
-    if (!criterion.id) reasonCodes.push('v130_acceptance_trace_missing_criterion');
-    if (!truthOwner) reasonCodes.push('v130_acceptance_trace_missing_truth_owner');
-    if (!gate) reasonCodes.push('v130_acceptance_trace_missing_gate');
-    return {
-      criterionId: criterion.id,
-      truthOwnerRef: truthOwner?.path || null,
-      gateRef: gate?.gateId || null,
-      evidenceType: 'executable_gate',
-      expectedPredicate: 'exit_code_zero_and_contract_status_pass',
-      verifierRole: 'independent_contract_verifier',
-      required: criterion.required === true,
-    };
+  if (!Array.isArray(traceCandidate)) {
+    reasonCodes.push('v130_acceptance_trace_missing');
+  }
+  const trace = Array.isArray(traceCandidate) ? traceCandidate : [];
+  const criteria = goal.acceptanceCriteria || [];
+  if (trace.length !== criteria.length) reasonCodes.push('v130_acceptance_trace_count_mismatch');
+  const criterionIds = criteria.map((criterion) => criterion.id);
+  const gateIds = new Set(gates.map((gate) => gate.gateId));
+  const truthOwnerPaths = new Set((goal.truthOwnerRefs || []).map((ref) => ref.path));
+  trace.forEach((entry, index) => {
+    const expectedCriterionId = criterionIds[index];
+    if (entry.criterionId !== expectedCriterionId) reasonCodes.push('v130_acceptance_trace_criterion_mismatch');
+    if (!truthOwnerPaths.has(entry.truthOwnerRef)) reasonCodes.push('v130_acceptance_trace_missing_truth_owner');
+    if (!gateIds.has(entry.gateRef)) reasonCodes.push('v130_acceptance_trace_missing_gate');
+    if (!entry.expectedPredicate || entry.expectedPredicate === 'pass') reasonCodes.push('v130_acceptance_trace_rubber_stamp');
+    if (entry.verifierRole !== 'independent_contract_verifier') reasonCodes.push('v130_acceptance_trace_missing_verifier');
+    if (entry.required !== true) reasonCodes.push('v130_acceptance_trace_required_downgrade');
+    if (entry.evidenceType !== 'executable_gate') reasonCodes.push('v130_acceptance_trace_evidence_type_invalid');
   });
   if (trace.some((entry) => entry.required !== true)) reasonCodes.push('v130_acceptance_trace_required_downgrade');
   return { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes, acceptanceTrace: trace };
+}
+
+export function validateContractVerifierReceipt(receipt = {}, context = {}) {
+  const reasonCodes = [];
+  const allowed = new Set([
+    'schemaVersion',
+    'goalCandidateDigest',
+    'projectProfileDigest',
+    'candidateHeadSha',
+    'verifierAgentId',
+    'verifierThreadDigest',
+    'verifierWorktreeDigest',
+    'synthesizerAgentId',
+    'synthesizerThreadDigest',
+    'synthesizerWorktreeDigest',
+    'goalDigestRecomputed',
+    'scopeDigestRecomputed',
+    'gateProvenanceDigest',
+    'acceptanceTraceDigest',
+    'status',
+    'reasonCodes',
+    'authorityCreated',
+    'receiptDigest',
+  ]);
+  for (const key of Object.keys(receipt || {})) {
+    if (!allowed.has(key)) reasonCodes.push(`v130_verifier_receipt_unknown_${key}`);
+  }
+  if (receipt.schemaVersion !== '1.3.0') reasonCodes.push('v130_verifier_receipt_schema_invalid');
+  for (const key of ['goalCandidateDigest', 'projectProfileDigest', 'goalDigestRecomputed', 'scopeDigestRecomputed', 'gateProvenanceDigest', 'acceptanceTraceDigest', 'verifierThreadDigest', 'verifierWorktreeDigest']) {
+    if (!/^sha256:[a-f0-9]{64}$/.test(String(receipt[key] || ''))) reasonCodes.push(`v130_verifier_receipt_${key}_invalid`);
+  }
+  if (!/^[a-f0-9]{40}$/.test(String(receipt.candidateHeadSha || ''))) reasonCodes.push('v130_verifier_receipt_candidate_head_invalid');
+  if (!receipt.verifierAgentId || receipt.verifierAgentId === receipt.synthesizerAgentId) reasonCodes.push('v130_verifier_agent_not_independent');
+  if (receipt.verifierThreadDigest === receipt.synthesizerThreadDigest) reasonCodes.push('v130_verifier_thread_not_independent');
+  if (receipt.verifierWorktreeDigest === receipt.synthesizerWorktreeDigest) reasonCodes.push('v130_verifier_worktree_not_independent');
+  if (receipt.status !== 'pass') reasonCodes.push('v130_verifier_receipt_not_pass');
+  if (receipt.authorityCreated !== false) reasonCodes.push('v130_verifier_authority_created');
+  if (context.candidateHeadSha && receipt.candidateHeadSha !== context.candidateHeadSha) reasonCodes.push('v130_verifier_candidate_head_mismatch');
+  if (context.projectProfileDigest && receipt.projectProfileDigest !== context.projectProfileDigest) reasonCodes.push('v130_verifier_project_profile_mismatch');
+  const comparable = { ...receipt, receiptDigest: 'placeholder' };
+  const expected = sha256(canonicalJson(comparable));
+  if (receipt.receiptDigest !== expected) reasonCodes.push('v130_verifier_receipt_digest_mismatch');
+  return { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes, safeSummaryOnly: true };
+}
+
+export function evaluateGateAdequacy(goal = {}, trace = [], input = {}) {
+  const reasonCodes = [];
+  const taskClass = goal.taskClass || 'code_change';
+  const required = ['code_change', 'bug_repair'].includes(taskClass);
+  if (required) {
+    for (const key of ['preFixFailureReproduced', 'postFixPass', 'existingPassRetained', 'changedSurfaceCovered']) {
+      if (input[key] !== true) reasonCodes.push(`v130_gate_adequacy_${key}_missing`);
+    }
+    for (const key of ['assertionWeakening', 'skipIncrease', 'snapshotRubberStamp', 'mockOnlyCompletion', 'testDeletion', 'requiredCheckDeletion']) {
+      if (Number(input[key] || 0) !== 0) reasonCodes.push(`v130_gate_adequacy_${key}_forbidden`);
+    }
+  }
+  const mediumEvidence = ['holdoutCase', 'propertyTest', 'mutationEvidence', 'independentRegressionCase', 'existingInvariant']
+    .some((key) => input[key] === true);
+  if (input.difficulty === 'medium' && !mediumEvidence) reasonCodes.push('v130_gate_adequacy_medium_evidence_missing');
+  if (!trace.length) reasonCodes.push('v130_gate_adequacy_trace_missing');
+  return {
+    status: reasonCodes.length ? 'fail' : 'pass',
+    reasonCodes,
+    admissionState: reasonCodes.length ? 'gate_inadequate' : 'gate_adequate',
+    executionMode: reasonCodes.length ? 'generate_only' : 'execute_allowed',
+    safeSummaryOnly: true,
+  };
 }
 
 export function compileVerifiedGoal(input = {}, options = {}) {
@@ -259,7 +333,30 @@ export function compileVerifiedGoal(input = {}, options = {}) {
     sourceTurnRefs: input.sourceTurnRefs || [],
   });
   const profile = buildProjectProfile(input.profile || {});
-  const goalCandidate = input.goalCandidate || {};
+  const goalCandidate = input.goalCandidate || null;
+  if (!goalCandidate && !options.goalSynthesizerReceipt && options.fixture !== true) reasonCodes.push('v130_goal_candidate_missing');
+  if (!goalCandidate && options.fixture === true) reasonCodes.push('v130_fixture_goal_activation_ineligible');
+  if (!goalCandidate) {
+    reasonCodes.push(...intent.reasonCodes, ...profile.reasonCodes);
+    return {
+      status: 'fail',
+      reasonCodes,
+      sessionIntentStatus: intent.status,
+      projectProfileStatus: profile.status,
+      goalContractStatus: { status: 'fail', reasonCodes: ['v130_goal_candidate_missing'], safeSummaryOnly: true },
+      goalSoundness: { status: 'fail', reasonCodes: ['v130_goal_candidate_missing'] },
+      gateAdequacyStatus: { status: 'fail', reasonCodes: ['v130_goal_candidate_missing'], admissionState: 'gate_inadequate', executionMode: 'generate_only' },
+      acceptanceTraceStatus: { status: 'fail', reasonCodes: ['v130_goal_candidate_missing'] },
+      classificationStatus: { status: 'fail', reasonCodes: ['v130_goal_candidate_missing'], classificationDigest: null },
+      routeDecisionStatus: { status: 'fail', reasonCodes: ['v130_goal_candidate_missing'], routeDecisionDigest: null },
+      verifierReceiptStatus: { status: 'fail', reasonCodes: ['v130_goal_candidate_missing'] },
+      goal: null,
+      acceptanceTrace: [],
+      goalDigest: null,
+      safeSummaryOnly: true,
+    };
+  }
+  const normalizedGoalCandidate = goalCandidate || {};
   exactKeys(goalCandidate, [
     'goalId',
     'goalVersion',
@@ -277,20 +374,20 @@ export function compileVerifiedGoal(input = {}, options = {}) {
     'binding',
   ], [], reasonCodes, 'v130_goal_candidate');
   const goal = {
-    goalId: goalCandidate.goalId || `goal-${sha256(intent.sessionIntent.currentGoal).slice(7, 19)}`,
-    goalVersion: goalCandidate.goalVersion || 1,
-    taskClass: goalCandidate.taskClass || input.taskClass || 'code_change',
-    truthOwnerRefs: goalCandidate.truthOwnerRefs || profile.projectProfile.truthOwnerRefs.slice(0, 2),
-    desiredEndState: goalCandidate.desiredEndState || intent.sessionIntent.currentGoal,
-    acceptanceCriteria: goalCandidate.acceptanceCriteria || [{ id: 'AC1', description: 'Required gates prove the desired end state without target rollout.', required: true }],
-    constraints: goalCandidate.constraints || ['Preserve active v1.2.9 authority until explicit activation.'],
-    nonGoals: goalCandidate.nonGoals || intent.sessionIntent.explicitNonGoals,
-    allowedFiles: goalCandidate.allowedFiles || ['docs/process/CODEX_V130_POLICY.json', 'docs/process/CODEX_V130_SCHEMA.json', 'scripts/codex-v130-intake-compiler.mjs', 'scripts/codex-v130-context-compiler.mjs', 'scripts/codex-v130-self-test.mjs'],
-    forbiddenFiles: goalCandidate.forbiddenFiles || ['scripts/codex-final-decision-kernel.mjs', 'package.json', 'package-lock.json'],
-    evidencePlan: goalCandidate.evidencePlan || profile.projectProfile.verificationGates.map((gate) => gate.command),
-    killCriteria: goalCandidate.killCriteria || ['same blocker repeats once'],
-    repairBudget: goalCandidate.repairBudget || { maxRepairIterations: 1, sameBlockerMax: 1 },
-    binding: goalCandidate.binding || { repositoryId: profile.projectProfile.repositoryId, baseSha: profile.projectProfile.baseSha, scopeDigest: profile.projectProfile.profileDigest },
+    goalId: normalizedGoalCandidate.goalId,
+    goalVersion: normalizedGoalCandidate.goalVersion,
+    taskClass: normalizedGoalCandidate.taskClass,
+    truthOwnerRefs: normalizedGoalCandidate.truthOwnerRefs,
+    desiredEndState: normalizedGoalCandidate.desiredEndState,
+    acceptanceCriteria: normalizedGoalCandidate.acceptanceCriteria,
+    constraints: normalizedGoalCandidate.constraints,
+    nonGoals: normalizedGoalCandidate.nonGoals,
+    allowedFiles: normalizedGoalCandidate.allowedFiles,
+    forbiddenFiles: normalizedGoalCandidate.forbiddenFiles,
+    evidencePlan: normalizedGoalCandidate.evidencePlan,
+    killCriteria: normalizedGoalCandidate.killCriteria,
+    repairBudget: normalizedGoalCandidate.repairBudget,
+    binding: normalizedGoalCandidate.binding,
     goalDigest: 'placeholder',
   };
   goal.goalDigest = computeGoalDigest(goal);
@@ -299,12 +396,15 @@ export function compileVerifiedGoal(input = {}, options = {}) {
   for (const command of goal.evidencePlan || []) {
     if (!declaredGateCommands.has(command)) reasonCodes.push('v130_untrusted_gate_command');
   }
-  const acceptanceTrace = buildAcceptanceTrace(goal, profile.projectProfile);
-  const verifierReceipt = options.verifierReceipt || { status: options.fixture === true ? 'fail' : 'pass', verifierId: 'independent_contract_verifier' };
-  const goalSoundness = evaluateGoalSoundness(goal, profile.projectProfile, { verifierReceipt });
+  const acceptanceTrace = buildAcceptanceTrace(goal, profile.projectProfile, input.acceptanceTraceCandidate);
+  const verifierValidation = options.verifierReceipt
+    ? validateContractVerifierReceipt(options.verifierReceipt, { candidateHeadSha, projectProfileDigest: profile.projectProfile.profileDigest })
+    : { status: 'fail', reasonCodes: ['v130_verifier_receipt_missing'] };
+  const goalSoundness = evaluateGoalSoundness(goal, profile.projectProfile, { verifierReceipt: verifierValidation });
+  const gateAdequacy = evaluateGateAdequacy(goal, acceptanceTrace.acceptanceTrace, input.gateAdequacyEvidence || {});
   const classification = candidateHeadSha ? classifyGoalTask(goal, { candidateHeadSha }) : { status: 'fail', reasonCodes: ['v130_candidate_head_missing'] };
   const routeDecision = classification.status === 'pass' ? routeCapability(classification, options.routingEnv || {}) : { status: 'fail', reasonCodes: ['v130_route_skipped_classification_fail'] };
-  reasonCodes.push(...intent.reasonCodes, ...profile.reasonCodes, ...acceptanceTrace.reasonCodes, ...goalSoundness.reasonCodes);
+  reasonCodes.push(...intent.reasonCodes, ...profile.reasonCodes, ...acceptanceTrace.reasonCodes, ...goalSoundness.reasonCodes, ...verifierValidation.reasonCodes, ...gateAdequacy.reasonCodes);
   if (goalContractStatus.status !== 'pass') reasonCodes.push('v130_goal_contract_fail');
   if (classification.status !== 'pass') reasonCodes.push(...(classification.reasonCodes || ['v130_classification_fail']));
   if (routeDecision.status !== 'pass') reasonCodes.push(...(routeDecision.reasonCodes || ['v130_route_fail']));
@@ -315,10 +415,11 @@ export function compileVerifiedGoal(input = {}, options = {}) {
     projectProfileStatus: profile.status,
     goalContractStatus,
     goalSoundness,
+    gateAdequacyStatus: { status: gateAdequacy.status, reasonCodes: gateAdequacy.reasonCodes, admissionState: gateAdequacy.admissionState, executionMode: gateAdequacy.executionMode },
     acceptanceTraceStatus: { status: acceptanceTrace.status, reasonCodes: acceptanceTrace.reasonCodes },
     classificationStatus: { status: classification.status, reasonCodes: classification.reasonCodes || [], classificationDigest: classification.classificationDigest || null },
     routeDecisionStatus: { status: routeDecision.status, reasonCodes: routeDecision.reasonCodes || [], routeDecisionDigest: routeDecision.routeDecisionDigest || null },
-    verifierReceiptStatus: { status: verifierReceipt.status, verifierId: verifierReceipt.verifierId || null },
+    verifierReceiptStatus: { status: verifierValidation.status, reasonCodes: verifierValidation.reasonCodes },
     goal,
     acceptanceTrace: acceptanceTrace.acceptanceTrace,
     goalDigest: goal.goalDigest,
