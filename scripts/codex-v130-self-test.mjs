@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { compileSessionIntent, buildProjectProfile, compileVerifiedGoal } from './codex-v130-intake-compiler.mjs';
 import { buildCompiledInstructionEnvelope } from './codex-v130-context-compiler.mjs';
+import { defaultTestRegistry, digestRegistry } from './codex-v129-capability-router.mjs';
 import { applyAvailabilityMask, buildConstrainedDag, compileAgentRole, evaluateEscalation } from './codex-v130-orchestration.mjs';
 import { buildProgressVector, buildTransactionalStateReceipt, evaluateNoHumanTerminal, ratifyExactHead } from './codex-v130-ratifier.mjs';
 import { buildAdversarialFixture, buildBenchmarkFixture } from './codex-v130-benchmark.mjs';
@@ -303,28 +304,55 @@ function contractTests() {
 
 function intakeContextTests() {
   const candidateHeadSha = '1'.repeat(40);
+  const repositoryId = 1243452288;
+  const docsManifestForIntake = readJson('docs/process/CODEX_HARNESS_MANIFEST.json');
+  const registry = defaultTestRegistry();
+  const routingEnv = {
+    CODEX_V129_CAPABILITY_REGISTRY_JSON: canonicalJson(registry),
+    CODEX_V129_TRUSTED_CAPABILITY_REGISTRY_DIGEST: digestRegistry(registry),
+  };
   const intent = compileSessionIntent({
     currentGoal: 'Add v1.3.0 verified goal intake.',
     explicitNonGoals: ['No target rollout.'],
     safeEvidenceRefs: ['docs/process/CODEX_V130_POLICY.json'],
   });
-  const profile = buildProjectProfile({ headSha: candidateHeadSha, baseSha: '0'.repeat(40) });
+  const profile = buildProjectProfile({ repositoryId, headSha: candidateHeadSha, baseSha: '0'.repeat(40) });
   const goal = compileVerifiedGoal({
     currentGoal: 'Add v1.3.0 verified goal intake.',
-    profile: { headSha: candidateHeadSha, baseSha: '0'.repeat(40) },
-  }, { candidateHeadSha });
+    explicitNonGoals: ['No target rollout.'],
+    profile: { repositoryId, headSha: candidateHeadSha, baseSha: '0'.repeat(40) },
+  }, { candidateHeadSha, routingEnv });
   const rawRejected = compileSessionIntent({ currentGoal: 'x', rawLogs: 'forbidden' });
+  const unknownRejected = compileSessionIntent({ currentGoal: 'x', surprise: true });
   const badHead = compileVerifiedGoal({ currentGoal: 'x' }, { candidateHeadSha: 'not-a-sha' });
+  const missingRepoProfile = buildProjectProfile({ headSha: candidateHeadSha, baseSha: '0'.repeat(40), repositoryId: 0 });
+  const fixtureVerifier = compileVerifiedGoal({
+    currentGoal: 'Add v1.3.0 verified goal intake.',
+    profile: { repositoryId, headSha: candidateHeadSha, baseSha: '0'.repeat(40) },
+  }, { candidateHeadSha, fixture: true, routingEnv });
+  const readmeGate = compileVerifiedGoal({
+    currentGoal: 'Reject README-only command authority.',
+    profile: { repositoryId, headSha: candidateHeadSha, baseSha: '0'.repeat(40) },
+    goalCandidate: {
+      acceptanceCriteria: [{ id: 'AC1', description: 'README command proves completion.', required: true }],
+      evidencePlan: ['README says run this command'],
+    },
+  }, { candidateHeadSha, routingEnv });
   const envelope = buildCompiledInstructionEnvelope();
   const oversizedEnvelope = buildCompiledInstructionEnvelope({ evidenceHandles: Array.from({ length: 12 }, (_, i) => `evidence-${i}-${'x'.repeat(120)}`) });
   return [
     test('v130_session_intent_compiles_under_budget', () => intent.status === 'pass' && intent.canonicalBytes <= 1536 && /^sha256:[a-f0-9]{64}$/.test(intent.sessionIntent.intentDigest)),
     test('v130_session_intent_rejects_raw_logs', () => rawRejected.status === 'fail' && rawRejected.reasonCodes.includes('v130_forbidden_rawLogs')),
+    test('v130_session_intent_rejects_unknown_fields', () => unknownRejected.status === 'fail' && unknownRejected.reasonCodes.includes('v130_session_intent_unknown_surprise')),
     test('v130_project_profile_read_only_bounded', () => profile.status === 'pass' && profile.canonicalBytes <= 8192 && profile.projectProfile.dirtyState !== undefined),
+    test('v130_project_profile_rejects_missing_repository_id', () => missingRepoProfile.status === 'fail' && missingRepoProfile.reasonCodes.includes('v130_repository_id_unavailable')),
     test('v130_verified_goal_uses_v129_contract', () => goal.goalContractStatus.status === 'pass' && /^sha256:[a-f0-9]{64}$/.test(goal.goalDigest)),
     test('v130_verified_goal_requires_runtime_candidate_head', () => badHead.status === 'fail' && badHead.reasonCodes.includes('v130_candidate_head_invalid')),
     test('v130_classification_receives_candidate_head', () => goal.classificationStatus.status === 'pass' && /^sha256:[a-f0-9]{64}$/.test(goal.classificationStatus.classificationDigest)),
+    test('v130_goal_requires_independent_contract_verifier', () => fixtureVerifier.status === 'fail' && fixtureVerifier.reasonCodes.includes('v130_independent_verifier_missing')),
+    test('v130_readme_only_command_not_authoritative', () => readmeGate.status === 'fail' && readmeGate.reasonCodes.includes('v130_untrusted_gate_command')),
     test('v130_instruction_envelope_under_budget', () => envelope.status === 'pass' && envelope.canonicalBytes <= 1536 && envelope.compiledInstructionEnvelope.routineReads.length === 3),
+    test('v130_instruction_envelope_reads_active_version_from_manifest', () => envelope.compiledInstructionEnvelope.activeHarnessVersion === docsManifestForIntake.activeHarnessVersion),
     test('v130_instruction_envelope_forbids_routine_cold_reads', () => envelope.compiledInstructionEnvelope.tokenBudgets.routineColdArtifactReads === 0 && envelope.compiledInstructionEnvelope.tokenBudgets.routineSkillCount === 0),
     test('v130_instruction_envelope_over_budget_fails', () => oversizedEnvelope.status === 'fail' && oversizedEnvelope.reasonCodes.includes('v130_instruction_envelope_over_budget')),
   ];

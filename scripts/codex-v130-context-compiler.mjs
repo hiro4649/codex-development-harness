@@ -2,6 +2,7 @@
 // CODEX_QUALITY_HARNESS_FILE v1.3.0
 
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import { canonicalJson } from './codex-v129-goal-contract.mjs';
 
 function sha256(value) {
@@ -13,9 +14,15 @@ function bytes(value) {
 }
 
 export function buildCompiledInstructionEnvelope(input = {}) {
+  let manifest = {};
+  try {
+    manifest = JSON.parse(fs.readFileSync('docs/process/CODEX_HARNESS_MANIFEST.json', 'utf8'));
+  } catch {
+    manifest = {};
+  }
   const envelope = {
     schemaVersion: '1.3.0',
-    activeHarnessVersion: '1.2.9',
+    activeHarnessVersion: manifest.activeHarnessVersion || input.activeHarnessVersion || null,
     candidateHarnessVersion: '1.3.0',
     authorityOrder: [
       'platform_policy',
@@ -52,9 +59,12 @@ export function buildCompiledInstructionEnvelope(input = {}) {
   };
   envelope.envelopeDigest = sha256(canonicalJson(envelope));
   const canonicalBytes = bytes(envelope);
+  const reasonCodes = [];
+  if (!envelope.activeHarnessVersion) reasonCodes.push('v130_instruction_envelope_active_version_unavailable');
+  if (canonicalBytes > 1536) reasonCodes.push('v130_instruction_envelope_over_budget');
   return {
-    status: canonicalBytes <= 1536 ? 'pass' : 'fail',
-    reasonCodes: canonicalBytes <= 1536 ? [] : ['v130_instruction_envelope_over_budget'],
+    status: reasonCodes.length ? 'fail' : 'pass',
+    reasonCodes,
     compiledInstructionEnvelope: envelope,
     canonicalBytes,
     safeSummaryOnly: true,
