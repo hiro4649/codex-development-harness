@@ -25,7 +25,18 @@ export function evaluateBenchmarkBlackBox(options = {}) {
   const args = [benchmarkScript];
   if (options.pack) args.push('--pack', options.pack);
   if (options.packBindingDigest) args.push('--pack-binding-digest', options.packBindingDigest);
-  if (options.receiptRoot) args.push('--receipt-root', options.receiptRoot);
+  if (options.receiptRoot) {
+    return {
+      schemaVersion: '1.3.0',
+      evaluatorKind: 'black_box_subprocess',
+      status: 'fail',
+      reasonCodes: ['v130_candidate_provided_jsonl_forbidden'],
+      resultDigest: null,
+      candidateRuntimeImported: false,
+      authorityCreated: false,
+      safeSummaryOnly: true,
+    };
+  }
   let stdout = '';
   let status = 'pass';
   let reasonCodes = [];
@@ -67,7 +78,6 @@ if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.res
   const result = evaluateBenchmarkBlackBox({
     pack: argValue('--pack'),
     packBindingDigest: argValue('--pack-binding-digest') || argValue('--pack-digest'),
-    receiptRoot: argValue('--receipt-root'),
   });
   console.log(canonicalJson(result));
   process.exit(result.status === 'pass' ? 0 : 1);

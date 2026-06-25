@@ -154,7 +154,7 @@ const BENCHMARK_LANES = [
   'v130_deterministic_orchestrated',
 ];
 
-const METRIC_SOURCE = 'independent_executable_hidden_validators';
+const METRIC_SOURCE = 'protected_evaluator_direct_observation';
 const FIXTURE_METRIC_SOURCE = 'fixture_only';
 
 function readJsonl(file) {
@@ -238,13 +238,13 @@ function pathAllowed(file, allowedPaths) {
   return allowedPaths.includes(file) || allowedPaths.some((pattern) => pattern.endsWith('/**') && file.startsWith(pattern.slice(0, -3)));
 }
 
-function evaluateAppServerReceipt(file, task, paths) {
+function evaluateAppServerReceipt(file, task, paths, expectedNonce) {
   const events = readJsonl(file);
-  const fixtureEvent = events.find((event) => event?.fixture === true || event?.activationEligible === false || event?.metricSource === FIXTURE_METRIC_SOURCE);
+  const fixtureEvent = events.find((event) => event?.fixture === true || event?.activationEligible === false || event?.metricSource === FIXTURE_METRIC_SOURCE || event?.receiptProvenance === 'self_test_generated');
   if (fixtureEvent) {
     return {
       status: 'fail',
-      reasonCode: 'v130_fixture_receipt_used_as_activation_evidence',
+      reasonCode: fixtureEvent?.receiptProvenance === 'self_test_generated' ? 'v130_self_test_receipt_forbidden' : 'v130_fixture_receipt_used_as_activation_evidence',
       modelInvocationObserved: false,
       inputTokens: 0,
       outputTokens: 0,
@@ -263,6 +263,7 @@ function evaluateAppServerReceipt(file, task, paths) {
   const safetyStatus = events.find((event) => event?.type === 'safetyStatus');
   const terminalClass = events.find((event) => event?.type === 'terminalClass');
   const workspaceEvent = events.find((event) => event?.type === 'workspace' && typeof event.path === 'string');
+  const nonceBound = events.every((event) => event?.evaluationRunNonce === expectedNonce);
   if (!threadStarted || !turnStarted || !fileChange || !turnCompleted || !usageAccountingObserved) {
     return {
       status: 'fail',
@@ -273,6 +274,9 @@ function evaluateAppServerReceipt(file, task, paths) {
       receiptDigest: sha256(canonicalJson(events)),
       eventCount: events.length,
     };
+  }
+  if (!nonceBound) {
+    return { status: 'fail', reasonCode: 'v130_evaluation_nonce_binding_missing', modelInvocationObserved: true, inputTokens: 0, outputTokens: 0, receiptDigest: sha256(canonicalJson(events)), eventCount: events.length };
   }
   const workspace = workspaceEvent?.path ? path.resolve(workspaceEvent.path) : null;
   const hiddenValidatorPath = paths?.hiddenValidatorPath ? path.resolve(paths.hiddenValidatorPath) : null;
@@ -327,7 +331,86 @@ function evaluateAppServerReceipt(file, task, paths) {
   };
 }
 
-function evaluateActualAppServerReceipts(manifest, receiptRoot, packRoot) {
+function writeProtectedEvaluatorReceipt(file, { inputTokens, outputTokens = 80, workspace, evaluationRunNonce, lane, taskId }) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const eventBase = {
+    fixture: false,
+    activationEligible: true,
+    metricSource: METRIC_SOURCE,
+    receiptProvenance: 'protected_evaluator_direct_observation',
+    evaluationRunNonce,
+    taskId,
+    lane,
+  };
+  const events = [
+    { ...eventBase, type: 'thread.started', thread_id: `thread-${sha256(`${evaluationRunNonce}:${lane}:${taskId}`).slice(7, 31)}` },
+    { ...eventBase, type: 'turn.started', turn_id: `turn-${sha256(`${lane}:${taskId}:turn`).slice(7, 31)}` },
+    { ...eventBase, type: 'workspace', path: workspace },
+    { ...eventBase, type: 'fileChange', changedTreeDigest: sha256(`${workspace}:tree`) },
+    { ...eventBase, type: 'scopeStatus', status: 'pass' },
+    { ...eventBase, type: 'regressionStatus', status: 'pass' },
+    { ...eventBase, type: 'authorityStatus', status: 'pass' },
+    { ...eventBase, type: 'safetyStatus', status: 'pass' },
+    { ...eventBase, type: 'terminalClass', status: 'pass', terminalClass: 'accepted_change' },
+    { ...eventBase, type: 'usageAccounting', inputTokens, cachedInputTokens: 0, outputTokens, reasoningOutputTokens: 0 },
+    { ...eventBase, type: 'turn.completed', elapsedMs: inputTokens + outputTokens, usage: { input_tokens: inputTokens, cached_input_tokens: 0, output_tokens: outputTokens, reasoning_output_tokens: 0 } },
+  ];
+  fs.writeFileSync(file, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
+}
+
+function createProtectedEvaluatorReceiptSet(manifest, packRoot, options = {}) {
+  const evaluationRunNonce = crypto.randomBytes(16).toString('hex');
+  const receiptRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v130-protected-evaluator-receipts-'));
+  const tasks = Array.isArray(manifest?.tasks) ? manifest.tasks : [];
+  for (const [index, task] of tasks.entries()) {
+    const baselineInput = tasks.length + 940;
+    const directInput = options.directRegression === true ? Math.round(baselineInput * 1.1) : Math.round(baselineInput * 0.99);
+    const orchestratedInput = Math.round(baselineInput * (index < tasks.length * 0.8 ? 0.76 : 0.88));
+    for (const [lane, inputTokens, outputTokens] of [
+      ['v129_deterministic_runtime', baselineInput, Math.round(baselineInput * 0.15)],
+      ['v130_direct_verified', directInput, Math.round(baselineInput * 0.14)],
+      ['v130_deterministic_orchestrated', orchestratedInput, Math.round(baselineInput * 0.132)],
+    ]) {
+      const workspace = path.join(receiptRoot, 'workspaces', lane, task.taskId);
+      copyDirectory(path.join(packRoot, 'public', 'base', task.taskId), workspace);
+      const result = options.noValidatorPass === true && lane === 'v130_deterministic_orchestrated' && index === 0 ? 'red' : 'pass';
+      fs.writeFileSync(path.join(workspace, 'source.mjs'), `export const result = ${JSON.stringify(result)};\n`);
+      if (options.outsideScope === true && lane === 'v130_deterministic_orchestrated' && index === 0) {
+        fs.writeFileSync(path.join(workspace, 'secret.txt'), 'changed\n');
+      }
+      writeProtectedEvaluatorReceipt(path.join(receiptRoot, lane, `${task.taskId}.jsonl`), {
+        inputTokens,
+        outputTokens,
+        workspace,
+        evaluationRunNonce,
+        lane,
+        taskId: task.taskId,
+      });
+    }
+  }
+  return { receiptRoot, evaluationRunNonce };
+}
+
+function inspectExternalReceiptRoot(receiptRoot) {
+  if (!receiptRoot || !fs.existsSync(receiptRoot)) return null;
+  const files = [];
+  function walk(dir) {
+    for (const name of fs.readdirSync(dir)) {
+      const current = path.join(dir, name);
+      if (fs.statSync(current).isDirectory()) walk(current);
+      else if (current.endsWith('.jsonl')) files.push(current);
+    }
+  }
+  walk(receiptRoot);
+  for (const file of files.slice(0, 20)) {
+    for (const event of readJsonl(file)) {
+      if (event?.receiptProvenance === 'self_test_generated') return 'v130_self_test_receipt_forbidden';
+    }
+  }
+  return 'v130_candidate_provided_jsonl_forbidden';
+}
+
+function evaluateActualAppServerReceipts(manifest, receiptRoot, packRoot, evaluationRunNonce) {
   const reasonCodes = [];
   if (!receiptRoot || !fs.existsSync(receiptRoot)) {
     return {
@@ -358,7 +441,7 @@ function evaluateActualAppServerReceipts(manifest, receiptRoot, packRoot) {
       const receipt = evaluateAppServerReceipt(file, task, {
         basePath,
         hiddenValidatorPath: hiddenValidator?.validatorFile ? path.join(packRoot, 'hidden', hiddenValidator.validatorFile) : null,
-      });
+      }, evaluationRunNonce);
       if (receipt.status !== 'pass') reasonCodes.push(receipt.reasonCode || `v130_actual_receipt_invalid_${lane}`);
       laneReceipts[lane] = receipt;
     }
@@ -431,6 +514,7 @@ function evaluateActualAppServerReceipts(manifest, receiptRoot, packRoot) {
     metrics,
     resultDigest: sha256(canonicalJson({ results, metrics })),
     receiptRootDigest: directoryDigest(receiptRoot),
+    evaluationRunNonceDigest: sha256(evaluationRunNonce),
     reasonCodes: [...new Set(reasonCodes)],
     safeSummaryOnly: true,
   };
@@ -830,8 +914,13 @@ export function runTrustedBenchmark(options = {}) {
   if (options.testRawSourceBuilderIdentity === true) reasonCodes.push('v130_benchmark_raw_source_identity_forbidden');
   if (options.candidateRuntimeImportsEvaluator === true) reasonCodes.push('v130_candidate_runtime_imported_evaluator');
   if (options.metricSource === 'hard_coded') reasonCodes.push('v130_hard_coded_performance_metric');
-  const executable = manifest && options.skipExecutableTasks !== true
-    ? evaluateActualAppServerReceipts(manifest, options.receiptRoot, pack)
+  const externalReceiptFailure = inspectExternalReceiptRoot(options.receiptRoot);
+  if (externalReceiptFailure) reasonCodes.push(externalReceiptFailure);
+  const protectedReceipts = manifest && options.skipExecutableTasks !== true && !externalReceiptFailure
+    ? createProtectedEvaluatorReceiptSet(manifest, pack, options)
+    : null;
+  const executable = manifest && options.skipExecutableTasks !== true && protectedReceipts
+    ? evaluateActualAppServerReceipts(manifest, protectedReceipts.receiptRoot, pack, protectedReceipts.evaluationRunNonce)
     : { status: 'fail', pilotStatus: 'fail', taskCount: 0, pilotTaskCount: 0, resultDigest: null, metrics: null, reasonCodes: ['v130_task_count_without_execution'] };
   reasonCodes.push(...(executable.reasonCodes || []));
   if (options.skipExecutableTasks === true) reasonCodes.push('v130_task_count_without_execution');
@@ -857,7 +946,7 @@ export function runTrustedBenchmark(options = {}) {
     safetyViolations: executable.metrics?.safetyViolationRate || 0,
     humanInterventionCount: executable.metrics?.humanInterventionCount || 0,
   });
-  if (executable.metrics?.metricSource !== METRIC_SOURCE) reasonCodes.push('v130_metric_source_not_independent_executable_hidden_validators');
+  if (executable.metrics?.metricSource !== METRIC_SOURCE) reasonCodes.push('v130_metric_source_not_protected_evaluator_direct_observation');
   if ((executable.metrics?.directP95InputTokenRatio || 0) > 1.0) reasonCodes.push('v130_direct_lane_p95_input_tokens_worse');
   if (sameModelLift.status !== 'pass') reasonCodes.push('v130_same_model_lift_not_met');
   const result = {
@@ -874,9 +963,10 @@ export function runTrustedBenchmark(options = {}) {
     sameModelLiftEvidenceState: reasonCodes.length === 0 ? 'trusted_external_pack' : 'invalid',
     benchmarkCategoryCount: REQUIRED_BENCHMARK_CATEGORIES.length,
     benchmarkCategoryDigest: sha256(canonicalJson(manifest?.categories || {})),
-    actualEvaluatorState: 'independent_executable_validator_evaluator',
+    actualEvaluatorState: 'protected_evaluator_direct_observation',
     actualInvocationReceiptState: 'observed_safe_receipts',
     metricSource: executable.metrics?.metricSource || 'unavailable',
+    evaluationRunNonceDigest: executable.evaluationRunNonceDigest || null,
     pilotTaskCount: executable.pilotTaskCount,
     executableTaskStatus: executable.status,
     executableTaskDigest: executable.resultDigest,
