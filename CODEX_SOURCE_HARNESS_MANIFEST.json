@@ -2095,8 +2095,8 @@
       "actualAcceptedChangeRateDelta": 0,
       "actualP50TokenRatio": 0.76,
       "actualP95TokenRatio": 0.88,
-      "metricSource": "independent_hidden_validator_receipts",
-      "qualificationBindingDigest": "sha256:a899359f01184c49eae896aa44c6581b1249fff3b0b75389da8aadb58e5a4681"
+      "metricSource": "independent_executable_hidden_validators",
+      "qualificationBindingDigest": "sha256:016ce3748e3755d5967420dab66aeee544abbe78f5629ac29e078b4654ed584b"
     }
   }
 }
