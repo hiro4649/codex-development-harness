@@ -21,6 +21,14 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+function normalizeText(value) {
+  return String(value).replace(/\r\n/g, '\n');
+}
+
+function normalizedFileDigest(file) {
+  return sha256(normalizeText(fs.readFileSync(file, 'utf8')));
+}
+
 function repoRoot() {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 }
@@ -37,7 +45,6 @@ function runExecutableTask(task, root) {
   const testPath = path.join(repo, 'test.mjs');
   fs.writeFileSync(sourcePath, 'export const result = "pass";\n');
   fs.writeFileSync(testPath, "import assert from 'node:assert/strict';\nimport { result } from './source.mjs';\nassert.equal(result, 'pass');\n");
-  const startedAt = Date.now();
   let status = 'pass';
   try {
     execFileSync(process.execPath, [testPath], {
@@ -54,7 +61,6 @@ function runExecutableTask(task, root) {
     taskId: task.taskId,
     category: task.category,
     status,
-    elapsedMs: Date.now() - startedAt,
     invocationReceiptDigest: sha256(canonicalJson({
       taskId: task.taskId,
       category: task.category,
@@ -128,6 +134,81 @@ function directoryDigest(root) {
   }
   walk(root);
   return sha256(canonicalJson(entries));
+}
+
+function evaluatorSourceIdentity() {
+  const sourcePath = fileURLToPath(import.meta.url);
+  try {
+    const blobSha = execFileSync('git', ['hash-object', path.relative(repoRoot(), sourcePath)], {
+      cwd: repoRoot(),
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 30000,
+      maxBuffer: 1024 * 1024,
+    }).trim();
+    if (/^[a-f0-9]{40}$/.test(blobSha)) return { evaluatorBlobSha: blobSha, identityKind: 'git_blob_sha' };
+  } catch {
+    // Fall through to the normalized source digest for non-git fixture use.
+  }
+  return { evaluatorBlobSha: normalizedFileDigest(sourcePath), identityKind: 'lf_normalized_source_digest' };
+}
+
+function taskCatalogDigestFromManifest(manifest) {
+  const tasks = Array.isArray(manifest?.tasks)
+    ? manifest.tasks.map((task) => ({
+      taskId: task.taskId,
+      category: task.category,
+      expectedTerminalClass: task.expectedTerminalClass,
+      hiddenValidatorDigest: task.hiddenValidatorDigest,
+      publicGateRefs: task.publicGateRefs,
+      tokenBudget: task.tokenBudget,
+    })).sort((a, b) => a.taskId.localeCompare(b.taskId))
+    : [];
+  return sha256(canonicalJson({
+    sourceAuthoritySha: manifest?.sourceAuthoritySha || null,
+    taskCount: Number(manifest?.taskCount || 0),
+    categories: manifest?.categories || {},
+    tasks,
+  }));
+}
+
+function packContentFileTable(root, options = {}) {
+  const includeReceipt = options.includeReceipt === true;
+  const allowed = new Set([
+    'public/manifest.safe.json',
+    'hidden/validators.safe.json',
+  ]);
+  const entries = [];
+  function walk(dir) {
+    for (const name of fs.readdirSync(dir).sort()) {
+      const current = path.join(dir, name);
+      const relative = path.relative(root, current).replaceAll(path.sep, '/');
+      const stat = fs.statSync(current);
+      if (stat.isDirectory()) {
+        walk(current);
+        continue;
+      }
+      if (!allowed.has(relative) && !(includeReceipt && relative === 'builder-receipt.safe.json')) continue;
+      const normalized = normalizeText(fs.readFileSync(current, 'utf8'));
+      entries.push({ path: relative, digest: sha256(normalized), bytes: Buffer.byteLength(normalized, 'utf8') });
+    }
+  }
+  walk(root);
+  return entries.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function packContentDigest(root, options = {}) {
+  return sha256(canonicalJson(packContentFileTable(root, options)));
+}
+
+function buildPackBindingDigest({ packContentDigest: contentDigest, builderReceiptDigest, evaluatorBlobSha, sourceAuthoritySha, taskCatalogDigest }) {
+  return sha256(canonicalJson({
+    builderReceiptDigest,
+    evaluatorBlobSha,
+    packContentDigest: contentDigest,
+    sourceAuthoritySha,
+    taskCatalogDigest,
+  }));
 }
 
 const MODES = [
@@ -264,6 +345,7 @@ export function buildBenchmarkFixture(options = {}) {
 export function createTrustedBenchmarkPack(options = {}) {
   const sourceAuthoritySha = options.sourceAuthoritySha || '963aca1d62d6d1d5745211e8be9302215459e471';
   const root = options.root || fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v130-benchmark-pack-'));
+  const lineEnding = options.lineEnding === 'crlf' ? '\r\n' : '\n';
   const publicDir = path.join(root, 'public');
   const hiddenDir = path.join(root, 'hidden');
   fs.mkdirSync(publicDir, { recursive: true });
@@ -308,27 +390,42 @@ export function createTrustedBenchmarkPack(options = {}) {
       expectedTerminalClass: task.expectedTerminalClass,
     })),
   };
-  fs.writeFileSync(path.join(publicDir, 'manifest.safe.json'), `${canonicalJson(publicManifest)}\n`);
-  fs.writeFileSync(path.join(hiddenDir, 'validators.safe.json'), `${canonicalJson(hiddenValidators)}\n`);
-  const packDigest = directoryDigest(root);
+  fs.writeFileSync(path.join(publicDir, 'manifest.safe.json'), `${canonicalJson(publicManifest)}${lineEnding}`);
+  fs.writeFileSync(path.join(hiddenDir, 'validators.safe.json'), `${canonicalJson(hiddenValidators)}${lineEnding}`);
+  const contentDigest = packContentDigest(root);
+  const taskCatalogDigest = taskCatalogDigestFromManifest(publicManifest);
+  const { evaluatorBlobSha, identityKind } = evaluatorSourceIdentity();
   const receipt = {
     schemaVersion: '1.3.0',
-    builderDigest: sha256(fs.readFileSync(fileURLToPath(import.meta.url))),
+    builderIdentityKind: identityKind,
+    evaluatorBlobSha,
     sourceAuthoritySha,
     registeredRepositoryIds: ['hiro4649/codex-development-harness'],
     taskCount: tasks.length,
     publicManifestDigest: sha256(canonicalJson(publicManifest)),
     hiddenValidationDigest: sha256(canonicalJson(hiddenValidators)),
-    packDigest,
+    packContentDigest: contentDigest,
+    taskCatalogDigest,
     createdAt: new Date(0).toISOString(),
     authorityCreated: false,
   };
-  fs.writeFileSync(path.join(root, 'builder-receipt.safe.json'), `${canonicalJson(receipt)}\n`);
+  const builderReceiptDigest = sha256(canonicalJson(receipt));
+  const packBindingDigest = buildPackBindingDigest({
+    packContentDigest: contentDigest,
+    builderReceiptDigest,
+    evaluatorBlobSha,
+    sourceAuthoritySha,
+    taskCatalogDigest,
+  });
+  fs.writeFileSync(path.join(root, 'builder-receipt.safe.json'), `${canonicalJson(receipt)}${lineEnding}`);
   return {
     status: 'pass',
     packRoot: root,
-    packDigest: directoryDigest(root),
-    builderReceiptDigest: sha256(canonicalJson(receipt)),
+    packContentDigest: contentDigest,
+    builderReceiptDigest,
+    packBindingDigest,
+    evaluatorBlobSha,
+    taskCatalogDigest,
     receipt,
     safeSummaryOnly: true,
   };
@@ -336,19 +433,42 @@ export function createTrustedBenchmarkPack(options = {}) {
 
 export function runTrustedBenchmark(options = {}) {
   const pack = options.pack;
-  const expectedDigest = options.packDigest;
+  const expectedBindingDigest = options.packBindingDigest || options.packDigest;
   const reasonCodes = [];
   if (!pack || !fs.existsSync(pack)) reasonCodes.push('v130_benchmark_pack_missing');
   if (pack && isInsideRepo(pack)) reasonCodes.push('v130_benchmark_pack_inside_repository');
-  const actualDigest = pack && fs.existsSync(pack) ? directoryDigest(pack) : null;
-  if (expectedDigest && actualDigest !== expectedDigest) reasonCodes.push('v130_benchmark_pack_digest_mismatch');
   const manifestPath = pack ? path.join(pack, 'public', 'manifest.safe.json') : null;
   const hiddenPath = pack ? path.join(pack, 'hidden', 'validators.safe.json') : null;
+  const receiptPath = pack ? path.join(pack, 'builder-receipt.safe.json') : null;
   const manifest = manifestPath && fs.existsSync(manifestPath) ? readJson(manifestPath) : null;
   const hidden = hiddenPath && fs.existsSync(hiddenPath) ? readJson(hiddenPath) : null;
-  const executable = manifest
+  const builderReceipt = receiptPath && fs.existsSync(receiptPath) ? readJson(receiptPath) : null;
+  const contentDigest = pack && fs.existsSync(pack) ? packContentDigest(pack, { includeReceipt: options.testIncludeReceiptInContentDigest === true }) : null;
+  const taskCatalogDigest = manifest ? taskCatalogDigestFromManifest(manifest) : null;
+  const { evaluatorBlobSha } = evaluatorSourceIdentity();
+  const builderReceiptDigest = builderReceipt ? sha256(canonicalJson(builderReceipt)) : null;
+  const bindingDigest = builderReceipt && contentDigest && taskCatalogDigest
+    ? buildPackBindingDigest({
+      packContentDigest: contentDigest,
+      builderReceiptDigest,
+      evaluatorBlobSha: options.testRawSourceBuilderIdentity === true ? sha256(fs.readFileSync(fileURLToPath(import.meta.url))) : evaluatorBlobSha,
+      sourceAuthoritySha: manifest?.sourceAuthoritySha,
+      taskCatalogDigest,
+    })
+    : null;
+  if (expectedBindingDigest && bindingDigest !== expectedBindingDigest) reasonCodes.push('v130_benchmark_pack_binding_digest_mismatch');
+  if (!builderReceipt) reasonCodes.push('v130_benchmark_builder_receipt_missing');
+  if (builderReceipt && builderReceipt.packContentDigest !== contentDigest) reasonCodes.push('v130_benchmark_content_digest_mismatch');
+  if (builderReceipt && builderReceipt.taskCatalogDigest !== taskCatalogDigest) reasonCodes.push('v130_benchmark_task_catalog_digest_mismatch');
+  if (builderReceipt && builderReceipt.evaluatorBlobSha !== evaluatorBlobSha) reasonCodes.push('v130_benchmark_evaluator_identity_mismatch');
+  if (options.testIncludeReceiptInContentDigest === true) reasonCodes.push('v130_benchmark_receipt_in_content_digest');
+  if (options.testRawSourceBuilderIdentity === true) reasonCodes.push('v130_benchmark_raw_source_identity_forbidden');
+  if (options.candidateRuntimeImportsEvaluator === true) reasonCodes.push('v130_candidate_runtime_imported_evaluator');
+  if (options.metricSource === 'hard_coded') reasonCodes.push('v130_hard_coded_performance_metric');
+  const executable = manifest && options.skipExecutableTasks !== true
     ? runExecutableBenchmarkTasks(manifest)
     : { status: 'fail', pilotStatus: 'fail', taskCount: 0, pilotTaskCount: 0, resultDigest: null, metrics: null };
+  if (options.skipExecutableTasks === true) reasonCodes.push('v130_task_count_without_execution');
   if (!manifest || !hidden) reasonCodes.push('v130_benchmark_pack_incomplete');
   const taskCount = Number(manifest?.taskCount || 0);
   if (taskCount < 60) reasonCodes.push('v130_benchmark_task_count_insufficient');
@@ -365,7 +485,11 @@ export function runTrustedBenchmark(options = {}) {
     benchmarkKind: 'trusted_external_pack',
     fixture: false,
     activationEligible: reasonCodes.length === 0,
-    packDigest: actualDigest,
+    packContentDigest: contentDigest,
+    builderReceiptDigest,
+    packBindingDigest: bindingDigest,
+    evaluatorBlobSha,
+    taskCatalogDigest,
     taskCount,
     sameModelLiftEvidenceState: reasonCodes.length === 0 ? 'trusted_external_pack' : 'invalid',
     benchmarkCategoryCount: REQUIRED_BENCHMARK_CATEGORIES.length,
@@ -431,8 +555,8 @@ if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.res
     process.exit(0);
   }
   const pack = argValue('--pack');
-  const packDigest = argValue('--pack-digest');
-  const result = pack ? runTrustedBenchmark({ pack, packDigest }) : buildBenchmarkFixture({ comparatorAvailable: false });
+  const packBindingDigest = argValue('--pack-binding-digest') || argValue('--pack-digest');
+  const result = pack ? runTrustedBenchmark({ pack, packBindingDigest }) : buildBenchmarkFixture({ comparatorAvailable: false });
   console.log(canonicalJson(result));
   process.exit(result.status === 'pass' ? 0 : 1);
 }

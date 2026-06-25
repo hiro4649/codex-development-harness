@@ -603,14 +603,34 @@ function tokenDifferentialTests() {
   const tokenRegression = buildBenchmarkFixture({ inputTokensPerAcceptedChangeP50: 900 });
   const authorityViolation = buildBenchmarkFixture({ authorityViolations: 1 });
   const pack = createTrustedBenchmarkPack();
-  const trusted = runTrustedBenchmark({ pack: pack.packRoot, packDigest: pack.packDigest });
-  const digestMismatch = runTrustedBenchmark({ pack: pack.packRoot, packDigest: 'sha256:0000000000000000000000000000000000000000000000000000000000000000' });
+  const packRepeat = createTrustedBenchmarkPack();
+  const packCrlf = createTrustedBenchmarkPack({ lineEnding: 'crlf' });
+  const trusted = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest });
+  const digestMismatch = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: 'sha256:0000000000000000000000000000000000000000000000000000000000000000' });
+  const receiptIncluded = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, testIncludeReceiptInContentDigest: true });
+  const rawSourceIdentity = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, testRawSourceBuilderIdentity: true });
+  const runtimeImport = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, candidateRuntimeImportsEvaluator: true });
+  const hardCodedMetric = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, metricSource: 'hard_coded' });
+  const taskCountOnly = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, skipExecutableTasks: true });
+  const visibleHiddenPack = createTrustedBenchmarkPack();
+  const hiddenPath = `${visibleHiddenPack.packRoot}/hidden/validators.safe.json`;
+  const hidden = JSON.parse(fs.readFileSync(hiddenPath, 'utf8'));
+  fs.writeFileSync(hiddenPath, `${canonicalJson({ ...hidden, visibleToAgent: true })}\n`);
+  const hiddenVisible = runTrustedBenchmark({ pack: visibleHiddenPack.packRoot, packBindingDigest: visibleHiddenPack.packBindingDigest });
   return [
     test('v130_same_model_lift_fixture_is_not_activation_eligible', () => pass.status === 'pass' && pass.result.fixture === true && pass.result.activationEligible === false && pass.result.sameModelLiftEvidenceState === 'fixture_only'),
     test('v130_fable_comparator_unavailable_no_superiority_claim', () => pass.result.externalComparator.comparatorState === 'unavailable' && pass.result.externalComparator.superiorityClaimState === 'not_proven'),
     test('v130_fixture_learned_policy_shadow_only', () => pass.result.learnedPolicyQualification.learnedPolicyState === 'shadow_only' && pass.result.learnedPolicyState === 'shadow_only'),
     test('v130_external_trusted_pack_passes_activation_benchmark', () => trusted.status === 'pass' && trusted.result.fixture === false && trusted.result.activationEligible === true && trusted.result.taskCount >= 60),
-    test('v130_external_pack_digest_mismatch_fails', () => digestMismatch.status === 'fail' && digestMismatch.reasonCodes.includes('v130_benchmark_pack_digest_mismatch')),
+    test('v130_pack_protocol_repeats_stably', () => pack.packContentDigest === packRepeat.packContentDigest && pack.builderReceiptDigest === packRepeat.builderReceiptDigest && pack.packBindingDigest === packRepeat.packBindingDigest && pack.taskCatalogDigest === packRepeat.taskCatalogDigest),
+    test('v130_pack_protocol_normalizes_line_endings', () => pack.packContentDigest === packCrlf.packContentDigest && pack.builderReceiptDigest === packCrlf.builderReceiptDigest && pack.packBindingDigest === packCrlf.packBindingDigest),
+    test('v130_external_pack_binding_mismatch_fails', () => digestMismatch.status === 'fail' && digestMismatch.reasonCodes.includes('v130_benchmark_pack_binding_digest_mismatch')),
+    test('v130_receipt_in_content_digest_fails', () => receiptIncluded.status === 'fail' && receiptIncluded.reasonCodes.includes('v130_benchmark_receipt_in_content_digest')),
+    test('v130_raw_source_builder_identity_fails', () => rawSourceIdentity.status === 'fail' && rawSourceIdentity.reasonCodes.includes('v130_benchmark_raw_source_identity_forbidden')),
+    test('v130_candidate_runtime_imports_evaluator_fails', () => runtimeImport.status === 'fail' && runtimeImport.reasonCodes.includes('v130_candidate_runtime_imported_evaluator')),
+    test('v130_hard_coded_performance_metric_fails', () => hardCodedMetric.status === 'fail' && hardCodedMetric.reasonCodes.includes('v130_hard_coded_performance_metric')),
+    test('v130_hidden_validator_visible_fails', () => hiddenVisible.status === 'fail' && hiddenVisible.reasonCodes.includes('v130_hidden_validator_visibility_invalid')),
+    test('v130_task_count_without_execution_fails', () => taskCountOnly.status === 'fail' && taskCountOnly.reasonCodes.includes('v130_task_count_without_execution')),
     test('v130_insufficient_task_count_fails_lift', () => insufficientTasks.status === 'fail' && insufficientTasks.reasonCodes.includes('v130_same_model_lift_not_met')),
     test('v130_token_regression_fails_lift', () => tokenRegression.status === 'fail'),
     test('v130_authority_violation_fails_lift', () => authorityViolation.status === 'fail'),
