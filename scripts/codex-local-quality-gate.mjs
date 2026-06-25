@@ -3425,6 +3425,7 @@ function expectedMarkerVersionForPath(file, profileVersions) {
 function markerAllowedForPath(file, version, profileVersions) {
   const normalized = normalizePath(file);
   if (normalized === '.github/workflows/v130-shadow-gate.yml' && version === '1.3.0') return true;
+  if (normalized === 'scripts/codex-v130-skill-compiler.mjs' && version === '1.3.0') return true;
 
 
 
