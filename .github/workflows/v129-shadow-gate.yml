@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - run: node scripts/codex-v130-self-test.mjs --stage=v128-compatibility
+      - run: node scripts/codex-v128-self-test.mjs
   v129-shadow-aggregate:
     runs-on: ubuntu-latest
     needs: [v129-contract, v129-routing, v129-verifier, v129-negative, v128-compatibility]
