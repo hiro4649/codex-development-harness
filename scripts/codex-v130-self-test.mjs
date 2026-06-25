@@ -8,6 +8,7 @@ import { compileSessionIntent, buildProjectProfile, compileVerifiedGoal } from '
 import { buildCompiledInstructionEnvelope } from './codex-v130-context-compiler.mjs';
 import { applyAvailabilityMask, buildConstrainedDag, compileAgentRole, evaluateEscalation } from './codex-v130-orchestration.mjs';
 import { buildProgressVector, buildTransactionalStateReceipt, evaluateNoHumanTerminal, ratifyExactHead } from './codex-v130-ratifier.mjs';
+import { buildAdversarialFixture, buildBenchmarkFixture } from './codex-v130-benchmark.mjs';
 
 function readJson(path) {
   return JSON.parse(fs.readFileSync(path, 'utf8'));
@@ -229,11 +230,35 @@ function orchestrationAutonomyTests() {
   ];
 }
 
+function tokenDifferentialTests() {
+  const pass = buildBenchmarkFixture({ comparatorAvailable: false });
+  const insufficientTasks = buildBenchmarkFixture({ taskCount: 30 });
+  const tokenRegression = buildBenchmarkFixture({ inputTokensPerAcceptedChangeP50: 900 });
+  const authorityViolation = buildBenchmarkFixture({ authorityViolations: 1 });
+  return [
+    test('v130_same_model_lift_fixture_pass', () => pass.status === 'pass' && pass.result.sameModelLift.p50TokenRatio <= 0.80 && pass.result.sameModelLift.p95TokenRatio <= 0.90),
+    test('v130_fable_comparator_unavailable_no_superiority_claim', () => pass.result.externalComparator.comparatorState === 'unavailable' && pass.result.externalComparator.superiorityClaimState === 'not_proven'),
+    test('v130_learned_policy_qualified_only_when_evidence_sufficient', () => pass.result.learnedPolicyQualification.learnedPolicyState === 'qualified'),
+    test('v130_insufficient_task_count_fails_lift', () => insufficientTasks.status === 'fail' && insufficientTasks.reasonCodes.includes('v130_same_model_lift_not_met')),
+    test('v130_token_regression_fails_lift', () => tokenRegression.status === 'fail'),
+    test('v130_authority_violation_fails_lift', () => authorityViolation.status === 'fail'),
+  ];
+}
+
+function adversarialBenchmarkTests() {
+  const pass = buildAdversarialFixture();
+  const fail = buildAdversarialFixture({ failedCase: 'fake gate' });
+  return [
+    test('v130_adversarial_fixture_pass', () => pass.status === 'pass' && pass.results.length >= 8),
+    test('v130_adversarial_fixture_fail_closed', () => fail.status === 'fail' && fail.reasonCodes.includes('v130_adversarial_fixture_failed')),
+  ];
+}
+
 function selectedStages() {
   const arg = process.argv.find((item) => item.startsWith('--stage='));
   if (!arg) return new Set(['contracts']);
   const stage = arg.split('=')[1];
-  if (stage === 'all') return new Set(['contracts', 'intake-context', 'orchestration-autonomy']);
+  if (stage === 'all') return new Set(['contracts', 'intake-context', 'orchestration-autonomy', 'token-differential', 'adversarial-benchmark']);
   return new Set(stage.split(',').map((item) => item.trim()).filter(Boolean));
 }
 
@@ -242,6 +267,8 @@ const cases = [
   ...(stages.has('contracts') || stages.has('contract') ? contractTests() : []),
   ...(stages.has('intake-context') || stages.has('intake') || stages.has('context') ? intakeContextTests() : []),
   ...(stages.has('orchestration-autonomy') || stages.has('orchestration') || stages.has('autonomy') ? orchestrationAutonomyTests() : []),
+  ...(stages.has('token-differential') || stages.has('benchmark') ? tokenDifferentialTests() : []),
+  ...(stages.has('adversarial-benchmark') || stages.has('adversarial') ? adversarialBenchmarkTests() : []),
 ];
 const failures = cases.filter((item) => item.status !== 'pass');
 const report = {
