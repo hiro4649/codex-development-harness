@@ -111,7 +111,7 @@ function contractTests() {
   const exact = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
   return [
     test('v130_policy_marker_pass', () => policy.marker === 'CODEX_QUALITY_HARNESS_FILE v1.3.0' && policy.schemaVersion === '1.3.0'),
-    test('v130_source_active_state_pass', () => policy.candidateHarnessVersion === '1.3.0' && ['source_shadow_candidate', 'active'].includes(policy.candidateActivationState) && ['forbidden', 'active'].includes(policy.sourceActivation)),
+    test('v130_shadow_candidate_state_pass', () => policy.candidateHarnessVersion === '1.3.0' && policy.candidateActivationState === 'source_shadow_candidate' && policy.sourceActivation === 'forbidden'),
     test('v130_final_authority_preserved', () => policy.finalAuthority === 'v1.1.8_final_decision_kernel'),
     test('v130_no_authority_created', () => policy.authorityCreated === false),
     test('v130_monotonic_versions_pass', () => policy.monotonicInheritance?.immediateRollback === '1.2.9' && policy.monotonicInheritance?.blockingCompatibility === '1.2.8' && policy.monotonicInheritance?.legacyCompatibility === '1.2.7'),
@@ -148,11 +148,11 @@ function contractTests() {
     test('v130_availability_mask_pass', () => policy.availabilityMaskPolicy?.loadBearingFeatureStage === 'stable' && policy.availabilityMaskPolicy?.silentFallback === false && policy.availabilityMaskPolicy?.underDevelopment === 'forbidden'),
     test('v130_learned_policy_shadow_only', () => policy.offlineLearningPolicy?.learnedPolicyState === 'shadow' && policy.offlineLearningPolicy?.onlineSelfUpdateAllowed === false && policy.offlineLearningPolicy?.modelIdStoredInRepository === false),
     test('v130_no_human_terminals_removed', () => !(policy.noHumanTerminalPolicy?.allowedTerminals || []).includes('human_confirmation_needed') && (policy.noHumanTerminalPolicy?.forbiddenTerminals || []).includes('manual_merge_required')),
-    test('v130_source_manifest_active_registered', () => source.activeHarnessVersion === '1.3.0' && source.activeSelfTestSuite === 'v130' && source.v130SourceShadowCandidate?.candidateHarnessVersion === '1.3.0' && source.versionAuthority?.v129 === 'immediate_rollback'),
-    test('v130_docs_manifest_active_registered', () => docsManifest.activeHarnessVersion === '1.3.0' && docsManifest.v130SourceShadowCandidate?.candidateActivationState === 'active'),
-    test('v130_active_policy_active_registered', () => activePolicy.activeHarnessVersion === '1.3.0' && activePolicy.v130SourceShadowCandidate?.sourceActivation === 'active'),
-    test('v130_readme_state_current', () => readme.includes('Active Source: v1.3.0') && readme.includes('Immediate rollback: v1.2.9')),
-    test('v130_agents_marker_preserves_active_v130', () => fs.readFileSync('AGENTS.md', 'utf8').includes('CODEX_QUALITY_HARNESS_FILE v1.3.0')),
+    test('v130_source_manifest_shadow_registered', () => source.activeHarnessVersion === '1.2.9' && source.activeSelfTestSuite === 'v129' && source.v130SourceShadowCandidate?.candidateHarnessVersion === '1.3.0'),
+    test('v130_docs_manifest_shadow_registered', () => docsManifest.activeHarnessVersion === '1.2.9' && docsManifest.v130SourceShadowCandidate?.candidateActivationState === 'source_shadow_candidate'),
+    test('v130_active_policy_shadow_registered', () => activePolicy.activeHarnessVersion === '1.2.9' && activePolicy.v130SourceShadowCandidate?.sourceActivation === 'forbidden'),
+    test('v130_readme_state_current', () => readme.includes('Active Source: v1.2.9') && readme.includes('Candidate: v1.3.0 source_shadow_candidate')),
+    test('v130_agents_marker_preserves_active_v129', () => fs.readFileSync('AGENTS.md', 'utf8').includes('CODEX_QUALITY_HARNESS_FILE v1.2.9')),
     test('v130_policy_digest_stable', () => /^sha256:[a-f0-9]{64}$/.test(`sha256:${sha256(canonicalJson(policy))}`)),
   ];
 }
