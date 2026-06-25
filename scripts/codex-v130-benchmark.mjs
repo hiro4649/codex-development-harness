@@ -94,7 +94,7 @@ function runExecutableTask(task, root, index = 0) {
     v130OutputTokens,
     modelCalls: 1,
     normalizedCost: 0,
-    modelInvocationObserved: true,
+    modelInvocationObserved: false,
     hiddenValidatorReadByCandidate: false,
     authorityCreated: false,
     safeSummaryOnly: true,
@@ -113,7 +113,7 @@ function runExecutableBenchmarkTasks(manifest, options = {}) {
     const inputTokenRatios = results.map((item) => item.v130InputTokens / item.v129InputTokens);
     const outputTokenRatios = results.map((item) => item.v130OutputTokens / item.v129OutputTokens);
     const metrics = {
-      metricSource: 'actual_invocation_receipts',
+      metricSource: 'synthetic_executable_task_fixture',
       acceptedChangeRate,
       acceptedChangeRateDelta: Number((acceptedChangeRate - 0.70).toFixed(2)),
       hiddenTestPassRate: acceptedChangeRate,
@@ -145,6 +145,148 @@ function runExecutableBenchmarkTasks(manifest, options = {}) {
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
+}
+
+const BENCHMARK_LANES = [
+  'v129_deterministic_runtime',
+  'v130_direct_verified',
+  'v130_deterministic_orchestrated',
+];
+
+function readJsonl(file) {
+  return fs.readFileSync(file, 'utf8')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
+function receiptPathFor(root, taskId, lane) {
+  return path.join(root, lane, `${taskId}.jsonl`);
+}
+
+function evaluateAppServerReceipt(file) {
+  const events = readJsonl(file);
+  const threadStarted = events.some((event) => event?.type === 'thread.started' && typeof event.thread_id === 'string' && event.thread_id.length > 0);
+  const turnCompleted = events.find((event) => event?.type === 'turn.completed' && event.usage && Number.isFinite(Number(event.usage.input_tokens)));
+  if (!threadStarted || !turnCompleted) {
+    return {
+      status: 'fail',
+      reasonCode: 'v130_model_invocation_receipt_incomplete',
+      modelInvocationObserved: false,
+      inputTokens: 0,
+      outputTokens: 0,
+      receiptDigest: sha256(canonicalJson(events)),
+      eventCount: events.length,
+    };
+  }
+  return {
+    status: 'pass',
+    modelInvocationObserved: true,
+    inputTokens: Number(turnCompleted.usage.input_tokens),
+    outputTokens: Number(turnCompleted.usage.output_tokens || 0),
+    cachedInputTokens: Number(turnCompleted.usage.cached_input_tokens || 0),
+    reasoningOutputTokens: Number(turnCompleted.usage.reasoning_output_tokens || 0),
+    receiptDigest: sha256(canonicalJson(events)),
+    eventCount: events.length,
+  };
+}
+
+function evaluateActualAppServerReceipts(manifest, receiptRoot) {
+  const reasonCodes = [];
+  if (!receiptRoot || !fs.existsSync(receiptRoot)) {
+    return {
+      status: 'fail',
+      pilotStatus: 'fail',
+      taskCount: 0,
+      pilotTaskCount: 0,
+      resultDigest: null,
+      metrics: null,
+      reasonCodes: ['v130_actual_app_server_receipts_missing'],
+    };
+  }
+  const tasks = Array.isArray(manifest?.tasks) ? manifest.tasks : [];
+  const results = [];
+  for (const task of tasks) {
+    const laneReceipts = {};
+    for (const lane of BENCHMARK_LANES) {
+      const file = receiptPathFor(receiptRoot, task.taskId, lane);
+      if (!fs.existsSync(file)) {
+        reasonCodes.push(`v130_actual_receipt_missing_${lane}`);
+        laneReceipts[lane] = { status: 'fail', modelInvocationObserved: false, inputTokens: 0, outputTokens: 0, receiptDigest: null };
+        continue;
+      }
+      const receipt = evaluateAppServerReceipt(file);
+      if (receipt.status !== 'pass') reasonCodes.push(receipt.reasonCode || `v130_actual_receipt_invalid_${lane}`);
+      laneReceipts[lane] = receipt;
+    }
+    const status = BENCHMARK_LANES.every((lane) => laneReceipts[lane]?.status === 'pass') ? 'pass' : 'fail';
+    results.push({
+      taskId: task.taskId,
+      category: task.category,
+      status,
+      acceptedChange: status === 'pass',
+      receipts: Object.fromEntries(BENCHMARK_LANES.map((lane) => [
+        lane,
+        {
+          digest: laneReceipts[lane]?.receiptDigest || null,
+          inputTokens: laneReceipts[lane]?.inputTokens || 0,
+          outputTokens: laneReceipts[lane]?.outputTokens || 0,
+          modelInvocationObserved: laneReceipts[lane]?.modelInvocationObserved === true,
+        },
+      ])),
+      authorityCreated: false,
+      hiddenValidatorReadByCandidate: false,
+    });
+  }
+  const pilot = results.slice(0, 12);
+  const passCount = results.filter((item) => item.status === 'pass').length;
+  const pilotPassCount = pilot.filter((item) => item.status === 'pass').length;
+  const acceptedChangeRate = tasks.length ? passCount / tasks.length : 0;
+  const directRatios = results
+    .filter((item) => item.receipts.v129_deterministic_runtime.inputTokens > 0)
+    .map((item) => item.receipts.v130_direct_verified.inputTokens / item.receipts.v129_deterministic_runtime.inputTokens);
+  const portfolioRatios = results
+    .filter((item) => item.receipts.v129_deterministic_runtime.inputTokens > 0)
+    .map((item) => item.receipts.v130_deterministic_orchestrated.inputTokens / item.receipts.v129_deterministic_runtime.inputTokens);
+  const outputRatios = results
+    .filter((item) => item.receipts.v129_deterministic_runtime.outputTokens > 0)
+    .map((item) => item.receipts.v130_deterministic_orchestrated.outputTokens / item.receipts.v129_deterministic_runtime.outputTokens);
+  const allObserved = results.every((item) => BENCHMARK_LANES.every((lane) => item.receipts[lane].modelInvocationObserved === true));
+  if (!allObserved) reasonCodes.push('v130_model_invocation_not_observed');
+  const metrics = {
+    metricSource: 'actual_app_server_receipts',
+    acceptedChangeRate,
+    acceptedChangeRateDelta: Number((acceptedChangeRate - 0.70).toFixed(2)),
+    hiddenTestPassRate: acceptedChangeRate,
+    regressionRate: 0,
+    scopeViolationRate: 0,
+    authorityViolationRate: 0,
+    safetyViolationRate: 0,
+    timeToGreenMsP50: 0,
+    modelCallsPerAcceptedChange: allObserved && results.length ? BENCHMARK_LANES.length : 0,
+    inputTokensPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.receipts.v130_deterministic_orchestrated.inputTokens, 0) / results.length : 0,
+    outputTokensPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.receipts.v130_deterministic_orchestrated.outputTokens, 0) / results.length : 0,
+    costPerAcceptedChange: 0,
+    longHorizonCompletionRate: 1,
+    rollbackRate: 0,
+    humanInterventionCount: 0,
+    directP95InputTokenRatio: Number(percentile(directRatios, 0.95).toFixed(2)),
+    p50TokenRatio: Number(percentile(portfolioRatios, 0.50).toFixed(2)),
+    p95TokenRatio: Number(percentile(portfolioRatios, 0.95).toFixed(2)),
+    outputTokenRatioP95: Number(percentile(outputRatios, 0.95).toFixed(2)),
+  };
+  return {
+    status: reasonCodes.length === 0 && pilotPassCount === pilot.length && passCount === tasks.length ? 'pass' : 'fail',
+    taskCount: tasks.length,
+    pilotTaskCount: pilot.length,
+    pilotStatus: pilotPassCount === pilot.length ? 'pass' : 'fail',
+    metrics,
+    resultDigest: sha256(canonicalJson({ results, metrics })),
+    receiptRootDigest: directoryDigest(receiptRoot),
+    reasonCodes: [...new Set(reasonCodes)],
+    safeSummaryOnly: true,
+  };
 }
 
 function directoryDigest(root) {
@@ -495,8 +637,9 @@ export function runTrustedBenchmark(options = {}) {
   if (options.candidateRuntimeImportsEvaluator === true) reasonCodes.push('v130_candidate_runtime_imported_evaluator');
   if (options.metricSource === 'hard_coded') reasonCodes.push('v130_hard_coded_performance_metric');
   const executable = manifest && options.skipExecutableTasks !== true
-    ? runExecutableBenchmarkTasks(manifest)
-    : { status: 'fail', pilotStatus: 'fail', taskCount: 0, pilotTaskCount: 0, resultDigest: null, metrics: null };
+    ? evaluateActualAppServerReceipts(manifest, options.receiptRoot)
+    : { status: 'fail', pilotStatus: 'fail', taskCount: 0, pilotTaskCount: 0, resultDigest: null, metrics: null, reasonCodes: ['v130_task_count_without_execution'] };
+  reasonCodes.push(...(executable.reasonCodes || []));
   if (options.skipExecutableTasks === true) reasonCodes.push('v130_task_count_without_execution');
   if (!manifest || !hidden) reasonCodes.push('v130_benchmark_pack_incomplete');
   const taskCount = Number(manifest?.taskCount || 0);
@@ -507,7 +650,19 @@ export function runTrustedBenchmark(options = {}) {
   if (hidden?.visibleToAgent !== false) reasonCodes.push('v130_hidden_validator_visibility_invalid');
   if (executable.pilotStatus !== 'pass') reasonCodes.push('v130_benchmark_pilot_failed');
   if (executable.status !== 'pass') reasonCodes.push('v130_benchmark_executable_tasks_failed');
-  const { sameModelLift, learnedPolicyQualification } = pairedMetrics({ taskCount });
+  const { sameModelLift, learnedPolicyQualification } = pairedMetrics({
+    taskCount,
+    acceptedChangeRate: executable.metrics?.acceptedChangeRate,
+    inputTokensPerAcceptedChangeP50: (executable.metrics?.p50TokenRatio || 0) * 1000,
+    inputTokensPerAcceptedChangeP95: (executable.metrics?.p95TokenRatio || 0) * 1500,
+    regressionRate: executable.metrics?.regressionRate,
+    scopeViolationRate: executable.metrics?.scopeViolationRate,
+    authorityViolations: executable.metrics?.authorityViolationRate || 0,
+    safetyViolations: executable.metrics?.safetyViolationRate || 0,
+    humanInterventionCount: executable.metrics?.humanInterventionCount || 0,
+  });
+  if (executable.metrics?.metricSource !== 'actual_app_server_receipts') reasonCodes.push('v130_metric_source_not_actual_app_server_receipts');
+  if ((executable.metrics?.directP95InputTokenRatio || 0) > 1.0) reasonCodes.push('v130_direct_lane_p95_input_tokens_worse');
   if (sameModelLift.status !== 'pass') reasonCodes.push('v130_same_model_lift_not_met');
   const result = {
     schemaVersion: '1.3.0',
@@ -537,6 +692,7 @@ export function runTrustedBenchmark(options = {}) {
       acceptedChangeRateDelta: executable.metrics?.acceptedChangeRateDelta ?? 0.04,
       inputTokensPerAcceptedChangeP50Ratio: executable.metrics?.p50TokenRatio ?? sameModelLift.p50TokenRatio,
       inputTokensPerAcceptedChangeP95Ratio: executable.metrics?.p95TokenRatio ?? sameModelLift.p95TokenRatio,
+      directInputTokensP95Ratio: executable.metrics?.directP95InputTokenRatio ?? null,
       humanInterventionCount: sameModelLift.humanInterventionCount,
       hiddenTestPassRate: executable.metrics?.hiddenTestPassRate ?? 0,
       scopeViolationRate: executable.metrics?.scopeViolationRate ?? 0,
@@ -586,7 +742,8 @@ if (process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.res
   }
   const pack = argValue('--pack');
   const packBindingDigest = argValue('--pack-binding-digest') || argValue('--pack-digest');
-  const result = pack ? runTrustedBenchmark({ pack, packBindingDigest }) : buildBenchmarkFixture({ comparatorAvailable: false });
+  const receiptRoot = argValue('--receipt-root');
+  const result = pack ? runTrustedBenchmark({ pack, packBindingDigest, receiptRoot }) : buildBenchmarkFixture({ comparatorAvailable: false });
   console.log(canonicalJson(result));
   process.exit(result.status === 'pass' ? 0 : 1);
 }
