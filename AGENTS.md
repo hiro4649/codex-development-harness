@@ -1,13 +1,13 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.2.9
+CODEX_QUALITY_HARNESS_FILE v1.3.0
 
-Active Source: v1.2.9.
-Candidate Source: v1.3.0 source_shadow_candidate.
+Active Source: v1.3.0.
+Candidate Source: v1.3.0 active.
 Final Decision authority: v1.1.8_final_decision_kernel.
 Active policy pointer: docs/process/CODEX_HARNESS_MANIFEST.json.
-v1.3.0 candidate policy pointer: docs/process/CODEX_V130_POLICY.json.
+v1.3.0 active policy pointer: docs/process/CODEX_V130_POLICY.json.
 Execution entrypoint: scripts/codex-local-quality-gate.mjs.
 
 Prime Directive: ship the smallest correct change that increases product value without weakening truth, trust, security, or maintainability.
