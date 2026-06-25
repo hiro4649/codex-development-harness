@@ -254,6 +254,24 @@ function adversarialBenchmarkTests() {
   ];
 }
 
+function compatibilityTests() {
+  const source = readJson('CODEX_SOURCE_HARNESS_MANIFEST.json');
+  const legacySuites = source.legacySelfTestSuites || {};
+  const versionAuthority = source.versionAuthority || {};
+  const currentActiveV129 = source.activeHarnessVersion === '1.2.9'
+    && source.activeSelfTestSuite === 'v129'
+    && (versionAuthority.v129 === 'blocking_current_active_authority' || legacySuites.v129 === 'blocking_current_active_authority');
+  const futureActiveV130 = source.activeHarnessVersion === '1.3.0'
+    && source.activeSelfTestSuite === 'v130'
+    && versionAuthority.v130 === 'blocking_current_active_authority';
+  return [
+    test('v130_v129_current_or_immediate_rollback_contract', () => (currentActiveV129 || (futureActiveV130 && versionAuthority.v129 === 'immediate_rollback')) && fs.existsSync('scripts/codex-v129-self-test.mjs')),
+    test('v130_v128_blocking_compatibility_contract', () => ['blocking_compatibility', 'blocking_compatibility_rollback'].includes(versionAuthority.v128 || legacySuites.v128) && fs.existsSync('scripts/codex-v128-self-test.mjs')),
+    test('v130_v127_readable_compatibility_contract', () => ['blocking_compatibility', 'compatibility_readable'].includes(versionAuthority.v127 || legacySuites.v127) && fs.existsSync('scripts/codex-v127-self-test.mjs')),
+    test('v130_compatibility_does_not_create_authority', () => source.finalAuthority === 'v1.1.8_final_decision_kernel' && source.authorityCreated !== true),
+  ];
+}
+
 function selectedStages() {
   const arg = process.argv.find((item) => item.startsWith('--stage='));
   if (!arg) return new Set(['contracts']);
@@ -269,6 +287,7 @@ const cases = [
   ...(stages.has('orchestration-autonomy') || stages.has('orchestration') || stages.has('autonomy') ? orchestrationAutonomyTests() : []),
   ...(stages.has('token-differential') || stages.has('benchmark') ? tokenDifferentialTests() : []),
   ...(stages.has('adversarial-benchmark') || stages.has('adversarial') ? adversarialBenchmarkTests() : []),
+  ...(stages.has('v129-compatibility') || stages.has('v128-compatibility') || stages.has('v127-compatibility') || stages.has('compatibility') ? compatibilityTests() : []),
 ];
 const failures = cases.filter((item) => item.status !== 'pass');
 const report = {
