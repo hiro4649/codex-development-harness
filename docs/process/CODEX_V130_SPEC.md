@@ -5,9 +5,8 @@ CODEX_QUALITY_HARNESS_FILE v1.3.0
 Source HARNESS v1.3.0: Verified Goal Intake, Adaptive Capability Escalation,
 and Transactional Agent Teams.
 
-v1.3.0 is a Source HARNESS release. During shadow development, active Source
-authority remains v1.2.9 / v129. v1.3.0 candidate surfaces are non-authority
-until a separate Source Activation PR changes the active version.
+v1.3.0 is the active Source HARNESS release. v1.2.9 / v129 remains immediate
+rollback authority. v1.3.0 target rollout is not started.
 
 ## Authority
 
@@ -72,6 +71,4 @@ an independent verifier. If unavailable, the state is explicit and non-silent.
 
 ## Activation
 
-Activation may occur only after PR A-D shadow implementation, deterministic
-evaluation, compatibility checks, and real-host qualification pass. Activation
-must keep targetHarnessVersion at v1.2.9 and targetRollout not_started.
+Activation keeps targetHarnessVersion at v1.2.9 and targetRollout not_started.
