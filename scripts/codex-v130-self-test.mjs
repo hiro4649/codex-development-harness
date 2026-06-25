@@ -341,7 +341,7 @@ function contractTests() {
     test('v130_no_authority_created', () => policy.authorityCreated === false),
     test('v130_manifest_qualification_binding_uses_independent_receipts', () => {
       const binding = source.v130SourceShadowCandidate?.activationQualificationBinding || {};
-      return binding.metricSource === 'independent_hidden_validator_receipts'
+      return binding.metricSource === 'independent_executable_hidden_validators'
         && binding.pairedTaskCount === 60
         && binding.authorityCreated === false
         && /^sha256:[a-f0-9]{64}$/.test(binding.realHostReceiptDigest || '')

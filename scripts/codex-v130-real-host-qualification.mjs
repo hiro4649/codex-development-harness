@@ -97,6 +97,8 @@ function makeSkillInputItem(skillRegistry, skillName, roleId) {
   if (!entry) return { status: 'fail', reasonCodes: ['v130_skill_input_entry_missing'] };
   const item = {
     type: 'skill',
+    name: entry.name,
+    path: path.resolve(entry.skillPath),
     skillName: entry.name,
     skillDigest: entry.skillDigest,
     skillPathDigest: sha256(entry.skillPath),
@@ -115,10 +117,21 @@ function makeSkillInputItem(skillRegistry, skillName, roleId) {
 }
 
 function modelRoutingInventory(cli) {
-  const configPath = path.join(os.homedir(), '.codex', 'config.toml');
-  const text = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf8') : '';
-  const model = text.match(/^model\s*=\s*"([^"]+)"/m)?.[1] || process.env.CODEX_MODEL || 'default';
-  const effort = text.match(/^model_reasoning_effort\s*=\s*"([^"]+)"/m)?.[1] || 'default';
+  let modelList = null;
+  try {
+    const stdout = execFileSync(cli, ['app-server', 'model/list', '--json'], {
+      encoding: 'utf8',
+      timeout: 30000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      maxBuffer: 1024 * 1024,
+    });
+    modelList = JSON.parse(stdout);
+  } catch {
+    modelList = null;
+  }
+  const models = Array.isArray(modelList?.models) ? modelList.models : [];
+  const selected = models.find((item) => item.default === true) || models[0] || null;
+  const efforts = Array.isArray(selected?.supportedReasoningEfforts) ? selected.supportedReasoningEfforts : [];
   let cliVersion = null;
   try {
     cliVersion = execFileSync(cli, ['--version'], { encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
@@ -127,15 +140,18 @@ function modelRoutingInventory(cli) {
   }
   const inventory = {
     schemaVersion: '1.3.0',
-    provider: 'codex_cli',
-    modelListObserved: Boolean(model),
-    selectedModel: model,
-    selectedReasoningEffort: effort,
-    supportedReasoningEfforts: ['minimal', 'low', 'medium', 'high', 'default'],
-    modelUpgradeCount: 0,
-    capabilityEscalationCount: 1,
-    escalationReason: 'reasoning_insufficient',
-    freshThreadOnEscalation: true,
+    provider: 'codex_app_server',
+    modelListObserved: models.length > 0,
+    selectedModelDigest: selected?.id ? sha256(String(selected.id)) : null,
+    selectedReasoningEffort: efforts.includes('high') ? 'high' : efforts[0] || null,
+    supportedReasoningEfforts: efforts,
+    modelUpgradeCount: selected?.upgrade ? 1 : 0,
+    capabilityEscalationCount: efforts.length > 1 ? 1 : 0,
+    escalationReason: efforts.length > 1 ? 'reasoning_insufficient' : null,
+    freshThreadOnEscalation: efforts.length > 1,
+    inputModalities: selected?.inputModalities || [],
+    hidden: selected?.hidden === true,
+    availability: selected?.availability || (models.length ? 'available' : 'unavailable'),
     cliVersionDigest: cliVersion ? sha256(cliVersion) : null,
     authorityCreated: false,
   };
@@ -431,10 +447,9 @@ function runGoalSynthesisAndVerification({ cli, workerTree, verifierTree, head, 
     role: 'goal_synthesizer',
     prompt: `Return compact JSON only with keys status,role,goalCandidate,goalCandidateDigest,authorityCreated. goalCandidate must be a strict safe JSON object for a known-red bug repair with allowedFiles ["math.mjs"], forbiddenFiles ["package.json"], one required acceptance criterion, repairBudget maxRepairIterations 1, and no deploy/wallet/RPC authority. status "pass", role "goal_synthesizer", authorityCreated false.`,
   });
-  const fallbackGoalCandidate = buildGoalCandidate({ goalDigest });
   const goalCandidate = synthesizer.parsedSummary && synthesizer.parsedOutput?.goalCandidate
     ? synthesizer.parsedOutput.goalCandidate
-    : fallbackGoalCandidate;
+    : null;
   const goalCandidateDigest = sha256(canonicalJson(goalCandidate));
   const verifier = runCodexInvocation({
     cli,
@@ -461,6 +476,7 @@ function runGoalSynthesisAndVerification({ cli, workerTree, verifierTree, head, 
   receipt.receiptDigest = sha256(canonicalJson(receipt));
   const reasonCodes = [];
   if (receipt.synthesizerModelInvocationObserved !== true) reasonCodes.push('v130_goal_synthesizer_invocation_missing');
+  if (!goalCandidate) reasonCodes.push('v130_goal_candidate_missing');
   if (receipt.verifierModelInvocationObserved !== true) reasonCodes.push('v130_contract_verifier_invocation_missing');
   if (!receipt.synthesizerThreadDigest) reasonCodes.push('v130_goal_synthesizer_thread_missing');
   if (!receipt.verifierThreadDigest) reasonCodes.push('v130_contract_verifier_thread_missing');
