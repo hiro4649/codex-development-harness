@@ -76,8 +76,10 @@ function loadRepoFacts(repoRoot = process.cwd()) {
     v127SpecAvailable: fs.existsSync(path.join(repoRoot, 'docs/process/CODEX_V127_SPEC.md')),
     versionRegistryDeclaresPreviousV127: versionText.includes("previousVersion = '1.2.7'"),
     versionRegistryDeclaresPreviousV128: versionText.includes("previousVersion = '1.2.8'"),
+    versionRegistryDeclaresPreviousV129: versionText.includes("previousVersion = '1.2.9'"),
     versionRegistryDeclaresV127StatusKey: versionText.includes('v127SelfTestStatus'),
     versionRegistryDeclaresV128StatusKey: versionText.includes('v128SelfTestStatus'),
+    versionRegistryDeclaresV129StatusKey: versionText.includes('v129SelfTestStatus'),
     preservationDeclaresRollback: preservationText.includes('"rollback_writer_to_v127"'),
     preservationDeclaresDualReader: preservationText.includes('"v127_v128_dual_reader"'),
   };
@@ -200,7 +202,9 @@ function evaluateScenario(scenarioId, override = {}, context = {}) {
         && repoFacts.v127SpecAvailable === true
         && (repoFacts.versionRegistryDeclaresPreviousV127 === true
           || (repoFacts.versionRegistryDeclaresPreviousV128 === true
-            && repoFacts.versionRegistryDeclaresV128StatusKey === true))
+            && repoFacts.versionRegistryDeclaresV128StatusKey === true)
+          || (repoFacts.versionRegistryDeclaresPreviousV129 === true
+            && repoFacts.versionRegistryDeclaresV129StatusKey === true))
         && repoFacts.versionRegistryDeclaresV127StatusKey === true
         && repoFacts.preservationDeclaresRollback === true,
     };
@@ -518,7 +522,9 @@ function runV127RollbackScenario(tmpRoot, repoRoot) {
     && repoFacts.v127SpecAvailable === true
     && (repoFacts.versionRegistryDeclaresPreviousV127 === true
       || (repoFacts.versionRegistryDeclaresPreviousV128 === true
-        && repoFacts.versionRegistryDeclaresV128StatusKey === true))
+        && repoFacts.versionRegistryDeclaresV128StatusKey === true)
+      || (repoFacts.versionRegistryDeclaresPreviousV129 === true
+        && repoFacts.versionRegistryDeclaresV129StatusKey === true))
     && repoFacts.versionRegistryDeclaresV127StatusKey === true
     && repoFacts.preservationDeclaresRollback === true;
   const scenario = scenarioBase(scenarioId, {

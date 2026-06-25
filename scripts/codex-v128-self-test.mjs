@@ -273,7 +273,13 @@ function manifestDeclaresSourceActivation() {
     || (manifest.activeHarnessVersion === '1.2.9'
       && manifest.activeSelfTestSuite === 'v129'
       && manifest.activeSelfTestStatusKey === 'v129SelfTestStatus'
-      && manifest.versionAuthority?.v128 === 'blocking_compatibility_rollback'))
+      && manifest.versionAuthority?.v128 === 'blocking_compatibility_rollback')
+    || (manifest.activeHarnessVersion === '1.3.0'
+      && manifest.activeSelfTestSuite === 'v130'
+      && manifest.activeSelfTestStatusKey === 'v130SelfTestStatus'
+      && manifest.versionAuthority?.v130 === 'blocking_current_active_authority'
+      && manifest.versionAuthority?.v129 === 'immediate_rollback'
+      && manifest.versionAuthority?.v128 === 'blocking_compatibility'))
     && manifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.version === '1.2.8'
     && manifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.activationState === 'active'
     && manifest.deterministicDecisionProjectionAndTokenMinimalLoopClosure?.sourceActivation === 'active');
@@ -3470,11 +3476,11 @@ const cases = [
   ['v128_preserves_v118_final_decision', () => buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
   ['v128_source_activation_sets_current_active_authority', () => {
     const tuple = buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple;
-    return tuple.manifestActiveHarnessVersion === '1.2.9'
-      && tuple.activeSelfTestSuite === 'v129'
-      && tuple.activeSpecPath === 'docs/process/CODEX_V129_SPEC.md'
-      && tuple.candidateHarnessVersion === '1.2.9'
-      && tuple.candidateSelfTestSuite === 'v129'
+    return tuple.manifestActiveHarnessVersion === '1.3.0'
+      && tuple.activeSelfTestSuite === 'v130'
+      && tuple.activeSpecPath === 'docs/process/CODEX_V130_SPEC.md'
+      && tuple.candidateHarnessVersion === '1.3.0'
+      && tuple.candidateSelfTestSuite === 'v130'
       && tuple.candidateActivationState === 'active';
   }],
   ['manifest_declares_v128_source_activation', () => manifestDeclaresSourceActivation()],
