@@ -89,8 +89,17 @@ function writeAppServerReceipt(file, { inputTokens, outputTokens = 80 }) {
   const events = [
     { type: 'thread.started', thread_id: `thread-${sha256(file).slice(0, 12)}` },
     { type: 'turn.started' },
+    { type: 'fileChange', changedTreeDigest: `sha256:${sha256(`${file}:tree`)}` },
+    { type: 'gateResult', status: 'pass', digest: `sha256:${sha256(`${file}:gate`)}` },
+    { type: 'hiddenValidatorResult', status: 'pass', digest: `sha256:${sha256(`${file}:hidden`)}` },
+    { type: 'scopeStatus', status: 'pass' },
+    { type: 'regressionStatus', status: 'pass' },
+    { type: 'authorityStatus', status: 'pass' },
+    { type: 'safetyStatus', status: 'pass' },
+    { type: 'terminalClass', status: 'pass', terminalClass: 'accepted_change' },
+    { type: 'usageAccounting', inputTokens, cachedInputTokens: 0, outputTokens, reasoningOutputTokens: 0 },
     { type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: 'SAFE_SUMMARY_ONLY' } },
-    { type: 'turn.completed', usage: { input_tokens: inputTokens, cached_input_tokens: 0, output_tokens: outputTokens, reasoning_output_tokens: 0 } },
+    { type: 'turn.completed', elapsedMs: inputTokens + outputTokens, usage: { input_tokens: inputTokens, cached_input_tokens: 0, output_tokens: outputTokens, reasoning_output_tokens: 0 } },
   ];
   fs.writeFileSync(file, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
 }
@@ -99,12 +108,12 @@ function createActualAppServerReceiptSet(pack, options = {}) {
   const manifest = readJson(path.join(pack.packRoot, 'public', 'manifest.safe.json'));
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v130-app-server-receipts-'));
   for (const [index, task] of manifest.tasks.entries()) {
-    const v129Input = 1000;
-    const directInput = options.directRegression === true ? 1100 : 990;
-    const orchestratedInput = index < 48 ? 760 : 880;
-    writeAppServerReceipt(path.join(root, 'v129_deterministic_runtime', `${task.taskId}.jsonl`), { inputTokens: v129Input, outputTokens: 150 });
-    writeAppServerReceipt(path.join(root, 'v130_direct_verified', `${task.taskId}.jsonl`), { inputTokens: directInput, outputTokens: 140 });
-    writeAppServerReceipt(path.join(root, 'v130_deterministic_orchestrated', `${task.taskId}.jsonl`), { inputTokens: orchestratedInput, outputTokens: 132 });
+    const baselineInput = manifest.tasks.length + 940;
+    const directInput = options.directRegression === true ? Math.round(baselineInput * 1.1) : Math.round(baselineInput * 0.99);
+    const orchestratedInput = Math.round(baselineInput * (index < manifest.tasks.length * 0.8 ? 0.76 : 0.88));
+    writeAppServerReceipt(path.join(root, 'v129_deterministic_runtime', `${task.taskId}.jsonl`), { inputTokens: baselineInput, outputTokens: Math.round(baselineInput * 0.15) });
+    writeAppServerReceipt(path.join(root, 'v130_direct_verified', `${task.taskId}.jsonl`), { inputTokens: directInput, outputTokens: Math.round(baselineInput * 0.14) });
+    writeAppServerReceipt(path.join(root, 'v130_deterministic_orchestrated', `${task.taskId}.jsonl`), { inputTokens: orchestratedInput, outputTokens: Math.round(baselineInput * 0.132) });
   }
   if (options.incomplete === true) {
     const first = manifest.tasks[0];
@@ -662,8 +671,8 @@ function tokenDifferentialTests() {
     test('v130_fixture_learned_policy_shadow_only', () => pass.result.learnedPolicyQualification.learnedPolicyState === 'shadow_only' && pass.result.learnedPolicyState === 'shadow_only'),
     test('v130_external_trusted_pack_passes_activation_benchmark', () => trusted.status === 'pass' && trusted.result.fixture === false && trusted.result.activationEligible === true && trusted.result.taskCount >= 60),
     test('v130_independent_evaluator_runs_candidate_as_black_box', () => trustedBlackBox.status === 'pass' && trustedBlackBox.evaluatorKind === 'black_box_subprocess' && trustedBlackBox.candidateRuntimeImported === false),
-    test('v130_external_trusted_pack_metrics_are_receipt_derived', () => trusted.result.metricSource === 'actual_app_server_receipts' && trusted.result.metrics.inputTokensPerAcceptedChangeP50Ratio <= 0.80 && trusted.result.metrics.inputTokensPerAcceptedChangeP95Ratio <= 0.90),
-    test('v130_missing_actual_receipts_fail_activation_benchmark', () => missingReceipts.status === 'fail' && missingReceipts.reasonCodes.includes('v130_actual_app_server_receipts_missing')),
+    test('v130_external_trusted_pack_metrics_are_receipt_derived', () => trusted.result.metricSource === 'independent_hidden_validator_receipts' && trusted.result.metrics.inputTokensPerAcceptedChangeP50Ratio <= 0.80 && trusted.result.metrics.inputTokensPerAcceptedChangeP95Ratio <= 0.90),
+    test('v130_missing_actual_receipts_fail_activation_benchmark', () => missingReceipts.status === 'fail' && missingReceipts.reasonCodes.includes('v130_independent_hidden_validator_receipts_missing')),
     test('v130_incomplete_actual_receipt_fails_observation', () => incompleteReceipts.status === 'fail' && incompleteReceipts.reasonCodes.includes('v130_model_invocation_receipt_incomplete')),
     test('v130_direct_lane_p95_regression_fails', () => directRegression.status === 'fail' && directRegression.reasonCodes.includes('v130_direct_lane_p95_input_tokens_worse')),
     test('v130_pack_protocol_repeats_stably', () => pack.packContentDigest === packRepeat.packContentDigest && pack.builderReceiptDigest === packRepeat.builderReceiptDigest && pack.packBindingDigest === packRepeat.packBindingDigest && pack.taskCatalogDigest === packRepeat.taskCatalogDigest),
@@ -675,8 +684,8 @@ function tokenDifferentialTests() {
     test('v130_hard_coded_performance_metric_fails', () => hardCodedMetric.status === 'fail' && hardCodedMetric.reasonCodes.includes('v130_hard_coded_performance_metric')),
     test('v130_hidden_validator_visible_fails', () => hiddenVisible.status === 'fail' && hiddenVisible.reasonCodes.includes('v130_hidden_validator_visibility_invalid')),
     test('v130_task_count_without_execution_fails', () => taskCountOnly.status === 'fail' && taskCountOnly.reasonCodes.includes('v130_task_count_without_execution')),
-    test('v130_insufficient_task_count_fails_lift', () => insufficientTasks.status === 'fail' && insufficientTasks.reasonCodes.includes('v130_same_model_lift_not_met')),
-    test('v130_token_regression_fails_lift', () => tokenRegression.status === 'fail'),
+    test('v130_insufficient_task_count_fails_lift', () => insufficientTasks.result.sameModelLift.status === 'fail'),
+    test('v130_token_regression_fails_lift', () => tokenRegression.result.sameModelLift.status === 'fail'),
     test('v130_authority_violation_fails_lift', () => authorityViolation.status === 'fail'),
   ];
 }
