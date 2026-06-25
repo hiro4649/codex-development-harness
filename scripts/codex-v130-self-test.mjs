@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { compileSessionIntent, buildProjectProfile, compileVerifiedGoal } from './codex-v130-intake-compiler.mjs';
 import { buildCompiledInstructionEnvelope } from './codex-v130-context-compiler.mjs';
+import { compileV130Skills } from './codex-v130-skill-compiler.mjs';
 import { defaultTestRegistry, digestRegistry } from './codex-v129-capability-router.mjs';
 import { applyAvailabilityMask, buildConstrainedDag, compileAgentRole, evaluateEscalation, validateConstrainedDag } from './codex-v130-orchestration.mjs';
 import { buildProgressVector, buildTransactionalStateReceipt, evaluateNoHumanTerminal, ratifyExactHead } from './codex-v130-ratifier.mjs';
@@ -230,6 +231,7 @@ function contractTests() {
   const roleIds = (policy.agentRoles || []).map((item) => item.roleId);
   const incompatibilities = (policy.roleIncompatibilities || []).map((pair) => pair.join('!='));
   const schemaDefs = schema.definitions || {};
+  const skillRegistry = compileV130Skills();
   const exact = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
   const policyUnknown = JSON.parse(JSON.stringify(policy));
   policyUnknown.monotonicInheritance.extraNestedField = true;
@@ -248,6 +250,7 @@ function contractTests() {
     test('v130_stop_priority_order_pass', () => exact(policy.stopPriority, ['authority_boundary', 'safety_boundary', 'scope_boundary', 'regression', 'observation_invalid', 'baseline_contradiction', 'success', 'repair_exhausted', 'no_progress', 'budget_exhausted'])),
     test('v130_progress_vector_priority_separate', () => exact(policy.progressVectorPriority, ['authority_violation', 'safety_violation', 'regression', 'unmet_required_criteria', 'baseline_failures', 'confirmed_findings', 'evidence_contradictions', 'scope_deltas', 'validation_coverage'])),
     test('v130_no_new_p0_or_status_family', () => policy.monotonicInheritance?.newP0ArtifactCount === 0 && policy.monotonicInheritance?.newTopLevelStatusFamilyCount === 0),
+    test('v130_policy_binds_curated_skill_registry', () => skillRegistry.status === 'pass' && policy.skillTrustPolicy?.skillRegistryDigest === skillRegistry.skillRegistryDigest && policy.skillTrustPolicy?.catalogProjectionBytes === skillRegistry.registry.catalogProjectionBytes),
     test('v130_requirements_unique', () => reqIds.length > 10 && hasUnique(reqIds)),
     test('v130_requirements_complete', () => (policy.requirements || []).every((item) => ['requirementId', 'subject', 'condition', 'obligation', 'parameters', 'failureCode'].every((key) => Object.hasOwn(item, key)))),
     test('v130_machine_requirements_no_banned_terms', () => noMachineBannedTerms(policy)),
@@ -462,6 +465,7 @@ function intakeContextTests() {
   const workerEnvelope = buildCompiledInstructionEnvelope({ roleId: 'code_worker', actionClass: 'write' });
   const verifierEnvelope = buildCompiledInstructionEnvelope({ roleId: 'independent_verifier', actionClass: 'verify' });
   const oversizedEnvelope = buildCompiledInstructionEnvelope({ evidenceHandles: Array.from({ length: 12 }, (_, i) => `evidence-${i}-${'x'.repeat(120)}`) });
+  const skillRegistry = compileV130Skills();
   return [
     test('v130_session_intent_compiles_under_budget', () => intent.status === 'pass' && intent.canonicalBytes <= 1536 && /^sha256:[a-f0-9]{64}$/.test(intent.sessionIntent.intentDigest)),
     test('v130_session_intent_rejects_raw_logs', () => rawRejected.status === 'fail' && rawRejected.reasonCodes.includes('v130_forbidden_rawLogs')),
@@ -484,6 +488,9 @@ function intakeContextTests() {
     test('v130_instruction_envelope_reads_active_version_from_manifest', () => envelope.compiledInstructionEnvelope.activeHarnessVersion === docsManifestForIntake.activeHarnessVersion),
     test('v130_instruction_envelope_forbids_routine_cold_reads', () => envelope.compiledInstructionEnvelope.tokenBudgets.routineColdArtifactReads === 0 && envelope.compiledInstructionEnvelope.tokenBudgets.routineSkillCount === 0),
     test('v130_instruction_envelope_over_budget_fails', () => oversizedEnvelope.status === 'fail' && oversizedEnvelope.reasonCodes.includes('v130_instruction_envelope_over_budget')),
+    test('v130_curated_skill_registry_pass', () => skillRegistry.status === 'pass' && skillRegistry.registry.skillCount === 6 && /^sha256:[a-f0-9]{64}$/.test(skillRegistry.skillRegistryDigest)),
+    test('v130_skill_catalog_projection_under_budget', () => skillRegistry.registry.catalogProjectionBytes <= 512),
+    test('v130_skills_forbid_implicit_invocation', () => skillRegistry.registry.entries.every((entry) => entry.allowImplicitInvocation === false && entry.authorityCreated === false)),
   ];
 }
 

@@ -92,6 +92,10 @@
     ".github/workflows/quality-gate.yml",
     ".github/workflows/weekly-health-check.yml",
     ".agents/skills/codex-bugfix/SKILL.md",
+    ".agents/skills/**/*.md",
+    ".agents/skills/**/*.yaml",
+    "docs/process/v130-skill-candidates/**/*.md",
+    "docs/process/v130-skill-candidates/**/*.yaml",
     "AGENTS.md",
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
     "README.md",
@@ -1048,7 +1052,8 @@
     "codex-v123-self-test.mjs",
     "codex-v124-self-test.mjs",
     "codex-v125-self-test.mjs",
-    "codex-v126-self-test.mjs"
+    "codex-v126-self-test.mjs",
+    "codex-v130-skill-compiler.mjs"
   ],
   "optionalFiles": [],
   "activeHarnessVersion": "1.2.9",
