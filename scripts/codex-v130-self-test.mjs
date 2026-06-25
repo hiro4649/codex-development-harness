@@ -534,8 +534,29 @@ function orchestrationAutonomyTests() {
   const secondEscalation = evaluateEscalation(policy, { failureClass: 'reasoning_insufficient', escalationCount: 1 });
   const providerEscalation = evaluateEscalation(policy, { failureClass: 'provider_transient', escalationCount: 0 });
   const terminal = evaluateNoHumanTerminal(policy, 'manual_merge_required');
-  const ratified = ratifyExactHead(policy, { candidateHeadSha: '1'.repeat(40), observedHeadSha: '1'.repeat(40), requiredChecksPass: true, previousTrustedPolicy: '1.2.9', authorityCreated: false });
-  const stale = ratifyExactHead(policy, { candidateHeadSha: '1'.repeat(40), observedHeadSha: '2'.repeat(40), requiredChecksPass: true, previousTrustedPolicy: '1.2.9', authorityCreated: false });
+  const completeRatificationInput = {
+    repositoryId: 1,
+    goalDigest: 'sha256:' + 'a'.repeat(64),
+    baseSha: '0'.repeat(40),
+    candidateHeadSha: '1'.repeat(40),
+    observedHeadSha: '1'.repeat(40),
+    policyDigest: 'sha256:' + 'b'.repeat(64),
+    requiredChecksDigest: 'sha256:' + 'c'.repeat(64),
+    specialistReceiptDigests: ['sha256:' + 'd'.repeat(64)],
+    realHostReceiptDigest: 'sha256:' + 'e'.repeat(64),
+    benchmarkReceiptDigest: 'sha256:' + 'f'.repeat(64),
+    rollbackPlanDigest: 'sha256:' + '1'.repeat(64),
+    authorityEpoch: 'v129-trusted',
+    revocationNonce: 'nonce-1',
+    expiresAt: '2099-01-01T00:00:00.000Z',
+    decision: 'ratify',
+    requiredChecksPass: true,
+    previousTrustedPolicy: '1.2.9',
+    authorityCreated: false,
+  };
+  const ratified = ratifyExactHead(policy, completeRatificationInput);
+  const stale = ratifyExactHead(policy, { ...completeRatificationInput, observedHeadSha: '2'.repeat(40) });
+  const booleanOnlyRatification = ratifyExactHead(policy, { candidateHeadSha: '1'.repeat(40), observedHeadSha: '1'.repeat(40), requiredChecksPass: true, previousTrustedPolicy: '1.2.9', authorityCreated: false });
   const selfAuth = ratifyExactHead(policy, { candidateHeadSha: '1'.repeat(40), observedHeadSha: '1'.repeat(40), requiredChecksPass: true, previousTrustedPolicy: '1.3.0', candidatePolicySelfAuthorization: true });
   const stateReceipt = buildTransactionalStateReceipt({ goalDigest: 'sha256:' + 'a'.repeat(64), candidateHeadSha: '1'.repeat(40), treeDigest: 'sha256:' + 'b'.repeat(64) });
   const progress = buildProgressVector({ validationCoverageCount: 2 });
@@ -562,6 +583,7 @@ function orchestrationAutonomyTests() {
     test('v130_human_terminal_forbidden', () => terminal.status === 'fail' && terminal.terminal === 'auto_reject'),
     test('v130_exact_head_ratification_pass', () => ratified.status === 'pass' && ratified.receipt.exactHead === true),
     test('v130_exact_head_mismatch_fails', () => stale.status === 'fail' && stale.reasonCodes.includes('v130_exact_head_mismatch')),
+    test('v130_boolean_only_ratification_fails', () => booleanOnlyRatification.status === 'fail' && booleanOnlyRatification.reasonCodes.includes('v130_ratification_goalDigest_missing')),
     test('v130_candidate_policy_self_authorization_fails', () => selfAuth.status === 'fail' && selfAuth.reasonCodes.includes('v130_candidate_policy_self_authorization')),
     test('v130_transactional_state_receipt_pass', () => stateReceipt.status === 'pass' && /^sha256:[a-f0-9]{64}$/.test(stateReceipt.receipt.receiptDigest)),
     test('v130_progress_vector_digest_pass', () => /^sha256:[a-f0-9]{64}$/.test(progress.progressDigest)),
