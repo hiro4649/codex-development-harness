@@ -337,7 +337,7 @@ export function runV129ShadowFixture(env = process.env) {
     const verifierStdout = execFileSync(process.execPath, [fileURLToPath(new URL('./codex-v129-independent-verifier.mjs', import.meta.url))], {
       input: canonicalJson(verifierInput),
       encoding: 'utf8',
-      timeout: 30000,
+      timeout: 5000,
       maxBuffer: 8192,
       env: { CODEX_QUALITY_REPORT: 'json' },
     });

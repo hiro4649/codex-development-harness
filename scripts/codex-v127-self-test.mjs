@@ -73,13 +73,12 @@ function activeManifestPathsForMode(env = process.env) {
 
 function manifestThemeMatchesActiveVersion() {
   const manifests = activeManifestPathsForMode().map((file) => JSON.parse(fs.readFileSync(file, 'utf8')));
-  return manifests.every((manifest) => ['1.2.7', '1.2.8', '1.2.9', '1.3.0'].includes(manifest.activeHarnessVersion)
-    && ['v127', 'v128', 'v129', 'v130'].includes(manifest.activeSelfTestSuite)
+  return manifests.every((manifest) => ['1.2.7', '1.2.8', '1.2.9'].includes(manifest.activeHarnessVersion)
+    && ['v127', 'v128', 'v129'].includes(manifest.activeSelfTestSuite)
     && [
       'Receipt-Carried Continuation and Evidence Compression',
       'Deterministic Decision Projection and Token-Minimal Loop Closure',
       'Goal-Contracted Capability Router',
-      'Runtime Agent Harness and Qualified Skill Invocation',
     ].includes(manifest.theme));
 }
 
@@ -90,10 +89,10 @@ const cases = [
   ['v127_preserves_v118_final_decision', () => buildOrchestrationCapsule().finalAuthority === 'v1.1.8_final_decision_kernel'],
   ['v127_compatibility_survives_current_active_authority', () => {
     const tuple = buildOrchestrationCapsule().skillContextRouting.activeAuthorityTuple;
-    return ['CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9', 'CODEX_QUALITY_HARNESS_FILE v1.3.0'].includes(tuple.agentsMarker)
-      && ['1.2.7', '1.2.8', '1.2.9', '1.3.0'].includes(tuple.manifestActiveHarnessVersion)
-      && ['v127', 'v128', 'v129', 'v130'].includes(tuple.activeSelfTestSuite)
-      && ['docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md', 'docs/process/CODEX_V130_SPEC.md'].includes(tuple.activeSpecPath);
+    return ['CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9'].includes(tuple.agentsMarker)
+      && ['1.2.7', '1.2.8', '1.2.9'].includes(tuple.manifestActiveHarnessVersion)
+      && ['v127', 'v128', 'v129'].includes(tuple.activeSelfTestSuite)
+      && ['docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md'].includes(tuple.activeSpecPath);
   }],
   ['process_receipt_survives_in_scope_commit_head_changes', () => passed(validateTypedOwnerProcessReceiptAndContinuationKernel(buildOrchestrationCapsule({
     typedOwnerProcessReceiptAndContinuationKernel: {
