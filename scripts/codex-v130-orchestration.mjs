@@ -141,6 +141,83 @@ export function evaluateEscalation(policy, input = {}) {
   return { status: reasonCodes.length ? 'fail' : 'pass', reasonCodes, escalationCount: reasonCodes.length ? Number(input.escalationCount || 0) : Number(input.escalationCount || 0) + 1, safeSummaryOnly: true };
 }
 
+export function executeConstrainedDag(policy, dagInput = {}, runtime = {}) {
+  const planned = buildConstrainedDag(policy, dagInput);
+  const reasonCodes = [...(planned.reasonCodes || [])];
+  const dag = planned.dag || { nodes: [], edges: [] };
+  const handles = new Map();
+  const nodeReceipts = [];
+  const invokeNode = typeof runtime.invokeNode === 'function' ? runtime.invokeNode : null;
+  if (planned.status !== 'pass') return { status: 'fail', reasonCodes, dag, nodeReceipts, evidenceHandles: [], authorityCreated: false, safeSummaryOnly: true };
+  if (!invokeNode) reasonCodes.push('v130_dag_invoker_missing');
+  for (const node of dag.nodes || []) {
+    const role = compileAgentRole(policy, node.roleId);
+    if (role.status !== 'pass') {
+      reasonCodes.push(...(role.reasonCodes || ['v130_dag_role_compile_failed']));
+      continue;
+    }
+    const inputHandleDigests = (node.inputHandles || []).map((handle) => handle === 'goal' ? dagInput.goalDigest || 'goal' : handles.get(handle)?.handleDigest || null);
+    if (inputHandleDigests.some((digest) => !digest)) reasonCodes.push('v130_dag_input_handle_missing');
+    const invocation = invokeNode ? invokeNode({ node, compiledRole: role.compiledRole, inputHandleDigests, dag }) : { status: 'fail', reasonCodes: ['v130_dag_invoker_missing'] };
+    const receipt = {
+      nodeId: node.nodeId,
+      roleId: node.roleId,
+      status: invocation.status || 'fail',
+      reasonCodes: invocation.reasonCodes || [],
+      agentId: invocation.agentId || null,
+      threadDigest: invocation.threadDigest || null,
+      worktreeDigest: invocation.worktreeDigest || null,
+      modelInvocationObserved: invocation.modelInvocationObserved === true,
+      fileChangeObserved: invocation.fileChangeObserved === true,
+      readOnlyObserved: invocation.readOnlyObserved === true,
+      outputDigest: invocation.outputDigest || null,
+      authorityCreated: invocation.authorityCreated === true,
+    };
+    receipt.receiptDigest = sha256(canonicalJson(receipt));
+    if (receipt.status !== 'pass') reasonCodes.push(...(receipt.reasonCodes.length ? receipt.reasonCodes : ['v130_dag_node_failed']));
+    if (receipt.modelInvocationObserved !== true) reasonCodes.push('v130_dag_model_invocation_missing');
+    if (!/^sha256:[a-f0-9]{64}$/.test(String(receipt.threadDigest || ''))) reasonCodes.push('v130_dag_thread_digest_missing');
+    if (!/^sha256:[a-f0-9]{64}$/.test(String(receipt.worktreeDigest || ''))) reasonCodes.push('v130_dag_worktree_digest_missing');
+    if (receipt.authorityCreated === true) reasonCodes.push('v130_dag_authority_created');
+    if (String(node.roleId).includes('verifier') && receipt.fileChangeObserved === true) reasonCodes.push('v130_dag_verifier_modified_workspace');
+    if (['code_worker', 'test_worker', 'security_patch_worker'].includes(node.roleId) && receipt.fileChangeObserved !== true) reasonCodes.push('v130_dag_writer_file_change_missing');
+    const handle = {
+      handleId: node.nodeId,
+      nodeId: node.nodeId,
+      handleDigest: sha256(canonicalJson({
+        nodeId: node.nodeId,
+        roleId: node.roleId,
+        receiptDigest: receipt.receiptDigest,
+        outputDigest: receipt.outputDigest,
+      })),
+      rawOutputStored: false,
+      safeSummaryOnly: true,
+    };
+    handles.set(node.nodeId, handle);
+    nodeReceipts.push(receipt);
+  }
+  const writer = nodeReceipts.find((receipt) => ['code_worker', 'test_worker', 'security_patch_worker'].includes(receipt.roleId));
+  const verifier = nodeReceipts.find((receipt) => String(receipt.roleId).includes('verifier'));
+  if (!writer) reasonCodes.push('v130_dag_writer_missing');
+  if (!verifier) reasonCodes.push('v130_dag_missing_verifier');
+  if (writer && verifier) {
+    if (writer.agentId && writer.agentId === verifier.agentId) reasonCodes.push('v130_dag_worker_verifier_same_agent');
+    if (writer.threadDigest === verifier.threadDigest) reasonCodes.push('v130_dag_worker_verifier_same_thread');
+    if (writer.worktreeDigest === verifier.worktreeDigest) reasonCodes.push('v130_dag_worker_verifier_same_worktree');
+  }
+  return {
+    status: reasonCodes.length ? 'fail' : 'pass',
+    reasonCodes,
+    dag,
+    nodeReceipts,
+    evidenceHandles: [...handles.values()],
+    completionPath: ['Goal Completion Proof', 'v129 Goal Finalizer', 'Final Decision'],
+    rawOutputStored: false,
+    authorityCreated: false,
+    safeSummaryOnly: true,
+  };
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const fs = await import('node:fs');
   const policy = JSON.parse(fs.readFileSync('docs/process/CODEX_V130_POLICY.json', 'utf8'));
