@@ -1,8 +1,13 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.2.7 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.2.9 -->
 # Codex Development Harness
 
-Version: v1.2.7
-Name: Receipt-Carried Continuation and Evidence Compression
+Active Source: v1.2.9
+Candidate: v1.3.0 source_shadow_candidate
+Immediate rollback: v1.2.9
+Blocking compatibility: v1.2.8
+Legacy compatibility: v1.2.7
+Final Decision authority: v1.1.8_final_decision_kernel
+Target rollout: completed for v1.2.9; v1.3.0 target rollout not started
 
 Codex Development Harness is an AI PR safety gate. It helps decide whether an
 AI-authored change can be trusted, what evidence supports that decision, who is
@@ -13,14 +18,12 @@ Current authority is:
 - `AGENTS.md`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
-- `docs/process/CODEX_V127_SPEC.md`
+- `docs/process/CODEX_V129_SPEC.md`
+- `docs/process/CODEX_V130_SPEC.md` (candidate, non-authority during shadow)
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 
-v1.2.7 keeps v1.1.8 Final Decision as final authority and preserves v1.1.9
-orchestration/proof artifacts plus v1.2.0-v1.2.6 compatibility. It adds only
-internal typed owner process receipts, continuation decisions, decision
-evidence envelopes, validation evidence reuse, token economy, and blocker
-closure semantics inside existing harness surfaces.
+v1.2.9 is the active Source authority. v1.3.0 is a source shadow candidate until
+an Activation PR changes the active manifest and passes fixed-head evidence.
 
 It does not add target rollout authority, new P0 artifacts, new top-level
 operator statuses, new Skills, scheduler authority, release/deploy/wallet/RPC
