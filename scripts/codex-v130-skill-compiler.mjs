@@ -8,7 +8,22 @@ import { fileURLToPath } from 'node:url';
 import { canonicalJson } from './codex-v129-goal-contract.mjs';
 
 const REQUIRED_SKILLS = ['tight-debug-loop', 'vertical-tdd', 'deep-module-design'];
-const SKILL_ROOTS = ['docs/process/v130-skill-candidates', '.agents/skills'];
+const CANDIDATE_SKILL_ROOT = 'docs/process/v130-skill-candidates';
+const ACTIVE_SKILL_ROOT = '.agents/skills';
+
+function sourceActivationState() {
+  try {
+    const policy = JSON.parse(fs.readFileSync('docs/process/CODEX_V130_POLICY.json', 'utf8'));
+    return policy.sourceActivation === 'active' ? 'active' : 'shadow';
+  } catch {
+    return 'shadow';
+  }
+}
+
+function selectedSkillRoots(options = {}) {
+  if (Array.isArray(options.skillRoots)) return options.skillRoots;
+  return sourceActivationState() === 'active' ? [ACTIVE_SKILL_ROOT] : [CANDIDATE_SKILL_ROOT];
+}
 
 function sha256(value) {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
@@ -42,7 +57,8 @@ function yamlImplicitInvocationFalse(file) {
 export function compileV130Skills(options = {}) {
   const reasonCodes = [];
   const entries = [];
-  for (const root of SKILL_ROOTS) {
+  const roots = selectedSkillRoots(options);
+  for (const root of roots) {
     for (const name of REQUIRED_SKILLS) {
       const skillPath = path.join(root, name, 'SKILL.md').replace(/\\/g, '/');
       const yamlPath = path.join(root, name, 'agents', 'openai.yaml').replace(/\\/g, '/');
@@ -110,9 +126,15 @@ export function compileV130Skills(options = {}) {
     authorityCreated: false,
   };
   registry.skillRegistryDigest = sha256(canonicalJson(registry));
-  if (canonicalEntries.length !== REQUIRED_SKILLS.length * SKILL_ROOTS.length) reasonCodes.push('v130_skill_registry_count_mismatch');
+  if (canonicalEntries.length !== REQUIRED_SKILLS.length * roots.length) reasonCodes.push('v130_skill_registry_count_mismatch');
   if (catalogProjectionBytes > 512) reasonCodes.push('v130_skill_catalog_projection_over_budget');
-  if (options.expectActiveOnly === true && canonicalEntries.some((entry) => entry.skillPath.startsWith('docs/process/v130-skill-candidates/'))) {
+  if (sourceActivationState() !== 'active' && fs.existsSync(path.join(ACTIVE_SKILL_ROOT, 'tight-debug-loop', 'SKILL.md'))) {
+    reasonCodes.push('v130_active_skill_path_present_during_shadow');
+  }
+  if (sourceActivationState() === 'active' && fs.existsSync(path.join(CANDIDATE_SKILL_ROOT, 'tight-debug-loop', 'SKILL.md'))) {
+    reasonCodes.push('v130_candidate_skill_path_present_during_active');
+  }
+  if (options.expectActiveOnly === true && canonicalEntries.some((entry) => entry.skillPath.startsWith(`${CANDIDATE_SKILL_ROOT}/`))) {
     reasonCodes.push('v130_candidate_skill_path_still_active');
   }
   return {

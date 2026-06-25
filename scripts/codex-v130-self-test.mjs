@@ -488,7 +488,7 @@ function intakeContextTests() {
     test('v130_instruction_envelope_reads_active_version_from_manifest', () => envelope.compiledInstructionEnvelope.activeHarnessVersion === docsManifestForIntake.activeHarnessVersion),
     test('v130_instruction_envelope_forbids_routine_cold_reads', () => envelope.compiledInstructionEnvelope.tokenBudgets.routineColdArtifactReads === 0 && envelope.compiledInstructionEnvelope.tokenBudgets.routineSkillCount === 0),
     test('v130_instruction_envelope_over_budget_fails', () => oversizedEnvelope.status === 'fail' && oversizedEnvelope.reasonCodes.includes('v130_instruction_envelope_over_budget')),
-    test('v130_curated_skill_registry_pass', () => skillRegistry.status === 'pass' && skillRegistry.registry.skillCount === 6 && /^sha256:[a-f0-9]{64}$/.test(skillRegistry.skillRegistryDigest)),
+    test('v130_curated_skill_registry_pass', () => skillRegistry.status === 'pass' && skillRegistry.registry.skillCount === 3 && /^sha256:[a-f0-9]{64}$/.test(skillRegistry.skillRegistryDigest)),
     test('v130_skill_catalog_projection_under_budget', () => skillRegistry.registry.catalogProjectionBytes <= 512),
     test('v130_skills_forbid_implicit_invocation', () => skillRegistry.registry.entries.every((entry) => entry.allowImplicitInvocation === false && entry.authorityCreated === false)),
   ];
