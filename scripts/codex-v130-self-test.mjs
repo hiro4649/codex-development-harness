@@ -3,6 +3,8 @@
 
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import os from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileSessionIntent, buildProjectProfile, compileVerifiedGoal } from './codex-v130-intake-compiler.mjs';
 import { buildCompiledInstructionEnvelope } from './codex-v130-context-compiler.mjs';
@@ -11,6 +13,7 @@ import { defaultTestRegistry, digestRegistry } from './codex-v129-capability-rou
 import { applyAvailabilityMask, buildConstrainedDag, compileAgentRole, evaluateEscalation, validateConstrainedDag } from './codex-v130-orchestration.mjs';
 import { buildProgressVector, buildTransactionalStateReceipt, evaluateNoHumanTerminal, ratifyExactHead } from './codex-v130-ratifier.mjs';
 import { buildAdversarialFixture, buildBenchmarkFixture, createTrustedBenchmarkPack, runTrustedBenchmark } from './codex-v130-benchmark.mjs';
+import { evaluateBenchmarkBlackBox } from './codex-v130-independent-evaluator.mjs';
 
 function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -79,6 +82,35 @@ function sha256(value) {
 
 function byteLength(value) {
   return Buffer.byteLength(String(value), 'utf8');
+}
+
+function writeAppServerReceipt(file, { inputTokens, outputTokens = 80 }) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const events = [
+    { type: 'thread.started', thread_id: `thread-${sha256(file).slice(0, 12)}` },
+    { type: 'turn.started' },
+    { type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: 'SAFE_SUMMARY_ONLY' } },
+    { type: 'turn.completed', usage: { input_tokens: inputTokens, cached_input_tokens: 0, output_tokens: outputTokens, reasoning_output_tokens: 0 } },
+  ];
+  fs.writeFileSync(file, `${events.map((event) => JSON.stringify(event)).join('\n')}\n`);
+}
+
+function createActualAppServerReceiptSet(pack, options = {}) {
+  const manifest = readJson(path.join(pack.packRoot, 'public', 'manifest.safe.json'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v130-app-server-receipts-'));
+  for (const [index, task] of manifest.tasks.entries()) {
+    const v129Input = 1000;
+    const directInput = options.directRegression === true ? 1100 : 990;
+    const orchestratedInput = index < 48 ? 760 : 880;
+    writeAppServerReceipt(path.join(root, 'v129_deterministic_runtime', `${task.taskId}.jsonl`), { inputTokens: v129Input, outputTokens: 150 });
+    writeAppServerReceipt(path.join(root, 'v130_direct_verified', `${task.taskId}.jsonl`), { inputTokens: directInput, outputTokens: 140 });
+    writeAppServerReceipt(path.join(root, 'v130_deterministic_orchestrated', `${task.taskId}.jsonl`), { inputTokens: orchestratedInput, outputTokens: 132 });
+  }
+  if (options.incomplete === true) {
+    const first = manifest.tasks[0];
+    fs.writeFileSync(path.join(root, 'v130_direct_verified', `${first.taskId}.jsonl`), '{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}\n');
+  }
+  return root;
 }
 
 function validateSchemaValue(schema, rootName, value, rootSchema = schema, path = rootName) {
@@ -605,24 +637,35 @@ function tokenDifferentialTests() {
   const pack = createTrustedBenchmarkPack();
   const packRepeat = createTrustedBenchmarkPack();
   const packCrlf = createTrustedBenchmarkPack({ lineEnding: 'crlf' });
-  const trusted = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest });
+  const receiptRoot = createActualAppServerReceiptSet(pack);
+  const incompleteReceiptRoot = createActualAppServerReceiptSet(pack, { incomplete: true });
+  const directRegressionReceiptRoot = createActualAppServerReceiptSet(pack, { directRegression: true });
+  const trusted = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot });
+  const trustedBlackBox = evaluateBenchmarkBlackBox({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot });
+  const missingReceipts = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest });
+  const incompleteReceipts = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot: incompleteReceiptRoot });
+  const directRegression = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot: directRegressionReceiptRoot });
   const digestMismatch = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: 'sha256:0000000000000000000000000000000000000000000000000000000000000000' });
-  const receiptIncluded = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, testIncludeReceiptInContentDigest: true });
-  const rawSourceIdentity = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, testRawSourceBuilderIdentity: true });
-  const runtimeImport = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, candidateRuntimeImportsEvaluator: true });
-  const hardCodedMetric = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, metricSource: 'hard_coded' });
+  const receiptIncluded = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot, testIncludeReceiptInContentDigest: true });
+  const rawSourceIdentity = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot, testRawSourceBuilderIdentity: true });
+  const runtimeImport = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot, candidateRuntimeImportsEvaluator: true });
+  const hardCodedMetric = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, receiptRoot, metricSource: 'hard_coded' });
   const taskCountOnly = runTrustedBenchmark({ pack: pack.packRoot, packBindingDigest: pack.packBindingDigest, skipExecutableTasks: true });
   const visibleHiddenPack = createTrustedBenchmarkPack();
   const hiddenPath = `${visibleHiddenPack.packRoot}/hidden/validators.safe.json`;
   const hidden = JSON.parse(fs.readFileSync(hiddenPath, 'utf8'));
   fs.writeFileSync(hiddenPath, `${canonicalJson({ ...hidden, visibleToAgent: true })}\n`);
-  const hiddenVisible = runTrustedBenchmark({ pack: visibleHiddenPack.packRoot, packBindingDigest: visibleHiddenPack.packBindingDigest });
+  const hiddenVisible = runTrustedBenchmark({ pack: visibleHiddenPack.packRoot, packBindingDigest: visibleHiddenPack.packBindingDigest, receiptRoot: createActualAppServerReceiptSet(visibleHiddenPack) });
   return [
     test('v130_same_model_lift_fixture_is_not_activation_eligible', () => pass.status === 'pass' && pass.result.fixture === true && pass.result.activationEligible === false && pass.result.sameModelLiftEvidenceState === 'fixture_only'),
     test('v130_fable_comparator_unavailable_no_superiority_claim', () => pass.result.externalComparator.comparatorState === 'unavailable' && pass.result.externalComparator.superiorityClaimState === 'not_proven'),
     test('v130_fixture_learned_policy_shadow_only', () => pass.result.learnedPolicyQualification.learnedPolicyState === 'shadow_only' && pass.result.learnedPolicyState === 'shadow_only'),
     test('v130_external_trusted_pack_passes_activation_benchmark', () => trusted.status === 'pass' && trusted.result.fixture === false && trusted.result.activationEligible === true && trusted.result.taskCount >= 60),
-    test('v130_external_trusted_pack_metrics_are_receipt_derived', () => trusted.result.metricSource === 'actual_invocation_receipts' && trusted.result.metrics.inputTokensPerAcceptedChangeP50Ratio <= 0.80 && trusted.result.metrics.inputTokensPerAcceptedChangeP95Ratio <= 0.90),
+    test('v130_independent_evaluator_runs_candidate_as_black_box', () => trustedBlackBox.status === 'pass' && trustedBlackBox.evaluatorKind === 'black_box_subprocess' && trustedBlackBox.candidateRuntimeImported === false),
+    test('v130_external_trusted_pack_metrics_are_receipt_derived', () => trusted.result.metricSource === 'actual_app_server_receipts' && trusted.result.metrics.inputTokensPerAcceptedChangeP50Ratio <= 0.80 && trusted.result.metrics.inputTokensPerAcceptedChangeP95Ratio <= 0.90),
+    test('v130_missing_actual_receipts_fail_activation_benchmark', () => missingReceipts.status === 'fail' && missingReceipts.reasonCodes.includes('v130_actual_app_server_receipts_missing')),
+    test('v130_incomplete_actual_receipt_fails_observation', () => incompleteReceipts.status === 'fail' && incompleteReceipts.reasonCodes.includes('v130_model_invocation_receipt_incomplete')),
+    test('v130_direct_lane_p95_regression_fails', () => directRegression.status === 'fail' && directRegression.reasonCodes.includes('v130_direct_lane_p95_input_tokens_worse')),
     test('v130_pack_protocol_repeats_stably', () => pack.packContentDigest === packRepeat.packContentDigest && pack.builderReceiptDigest === packRepeat.builderReceiptDigest && pack.packBindingDigest === packRepeat.packBindingDigest && pack.taskCatalogDigest === packRepeat.taskCatalogDigest),
     test('v130_pack_protocol_normalizes_line_endings', () => pack.packContentDigest === packCrlf.packContentDigest && pack.builderReceiptDigest === packCrlf.builderReceiptDigest && pack.packBindingDigest === packCrlf.packBindingDigest),
     test('v130_external_pack_binding_mismatch_fails', () => digestMismatch.status === 'fail' && digestMismatch.reasonCodes.includes('v130_benchmark_pack_binding_digest_mismatch')),
