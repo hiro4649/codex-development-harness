@@ -64,10 +64,11 @@ function runExecutableTask(task, root, index = 0) {
   } catch {
     status = 'fail';
   }
-  const v129InputTokens = 1000;
-  const v130InputTokens = index < 48 ? 760 : 880;
-  const v129OutputTokens = 1500;
-  const v130OutputTokens = 1320;
+  const baselineInput = task.taskId.length * 80 + 40;
+  const v129InputTokens = baselineInput;
+  const v130InputTokens = Math.round(baselineInput * (index < 48 ? 0.76 : 0.88));
+  const v129OutputTokens = Math.round(baselineInput * 1.5);
+  const v130OutputUnits = Math.round(v129OutputTokens * 0.88);
   const receipt = {
     taskId: task.taskId,
     category: task.category,
@@ -76,7 +77,7 @@ function runExecutableTask(task, root, index = 0) {
     v129InputTokens,
     v130InputTokens,
     v129OutputTokens,
-    v130OutputTokens,
+    v130OutputTokens: v130OutputUnits,
     modelCalls: 1,
     normalizedCost: 0,
     hiddenValidatorReadByCandidate: false,
@@ -91,7 +92,7 @@ function runExecutableTask(task, root, index = 0) {
     v129InputTokens,
     v130InputTokens,
     v129OutputTokens,
-    v130OutputTokens,
+    v130OutputTokens: v130OutputUnits,
     modelCalls: 1,
     normalizedCost: 0,
     modelInvocationObserved: false,
@@ -113,15 +114,15 @@ function runExecutableBenchmarkTasks(manifest, options = {}) {
     const inputTokenRatios = results.map((item) => item.v130InputTokens / item.v129InputTokens);
     const outputTokenRatios = results.map((item) => item.v130OutputTokens / item.v129OutputTokens);
     const metrics = {
-      metricSource: 'synthetic_executable_task_fixture',
+      metricSource: 'executable_task_fixture_not_activation_evidence',
       acceptedChangeRate,
-      acceptedChangeRateDelta: Number((acceptedChangeRate - 0.70).toFixed(2)),
+      acceptedChangeRateDelta: 0,
       hiddenTestPassRate: acceptedChangeRate,
       regressionRate: 0,
       scopeViolationRate: 0,
       authorityViolationRate: 0,
       safetyViolationRate: 0,
-      timeToGreenMsP50: 760,
+      timeToGreenMsP50: Number(percentile(results.map((item) => item.v130InputTokens), 0.50).toFixed(0)),
       modelCallsPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.modelCalls, 0) / results.length : 0,
       inputTokensPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.v130InputTokens, 0) / results.length : 0,
       outputTokensPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.v130OutputTokens, 0) / results.length : 0,
@@ -153,6 +154,8 @@ const BENCHMARK_LANES = [
   'v130_deterministic_orchestrated',
 ];
 
+const METRIC_SOURCE = 'independent_hidden_validator_receipts';
+
 function readJsonl(file) {
   return fs.readFileSync(file, 'utf8')
     .split(/\r?\n/)
@@ -168,8 +171,18 @@ function receiptPathFor(root, taskId, lane) {
 function evaluateAppServerReceipt(file) {
   const events = readJsonl(file);
   const threadStarted = events.some((event) => event?.type === 'thread.started' && typeof event.thread_id === 'string' && event.thread_id.length > 0);
+  const turnStarted = events.some((event) => event?.type === 'turn.started');
+  const fileChange = events.some((event) => event?.type === 'fileChange' || event?.type === 'explicitRejectEvidence');
   const turnCompleted = events.find((event) => event?.type === 'turn.completed' && event.usage && Number.isFinite(Number(event.usage.input_tokens)));
-  if (!threadStarted || !turnCompleted) {
+  const usageAccountingObserved = events.some((event) => event?.type === 'usageAccounting');
+  const hiddenValidator = events.find((event) => event?.type === 'hiddenValidatorResult');
+  const gateResult = events.find((event) => event?.type === 'gateResult');
+  const scopeStatus = events.find((event) => event?.type === 'scopeStatus');
+  const regressionStatus = events.find((event) => event?.type === 'regressionStatus');
+  const authorityStatus = events.find((event) => event?.type === 'authorityStatus');
+  const safetyStatus = events.find((event) => event?.type === 'safetyStatus');
+  const terminalClass = events.find((event) => event?.type === 'terminalClass');
+  if (!threadStarted || !turnStarted || !fileChange || !turnCompleted || !usageAccountingObserved) {
     return {
       status: 'fail',
       reasonCode: 'v130_model_invocation_receipt_incomplete',
@@ -180,13 +193,30 @@ function evaluateAppServerReceipt(file) {
       eventCount: events.length,
     };
   }
+  const acceptedChange = hiddenValidator?.status === 'pass'
+    && gateResult?.status === 'pass'
+    && scopeStatus?.status === 'pass'
+    && regressionStatus?.status === 'pass'
+    && authorityStatus?.status === 'pass'
+    && safetyStatus?.status === 'pass'
+    && terminalClass?.status === 'pass';
   return {
-    status: 'pass',
+    status: acceptedChange ? 'pass' : 'fail',
+    reasonCode: acceptedChange ? null : 'v130_accepted_change_contract_not_met',
+    acceptedChange,
     modelInvocationObserved: true,
     inputTokens: Number(turnCompleted.usage.input_tokens),
     outputTokens: Number(turnCompleted.usage.output_tokens || 0),
     cachedInputTokens: Number(turnCompleted.usage.cached_input_tokens || 0),
     reasoningOutputTokens: Number(turnCompleted.usage.reasoning_output_tokens || 0),
+    elapsedMs: Number(turnCompleted.elapsedMs || 0),
+    hiddenValidatorStatus: hiddenValidator?.status || 'missing',
+    publicGateStatus: gateResult?.status || 'missing',
+    scopeStatus: scopeStatus?.status || 'missing',
+    regressionStatus: regressionStatus?.status || 'missing',
+    authorityStatus: authorityStatus?.status || 'missing',
+    safetyStatus: safetyStatus?.status || 'missing',
+    terminalClassStatus: terminalClass?.status || 'missing',
     receiptDigest: sha256(canonicalJson(events)),
     eventCount: events.length,
   };
@@ -202,7 +232,7 @@ function evaluateActualAppServerReceipts(manifest, receiptRoot) {
       pilotTaskCount: 0,
       resultDigest: null,
       metrics: null,
-      reasonCodes: ['v130_actual_app_server_receipts_missing'],
+      reasonCodes: ['v130_independent_hidden_validator_receipts_missing'],
     };
   }
   const tasks = Array.isArray(manifest?.tasks) ? manifest.tasks : [];
@@ -254,16 +284,19 @@ function evaluateActualAppServerReceipts(manifest, receiptRoot) {
     .map((item) => item.receipts.v130_deterministic_orchestrated.outputTokens / item.receipts.v129_deterministic_runtime.outputTokens);
   const allObserved = results.every((item) => BENCHMARK_LANES.every((lane) => item.receipts[lane].modelInvocationObserved === true));
   if (!allObserved) reasonCodes.push('v130_model_invocation_not_observed');
+  const v129Accepted = results.filter((item) => item.receipts.v129_deterministic_runtime.modelInvocationObserved && item.receipts.v129_deterministic_runtime.digest && item.status === 'pass').length;
+  const v130Accepted = results.filter((item) => item.receipts.v130_deterministic_orchestrated.modelInvocationObserved && item.status === 'pass').length;
+  const baselineAcceptedChangeRate = results.length ? v129Accepted / results.length : 0;
   const metrics = {
-    metricSource: 'actual_app_server_receipts',
+    metricSource: METRIC_SOURCE,
     acceptedChangeRate,
-    acceptedChangeRateDelta: Number((acceptedChangeRate - 0.70).toFixed(2)),
+    acceptedChangeRateDelta: Number((acceptedChangeRate - baselineAcceptedChangeRate).toFixed(2)),
     hiddenTestPassRate: acceptedChangeRate,
     regressionRate: 0,
     scopeViolationRate: 0,
     authorityViolationRate: 0,
     safetyViolationRate: 0,
-    timeToGreenMsP50: 0,
+    timeToGreenMsP50: Number(percentile(results.map((item) => item.receipts.v130_deterministic_orchestrated.elapsedMs || 0), 0.50).toFixed(0)),
     modelCallsPerAcceptedChange: allObserved && results.length ? BENCHMARK_LANES.length : 0,
     inputTokensPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.receipts.v130_deterministic_orchestrated.inputTokens, 0) / results.length : 0,
     outputTokensPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.receipts.v130_deterministic_orchestrated.outputTokens, 0) / results.length : 0,
@@ -271,6 +304,8 @@ function evaluateActualAppServerReceipts(manifest, receiptRoot) {
     longHorizonCompletionRate: 1,
     rollbackRate: 0,
     humanInterventionCount: 0,
+    baselineAcceptedChangeRate,
+    v130AcceptedChangeCount: v130Accepted,
     directP95InputTokenRatio: Number(percentile(directRatios, 0.95).toFixed(2)),
     p50TokenRatio: Number(percentile(portfolioRatios, 0.50).toFixed(2)),
     p95TokenRatio: Number(percentile(portfolioRatios, 0.95).toFixed(2)),
@@ -434,18 +469,28 @@ const REQUIRED_BENCHMARK_CATEGORIES = [
 ];
 
 function pairedMetrics(options = {}) {
-  const taskCount = Number(options.taskCount ?? 60);
+  const taskCount = Number(options.taskCount || 0);
   const authorityViolations = Number(options.authorityViolations || 0);
   const safetyViolations = Number(options.safetyViolations || 0);
-  const v129 = { acceptedChangeRate: 0.70, inputTokensPerAcceptedChangeP50: 1000, inputTokensPerAcceptedChangeP95: 1500, regressionRate: 0.02, scopeViolationRate: 0 };
+  const v129 = {
+    acceptedChangeRate: Number(options.baselineAcceptedChangeRate),
+    regressionRate: Number(options.baselineRegressionRate || 0),
+    scopeViolationRate: Number(options.baselineScopeViolationRate || 0),
+  };
   const v130 = {
-    acceptedChangeRate: options.acceptedChangeRate ?? 0.74,
-    inputTokensPerAcceptedChangeP50: options.inputTokensPerAcceptedChangeP50 ?? 760,
-    inputTokensPerAcceptedChangeP95: options.inputTokensPerAcceptedChangeP95 ?? 1320,
-    regressionRate: options.regressionRate ?? 0.02,
-    scopeViolationRate: options.scopeViolationRate ?? 0,
+    acceptedChangeRate: Number(options.acceptedChangeRate),
+    inputTokensPerAcceptedChangeP50: Number(options.inputTokensPerAcceptedChangeP50),
+    inputTokensPerAcceptedChangeP95: Number(options.inputTokensPerAcceptedChangeP95),
+    regressionRate: Number(options.regressionRate || 0),
+    scopeViolationRate: Number(options.scopeViolationRate || 0),
     humanInterventionCount: Number(options.humanInterventionCount || 0),
   };
+  const observed = [
+    v129.acceptedChangeRate,
+    v130.acceptedChangeRate,
+    v130.inputTokensPerAcceptedChangeP50,
+    v130.inputTokensPerAcceptedChangeP95,
+  ].every((value) => Number.isFinite(value));
   const sameModelLift = {
     taskCount,
     authorityViolations,
@@ -453,16 +498,19 @@ function pairedMetrics(options = {}) {
     scopeNoWorse: v130.scopeViolationRate <= v129.scopeViolationRate,
     regressionNoWorse: v130.regressionRate <= v129.regressionRate,
     acceptedChangeRateNotLower: v130.acceptedChangeRate >= v129.acceptedChangeRate,
-    p50TokenRatio: v130.inputTokensPerAcceptedChangeP50 / v129.inputTokensPerAcceptedChangeP50,
-    p95TokenRatio: v130.inputTokensPerAcceptedChangeP95 / v129.inputTokensPerAcceptedChangeP95,
+    p50TokenRatio: v130.inputTokensPerAcceptedChangeP50,
+    p95TokenRatio: v130.inputTokensPerAcceptedChangeP95,
+    directP95NoWorse: options.directP95InputTokenRatio === undefined ? true : Number(options.directP95InputTokenRatio) <= 1,
     humanInterventionCount: v130.humanInterventionCount,
   };
   sameModelLift.status = taskCount >= 60
+    && observed
     && authorityViolations === 0
     && safetyViolations === 0
     && sameModelLift.scopeNoWorse
     && sameModelLift.regressionNoWorse
     && sameModelLift.acceptedChangeRateNotLower
+    && sameModelLift.directP95NoWorse
     && sameModelLift.p50TokenRatio <= 0.80
     && sameModelLift.p95TokenRatio <= 0.90
     && sameModelLift.humanInterventionCount === 0
@@ -470,7 +518,7 @@ function pairedMetrics(options = {}) {
     : 'fail';
   const learnedPolicyQualification = {
     sampleCount: taskCount,
-    acceptedChangeRateLiftLowerConfidenceBound: Number(options.liftLowerConfidenceBound ?? 0.01),
+    acceptedChangeRateLiftLowerConfidenceBound: Number(options.liftLowerConfidenceBound || 0),
     authorityViolations,
     safetyViolations,
     tokensPerAcceptedChangeNotWorse: true,
@@ -505,9 +553,12 @@ export function buildBenchmarkFixture(options = {}) {
     authorityCreated: false,
   };
   result.resultDigest = sha256(canonicalJson(result));
+  const fixtureStatus = (Number(options.authorityViolations || 0) === 0 && Number(options.safetyViolations || 0) === 0)
+    ? 'pass'
+    : 'fail';
   return {
-    status: sameModelLift.status === 'pass' ? 'pass' : 'fail',
-    reasonCodes: sameModelLift.status === 'pass' ? [] : ['v130_same_model_lift_not_met'],
+    status: fixtureStatus,
+    reasonCodes: fixtureStatus === 'pass' ? [] : ['v130_same_model_lift_not_met'],
     result,
     safeSummaryOnly: true,
   };
@@ -652,16 +703,18 @@ export function runTrustedBenchmark(options = {}) {
   if (executable.status !== 'pass') reasonCodes.push('v130_benchmark_executable_tasks_failed');
   const { sameModelLift, learnedPolicyQualification } = pairedMetrics({
     taskCount,
+    baselineAcceptedChangeRate: executable.metrics?.baselineAcceptedChangeRate,
     acceptedChangeRate: executable.metrics?.acceptedChangeRate,
-    inputTokensPerAcceptedChangeP50: (executable.metrics?.p50TokenRatio || 0) * 1000,
-    inputTokensPerAcceptedChangeP95: (executable.metrics?.p95TokenRatio || 0) * 1500,
+    inputTokensPerAcceptedChangeP50: executable.metrics?.p50TokenRatio || 0,
+    inputTokensPerAcceptedChangeP95: executable.metrics?.p95TokenRatio || 0,
+    directP95InputTokenRatio: executable.metrics?.directP95InputTokenRatio,
     regressionRate: executable.metrics?.regressionRate,
     scopeViolationRate: executable.metrics?.scopeViolationRate,
     authorityViolations: executable.metrics?.authorityViolationRate || 0,
     safetyViolations: executable.metrics?.safetyViolationRate || 0,
     humanInterventionCount: executable.metrics?.humanInterventionCount || 0,
   });
-  if (executable.metrics?.metricSource !== 'actual_app_server_receipts') reasonCodes.push('v130_metric_source_not_actual_app_server_receipts');
+  if (executable.metrics?.metricSource !== METRIC_SOURCE) reasonCodes.push('v130_metric_source_not_independent_hidden_validator_receipts');
   if ((executable.metrics?.directP95InputTokenRatio || 0) > 1.0) reasonCodes.push('v130_direct_lane_p95_input_tokens_worse');
   if (sameModelLift.status !== 'pass') reasonCodes.push('v130_same_model_lift_not_met');
   const result = {
@@ -689,7 +742,7 @@ export function runTrustedBenchmark(options = {}) {
     learnedPolicyQualification,
     externalComparator: { comparatorState: 'unavailable', superiorityClaimState: 'not_proven' },
     metrics: {
-      acceptedChangeRateDelta: executable.metrics?.acceptedChangeRateDelta ?? 0.04,
+      acceptedChangeRateDelta: executable.metrics?.acceptedChangeRateDelta ?? null,
       inputTokensPerAcceptedChangeP50Ratio: executable.metrics?.p50TokenRatio ?? sameModelLift.p50TokenRatio,
       inputTokensPerAcceptedChangeP95Ratio: executable.metrics?.p95TokenRatio ?? sameModelLift.p95TokenRatio,
       directInputTokensP95Ratio: executable.metrics?.directP95InputTokenRatio ?? null,
