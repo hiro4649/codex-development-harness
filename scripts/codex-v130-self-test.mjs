@@ -6,6 +6,8 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { compileSessionIntent, buildProjectProfile, compileVerifiedGoal } from './codex-v130-intake-compiler.mjs';
 import { buildCompiledInstructionEnvelope } from './codex-v130-context-compiler.mjs';
+import { applyAvailabilityMask, buildConstrainedDag, compileAgentRole, evaluateEscalation } from './codex-v130-orchestration.mjs';
+import { buildProgressVector, buildTransactionalStateReceipt, evaluateNoHumanTerminal, ratifyExactHead } from './codex-v130-ratifier.mjs';
 
 function readJson(path) {
   return JSON.parse(fs.readFileSync(path, 'utf8'));
@@ -183,11 +185,55 @@ function intakeContextTests() {
   ];
 }
 
+function orchestrationAutonomyTests() {
+  const policy = readJson('docs/process/CODEX_V130_POLICY.json');
+  const direct = buildConstrainedDag(policy, { taskClass: 'code_change' });
+  const security = buildConstrainedDag(policy, { taskClass: 'security_remediation' });
+  const naturalLanguage = buildConstrainedDag(policy, { taskClass: 'code_change', naturalLanguageWorkflow: true });
+  const secondReplan = buildConstrainedDag(policy, { taskClass: 'architecture', replanCount: 2 });
+  const role = compileAgentRole(policy, 'code_worker');
+  const missingVerifierMask = applyAvailabilityMask(policy, {
+    roles: [
+      { roleId: 'code_worker', available: true, authorized: true, featureStage: 'stable' },
+    ],
+  }, direct.dag);
+  const fullMask = applyAvailabilityMask(policy, {
+    roles: direct.dag.nodes.map((node) => ({ roleId: node.roleId, available: true, authorized: true, featureStage: 'stable' })),
+  }, direct.dag);
+  const escalation = evaluateEscalation(policy, { failureClass: 'reasoning_insufficient', escalationCount: 0 });
+  const secondEscalation = evaluateEscalation(policy, { failureClass: 'reasoning_insufficient', escalationCount: 1 });
+  const providerEscalation = evaluateEscalation(policy, { failureClass: 'provider_transient', escalationCount: 0 });
+  const terminal = evaluateNoHumanTerminal(policy, 'manual_merge_required');
+  const ratified = ratifyExactHead(policy, { candidateHeadSha: '1'.repeat(40), observedHeadSha: '1'.repeat(40), requiredChecksPass: true, previousTrustedPolicy: '1.2.9', authorityCreated: false });
+  const stale = ratifyExactHead(policy, { candidateHeadSha: '1'.repeat(40), observedHeadSha: '2'.repeat(40), requiredChecksPass: true, previousTrustedPolicy: '1.2.9', authorityCreated: false });
+  const selfAuth = ratifyExactHead(policy, { candidateHeadSha: '1'.repeat(40), observedHeadSha: '1'.repeat(40), requiredChecksPass: true, previousTrustedPolicy: '1.3.0', candidatePolicySelfAuthorization: true });
+  const stateReceipt = buildTransactionalStateReceipt({ goalDigest: 'sha256:' + 'a'.repeat(64), candidateHeadSha: '1'.repeat(40), treeDigest: 'sha256:' + 'b'.repeat(64) });
+  const progress = buildProgressVector({ validationCoverageCount: 2 });
+  return [
+    test('v130_direct_lane_no_conductor', () => direct.status === 'pass' && direct.dag.lane === 'direct_verified' && direct.dag.nodes.length === 2),
+    test('v130_security_lane_is_constrained', () => security.status === 'pass' && security.dag.lane === 'constrained_orchestrated' && security.dag.nodes.some((node) => node.roleId === 'independent_security_verifier')),
+    test('v130_natural_language_workflow_forbidden', () => naturalLanguage.status === 'fail' && naturalLanguage.reasonCodes.includes('v130_natural_language_workflow_forbidden')),
+    test('v130_second_replan_forbidden', () => secondReplan.status === 'fail' && secondReplan.reasonCodes.includes('v130_replan_limit_exceeded')),
+    test('v130_code_worker_compiles_from_profile', () => role.status === 'pass' && role.compiledRole.sandboxMode === 'workspace_write' && role.compiledRole.authorityCreated === false),
+    test('v130_availability_mask_requires_verifier', () => missingVerifierMask.status === 'fail' && missingVerifierMask.reasonCodes.includes('v130_mask_removed_verifier')),
+    test('v130_availability_mask_passes_complete_stable_inventory', () => fullMask.status === 'pass' && fullMask.silentFallback === false),
+    test('v130_one_capability_escalation_allowed', () => escalation.status === 'pass' && escalation.escalationCount === 1),
+    test('v130_second_capability_escalation_forbidden', () => secondEscalation.status === 'fail' && secondEscalation.reasonCodes.includes('v130_second_escalation_forbidden')),
+    test('v130_provider_transient_does_not_escalate_model', () => providerEscalation.status === 'fail' && providerEscalation.reasonCodes.includes('v130_escalation_failure_class_forbidden')),
+    test('v130_human_terminal_forbidden', () => terminal.status === 'fail' && terminal.terminal === 'auto_reject'),
+    test('v130_exact_head_ratification_pass', () => ratified.status === 'pass' && ratified.receipt.exactHead === true),
+    test('v130_exact_head_mismatch_fails', () => stale.status === 'fail' && stale.reasonCodes.includes('v130_exact_head_mismatch')),
+    test('v130_candidate_policy_self_authorization_fails', () => selfAuth.status === 'fail' && selfAuth.reasonCodes.includes('v130_candidate_policy_self_authorization')),
+    test('v130_transactional_state_receipt_pass', () => stateReceipt.status === 'pass' && /^sha256:[a-f0-9]{64}$/.test(stateReceipt.receipt.receiptDigest)),
+    test('v130_progress_vector_digest_pass', () => /^sha256:[a-f0-9]{64}$/.test(progress.progressDigest)),
+  ];
+}
+
 function selectedStages() {
   const arg = process.argv.find((item) => item.startsWith('--stage='));
   if (!arg) return new Set(['contracts']);
   const stage = arg.split('=')[1];
-  if (stage === 'all') return new Set(['contracts', 'intake-context']);
+  if (stage === 'all') return new Set(['contracts', 'intake-context', 'orchestration-autonomy']);
   return new Set(stage.split(',').map((item) => item.trim()).filter(Boolean));
 }
 
@@ -195,6 +241,7 @@ const stages = selectedStages();
 const cases = [
   ...(stages.has('contracts') || stages.has('contract') ? contractTests() : []),
   ...(stages.has('intake-context') || stages.has('intake') || stages.has('context') ? intakeContextTests() : []),
+  ...(stages.has('orchestration-autonomy') || stages.has('orchestration') || stages.has('autonomy') ? orchestrationAutonomyTests() : []),
 ];
 const failures = cases.filter((item) => item.status !== 'pass');
 const report = {

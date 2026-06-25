@@ -2061,6 +2061,8 @@
     "selfTest": "scripts/codex-v130-self-test.mjs",
     "safeSummaryOnly": true,
     "intakeCompiler": "scripts/codex-v130-intake-compiler.mjs",
-    "contextCompiler": "scripts/codex-v130-context-compiler.mjs"
+    "contextCompiler": "scripts/codex-v130-context-compiler.mjs",
+    "orchestrationCompiler": "scripts/codex-v130-orchestration.mjs",
+    "ratifier": "scripts/codex-v130-ratifier.mjs"
   }
 }
