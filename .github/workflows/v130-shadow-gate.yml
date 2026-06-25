@@ -46,17 +46,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - run: node scripts/codex-v130-self-test.mjs --stage=compatibility
+      - run: node scripts/codex-v129-self-test.mjs --stage=all
   v128-compatibility:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - run: node scripts/codex-v130-self-test.mjs --stage=compatibility
+      - run: node scripts/codex-v128-self-test.mjs
   v127-compatibility:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
-      - run: node scripts/codex-v130-self-test.mjs --stage=compatibility
+      - run: node scripts/codex-v127-self-test.mjs
   v130-shadow-aggregate:
     runs-on: ubuntu-latest
     needs: [v130-contract, v130-intake-context, v130-orchestration-autonomy, v130-token-differential, v130-adversarial-benchmark, v129-compatibility, v128-compatibility, v127-compatibility]
