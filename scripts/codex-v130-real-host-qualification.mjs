@@ -63,6 +63,19 @@ function parseThreadId(stdout) {
   return null;
 }
 
+function parseInvocationEvents(stdout) {
+  const events = [];
+  for (const line of stdout.split(/\r?\n/)) {
+    if (!line.trim().startsWith('{')) continue;
+    try {
+      events.push(JSON.parse(line));
+    } catch {
+      // ignore non-protocol log lines
+    }
+  }
+  return events;
+}
+
 function parseStrictJsonObject(text) {
   const trimmed = String(text || '').trim();
   if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) throw new Error('not_json_object');
@@ -233,17 +246,19 @@ function appServerSchemaDigest(cli) {
   }
 }
 
-function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096 }) {
+function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096, sandbox = 'read-only' }) {
   const outputPath = path.join(os.tmpdir(), `codex-v130-${role}-${crypto.randomUUID()}.json`);
   const startedAt = Date.now();
   let stdout = '';
   try {
     stdout = execFileSync(cli, [
+      '-a',
+      'never',
       'exec',
       '--ephemeral',
       '--json',
       '--sandbox',
-      'read-only',
+      sandbox,
       '--output-last-message',
       outputPath,
       '-C',
@@ -258,7 +273,9 @@ function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096 }) {
     });
     const modelOutput = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8') : '';
     const outputBytes = bytes(modelOutput);
-    const threadId = parseThreadId(stdout);
+    const events = parseInvocationEvents(stdout);
+    const threadId = events.find((event) => event.type === 'thread.started' && event.thread_id)?.thread_id || null;
+    const turnCompleted = events.some((event) => event.type === 'turn.completed');
     let parsedOutput = null;
     const reasonCodes = [];
     try {
@@ -281,8 +298,8 @@ function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096 }) {
     return {
       schemaVersion: '1.3.0',
       role,
-      status: threadId && outputBytes > 0 && outputBytes <= maxOutputBytes && reasonCodes.length === 0 ? 'pass' : 'fail',
-      reasonCodes: [...(threadId ? [] : ['v130_real_host_thread_missing']), ...reasonCodes],
+      status: threadId && turnCompleted && outputBytes > 0 && outputBytes <= maxOutputBytes && reasonCodes.length === 0 ? 'pass' : 'fail',
+      reasonCodes: [...(threadId ? [] : ['v130_real_host_thread_missing']), ...(turnCompleted ? [] : ['v130_real_host_turn_missing']), ...reasonCodes],
       fixture: false,
       modelInvocationObserved: true,
       threadDigest: threadId ? sha256(threadId) : null,
@@ -291,6 +308,7 @@ function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096 }) {
       modelOutputBytes: outputBytes,
       modelOutputDigest: sha256(modelOutput),
       workerOutputDigest: sha256(modelOutput),
+      eventDigest: sha256(canonicalJson(events)),
       parsedOutputDigest: parsedOutput ? sha256(canonicalJson(parsedOutput)) : null,
       parsedSummary,
       elapsedMs: Date.now() - startedAt,
@@ -318,6 +336,45 @@ function runCodexInvocation({ cli, cwd, role, prompt, maxOutputBytes = 4096 }) {
       // no raw output may remain in repository; temp cleanup is best effort
     }
   }
+}
+
+function runActualWorkerFileModification({ cli, root }) {
+  const repo = initTempGitRepo(root, 'actual-worker-file-modification');
+  writeFile(path.join(repo, 'math.mjs'), 'export function add(a,b){ return a-b; }\n');
+  writeFile(path.join(repo, 'math.test.mjs'), "import assert from 'node:assert/strict';\nimport { add } from './math.mjs';\nassert.equal(add(2,3),5);\n");
+  writeFile(path.join(repo, 'package.json'), '{"type":"module"}\n');
+  git(['add', '.'], { cwd: repo });
+  git(['commit', '-m', 'actual red baseline'], { cwd: repo });
+  const pre = runNodeTest(repo, 'math.test.mjs');
+  const worker = runCodexInvocation({
+    cli,
+    cwd: repo,
+    role: 'file_change_worker',
+    sandbox: 'workspace-write',
+    prompt: 'Fix the failing Node test by editing math.mjs only. Do not edit package.json or math.test.mjs. When done, return compact JSON only with keys status,role,authorityCreated and values status "pass", role "file_change_worker", authorityCreated false.',
+  });
+  const post = runNodeTest(repo, 'math.test.mjs');
+  const changed = git(['diff', '--name-only'], { cwd: repo }).split(/\r?\n/).filter(Boolean);
+  const diff = git(['diff'], { cwd: repo });
+  const status = worker.modelInvocationObserved === true
+    && pre.status === 'fail'
+    && post.status === 'pass'
+    && changed.length === 1
+    && changed[0] === 'math.mjs'
+    ? 'pass'
+    : 'fail';
+  return {
+    status,
+    reasonCodes: status === 'pass' ? [] : ['v130_actual_worker_file_modification_failed'],
+    workerModelInvocationObserved: worker.modelInvocationObserved === true,
+    preFixFailureObserved: pre.status === 'fail',
+    postFixPassObserved: post.status === 'pass',
+    changedFiles: changed,
+    changedTreeDigest: sha256(canonicalJson({ changed, diffDigest: sha256(diff) })),
+    workerReceiptDigest: sha256(canonicalJson(worker)),
+    authorityCreated: false,
+    safeSummaryOnly: true,
+  };
 }
 
 export function buildRealHostQualification(options = {}) {
@@ -362,6 +419,7 @@ export function buildRealHostQualification(options = {}) {
       authorityCreated: false,
     }));
     const actualSuite = runActualTaskSuite(root);
+    const actualWorkerFileModification = runActualWorkerFileModification({ cli, root });
     const worker = runCodexInvocation({
       cli,
       cwd: workerTree,
@@ -390,6 +448,7 @@ export function buildRealHostQualification(options = {}) {
     if (verifier.status !== 'pass') reasonCodes.push(...verifier.reasonCodes);
     if (!actualTasksObserved) reasonCodes.push('v130_real_host_required_tasks_missing');
     if (actualSuite.status !== 'pass') reasonCodes.push('v130_real_host_actual_task_suite_failed');
+    if (actualWorkerFileModification.status !== 'pass') reasonCodes.push(...actualWorkerFileModification.reasonCodes);
     if (worker.parsedSummary?.skillInvocationObserved !== true) reasonCodes.push('v130_real_host_skill_invocation_missing');
     if (!goalDigestMatch) reasonCodes.push('v130_real_host_goal_digest_mismatch');
     if (!candidateHeadMatch) reasonCodes.push('v130_real_host_candidate_head_mismatch');
@@ -422,6 +481,8 @@ export function buildRealHostQualification(options = {}) {
       actualTasksDigest: requiredTasksDigest,
       actualTasksObserved,
       actualTaskExecutionObserved: actualSuite.status === 'pass',
+      actualWorkerFileModificationObserved: actualWorkerFileModification.status === 'pass',
+      actualWorkerFileModificationDigest: sha256(canonicalJson(actualWorkerFileModification)),
       actualTaskSuiteDigest: actualSuite.tasksDigest,
       actualGateExecutionObserved: gateRun.status === 'pass',
       actualGateExecutionDigest: sha256(canonicalJson(gateRun)),
@@ -462,6 +523,7 @@ export function buildRealHostQualification(options = {}) {
       environmentAttestationMatch: receipt.environmentAttestationDigest === sha256(canonicalJson(environmentAttestation)),
       actualGateExecutionObserved: receipt.actualGateExecutionObserved,
       actualTaskExecutionObserved: receipt.actualTaskExecutionObserved,
+      actualWorkerFileModificationObserved: receipt.actualWorkerFileModificationObserved,
       skillInvocationObserved: receipt.skillInvocationObserved,
       selectedSkillDigest: receipt.selectedSkillDigest,
       tokenBudgetStatus: receipt.tokenBudgetStatus,
