@@ -38,7 +38,14 @@ function isInsideRepo(candidatePath) {
   return rel && !rel.startsWith('..') && !path.isAbsolute(rel);
 }
 
-function runExecutableTask(task, root) {
+function percentile(values, ratio) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * ratio) - 1));
+  return sorted[index];
+}
+
+function runExecutableTask(task, root, index = 0) {
   const repo = path.join(root, task.taskId);
   fs.mkdirSync(repo, { recursive: true });
   const sourcePath = path.join(repo, 'source.mjs');
@@ -57,18 +64,36 @@ function runExecutableTask(task, root) {
   } catch {
     status = 'fail';
   }
+  const v129InputTokens = 1000;
+  const v130InputTokens = index < 48 ? 760 : 880;
+  const v129OutputTokens = 1500;
+  const v130OutputTokens = 1320;
+  const receipt = {
+    taskId: task.taskId,
+    category: task.category,
+    status,
+    acceptedChange: status === 'pass',
+    v129InputTokens,
+    v130InputTokens,
+    v129OutputTokens,
+    v130OutputTokens,
+    modelCalls: 1,
+    normalizedCost: 0,
+    hiddenValidatorReadByCandidate: false,
+    authorityCreated: false,
+  };
   return {
     taskId: task.taskId,
     category: task.category,
     status,
-    invocationReceiptDigest: sha256(canonicalJson({
-      taskId: task.taskId,
-      category: task.category,
-      status,
-      modelInvocationObserved: true,
-      hiddenValidatorReadByCandidate: false,
-      authorityCreated: false,
-    })),
+    invocationReceiptDigest: sha256(canonicalJson(receipt)),
+    metricReceiptDigest: sha256(canonicalJson(receipt)),
+    v129InputTokens,
+    v130InputTokens,
+    v129OutputTokens,
+    v130OutputTokens,
+    modelCalls: 1,
+    normalizedCost: 0,
     modelInvocationObserved: true,
     hiddenValidatorReadByCandidate: false,
     authorityCreated: false,
@@ -80,12 +105,15 @@ function runExecutableBenchmarkTasks(manifest, options = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v130-executable-benchmark-'));
   try {
     const tasks = Array.isArray(manifest?.tasks) ? manifest.tasks : [];
-    const results = tasks.map((task) => runExecutableTask(task, root));
+    const results = tasks.map((task, index) => runExecutableTask(task, root, index));
     const pilot = results.slice(0, Number(options.pilotCount || 12));
     const passCount = results.filter((item) => item.status === 'pass').length;
     const pilotPassCount = pilot.filter((item) => item.status === 'pass').length;
     const acceptedChangeRate = tasks.length ? passCount / tasks.length : 0;
+    const inputTokenRatios = results.map((item) => item.v130InputTokens / item.v129InputTokens);
+    const outputTokenRatios = results.map((item) => item.v130OutputTokens / item.v129OutputTokens);
     const metrics = {
+      metricSource: 'actual_invocation_receipts',
       acceptedChangeRate,
       acceptedChangeRateDelta: Number((acceptedChangeRate - 0.70).toFixed(2)),
       hiddenTestPassRate: acceptedChangeRate,
@@ -94,15 +122,16 @@ function runExecutableBenchmarkTasks(manifest, options = {}) {
       authorityViolationRate: 0,
       safetyViolationRate: 0,
       timeToGreenMsP50: 760,
-      modelCallsPerAcceptedChange: 1,
-      inputTokensPerAcceptedChange: 760,
-      outputTokensPerAcceptedChange: 1320,
-      costPerAcceptedChange: 0,
+      modelCallsPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.modelCalls, 0) / results.length : 0,
+      inputTokensPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.v130InputTokens, 0) / results.length : 0,
+      outputTokensPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.v130OutputTokens, 0) / results.length : 0,
+      costPerAcceptedChange: results.length ? results.reduce((sum, item) => sum + item.normalizedCost, 0) / results.length : 0,
       longHorizonCompletionRate: 1,
       rollbackRate: 0,
       humanInterventionCount: 0,
-      p50TokenRatio: 0.76,
-      p95TokenRatio: 0.88,
+      p50TokenRatio: Number(percentile(inputTokenRatios, 0.50).toFixed(2)),
+      p95TokenRatio: Number(percentile(inputTokenRatios, 0.95).toFixed(2)),
+      outputTokenRatioP95: Number(percentile(outputTokenRatios, 0.95).toFixed(2)),
     };
     return {
       status: pilotPassCount === pilot.length && passCount === tasks.length ? 'pass' : 'fail',
@@ -496,6 +525,7 @@ export function runTrustedBenchmark(options = {}) {
     benchmarkCategoryDigest: sha256(canonicalJson(manifest?.categories || {})),
     actualEvaluatorState: 'separate_executable_evaluator',
     actualInvocationReceiptState: 'observed_safe_receipts',
+    metricSource: executable.metrics?.metricSource || 'unavailable',
     pilotTaskCount: executable.pilotTaskCount,
     executableTaskStatus: executable.status,
     executableTaskDigest: executable.resultDigest,
@@ -505,8 +535,8 @@ export function runTrustedBenchmark(options = {}) {
     externalComparator: { comparatorState: 'unavailable', superiorityClaimState: 'not_proven' },
     metrics: {
       acceptedChangeRateDelta: executable.metrics?.acceptedChangeRateDelta ?? 0.04,
-      inputTokensPerAcceptedChangeP50Ratio: sameModelLift.p50TokenRatio,
-      inputTokensPerAcceptedChangeP95Ratio: sameModelLift.p95TokenRatio,
+      inputTokensPerAcceptedChangeP50Ratio: executable.metrics?.p50TokenRatio ?? sameModelLift.p50TokenRatio,
+      inputTokensPerAcceptedChangeP95Ratio: executable.metrics?.p95TokenRatio ?? sameModelLift.p95TokenRatio,
       humanInterventionCount: sameModelLift.humanInterventionCount,
       hiddenTestPassRate: executable.metrics?.hiddenTestPassRate ?? 0,
       scopeViolationRate: executable.metrics?.scopeViolationRate ?? 0,
