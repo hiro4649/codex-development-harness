@@ -284,6 +284,17 @@ function contractTests() {
     test('v130_source_activation_state_pass', () => policy.candidateHarnessVersion === '1.3.0' && policy.candidateActivationState === 'active' && policy.sourceActivation === 'active'),
     test('v130_final_authority_preserved', () => policy.finalAuthority === 'v1.1.8_final_decision_kernel'),
     test('v130_no_authority_created', () => policy.authorityCreated === false),
+    test('v130_manifest_qualification_binding_uses_independent_receipts', () => {
+      const binding = source.v130SourceShadowCandidate?.activationQualificationBinding || {};
+      return binding.metricSource === 'independent_hidden_validator_receipts'
+        && binding.pairedTaskCount === 60
+        && binding.authorityCreated === false
+        && /^sha256:[a-f0-9]{64}$/.test(binding.realHostReceiptDigest || '')
+        && /^sha256:[a-f0-9]{64}$/.test(binding.benchmarkReceiptDigest || '')
+        && /^sha256:[a-f0-9]{64}$/.test(binding.actualMetricsDigest || '')
+        && binding.actualP50TokenRatio <= 0.80
+        && binding.actualP95TokenRatio <= 0.90;
+    }),
     test('v130_monotonic_versions_pass', () => policy.monotonicInheritance?.immediateRollback === '1.2.9' && policy.monotonicInheritance?.blockingCompatibility === '1.2.8' && policy.monotonicInheritance?.legacyCompatibility === '1.2.7'),
     test('v130_no_budget_increase_pass', () => policy.monotonicInheritance?.safeSummaryBudgetIncreaseAllowed === false && policy.tokenBudgets?.safeSummaryBytes === 5600 && policy.tokenBudgets?.routineReadSurfaceBytes === 2500 && policy.tokenBudgets?.routineColdArtifactRead === 0),
     test('v130_baseline_modes_are_execution_modes', () => exact(policy.baselineModes, ['green_required', 'known_red_repair', 'bootstrap_generate_only', 'not_applicable'])),
