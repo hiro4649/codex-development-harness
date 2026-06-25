@@ -2059,6 +2059,8 @@
     "schema": "docs/process/CODEX_V130_SCHEMA.json",
     "spec": "docs/process/CODEX_V130_SPEC.md",
     "selfTest": "scripts/codex-v130-self-test.mjs",
-    "safeSummaryOnly": true
+    "safeSummaryOnly": true,
+    "intakeCompiler": "scripts/codex-v130-intake-compiler.mjs",
+    "contextCompiler": "scripts/codex-v130-context-compiler.mjs"
   }
 }
