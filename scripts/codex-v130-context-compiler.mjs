@@ -24,22 +24,24 @@ export function buildCompiledInstructionEnvelope(input = {}) {
     schemaVersion: '1.3.0',
     activeHarnessVersion: manifest.activeHarnessVersion || input.activeHarnessVersion || null,
     candidateHarnessVersion: '1.3.0',
-    authorityOrder: [
-      'platform_policy',
-      'standing_delegation',
-      'protected_harness_policy',
-      'active_manifest',
-      'goal_contract',
-      'agent_role_contract',
-      'selected_skill',
-      'task_delta',
-      'active_runbook',
-      'README',
-      'issue_comment_arbitrary_doc',
-    ],
+    goalDigest: input.goalDigest || `sha256:${'0'.repeat(64)}`,
+    taskClass: input.taskClass || 'code_change',
+    roleId: input.roleId || 'code_worker',
+    actionClass: input.actionClass || 'read',
+    allowedPaths: Array.isArray(input.allowedPaths) ? input.allowedPaths.slice(0, 16) : [],
+    forbiddenPathDigest: input.forbiddenPathDigest || `sha256:${'0'.repeat(64)}`,
+    requiredGateIds: Array.isArray(input.requiredGateIds) ? input.requiredGateIds.slice(0, 8) : ['v130-intake-context'],
+    selectedSkillRef: input.selectedSkillRef || null,
+    sandboxMode: input.sandboxMode || (input.actionClass === 'write' ? 'workspace_write' : 'read_only'),
+    networkMode: input.networkMode || 'restricted',
+    stopPolicyId: input.stopPolicyId || 'v130_anti_spin_once',
+    repairBudget: input.repairBudget || { maxRepairIterations: 1, sameBlockerMax: 1 },
+    outputSchemaId: input.outputSchemaId || 'v130_compiled_instruction_result',
+    policyDigest: input.policyDigest || (fs.existsSync('docs/process/CODEX_V130_POLICY.json') ? sha256(fs.readFileSync('docs/process/CODEX_V130_POLICY.json', 'utf8')) : null),
+    candidateHeadSha: input.candidateHeadSha || null,
     routineReads: ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'compiled_instruction_envelope'],
-    deferredReads: ['docs/process/CODEX_V130_SPEC.md', 'docs/process/CODEX_V129_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V127_SPEC.md'],
-    forbiddenRoutineReads: ['full_conversation', 'raw_logs', 'raw_model_output', 'secrets'],
+    deferredSpecRead: true,
+    forbiddenRoutineReadsDigest: sha256(canonicalJson(['full_conversation', 'raw_logs', 'raw_model_output', 'secrets'])),
     tokenBudgets: {
       alwaysResidentInstructionBytes: 1536,
       dynamicDeltaBytes: 640,
@@ -49,18 +51,17 @@ export function buildCompiledInstructionEnvelope(input = {}) {
       routineSubagentCount: 0,
       routineAdditionalModelCallCount: 0,
     },
-    lowerAuthorityInstructionEligible: false,
     fullConversationReplay: false,
-    rawPromptStorage: false,
-    rawOutputStorage: false,
-    rawLogStorage: false,
-    secretStorage: false,
+    rawStorageAllowed: false,
     evidenceHandles: Array.isArray(input.evidenceHandles) ? input.evidenceHandles.slice(0, 12) : [],
   };
-  envelope.envelopeDigest = sha256(canonicalJson(envelope));
+  envelope.instructionDigest = sha256(canonicalJson(envelope));
   const canonicalBytes = bytes(envelope);
   const reasonCodes = [];
   if (!envelope.activeHarnessVersion) reasonCodes.push('v130_instruction_envelope_active_version_unavailable');
+  if (!/^sha256:[a-f0-9]{64}$/.test(String(envelope.goalDigest || ''))) reasonCodes.push('v130_instruction_envelope_goal_digest_invalid');
+  if (!/^sha256:[a-f0-9]{64}$/.test(String(envelope.policyDigest || ''))) reasonCodes.push('v130_instruction_envelope_policy_digest_invalid');
+  if (envelope.candidateHeadSha && !/^[a-f0-9]{40}$/.test(String(envelope.candidateHeadSha))) reasonCodes.push('v130_instruction_envelope_candidate_head_invalid');
   if (canonicalBytes > 1536) reasonCodes.push('v130_instruction_envelope_over_budget');
   return {
     status: reasonCodes.length ? 'fail' : 'pass',
