@@ -206,7 +206,8 @@
     "scripts/codex-v129-independent-verifier.mjs",
     "scripts/codex-v129-goal-finalizer.mjs",
     "scripts/codex-v129-shadow-runner.mjs",
-    ".github/workflows/v129-shadow-gate.yml"
+    ".github/workflows/v129-shadow-gate.yml",
+    ".github/workflows/v130-shadow-gate.yml"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -2063,6 +2064,8 @@
     "intakeCompiler": "scripts/codex-v130-intake-compiler.mjs",
     "contextCompiler": "scripts/codex-v130-context-compiler.mjs",
     "orchestrationCompiler": "scripts/codex-v130-orchestration.mjs",
-    "ratifier": "scripts/codex-v130-ratifier.mjs"
+    "ratifier": "scripts/codex-v130-ratifier.mjs",
+    "benchmark": "scripts/codex-v130-benchmark.mjs",
+    "shadowWorkflow": ".github/workflows/v130-shadow-gate.yml"
   }
 }
