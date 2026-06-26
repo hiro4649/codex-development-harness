@@ -58,13 +58,46 @@ Routine subagent count is zero. The Safe Summary budget remains 5600 bytes,
 routine read surface remains 2500 bytes, and Orchestration Capsule budget
 remains 48000 bytes.
 
+The routine read profile is `AGENTS.md`,
+`docs/process/CODEX_HARNESS_MANIFEST.json`, and the compiled instruction
+envelope. v1.3.0, v1.2.9, v1.2.8, and v1.2.7 specs are deferred reads.
+
+## Practical Core Contracts
+
+Goal Contract Lite is a compact policy surface, not a new artifact family. A
+normal task declares goalStatement, acceptanceCriteria, nonGoals, allowedScope,
+forbiddenScope, requiredEvidence, stopCondition, and repairBudget. The goal is
+immutable once execution begins, and scope changes invalidate receipt authority.
+
+Loop Controller Lite limits candidate repair, same blocker, provider transient
+retry, and no-progress windows to one. A PR terminates as auto_merge,
+auto_repair, auto_rebase, auto_reject, or auto_quarantine without owner approval
+wait. Repeated blockers may not add checkers, statuses, artifacts, Skills, or
+threshold changes.
+
+Worker / Verifier Split is a logical Core contract only. The worker proposes a
+change, the verifier checks same-head evidence independently, and neither model,
+Skill, Plugin, Hook, nor learned policy creates authority. Final Decision
+remains final authority.
+
+Skill Catalog Lite keeps routine selected Skill at zero, authority-task Skill at
+zero, and catalog projection at or below 512 bytes. A typed task may select at
+most one Skill, and Skill bodies are lazy-loaded only after selection. Skill
+runtime remains deferred and Skill performance remains not proven.
+
 ## Target Development Resume
 
 IRIS and FUNKY development may resume under the active v1.2.9 target harness.
 Allowed target work under v1.2.9 includes bug repair, test repair, CI repair,
 small product change, documentation correction, and target-local quality repair.
 Forbidden work remains v1.3.0 target rollout, v1.3.0 Skill install, v1.3.1,
-new benchmark blockers, and Fable superiority claims.
+new benchmark blockers, Fable superiority claims, authority weakening,
+required-check bypass, product deploy, and wallet, RPC, or secret mutation.
+
+Target profile strategy is guidance only. The available profiles are
+thin_target, metadata_gate_target, full_quality_gate_target, and
+product_heavy_target. This guidance does not start target rollout, create target
+PRs, or mutate target repositories.
 
 ## Performance Track
 
@@ -75,10 +108,12 @@ Activation. Its state is `performance_track`, `non_authoritative`,
 `FableComparatorState=unavailable`, `superiorityClaimState=not_proven`,
 `sdkTransportState=research_candidate`,
 `sixtyTaskBenchmarkState=not_required_for_core_activation`, and
-`learnedPolicyState=shadow_only`.
+`learnedPolicyState=shadow_only`. Skill runtime and DAG agent-team runtime are
+deferred.
 
 Performance Track state must not affect qualityScore, blockingCount,
-mergeAllowed, Final Decision, Activation, or target rollout.
+mergeAllowed, Final Decision, Activation, sourceActivation, target rollout, or
+required checks.
 
 ## Security Routing
 

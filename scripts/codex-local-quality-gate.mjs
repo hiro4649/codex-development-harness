@@ -1113,7 +1113,10 @@ function validateV129ActiveEvidenceBinding({ report = {}, safeSummary = {} } = {
   } else if (sourceManifest.legacySelfTests?.v129 !== 'blocking_current_active_authority'
     || sourceManifest.legacySelfTestSuites?.v129 !== 'blocking_current_active_authority'
     || docsManifest.legacySelfTests?.v129 !== 'blocking_current_active_authority') reasons.push('v129_current_authority_missing');
-  if (!requiredReads.includes(expectedSpec)) reasons.push('active_policy_index_missing_active_spec');
+  if (activeV130Core) {
+    if (!requiredReads.includes('compiled_instruction_envelope')) reasons.push('active_policy_index_missing_compiled_instruction_envelope');
+    if (requiredReads.includes(expectedSpec)) reasons.push('active_policy_index_hot_v130_spec_forbidden');
+  } else if (!requiredReads.includes(expectedSpec)) reasons.push('active_policy_index_missing_active_spec');
   if (activeV130Core && requiredReads.includes('docs/process/CODEX_V129_SPEC.md')) reasons.push('active_policy_index_hot_v129_spec_forbidden');
   if (requiredReads.includes('docs/process/CODEX_V127_SPEC.md')) reasons.push('active_policy_index_hot_v127_spec_forbidden');
   if (safeSummary.marker !== MARKER) reasons.push('safe_summary_marker_mismatch');

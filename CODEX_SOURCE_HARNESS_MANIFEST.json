@@ -2081,7 +2081,11 @@
     "affectsMergeAllowed": false,
     "affectsFinalDecision": false,
     "affectsActivation": false,
-    "affectsTargetRollout": false
+    "affectsTargetRollout": false,
+    "skillRuntimeState": "deferred",
+    "dagAgentTeamState": "deferred",
+    "affectsSourceActivation": false,
+    "affectsRequiredChecks": false
   },
   "targetDevelopmentResumePolicy": {
     "state": "active",
@@ -2090,9 +2094,9 @@
     "v130PerformanceTrackBlocksProductDevelopment": false,
     "allowedUnderV129": [
       "bug_repair",
+      "small_code_change",
       "test_repair",
       "ci_repair",
-      "small_product_change",
       "documentation_correction",
       "target_local_quality_repair"
     ],
@@ -2101,7 +2105,11 @@
       "v130_skill_install",
       "v131",
       "new_benchmark_blocker",
-      "fable_superiority_claim"
+      "fable_superiority_claim",
+      "authority_weakening",
+      "required_check_bypass",
+      "product_deploy",
+      "wallet_rpc_secret_mutation"
     ]
   },
   "antiSpinPolicy": {
@@ -2124,5 +2132,79 @@
     "candidateSelfAuthorization": "forbidden",
     "exactHeadRequired": true
   },
-  "targetMutationCount": 0
+  "targetMutationCount": 0,
+  "goalContractLite": {
+    "state": "active",
+    "requiredFields": [
+      "goalStatement",
+      "acceptanceCriteria",
+      "nonGoals",
+      "allowedScope",
+      "forbiddenScope",
+      "requiredEvidence",
+      "stopCondition",
+      "repairBudget"
+    ],
+    "immutableAfterExecutionBegins": true,
+    "scopeChangeInvalidatesReceiptAuthority": true,
+    "artifactFamilyCreated": false
+  },
+  "loopControllerLite": {
+    "state": "active",
+    "candidateRepairMax": 1,
+    "sameBlockerMax": 1,
+    "providerTransientRetryMax": 1,
+    "noProgressWindow": 1,
+    "terminalDispositions": [
+      "auto_merge",
+      "auto_repair",
+      "auto_rebase",
+      "auto_reject",
+      "auto_quarantine"
+    ],
+    "ownerApprovalWait": false,
+    "sameBlockerProhibitions": [
+      "add_checker",
+      "add_status",
+      "add_artifact",
+      "add_skill",
+      "change_threshold"
+    ],
+    "sameBlockerAction": "save_one_exact_safe_failure_and_stop_pr"
+  },
+  "workerVerifierSplitLite": {
+    "state": "active",
+    "logicalSeparationOnly": true,
+    "workerProposesChange": true,
+    "verifierChecksSameHeadEvidence": true,
+    "workerCannotVerifySelf": true,
+    "verifierCannotCreateMergeAuthority": true,
+    "modelSkillPluginHookLearnedPolicyCannotCreateAuthority": true,
+    "finalDecisionAuthority": "v1.1.8_final_decision_kernel",
+    "runtimeAdded": false
+  },
+  "skillCatalogLite": {
+    "state": "active",
+    "routineSelectedSkill": 0,
+    "projectionMaxBytes": 512,
+    "typedTaskSelectedSkillMax": 1,
+    "authorityTaskSkill": 0,
+    "skillBodyLazyLoadOnlyAfterSelection": true,
+    "newSkillInCore": false,
+    "candidateSkillsState": "deferred",
+    "skillRuntimeState": "deferred",
+    "skillPerformanceState": "not_proven"
+  },
+  "targetProfileStrategy": {
+    "state": "guidance_only",
+    "profiles": [
+      "thin_target",
+      "metadata_gate_target",
+      "full_quality_gate_target",
+      "product_heavy_target"
+    ],
+    "startsTargetRollout": false,
+    "createsTargetPr": false,
+    "mutatesTargetRepositories": false
+  }
 }
