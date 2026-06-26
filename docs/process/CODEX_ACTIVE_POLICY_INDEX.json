@@ -1,5 +1,5 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.9",
   "schemaVersion": "1.2.9",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
@@ -15,7 +15,7 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V130_SPEC.md"
+        "docs/process/CODEX_V129_SPEC.md"
       ],
       "deferredReads": [
         "docs/process/CODEX_V128_SPEC.md",
@@ -123,7 +123,7 @@
   "requiredReads": [
     "AGENTS.md",
     "docs/process/CODEX_HARNESS_MANIFEST.json",
-    "docs/process/CODEX_V130_SPEC.md"
+    "docs/process/CODEX_V129_SPEC.md"
   ],
   "deferredReads": [
     "docs/process/CODEX_V128_SPEC.md",
@@ -278,32 +278,30 @@
       "runtimeRegistryDigest": "sha256:b563d3cf6fe049b20cde125b8db0c74fc7891bccd06773162231a6f51d06e8e4"
     }
   },
-  "activeHarnessVersion": "1.3.0",
-  "activeSelfTestSuite": "v130",
-  "activeSelfTestStatusKey": "v130SelfTestStatus",
-  "currentVersion": "1.3.0",
-  "previousVersion": "1.2.9",
-  "candidateHarnessVersion": "1.3.0",
-  "candidateSelfTestSuite": "v130",
-  "candidateSelfTestStatusKey": "v130SelfTestStatus",
+  "activeHarnessVersion": "1.2.9",
+  "activeSelfTestSuite": "v129",
+  "activeSelfTestStatusKey": "v129SelfTestStatus",
+  "currentVersion": "1.2.9",
+  "previousVersion": "1.2.8",
+  "candidateHarnessVersion": "1.2.9",
+  "candidateSelfTestSuite": "v129",
+  "candidateSelfTestStatusKey": "v129SelfTestStatus",
   "candidateActivationState": "active",
   "sourceActivation": "active",
-  "targetRollout": "not_started",
+  "targetRollout": "completed",
   "finalAuthority": "v1.1.8_final_decision_kernel",
   "versionAuthority": {
-    "v130": "blocking_current_active_authority",
-    "v129": "immediate_rollback",
-    "v128": "blocking_compatibility",
-    "v127": "compatibility_readable"
+    "v128": "blocking_compatibility_rollback",
+    "v129": "blocking_current_active_authority"
   },
   "v130SourceShadowCandidate": {
     "version": "1.3.0",
     "name": "Verified Goal Intake, Adaptive Capability Escalation, and Transactional Agent Teams",
     "candidateHarnessVersion": "1.3.0",
     "candidateSelfTestSuite": "v130",
-    "candidateActivationState": "active",
-    "sourceActivation": "active",
-    "targetRollout": "not_started",
+    "candidateActivationState": "source_shadow_candidate",
+    "sourceActivation": "forbidden",
+    "targetRollout": "forbidden",
     "newP0Artifact": false,
     "newTopLevelStatus": false,
     "newSkill": false,
@@ -313,30 +311,6 @@
     "schema": "docs/process/CODEX_V130_SCHEMA.json",
     "spec": "docs/process/CODEX_V130_SPEC.md",
     "selfTest": "scripts/codex-v130-self-test.mjs",
-    "safeSummaryOnly": true,
-    "activationQualificationBinding": {
-      "qualifiedCodeSha": "eda31f3c404e355b9a1519447a09d91e00c6cfeb",
-      "qualifiedCodeTreeDigest": "sha256:df2c732fb6c9d1ba46332dd54e6e89bf47c36367",
-      "evaluatorBlobSha": "8d63653a2a7f17bcbae14930abf1ded52b507227",
-      "packContentDigest": "sha256:f73b6d5b7e5a98f9693865d3390cba08cb3453a2d8d1937379f2a602cae85738",
-      "builderReceiptDigest": "sha256:aea7971eba3df4b240aa090d0477bd60f506a54a03e0c740441ed4287b51e339",
-      "packBindingDigest": "sha256:06e372ea12ccdcb6df814ffc9b78fc952e16fff3f61c8bf2b57f04ac5fe20b84",
-      "realHostReceiptDigest": "sha256:05dcc05ddcb365433ce30362f4e64ea215a1cd89713bcca52da1e03abd61f484",
-      "benchmarkReceiptDigest": "sha256:57cfac864a6a18def2db7b9af0f45d85dd34528fd83130820070b8b081718c01",
-      "skillRegistryDigest": "sha256:13cb44c4a3b596c1ad6f4fd6015e256ee093c3516a757a71c2c50fef0bcc5198",
-      "modelInventoryDigest": "sha256:fa73bb5716c1c32d1b728c18d1cbfc4f5180b7196c07d8c7ae86f113b633df8f",
-      "appServerSchemaDigest": "sha256:959827632e66fda6d7d7bfe80d382cf9ea2afcfe8b6aac2d3b345d7875c70bf8",
-      "pairedTaskCount": 60,
-      "actualMetricsDigest": "sha256:a5a6f10fa87a9884a10cf2728d435f77e1a9498026418a9d9c974eeb65a1f96f",
-      "learnedPolicyState": "qualified",
-      "FableComparatorState": "unavailable",
-      "superiorityClaimState": "not_proven",
-      "authorityCreated": false,
-      "actualAcceptedChangeRateDelta": 0.3,
-      "actualP50TokenRatio": 0.8,
-      "actualP95TokenRatio": 0.8,
-      "metricSource": "actual_app_server_receipts",
-      "qualificationBindingDigest": "sha256:206b91a839a9d2785e17c3b40936a5e98838b043a9b99acea65b8ed87fad4811"
-    }
+    "safeSummaryOnly": true
   }
 }
