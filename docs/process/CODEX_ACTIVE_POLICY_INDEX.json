@@ -486,6 +486,136 @@
     ],
     "startsTargetRollout": false,
     "createsTargetPr": false,
-    "mutatesTargetRepositories": false
+    "mutatesTargetRepositories": false,
+    "compatibilityBridge": "v111_v129_preserved_for_standard_metadata_full_targets",
+    "vgcThinProfileReusableForStandardTargets": false,
+    "profileClassification": {
+      "thin_target": [
+        "hiro4649/VGC-FUNKY-TOKEN"
+      ],
+      "metadata_gate_target": [
+        "hiro4649/iris-live2d-renderer",
+        "hiro4649/disco-funky-repair",
+        "hiro4649/iris"
+      ],
+      "full_quality_gate_target": [
+        "hiro4649/VOXWEAVE"
+      ],
+      "product_heavy_target": [
+        "hiro4649/CRIPTO-TIP"
+      ]
+    }
+  },
+  "targetCompatibilityBridge": {
+    "state": "active",
+    "purpose": "preserve_v111_v129_target_compatibility_chain_for_v130_core_target_profiles",
+    "startsTargetRollout": false,
+    "createsTargetPr": false,
+    "mutatesTargetRepositories": false,
+    "vgcThinProfileReusableForStandardTargets": false,
+    "targetProfiles": {
+      "thin_target": {
+        "allowedRepositories": [
+          "hiro4649/VGC-FUNKY-TOKEN"
+        ],
+        "standardTargetTemplate": false,
+        "compatibilityBridgeRequired": false
+      },
+      "metadata_gate_target": {
+        "repositories": [
+          "hiro4649/iris-live2d-renderer",
+          "hiro4649/disco-funky-repair",
+          "hiro4649/iris"
+        ],
+        "compatibilityBridgeRequired": true,
+        "qualityGateEntrypoint": "scripts/codex-local-quality-gate.mjs",
+        "metadataGateEntrypoint": "docs/process/CODEX_HARNESS_MANIFEST.json"
+      },
+      "full_quality_gate_target": {
+        "repositories": [
+          "hiro4649/VOXWEAVE"
+        ],
+        "compatibilityBridgeRequired": true,
+        "qualityGateEntrypoint": "scripts/codex-local-quality-gate.mjs",
+        "metadataGateEntrypoint": "docs/process/CODEX_HARNESS_MANIFEST.json"
+      },
+      "product_heavy_target": {
+        "repositories": [
+          "hiro4649/CRIPTO-TIP"
+        ],
+        "compatibilityBridgeRequired": true,
+        "qualityGateEntrypoint": "scripts/codex-local-quality-gate.mjs",
+        "metadataGateEntrypoint": "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "productCodeChanged": false,
+        "packageOrLockfileChanged": false,
+        "deployWalletRpcSecretChanged": false
+      }
+    },
+    "compatibilityChain": {
+      "v111SelfTestStatus": {
+        "required": true,
+        "preserveOrGenerate": true,
+        "missingBlockingForbidden": true,
+        "sourceFiles": [
+          "scripts/codex-local-quality-gate.mjs",
+          "scripts/codex-v111-token-hard-cap.mjs",
+          "scripts/codex-v111-self-test.mjs"
+        ],
+        "requiredStatus": "pass"
+      },
+      "v080_v112": "target_shadow_legacy_count_only",
+      "v127": "blocking_compatibility",
+      "v128": "blocking_compatibility_rollback",
+      "v129": "immediate_rollback_or_blocking_current_before_activation",
+      "v130": "blocking_current_active_authority_after_profile_install"
+    },
+    "targetManifestOverlay": {
+      "activeHarnessVersion": "1.3.0",
+      "activeSelfTestSuite": "v130",
+      "activeSelfTestStatusKey": "v130SelfTestStatus",
+      "previousVersion": "1.2.9",
+      "targetHarnessVersion": "1.3.0",
+      "targetRollout": "completed",
+      "legacySelfTests": {
+        "v080_v112": "target_shadow_legacy_count_only",
+        "v127": "blocking_compatibility",
+        "v128": "blocking_compatibility_rollback",
+        "v129": "immediate_rollback",
+        "v130": "blocking_current_active_authority"
+      },
+      "versionAuthority": {
+        "v130": "blocking_current_active_authority",
+        "v129": "immediate_rollback",
+        "v128": "blocking_compatibility",
+        "v127": "compatibility_readable"
+      },
+      "performanceTrack": {
+        "state": "deferred",
+        "FableComparatorState": "unavailable",
+        "superiorityClaimState": "not_proven",
+        "affectsQualityScore": false,
+        "affectsBlockingCount": false,
+        "affectsRequiredChecks": false
+      },
+      "authorityCreated": false,
+      "targetMutationCount": 0,
+      "productRuntimeMutationCount": 0
+    },
+    "forbiddenBypass": [
+      "new_checker",
+      "new_status_family",
+      "new_artifact_family",
+      "threshold_change",
+      "required_check_bypass",
+      "metadata_gate_bypass",
+      "performance_track_start",
+      "fable_comparator_start",
+      "sdk_benchmark_start",
+      "target_product_code_change",
+      "package_or_lockfile_change",
+      "deploy_wallet_rpc_secret_change"
+    ],
+    "oneRepairMax": true,
+    "sameBlockerAction": "auto_quarantine"
   }
 }
