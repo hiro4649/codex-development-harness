@@ -579,11 +579,14 @@ function defaultWorkspaceIdentityGate(input = {}) {
 }
 
 function defaultActivePolicyIndex(input = {}) {
+  const defaultRequiredReads = activeHarnessVersion === '1.3.0'
+    ? ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'compiled_instruction_envelope']
+    : ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', `docs/process/CODEX_${activeSelfTestSuite.toUpperCase()}_SPEC.md`];
   return {
     schemaVersion: input.schemaVersion || activeHarnessVersion,
     indexPath: input.indexPath || 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
     taskProfile: TASK_PROFILES.has(input.taskProfile) ? input.taskProfile : 'routine',
-    requiredReads: truncateList(input.requiredReads || ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json', `docs/process/CODEX_${activeSelfTestSuite.toUpperCase()}_SPEC.md`], 8),
+    requiredReads: truncateList(input.requiredReads || defaultRequiredReads, 8),
     allowedConditionalReads: truncateList(input.allowedConditionalReads || [], 8),
     forbiddenByDefault: truncateList(input.forbiddenByDefault || ['README.md', 'legacy_specs', 'pr_history_docs'], 8),
     selectedSkillsMax: Math.max(0, Number(input.selectedSkillsMax || 1)),
@@ -2144,7 +2147,10 @@ export function validateActivePolicyIndex(index = {}) {
   for (const item of ['AGENTS.md', 'docs/process/CODEX_HARNESS_MANIFEST.json']) {
     if (!Array.isArray(index.requiredReads) || !index.requiredReads.includes(item)) reasons.push(`active_policy_index_missing_${item}`);
   }
-  if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md', 'docs/process/CODEX_V130_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
+  if (index.schemaVersion === '1.3.0') {
+    if (!Array.isArray(index.requiredReads) || !index.requiredReads.includes('compiled_instruction_envelope')) reasons.push('active_policy_index_missing_compiled_instruction_envelope');
+    if (Array.isArray(index.requiredReads) && index.requiredReads.includes('docs/process/CODEX_V130_SPEC.md')) reasons.push('active_policy_index_hot_v130_spec_forbidden');
+  } else if (!Array.isArray(index.requiredReads) || !index.requiredReads.some((item) => ['docs/process/CODEX_V123_SPEC.md', 'docs/process/CODEX_V124_SPEC.md', 'docs/process/CODEX_V125_SPEC.md', 'docs/process/CODEX_V126_SPEC.md', 'docs/process/CODEX_V127_SPEC.md', 'docs/process/CODEX_V128_SPEC.md', 'docs/process/CODEX_V129_SPEC.md', 'docs/process/CODEX_V130_SPEC.md'].includes(item))) reasons.push('active_policy_index_missing_active_spec');
   if (Array.isArray(index.requiredReads) && index.requiredReads.some((item) => ['README.md', 'legacy_specs', 'pr_history_docs'].includes(item))) reasons.push('active_policy_index_required_reads_too_broad');
   if (Number(index.selectedSkillsMax || 0) > 3) reasons.push('active_policy_index_skill_budget_too_high');
   if (['1.2.8', '1.2.9'].includes(index.schemaVersion) && Number(index.selectedSkillsMax || 0) > 1) reasons.push('active_policy_index_v128_routine_skill_budget_too_high');
