@@ -99,6 +99,15 @@ thin_target, metadata_gate_target, full_quality_gate_target, and
 product_heavy_target. This guidance does not start target rollout, create target
 PRs, or mutate target repositories.
 
+For standard target rollout PR rendering, the compatibility bridge projects the
+existing Best-of-N display metadata shape when a harness-only profile rollout is
+classified as R3 or workflow-sensitive. The projected PR body remains
+display-only and creates no merge authority. It includes
+`Best of N used or skipped: skipped with reason`, candidate count, selected
+candidate, and reason selected fields so existing target gates can evaluate
+`bestOfNEvidenceStatus` without changing the gate, score model, threshold, or
+artifact family.
+
 ## Performance Track
 
 The Performance Track is deferred, non-authoritative, and not required for Core

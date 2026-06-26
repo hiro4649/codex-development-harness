@@ -2320,6 +2320,25 @@
       "targetMutationCount": 0,
       "productRuntimeMutationCount": 0
     },
+    "prBodyProjection": {
+      "state": "display_only",
+      "authorityCreated": false,
+      "finalDecisionAuthority": "v1.1.8_final_decision_kernel",
+      "bestOfNMetadataShape": {
+        "appliesTo": [
+          "metadata_gate_target",
+          "full_quality_gate_target",
+          "product_heavy_target"
+        ],
+        "requiredByExistingGate": "bestOfNEvidenceStatus",
+        "line": "Best of N used or skipped: skipped with reason",
+        "reason": "deterministic harness-only profile rollout; no candidate selection among multiple generated implementations was performed.",
+        "candidateCount": 1,
+        "selectedCandidate": "fixed-head v1.3.0 Core target profile",
+        "reasonSelected": "only deterministic compatibility-preserving rollout candidate; no product/runtime/package/lockfile mutation.",
+        "productMutationCount": 0
+      }
+    },
     "forbiddenBypass": [
       "new_checker",
       "new_status_family",
