@@ -1,6 +1,6 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.9",
-  "schemaVersion": "1.2.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.0",
+  "schemaVersion": "1.3.0",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
   "purpose": "Bound md and skill reads by task profile while preserving active authority.",
@@ -15,20 +15,22 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V129_SPEC.md"
+        "docs/process/CODEX_V130_SPEC.md"
       ],
       "deferredReads": [
         "docs/process/CODEX_V128_SPEC.md",
         "docs/process/CODEX_V127_SPEC.md",
         "README.md",
         "legacy_specs",
-        "pr_history_docs"
+        "pr_history_docs",
+        "docs/process/CODEX_V129_SPEC.md"
       ],
       "mdFilesReadMax": 3,
-      "selectedSkillsMax": 1,
+      "selectedSkillsMax": 0,
       "thirdSkillAllowed": false,
       "mandatorySafetySelectedSkillsMax": 2,
-      "mandatorySafetyTriggerRequiresAllowlist": true
+      "mandatorySafetyTriggerRequiresAllowlist": true,
+      "routineColdArtifactReadMax": 0
     },
     "metadata_light": {
       "requiredReads": [
@@ -68,19 +70,21 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V129_SPEC.md"
+        "docs/process/CODEX_V130_SPEC.md"
       ],
       "deferredReads": [
         "docs/process/CODEX_V128_SPEC.md",
         "docs/process/CODEX_V127_SPEC.md",
         "README.md",
         "legacy_specs",
-        "pr_history_docs"
+        "pr_history_docs",
+        "docs/process/CODEX_V129_SPEC.md"
       ],
       "mdFilesReadMax": 6,
-      "selectedSkillsMax": 3,
+      "selectedSkillsMax": 0,
       "thirdSkillAllowed": true,
-      "thirdSkillRequiresTypedJustification": true
+      "thirdSkillRequiresTypedJustification": true,
+      "routineColdArtifactReadMax": 0
     },
     "compatibility_repair": {
       "requiredReads": [
@@ -123,16 +127,17 @@
   "requiredReads": [
     "AGENTS.md",
     "docs/process/CODEX_HARNESS_MANIFEST.json",
-    "docs/process/CODEX_V129_SPEC.md"
+    "docs/process/CODEX_V130_SPEC.md"
   ],
   "deferredReads": [
+    "docs/process/CODEX_V129_SPEC.md",
     "docs/process/CODEX_V128_SPEC.md",
     "docs/process/CODEX_V127_SPEC.md",
     "README.md",
     "legacy_specs",
     "pr_history_docs"
   ],
-  "selectedSkillsMax": 1,
+  "selectedSkillsMax": 0,
   "mdFilesReadMax": 3,
   "newP0Artifact": false,
   "newTopLevelStatus": false,
@@ -278,30 +283,32 @@
       "runtimeRegistryDigest": "sha256:b563d3cf6fe049b20cde125b8db0c74fc7891bccd06773162231a6f51d06e8e4"
     }
   },
-  "activeHarnessVersion": "1.2.9",
-  "activeSelfTestSuite": "v129",
-  "activeSelfTestStatusKey": "v129SelfTestStatus",
-  "currentVersion": "1.2.9",
-  "previousVersion": "1.2.8",
-  "candidateHarnessVersion": "1.2.9",
-  "candidateSelfTestSuite": "v129",
+  "activeHarnessVersion": "1.3.0",
+  "activeSelfTestSuite": "v130",
+  "activeSelfTestStatusKey": "v130SelfTestStatus",
+  "currentVersion": "1.3.0",
+  "previousVersion": "1.2.9",
+  "candidateHarnessVersion": "1.3.0",
+  "candidateSelfTestSuite": "v130",
   "candidateSelfTestStatusKey": "v129SelfTestStatus",
   "candidateActivationState": "active",
   "sourceActivation": "active",
-  "targetRollout": "completed",
+  "targetRollout": "not_started",
   "finalAuthority": "v1.1.8_final_decision_kernel",
   "versionAuthority": {
-    "v128": "blocking_compatibility_rollback",
-    "v129": "blocking_current_active_authority"
+    "v130": "blocking_current_active_authority",
+    "v129": "immediate_rollback",
+    "v128": "blocking_compatibility",
+    "v127": "compatibility_readable"
   },
   "v130SourceShadowCandidate": {
     "version": "1.3.0",
     "name": "Verified Goal Intake, Adaptive Capability Escalation, and Transactional Agent Teams",
     "candidateHarnessVersion": "1.3.0",
     "candidateSelfTestSuite": "v130",
-    "candidateActivationState": "source_shadow_candidate",
-    "sourceActivation": "forbidden",
-    "targetRollout": "forbidden",
+    "candidateActivationState": "active",
+    "sourceActivation": "active",
+    "targetRollout": "not_started",
     "newP0Artifact": false,
     "newTopLevelStatus": false,
     "newSkill": false,
@@ -311,6 +318,90 @@
     "schema": "docs/process/CODEX_V130_SCHEMA.json",
     "spec": "docs/process/CODEX_V130_SPEC.md",
     "selfTest": "scripts/codex-v130-self-test.mjs",
-    "safeSummaryOnly": true
-  }
+    "safeSummaryOnly": true,
+    "coreReleaseState": "active",
+    "performanceTrack": {
+      "state": "deferred",
+      "classification": "performance_track",
+      "authority": "non_authoritative",
+      "coreActivationRequirement": "not_required_for_core_activation",
+      "FableComparatorState": "unavailable",
+      "superiorityClaimState": "not_proven",
+      "sdkTransportState": "research_candidate",
+      "sixtyTaskBenchmarkState": "not_required_for_core_activation",
+      "learnedPolicyState": "shadow_only",
+      "affectsQualityScore": false,
+      "affectsBlockingCount": false,
+      "affectsMergeAllowed": false,
+      "affectsFinalDecision": false,
+      "affectsActivation": false,
+      "affectsTargetRollout": false
+    }
+  },
+  "targetHarnessVersion": "1.2.9",
+  "authorityCreated": false,
+  "legacySelfTestSuites": {
+    "v129": "immediate_rollback",
+    "v128": "blocking_compatibility",
+    "v127": "compatibility_readable"
+  },
+  "performanceTrack": {
+    "state": "deferred",
+    "classification": "performance_track",
+    "authority": "non_authoritative",
+    "coreActivationRequirement": "not_required_for_core_activation",
+    "FableComparatorState": "unavailable",
+    "superiorityClaimState": "not_proven",
+    "sdkTransportState": "research_candidate",
+    "sixtyTaskBenchmarkState": "not_required_for_core_activation",
+    "learnedPolicyState": "shadow_only",
+    "affectsQualityScore": false,
+    "affectsBlockingCount": false,
+    "affectsMergeAllowed": false,
+    "affectsFinalDecision": false,
+    "affectsActivation": false,
+    "affectsTargetRollout": false
+  },
+  "targetDevelopmentResumePolicy": {
+    "state": "active",
+    "targetHarnessForProductDevelopment": "1.2.9",
+    "v130TargetInstall": "forbidden",
+    "v130PerformanceTrackBlocksProductDevelopment": false,
+    "allowedUnderV129": [
+      "bug_repair",
+      "test_repair",
+      "ci_repair",
+      "small_product_change",
+      "documentation_correction",
+      "target_local_quality_repair"
+    ],
+    "forbidden": [
+      "v130_target_rollout",
+      "v130_skill_install",
+      "v131",
+      "new_benchmark_blocker",
+      "fable_superiority_claim"
+    ]
+  },
+  "antiSpinPolicy": {
+    "state": "active",
+    "candidateCodeRepairMaxPerPR": 1,
+    "sameBlockerMax": 1,
+    "providerTransientRetryMax": 1,
+    "capabilityEscalationMax": 1,
+    "modelUpgradeMax": 1,
+    "DAGReplanMax": 1,
+    "newCheckerOnRepeatBlocker": "forbidden",
+    "newStatusOnRepeatBlocker": "forbidden",
+    "newArtifactOnRepeatBlocker": "forbidden",
+    "thresholdRelaxation": "forbidden"
+  },
+  "prTerminalDispositionPolicy": {
+    "state": "active",
+    "humanPerPrWaitRequired": false,
+    "aiAuditFixedHeadAllowed": true,
+    "candidateSelfAuthorization": "forbidden",
+    "exactHeadRequired": true
+  },
+  "routineColdArtifactReadMax": 0
 }

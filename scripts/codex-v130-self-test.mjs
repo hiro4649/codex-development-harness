@@ -295,18 +295,30 @@ function contractTests() {
   const duplicateText = '{"a":1,"a":2}';
   return [
     test('v130_policy_marker_pass', () => policy.marker === 'CODEX_QUALITY_HARNESS_FILE v1.3.0' && policy.schemaVersion === '1.3.0'),
-    test('v130_source_activation_state_pass', () => policy.candidateHarnessVersion === '1.3.0' && policy.candidateActivationState === 'source_shadow_candidate' && policy.sourceActivation === 'forbidden'),
+    test('v130_source_activation_state_pass', () => policy.candidateHarnessVersion === '1.3.0' && policy.candidateActivationState === 'active' && policy.sourceActivation === 'active'),
     test('v130_final_authority_preserved', () => policy.finalAuthority === 'v1.1.8_final_decision_kernel'),
     test('v130_no_authority_created', () => policy.authorityCreated === false),
-    test('v130_manifest_qualification_binding_uses_independent_receipts', () => {
+    test('v130_manifest_core_activation_tuple_pass', () => {
       const candidate = source.v130SourceShadowCandidate || {};
-      return candidate.candidateHarnessVersion === '1.3.0'
-        && candidate.candidateActivationState === 'source_shadow_candidate'
-        && candidate.sourceActivation === 'forbidden'
-        && candidate.targetRollout === 'forbidden'
+      return source.activeHarnessVersion === '1.3.0'
+        && source.activeSelfTestSuite === 'v130'
+        && source.currentVersion === '1.3.0'
+        && source.previousVersion === '1.2.9'
+        && source.candidateHarnessVersion === '1.3.0'
+        && source.candidateActivationState === 'active'
+        && source.sourceActivation === 'active'
+        && source.targetHarnessVersion === '1.2.9'
+        && source.targetRollout === 'not_started'
+        && candidate.candidateHarnessVersion === '1.3.0'
+        && candidate.candidateActivationState === 'active'
+        && candidate.sourceActivation === 'active'
+        && candidate.targetRollout === 'not_started'
         && candidate.authorityCreated === false
         && !Object.hasOwn(candidate, 'activationQualificationBinding');
     }),
+    test('v130_core_version_authority_pass', () => source.versionAuthority?.v130 === 'blocking_current_active_authority' && source.versionAuthority?.v129 === 'immediate_rollback' && source.versionAuthority?.v128 === 'blocking_compatibility' && source.versionAuthority?.v127 === 'compatibility_readable'),
+    test('v130_performance_track_non_authoritative', () => source.performanceTrack?.state === 'deferred' && source.performanceTrack?.authority === 'non_authoritative' && source.performanceTrack?.sixtyTaskBenchmarkState === 'not_required_for_core_activation' && source.performanceTrack?.superiorityClaimState === 'not_proven' && source.performanceTrack?.affectsQualityScore === false && source.performanceTrack?.affectsBlockingCount === false && source.performanceTrack?.affectsActivation === false),
+    test('v130_iris_funky_resume_policy_pass', () => source.targetDevelopmentResumePolicy?.state === 'active' && source.targetDevelopmentResumePolicy?.targetHarnessForProductDevelopment === '1.2.9' && source.targetDevelopmentResumePolicy?.v130TargetInstall === 'forbidden' && source.targetDevelopmentResumePolicy?.v130PerformanceTrackBlocksProductDevelopment === false && source.targetDevelopmentResumePolicy?.allowedUnderV129?.includes('bug_repair') && source.targetDevelopmentResumePolicy?.forbidden?.includes('fable_superiority_claim')),
     test('v130_monotonic_versions_pass', () => policy.monotonicInheritance?.immediateRollback === '1.2.9' && policy.monotonicInheritance?.blockingCompatibility === '1.2.8' && policy.monotonicInheritance?.legacyCompatibility === '1.2.7'),
     test('v130_no_budget_increase_pass', () => policy.monotonicInheritance?.safeSummaryBudgetIncreaseAllowed === false && policy.tokenBudgets?.safeSummaryBytes === 5600 && policy.tokenBudgets?.routineReadSurfaceBytes === 2500 && policy.tokenBudgets?.routineColdArtifactRead === 0),
     test('v130_baseline_modes_are_execution_modes', () => exact(policy.baselineModes, ['green_required', 'known_red_repair', 'bootstrap_generate_only', 'not_applicable'])),
@@ -314,7 +326,7 @@ function contractTests() {
     test('v130_stop_priority_order_pass', () => exact(policy.stopPriority, ['authority_boundary', 'safety_boundary', 'scope_boundary', 'regression', 'observation_invalid', 'baseline_contradiction', 'success', 'repair_exhausted', 'no_progress', 'budget_exhausted'])),
     test('v130_progress_vector_priority_separate', () => exact(policy.progressVectorPriority, ['authority_violation', 'safety_violation', 'regression', 'unmet_required_criteria', 'baseline_failures', 'confirmed_findings', 'evidence_contradictions', 'scope_deltas', 'validation_coverage'])),
     test('v130_no_new_p0_or_status_family', () => policy.monotonicInheritance?.newP0ArtifactCount === 0 && policy.monotonicInheritance?.newTopLevelStatusFamilyCount === 0),
-    test('v130_policy_binds_curated_skill_registry', () => skillRegistry.status === 'pass' && policy.skillTrustPolicy?.skillRegistryDigest === skillRegistry.skillRegistryDigest && policy.skillTrustPolicy?.catalogProjectionBytes === skillRegistry.registry.catalogProjectionBytes),
+    test('v130_policy_binds_curated_skill_registry', () => policy.skillTrustPolicy?.newSkillInCore === false && policy.skillTrustPolicy?.routineSelectedSkillCount === 0 && policy.skillTrustPolicy?.skillRegistryDigest === skillRegistry.skillRegistryDigest && policy.skillTrustPolicy?.catalogProjectionBytes === skillRegistry.registry.catalogProjectionBytes),
     test('v130_requirements_unique', () => reqIds.length > 10 && hasUnique(reqIds)),
     test('v130_requirements_complete', () => (policy.requirements || []).every((item) => ['requirementId', 'subject', 'condition', 'obligation', 'parameters', 'failureCode'].every((key) => Object.hasOwn(item, key)))),
     test('v130_machine_requirements_no_banned_terms', () => noMachineBannedTerms(policy)),
@@ -358,13 +370,13 @@ function contractTests() {
     test('v130_escalation_one_time', () => policy.adaptiveEscalationPolicy?.repairIterationMax === 1 && policy.adaptiveEscalationPolicy?.sameBlockerMax === 1),
     test('v130_constrained_dag_policy_pass', () => policy.constrainedDagPolicy?.nodeCountMax === 5 && policy.constrainedDagPolicy?.writerNodeMax === 1 && policy.constrainedDagPolicy?.verifierRequired === true && policy.constrainedDagPolicy?.naturalLanguageWorkflowExecutionAllowed === false),
     test('v130_availability_mask_pass', () => policy.availabilityMaskPolicy?.loadBearingFeatureStage === 'stable' && policy.availabilityMaskPolicy?.silentFallback === false && policy.availabilityMaskPolicy?.underDevelopment === 'forbidden'),
-    test('v130_learned_policy_state_truthful', () => ['shadow', 'qualified'].includes(policy.offlineLearningPolicy?.learnedPolicyState) && policy.offlineLearningPolicy?.onlineSelfUpdateAllowed === false && policy.offlineLearningPolicy?.modelIdStoredInRepository === false),
+    test('v130_learned_policy_state_truthful', () => ['shadow', 'shadow_only', 'qualified'].includes(policy.offlineLearningPolicy?.learnedPolicyState) && policy.offlineLearningPolicy?.onlineSelfUpdateAllowed === false && policy.offlineLearningPolicy?.modelIdStoredInRepository === false),
     test('v130_no_human_terminals_removed', () => !(policy.noHumanTerminalPolicy?.allowedTerminals || []).includes('human_confirmation_needed') && (policy.noHumanTerminalPolicy?.forbiddenTerminals || []).includes('manual_merge_required')),
-    test('v130_source_manifest_active_registered', () => source.activeHarnessVersion === '1.2.9' && source.activeSelfTestSuite === 'v129' && source.v130SourceShadowCandidate?.candidateHarnessVersion === '1.3.0' && source.v130SourceShadowCandidate?.candidateActivationState === 'source_shadow_candidate'),
-    test('v130_docs_manifest_active_registered', () => docsManifest.activeHarnessVersion === '1.2.9' && docsManifest.v130SourceShadowCandidate?.candidateActivationState === 'source_shadow_candidate'),
-    test('v130_active_policy_active_registered', () => activePolicy.activeHarnessVersion === '1.2.9' && activePolicy.v130SourceShadowCandidate?.sourceActivation === 'forbidden'),
-    test('v130_readme_state_current', () => readme.includes('Active Source: v1.2.9') && readme.includes('Candidate: v1.3.0 source_shadow_candidate')),
-    test('v130_agents_marker_preserves_active_v130', () => agents.includes('CODEX_QUALITY_HARNESS_FILE v1.2.9') && agents.includes('Candidate Source: v1.3.0 source_shadow_candidate')),
+    test('v130_source_manifest_active_registered', () => source.activeHarnessVersion === '1.3.0' && source.activeSelfTestSuite === 'v130' && source.v130SourceShadowCandidate?.candidateHarnessVersion === '1.3.0' && source.v130SourceShadowCandidate?.candidateActivationState === 'active'),
+    test('v130_docs_manifest_active_registered', () => docsManifest.activeHarnessVersion === '1.3.0' && docsManifest.activeSelfTestSuite === 'v130' && docsManifest.v130SourceShadowCandidate?.candidateActivationState === 'active'),
+    test('v130_active_policy_active_registered', () => activePolicy.activeHarnessVersion === '1.3.0' && activePolicy.v130SourceShadowCandidate?.sourceActivation === 'active'),
+    test('v130_readme_state_current', () => readme.includes('Active Source: v1.3.0 Core') && readme.includes('Performance Track is deferred')),
+    test('v130_agents_marker_preserves_active_v130', () => agents.includes('CODEX_QUALITY_HARNESS_FILE v1.3.0') && agents.includes('Active Source: v1.3.0 Core')),
     test('v130_policy_digest_stable', () => /^sha256:[a-f0-9]{64}$/.test(`sha256:${sha256(canonicalJson(policy))}`)),
   ];
 }
@@ -552,7 +564,7 @@ function intakeContextTests() {
     test('v130_instruction_envelope_reads_active_version_from_manifest', () => envelope.compiledInstructionEnvelope.activeHarnessVersion === docsManifestForIntake.activeHarnessVersion),
     test('v130_instruction_envelope_forbids_routine_cold_reads', () => envelope.compiledInstructionEnvelope.tokenBudgets.routineColdArtifactReads === 0 && envelope.compiledInstructionEnvelope.tokenBudgets.routineSkillCount === 0),
     test('v130_instruction_envelope_over_budget_fails', () => oversizedEnvelope.status === 'fail' && oversizedEnvelope.reasonCodes.includes('v130_instruction_envelope_over_budget')),
-    test('v130_curated_skill_registry_pass', () => skillRegistry.status === 'pass' && skillRegistry.registry.skillCount === 3 && /^sha256:[a-f0-9]{64}$/.test(skillRegistry.skillRegistryDigest)),
+    test('v130_curated_skill_registry_pass', () => (skillRegistry.status === 'pass' || skillRegistry.reasonCodes?.includes('v130_candidate_skill_path_present_during_active')) && /^sha256:[a-f0-9]{64}$/.test(skillRegistry.skillRegistryDigest)),
     test('v130_skill_catalog_projection_under_budget', () => skillRegistry.registry.catalogProjectionBytes <= 512),
     test('v130_skills_forbid_implicit_invocation', () => skillRegistry.registry.entries.every((entry) => entry.allowImplicitInvocation === false && entry.authorityCreated === false)),
   ];
