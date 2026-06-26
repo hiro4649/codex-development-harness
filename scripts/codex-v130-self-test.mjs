@@ -288,6 +288,32 @@ function contractTests() {
   const schemaDefs = schema.definitions || {};
   const skillRegistry = compileV130Skills();
   const exact = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
+  const bridge = source.targetCompatibilityBridge || {};
+  const docsBridge = docsManifest.targetCompatibilityBridge || {};
+  const bridgeProfiles = bridge.targetProfiles || {};
+  const bridgeChain = bridge.compatibilityChain || {};
+  const bridgeOverlay = bridge.targetManifestOverlay || {};
+  const bridgePerformance = bridgeOverlay.performanceTrack || {};
+  const standardBridgeRepos = [
+    ...(bridgeProfiles.metadata_gate_target?.repositories || []),
+    ...(bridgeProfiles.full_quality_gate_target?.repositories || []),
+    ...(bridgeProfiles.product_heavy_target?.repositories || []),
+  ];
+  const bridgeRequiredProfiles = ['metadata_gate_target', 'full_quality_gate_target', 'product_heavy_target'];
+  const forbiddenBridgeBypasses = [
+    'new_checker',
+    'new_status_family',
+    'new_artifact_family',
+    'threshold_change',
+    'required_check_bypass',
+    'metadata_gate_bypass',
+    'performance_track_start',
+    'fable_comparator_start',
+    'sdk_benchmark_start',
+    'target_product_code_change',
+    'package_or_lockfile_change',
+    'deploy_wallet_rpc_secret_change',
+  ];
   const policyUnknown = JSON.parse(JSON.stringify(policy));
   policyUnknown.monotonicInheritance.extraNestedField = true;
   const policyBadEnum = { ...policy, candidateActivationState: 'activated_by_candidate' };
@@ -341,6 +367,13 @@ function contractTests() {
     test('v130_worker_verifier_split_lite_present', () => source.workerVerifierSplitLite?.state === 'active' && source.workerVerifierSplitLite?.logicalSeparationOnly === true && source.workerVerifierSplitLite?.workerCannotVerifySelf === true && source.workerVerifierSplitLite?.verifierCannotCreateMergeAuthority === true && source.workerVerifierSplitLite?.modelSkillPluginHookLearnedPolicyCannotCreateAuthority === true && source.workerVerifierSplitLite?.finalDecisionAuthority === 'v1.1.8_final_decision_kernel' && source.workerVerifierSplitLite?.runtimeAdded === false),
     test('v130_skill_catalog_lite_present', () => source.skillCatalogLite?.state === 'active' && source.skillCatalogLite?.routineSelectedSkill === 0 && source.skillCatalogLite?.projectionMaxBytes <= 512 && source.skillCatalogLite?.typedTaskSelectedSkillMax === 1 && source.skillCatalogLite?.authorityTaskSkill === 0 && source.skillCatalogLite?.skillBodyLazyLoadOnlyAfterSelection === true && source.skillCatalogLite?.newSkillInCore === false && source.skillCatalogLite?.skillRuntimeState === 'deferred' && source.skillCatalogLite?.skillPerformanceState === 'not_proven'),
     test('v130_target_profile_strategy_guidance_only', () => ['thin_target', 'metadata_gate_target', 'full_quality_gate_target', 'product_heavy_target'].every((profile) => source.targetProfileStrategy?.profiles?.includes(profile)) && source.targetProfileStrategy?.state === 'guidance_only' && source.targetProfileStrategy?.startsTargetRollout === false && source.targetProfileStrategy?.createsTargetPr === false && source.targetProfileStrategy?.mutatesTargetRepositories === false),
+    test('v130_target_compatibility_bridge_declared_once', () => bridge.state === 'active' && exact(bridge, docsBridge) && source.targetProfileStrategy?.compatibilityBridge === 'v111_v129_preserved_for_standard_metadata_full_targets'),
+    test('v130_target_compatibility_bridge_profiles_classified', () => bridgeProfiles.thin_target?.allowedRepositories?.includes('hiro4649/VGC-FUNKY-TOKEN') && bridgeProfiles.thin_target?.standardTargetTemplate === false && bridgeProfiles.metadata_gate_target?.repositories?.includes('hiro4649/iris-live2d-renderer') && bridgeProfiles.metadata_gate_target?.repositories?.includes('hiro4649/disco-funky-repair') && bridgeProfiles.metadata_gate_target?.repositories?.includes('hiro4649/iris') && bridgeProfiles.full_quality_gate_target?.repositories?.includes('hiro4649/VOXWEAVE') && bridgeProfiles.product_heavy_target?.repositories?.includes('hiro4649/CRIPTO-TIP') && bridgeRequiredProfiles.every((profile) => bridgeProfiles[profile]?.compatibilityBridgeRequired === true)),
+    test('v130_target_compatibility_bridge_v111_missing_blocking_forbidden', () => bridgeChain.v111SelfTestStatus?.required === true && bridgeChain.v111SelfTestStatus?.preserveOrGenerate === true && bridgeChain.v111SelfTestStatus?.missingBlockingForbidden === true && bridgeChain.v111SelfTestStatus?.requiredStatus === 'pass' && bridgeChain.v111SelfTestStatus?.sourceFiles?.includes('scripts/codex-v111-token-hard-cap.mjs') && bridgeChain.v111SelfTestStatus?.sourceFiles?.includes('scripts/codex-v111-self-test.mjs')),
+    test('v130_target_compatibility_bridge_preserves_v080_v129_chain', () => bridgeChain.v080_v112 === 'target_shadow_legacy_count_only' && bridgeChain.v127 === 'blocking_compatibility' && bridgeChain.v128 === 'blocking_compatibility_rollback' && bridgeChain.v129 === 'immediate_rollback_or_blocking_current_before_activation' && bridgeOverlay.legacySelfTests?.v080_v112 === 'target_shadow_legacy_count_only' && bridgeOverlay.legacySelfTests?.v127 === 'blocking_compatibility' && bridgeOverlay.legacySelfTests?.v128 === 'blocking_compatibility_rollback' && bridgeOverlay.legacySelfTests?.v129 === 'immediate_rollback' && bridgeOverlay.versionAuthority?.v129 === 'immediate_rollback'),
+    test('v130_target_compatibility_bridge_adds_v130_core_tuple_only', () => bridgeOverlay.activeHarnessVersion === '1.3.0' && bridgeOverlay.activeSelfTestSuite === 'v130' && bridgeOverlay.previousVersion === '1.2.9' && bridgeOverlay.targetHarnessVersion === '1.3.0' && bridgeOverlay.targetRollout === 'completed' && bridgeOverlay.legacySelfTests?.v130 === 'blocking_current_active_authority' && bridgeOverlay.versionAuthority?.v130 === 'blocking_current_active_authority'),
+    test('v130_target_compatibility_bridge_keeps_performance_non_authoritative', () => bridgePerformance.state === 'deferred' && bridgePerformance.FableComparatorState === 'unavailable' && bridgePerformance.superiorityClaimState === 'not_proven' && bridgePerformance.affectsQualityScore === false && bridgePerformance.affectsBlockingCount === false && bridgePerformance.affectsRequiredChecks === false && bridgeOverlay.authorityCreated === false && bridgeOverlay.targetMutationCount === 0 && bridgeOverlay.productRuntimeMutationCount === 0),
+    test('v130_target_compatibility_bridge_forbids_bypass_and_product_mutation', () => forbiddenBridgeBypasses.every((item) => bridge.forbiddenBypass?.includes(item)) && bridge.oneRepairMax === true && bridge.sameBlockerAction === 'auto_quarantine' && standardBridgeRepos.length === 5 && bridge.vgcThinProfileReusableForStandardTargets === false),
     test('v130_monotonic_versions_pass', () => policy.monotonicInheritance?.immediateRollback === '1.2.9' && policy.monotonicInheritance?.blockingCompatibility === '1.2.8' && policy.monotonicInheritance?.legacyCompatibility === '1.2.7'),
     test('v130_no_budget_increase_pass', () => policy.monotonicInheritance?.safeSummaryBudgetIncreaseAllowed === false && policy.tokenBudgets?.safeSummaryBytes === 5600 && policy.tokenBudgets?.routineReadSurfaceBytes === 2500 && policy.tokenBudgets?.routineColdArtifactRead === 0),
     test('v130_baseline_modes_are_execution_modes', () => exact(policy.baselineModes, ['green_required', 'known_red_repair', 'bootstrap_generate_only', 'not_applicable'])),
