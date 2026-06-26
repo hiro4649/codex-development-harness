@@ -238,6 +238,8 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
   const marker = input.marker || 'CODEX_QUALITY_HARNESS_FILE v1.2.8';
   const finalDecision = input.finalDecision || report.finalDecision || {};
   const routineDecisionProjection = input.routineDecisionProjection || report.routineDecisionProjection || null;
+  const activeV130Summary = marker === 'CODEX_QUALITY_HARNESS_FILE v1.3.0'
+    || routineDecisionProjection?.activeHarnessVersion === '1.3.0';
   const activeV129Summary = marker === 'CODEX_QUALITY_HARNESS_FILE v1.2.9'
     || routineDecisionProjection?.activeHarnessVersion === '1.2.9';
   const reasonSummaryStatus = input.reasonSummaryStatus || report.reasonSummaryStatus || {};
@@ -257,7 +259,7 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
   const summaryBase = {
     marker,
     artifactName: 'codex-quality-gate-safe-summary.json',
-    summaryKind: activeV129Summary ? 'v129_token_minimal_safe_summary' : 'v128_token_minimal_safe_summary',
+    summaryKind: activeV130Summary ? 'v130_token_minimal_safe_summary' : (activeV129Summary ? 'v129_token_minimal_safe_summary' : 'v128_token_minimal_safe_summary'),
     loadBearing: true,
     status: report.status || 'unknown',
     qualityScore: report.qualityScore ?? report.qualityScoreStatus?.score ?? null,
@@ -274,9 +276,14 @@ export function buildV128CompactQualityGateSafeSummary(input = {}) {
       finalDecisionStatus: compactStatus(report.finalDecisionStatus),
       orchestrationCapsuleBudgetStatus: report.routineDecisionProjectionStatus?.orchestrationCapsuleStoredBytesStatus || 'unknown',
       reasonSummaryStatus: compactReasonSummary(reasonSummaryStatus),
-      ...(activeV129Summary
-        ? { v129SelfTestStatus: compactStatus(report.v129SelfTestStatus) }
-        : { v127SelfTestStatus: compactStatus(report.v127SelfTestStatus) }),
+      ...(activeV130Summary
+        ? {
+          v130SelfTestStatus: compactStatus(report.v130SelfTestStatus),
+          v129SelfTestStatus: compactStatus(report.v129SelfTestStatus),
+        }
+        : (activeV129Summary
+          ? { v129SelfTestStatus: compactStatus(report.v129SelfTestStatus) }
+          : { v127SelfTestStatus: compactStatus(report.v127SelfTestStatus) })),
       v128SelfTestStatus: compactStatus(report.v128SelfTestStatus),
       safeArtifactValidation: compactStatus(report.safeArtifactValidation),
       safeSummaryOnly: true,

@@ -1,13 +1,13 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.2.9",
-  "harnessVersion": "1.2.9",
-  "sourceHarnessVersion": "1.2.9",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.0",
+  "harnessVersion": "1.3.0",
+  "sourceHarnessVersion": "1.3.0",
   "profileTemplateVersion": "1.1.2",
   "compatibleProfileTemplateVersions": [
     "0.7.0",
     "1.1.2"
   ],
-  "schemaVersion": "1.2.9",
+  "schemaVersion": "1.3.0",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -1056,29 +1056,15 @@
     "codex-v130-skill-compiler.mjs"
   ],
   "optionalFiles": [],
-  "activeHarnessVersion": "1.2.9",
-  "activeSelfTestSuite": "v129",
-  "activeSelfTestStatusKey": "v129SelfTestStatus",
+  "activeHarnessVersion": "1.3.0",
+  "activeSelfTestSuite": "v130",
+  "activeSelfTestStatusKey": "v130SelfTestStatus",
   "legacySelfTestSuites": {
-    "v126": "blocking_compatibility",
-    "v125": "blocking_compatibility",
-    "v124": "blocking_compatibility",
-    "v123": "blocking_compatibility",
-    "v122": "blocking_compatibility",
-    "v121": "blocking_compatibility",
-    "v120": "blocking_compatibility",
-    "v119": "blocking_compatibility",
-    "v118": "blocking_compatibility",
-    "v107": "blocking_compatibility",
-    "v106": "advisory",
-    "v105": "advisory",
-    "v104": "advisory",
-    "v103": "advisory",
-    "v127": "blocking_compatibility",
-    "v128": "blocking_compatibility_rollback",
-    "v129": "blocking_current_active_authority"
+    "v129": "immediate_rollback",
+    "v128": "blocking_compatibility",
+    "v127": "compatibility_readable"
   },
-  "targetRollout": "completed",
+  "targetRollout": "not_started",
   "representativeRealPrValidation": "not_started",
   "syntheticRepresentativeValidation": "required",
   "v105RequiredStatuses": [
@@ -1738,24 +1724,9 @@
     ]
   },
   "legacySelfTests": {
-    "v126": "blocking_compatibility",
-    "v125": "blocking_compatibility",
-    "v124": "blocking_compatibility",
-    "v123": "blocking_compatibility",
-    "v122": "blocking_compatibility",
-    "v121": "blocking_compatibility",
-    "v120": "blocking_compatibility",
-    "v119": "blocking_compatibility",
-    "v118": "blocking_compatibility",
-    "v117": "blocking_compatibility",
-    "v116": "blocking_compatibility",
-    "v115": "blocking_compatibility",
-    "v114": "blocking_compatibility",
-    "v113": "selected_critical",
-    "v080_v112": "target_shadow_legacy_count_only",
-    "v127": "blocking_compatibility",
-    "v128": "blocking_compatibility_rollback",
-    "v129": "blocking_current_active_authority"
+    "v129": "immediate_rollback",
+    "v128": "blocking_compatibility",
+    "v127": "compatibility_readable"
   },
   "contextRouting": {
     "version": "1.2.4",
@@ -2036,27 +2007,28 @@
       "runtimeRegistryDigest": "sha256:b563d3cf6fe049b20cde125b8db0c74fc7891bccd06773162231a6f51d06e8e4"
     }
   },
-  "currentVersion": "1.2.9",
-  "previousVersion": "1.2.8",
-  "candidateHarnessVersion": "1.2.9",
-  "candidateSelfTestSuite": "v129",
-  "candidateSelfTestStatusKey": "v129SelfTestStatus",
+  "currentVersion": "1.3.0",
+  "previousVersion": "1.2.9",
+  "candidateHarnessVersion": "1.3.0",
+  "candidateSelfTestSuite": "v130",
+  "candidateSelfTestStatusKey": "v130SelfTestStatus",
   "candidateActivationState": "active",
   "sourceActivation": "active",
   "finalAuthority": "v1.1.8_final_decision_kernel",
   "versionAuthority": {
-    "v129": "blocking_current_active_authority",
-    "v128": "blocking_compatibility_rollback",
-    "v127": "blocking_compatibility"
+    "v130": "blocking_current_active_authority",
+    "v129": "immediate_rollback",
+    "v128": "blocking_compatibility",
+    "v127": "compatibility_readable"
   },
   "v130SourceShadowCandidate": {
     "version": "1.3.0",
     "name": "Verified Goal Intake, Adaptive Capability Escalation, and Transactional Agent Teams",
     "candidateHarnessVersion": "1.3.0",
     "candidateSelfTestSuite": "v130",
-    "candidateActivationState": "source_shadow_candidate",
-    "sourceActivation": "forbidden",
-    "targetRollout": "forbidden",
+    "candidateActivationState": "active",
+    "sourceActivation": "active",
+    "targetRollout": "not_started",
     "newP0Artifact": false,
     "newTopLevelStatus": false,
     "newSkill": false,
@@ -2072,6 +2044,85 @@
     "orchestrationCompiler": "scripts/codex-v130-orchestration.mjs",
     "ratifier": "scripts/codex-v130-ratifier.mjs",
     "benchmark": "scripts/codex-v130-benchmark.mjs",
-    "shadowWorkflow": ".github/workflows/v130-shadow-gate.yml"
-  }
+    "shadowWorkflow": ".github/workflows/v130-shadow-gate.yml",
+    "candidateSelfTestStatusKey": "v130SelfTestStatus",
+    "coreReleaseState": "active",
+    "performanceTrack": {
+      "state": "deferred",
+      "classification": "performance_track",
+      "authority": "non_authoritative",
+      "coreActivationRequirement": "not_required_for_core_activation",
+      "FableComparatorState": "unavailable",
+      "superiorityClaimState": "not_proven",
+      "sdkTransportState": "research_candidate",
+      "sixtyTaskBenchmarkState": "not_required_for_core_activation",
+      "learnedPolicyState": "shadow_only",
+      "affectsQualityScore": false,
+      "affectsBlockingCount": false,
+      "affectsMergeAllowed": false,
+      "affectsFinalDecision": false,
+      "affectsActivation": false,
+      "affectsTargetRollout": false
+    }
+  },
+  "authorityCreated": false,
+  "performanceTrack": {
+    "state": "deferred",
+    "classification": "performance_track",
+    "authority": "non_authoritative",
+    "coreActivationRequirement": "not_required_for_core_activation",
+    "FableComparatorState": "unavailable",
+    "superiorityClaimState": "not_proven",
+    "sdkTransportState": "research_candidate",
+    "sixtyTaskBenchmarkState": "not_required_for_core_activation",
+    "learnedPolicyState": "shadow_only",
+    "affectsQualityScore": false,
+    "affectsBlockingCount": false,
+    "affectsMergeAllowed": false,
+    "affectsFinalDecision": false,
+    "affectsActivation": false,
+    "affectsTargetRollout": false
+  },
+  "targetDevelopmentResumePolicy": {
+    "state": "active",
+    "targetHarnessForProductDevelopment": "1.2.9",
+    "v130TargetInstall": "forbidden",
+    "v130PerformanceTrackBlocksProductDevelopment": false,
+    "allowedUnderV129": [
+      "bug_repair",
+      "test_repair",
+      "ci_repair",
+      "small_product_change",
+      "documentation_correction",
+      "target_local_quality_repair"
+    ],
+    "forbidden": [
+      "v130_target_rollout",
+      "v130_skill_install",
+      "v131",
+      "new_benchmark_blocker",
+      "fable_superiority_claim"
+    ]
+  },
+  "antiSpinPolicy": {
+    "state": "active",
+    "candidateCodeRepairMaxPerPR": 1,
+    "sameBlockerMax": 1,
+    "providerTransientRetryMax": 1,
+    "capabilityEscalationMax": 1,
+    "modelUpgradeMax": 1,
+    "DAGReplanMax": 1,
+    "newCheckerOnRepeatBlocker": "forbidden",
+    "newStatusOnRepeatBlocker": "forbidden",
+    "newArtifactOnRepeatBlocker": "forbidden",
+    "thresholdRelaxation": "forbidden"
+  },
+  "prTerminalDispositionPolicy": {
+    "state": "active",
+    "humanPerPrWaitRequired": false,
+    "aiAuditFixedHeadAllowed": true,
+    "candidateSelfAuthorization": "forbidden",
+    "exactHeadRequired": true
+  },
+  "targetMutationCount": 0
 }

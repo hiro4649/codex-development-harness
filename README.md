@@ -1,13 +1,14 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.2.9 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.3.0 -->
 # Codex Development Harness
 
-Active Source: v1.2.9
-Candidate: v1.3.0 source_shadow_candidate
+Active Source: v1.3.0 Core
+Candidate: v1.3.0 active
 Immediate rollback: v1.2.9
 Blocking compatibility: v1.2.8
 Legacy compatibility: v1.2.7
 Final Decision authority: v1.1.8_final_decision_kernel
-Target rollout: completed for v1.2.9; v1.3.0 target rollout not started
+Target harness: v1.2.9
+Target rollout: not_started for v1.3.0; v1.2.9 target development may resume
 
 Codex Development Harness is an AI PR safety gate. It helps decide whether an
 AI-authored change can be trusted, what evidence supports that decision, who is
@@ -18,17 +19,20 @@ Current authority is:
 - `AGENTS.md`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
-- `docs/process/CODEX_V129_SPEC.md`
-- `docs/process/CODEX_V130_SPEC.md` (candidate, non-authority during shadow)
+- `docs/process/CODEX_V130_SPEC.md`
+- `docs/process/CODEX_V129_SPEC.md` (immediate rollback)
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 
-v1.2.9 is the active Source authority. v1.3.0 is a source shadow candidate until
-an Activation PR changes the active manifest and passes fixed-head evidence.
+v1.3.0 Core is the active Source authority. It is a minimal Source release that
+preserves v1.2.9 target authority and lets IRIS/FUNKY target development resume
+under the v1.2.9 target harness. The v1.3.0 Performance Track is deferred,
+non-authoritative, and not required for Core Activation.
 
 It does not add target rollout authority, new P0 artifacts, new top-level
-operator statuses, new Skills, scheduler authority, release/deploy/wallet/RPC
-authority, readiness authority, legal/YouTube policy compliance authority, or
-GitHub approval review authority. When an owner explicitly instructs Source
+operator statuses, new Skills, SDK runtime authority, DAG agent-team runtime,
+learned orchestration authority, Fable superiority claims, release/deploy/wallet
+/RPC authority, readiness authority, legal/YouTube policy compliance authority,
+or GitHub approval review authority. When an owner explicitly instructs Source
 HARNESS development and GitHub publication, scoped commit, push, and PR
 creation are continuation actions and should not create avoidable owner stops.
 That continuation requires receipt provenance (`receiptId`, `taskId`, and
