@@ -1007,6 +1007,24 @@
         "selectedCandidate": "fixed-head v1.3.0 Core target profile",
         "reasonSelected": "only deterministic compatibility-preserving rollout candidate; no product/runtime/package/lockfile mutation.",
         "productMutationCount": 0
+      },
+      "v085PrProfileMetadataShape": {
+        "appliesTo": [
+          "metadata_gate_target",
+          "full_quality_gate_target",
+          "product_heavy_target"
+        ],
+        "requiredByExistingGate": "v085StabilityStatus",
+        "heading": "## Validation commands",
+        "commands": [
+          "node scripts/codex-v130-self-test.mjs",
+          "CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs",
+          "git diff --check",
+          "Remote same-head quality-gate must pass before merge."
+        ],
+        "bodyAuthority": "display_only",
+        "authorityCreated": false,
+        "productMutationCount": 0
       }
     },
     "forbiddenBypass": [

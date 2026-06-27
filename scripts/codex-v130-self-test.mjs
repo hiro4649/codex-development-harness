@@ -296,12 +296,17 @@ function contractTests() {
   const bridgePerformance = bridgeOverlay.performanceTrack || {};
   const bridgePrBodyProjection = bridge.prBodyProjection || {};
   const bridgeBestOfNShape = bridgePrBodyProjection.bestOfNMetadataShape || {};
+  const bridgeV085Shape = bridgePrBodyProjection.v085PrProfileMetadataShape || {};
   const bridgeBestOfNBody = [
     bridgeBestOfNShape.line,
     `Reason: ${bridgeBestOfNShape.reason}`,
     `Candidate count: ${bridgeBestOfNShape.candidateCount}`,
     `Selected candidate: ${bridgeBestOfNShape.selectedCandidate}`,
     `Reason selected: ${bridgeBestOfNShape.reasonSelected}`,
+  ].join('\n');
+  const bridgeV085Body = [
+    bridgeV085Shape.heading,
+    ...(bridgeV085Shape.commands || []).map((command) => `- ${command}`),
   ].join('\n');
   const standardBridgeRepos = [
     ...(bridgeProfiles.metadata_gate_target?.repositories || []),
@@ -383,6 +388,7 @@ function contractTests() {
     test('v130_target_compatibility_bridge_adds_v130_core_tuple_only', () => bridgeOverlay.activeHarnessVersion === '1.3.0' && bridgeOverlay.activeSelfTestSuite === 'v130' && bridgeOverlay.previousVersion === '1.2.9' && bridgeOverlay.targetHarnessVersion === '1.3.0' && bridgeOverlay.targetRollout === 'completed' && bridgeOverlay.legacySelfTests?.v130 === 'blocking_current_active_authority' && bridgeOverlay.versionAuthority?.v130 === 'blocking_current_active_authority'),
     test('v130_target_compatibility_bridge_keeps_performance_non_authoritative', () => bridgePerformance.state === 'deferred' && bridgePerformance.FableComparatorState === 'unavailable' && bridgePerformance.superiorityClaimState === 'not_proven' && bridgePerformance.affectsQualityScore === false && bridgePerformance.affectsBlockingCount === false && bridgePerformance.affectsRequiredChecks === false && bridgeOverlay.authorityCreated === false && bridgeOverlay.targetMutationCount === 0 && bridgeOverlay.productRuntimeMutationCount === 0),
     test('v130_target_best_of_n_metadata_projection_shape', () => bridgePrBodyProjection.state === 'display_only' && bridgePrBodyProjection.authorityCreated === false && bridgePrBodyProjection.finalDecisionAuthority === 'v1.1.8_final_decision_kernel' && bridgeBestOfNShape.requiredByExistingGate === 'bestOfNEvidenceStatus' && bridgeBestOfNShape.appliesTo?.includes('metadata_gate_target') && bridgeBestOfNBody.includes('Best of N used or skipped: skipped with reason') && bridgeBestOfNBody.includes('Candidate count') && bridgeBestOfNBody.includes('Selected candidate') && bridgeBestOfNBody.includes('Reason selected') && bridgeBestOfNShape.productMutationCount === 0 && bridgePerformance.state === 'deferred' && bridgePerformance.superiorityClaimState === 'not_proven'),
+    test('v130_target_v085_pr_profile_metadata_projection_shape', () => bridgePrBodyProjection.state === 'display_only' && bridgePrBodyProjection.authorityCreated === false && bridgePrBodyProjection.finalDecisionAuthority === 'v1.1.8_final_decision_kernel' && bridgeV085Shape.requiredByExistingGate === 'v085StabilityStatus' && bridgeRequiredProfiles.every((profile) => bridgeV085Shape.appliesTo?.includes(profile)) && bridgeV085Body.includes('## Validation commands') && bridgeV085Body.includes('node scripts/codex-v130-self-test.mjs') && bridgeV085Body.includes('CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs') && bridgeV085Body.includes('git diff --check') && bridgeV085Shape.bodyAuthority === 'display_only' && bridgeV085Shape.authorityCreated === false && bridgeV085Shape.productMutationCount === 0 && bridgePerformance.state === 'deferred' && bridgePerformance.superiorityClaimState === 'not_proven'),
     test('v130_target_compatibility_bridge_forbids_bypass_and_product_mutation', () => forbiddenBridgeBypasses.every((item) => bridge.forbiddenBypass?.includes(item)) && bridge.oneRepairMax === true && bridge.sameBlockerAction === 'auto_quarantine' && standardBridgeRepos.length === 5 && bridge.vgcThinProfileReusableForStandardTargets === false),
     test('v130_monotonic_versions_pass', () => policy.monotonicInheritance?.immediateRollback === '1.2.9' && policy.monotonicInheritance?.blockingCompatibility === '1.2.8' && policy.monotonicInheritance?.legacyCompatibility === '1.2.7'),
     test('v130_no_budget_increase_pass', () => policy.monotonicInheritance?.safeSummaryBudgetIncreaseAllowed === false && policy.tokenBudgets?.safeSummaryBytes === 5600 && policy.tokenBudgets?.routineReadSurfaceBytes === 2500 && policy.tokenBudgets?.routineColdArtifactRead === 0),
