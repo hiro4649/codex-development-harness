@@ -282,6 +282,11 @@ function contractTests() {
   const policyBytes = byteLength(fs.readFileSync('docs/process/CODEX_V130_POLICY.json', 'utf8'));
   const schemaBytes = byteLength(fs.readFileSync('docs/process/CODEX_V130_SCHEMA.json', 'utf8'));
   const specBytes = byteLength(fs.readFileSync('docs/process/CODEX_V130_SPEC.md', 'utf8'));
+  const projectSpec = fs.readFileSync('docs/PROJECT_SPEC.md', 'utf8');
+  const projectStatus = fs.readFileSync('docs/PROJECT_STATUS.md', 'utf8');
+  const nextTask = fs.readFileSync('docs/NEXT_TASK.md', 'utf8');
+  const changelog = fs.readFileSync('docs/CHANGELOG.md', 'utf8');
+  const projectMemoryDocs = [projectSpec, projectStatus, nextTask, changelog].join('\n');
   const reqIds = (policy.requirements || []).map((item) => item.requirementId);
   const roleIds = (policy.agentRoles || []).map((item) => item.roleId);
   const incompatibilities = (policy.roleIncompatibilities || []).map((pair) => pair.join('!='));
@@ -476,6 +481,18 @@ function contractTests() {
     test('v130_active_policy_active_registered', () => activePolicy.activeHarnessVersion === '1.3.0' && activePolicy.v130SourceShadowCandidate?.sourceActivation === 'active'),
     test('v130_readme_state_current', () => readme.includes('Active Source: v1.3.0 Core') && readme.includes('Performance Track is deferred')),
     test('v130_agents_marker_preserves_active_v130', () => agents.includes('CODEX_QUALITY_HARNESS_FILE v1.3.0') && agents.includes('Active Source: v1.3.0 Core')),
+    test('v130_project_memory_docs_exist', () => ['docs/PROJECT_SPEC.md', 'docs/PROJECT_STATUS.md', 'docs/NEXT_TASK.md', 'docs/CHANGELOG.md'].every((file) => fs.existsSync(file))),
+    test('v130_project_memory_docs_required_sections', () => projectSpec.includes('HARNESS v1.3.0 Core Purpose') && projectSpec.includes('Source Repo vs Target Repo Boundary') && projectSpec.includes('Final Decision') && projectSpec.includes('Compatibility Adapter') && projectSpec.includes('Conflict Rule') && projectStatus.includes('Current Branch') && projectStatus.includes('GitHub Actions Cost Control Rule') && nextTask.includes('Highest-Priority Next Task') && nextTask.includes('Stop Conditions') && changelog.includes('2026-06-27')),
+    test('v130_architect_read_order_declared', () => agents.includes('Architect/reviewer project-memory read order') && ['docs/PROJECT_SPEC.md', 'docs/PROJECT_STATUS.md', 'docs/NEXT_TASK.md', 'docs/CHANGELOG.md'].every((file) => agents.includes(file))),
+    test('v130_actions_cost_control_declared', () => projectStatus.includes('Do not push, open PRs, update PRs, rerun remote CI, or trigger workflow_dispatch without explicit owner approval') && projectStatus.toLowerCase().includes('report estimated actions impact') && nextTask.includes('No remote CI without owner approval')),
+    test('v130_project_memory_no_target_rollout', () => projectMemoryDocs.includes('targetRollout=not_started') || projectMemoryDocs.includes('No target rollout was started')),
+    test('v130_project_memory_no_performance_track', () => projectMemoryDocs.includes('Performance Track') && projectMemoryDocs.toLowerCase().includes('deferred') && projectMemoryDocs.includes('No Performance Track was activated')),
+    test('v130_target_overlay_declared_as_projection_only', () => [source, docsManifest, activePolicy].every((manifest) => manifest.targetManifestOverlay?.projectionKind === 'profile_install_template_only' && manifest.targetManifestOverlay?.mutatesTargetRepositories === false) && projectSpec.includes('template-only') && projectSpec.includes('must not imply target repository mutation')),
+    test('v130_v128_strengths_preserved', () => projectSpec.includes('deterministic decision projection') && projectSpec.includes('token-minimal read') && projectSpec.includes('compatibility router') && projectSpec.includes('validation DAG / evidence reuse') && projectSpec.includes('projection integrity') && projectSpec.includes('rollback compatibility') && projectSpec.includes('source/head binding') && projectSpec.includes('safe summary non-authority')),
+    test('v130_v129_strengths_preserved', () => projectSpec.includes('goal-contracted capability router') && projectSpec.includes('independent verifier') && projectSpec.includes('immediate rollback') && projectSpec.includes('host dispatch / plugin broker compatibility') && projectSpec.includes('real-host qualification discipline') && projectSpec.includes('v129SelfTestStatus')),
+    test('v130_no_new_status_family_for_freeze', () => policy.monotonicInheritance?.newTopLevelStatusFamilyCount === 0 && projectMemoryDocs.includes('new status family') && !/new status family (was|is) added/i.test(projectMemoryDocs)),
+    test('v130_no_new_artifact_family_for_freeze', () => policy.monotonicInheritance?.newP0ArtifactCount === 0 && projectMemoryDocs.includes('new artifact family') && !/new artifact family (was|is) added/i.test(projectMemoryDocs)),
+    test('v130_no_v131_or_performance_track_start', () => projectMemoryDocs.includes('v1.3.1') && projectMemoryDocs.includes('Performance Track') && !/[^o] v1\.3\.1 (was|is) started/i.test(projectMemoryDocs) && !/[^o] Performance Track (was|is) activated/i.test(projectMemoryDocs) && source.performanceTrack?.state === 'deferred' && source.performanceTrack?.superiorityClaimState === 'not_proven'),
     test('v130_policy_digest_stable', () => /^sha256:[a-f0-9]{64}$/.test(`sha256:${sha256(canonicalJson(policy))}`)),
   ];
 }

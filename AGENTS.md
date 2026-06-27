@@ -12,7 +12,7 @@ Active policy pointer: docs/process/CODEX_HARNESS_MANIFEST.json.
 v1.3.0 Core policy pointer: docs/process/CODEX_V130_POLICY.json.
 Execution entrypoint: scripts/codex-local-quality-gate.mjs.
 
-Prime Directive: ship the smallest correct change that increases product value without weakening truth, trust, security, or maintainability.
+Prime Directive: smallest correct change for product value; do not weaken truth, trust, security, or maintainability.
 
 <!-- CODEX_ACTIVE_BLOCK_BEGIN -->
 machineBindingId=FD_AUTH: Final Decision is pass/block/mergeAllowed/exit-code authority.
@@ -35,22 +35,18 @@ Routine read profile:
 - Routine selected Skill count is 0.
 - Routine cold artifact reads are 0.
 
+Architect/reviewer project-memory read order: docs/PROJECT_SPEC.md, docs/PROJECT_STATUS.md, docs/NEXT_TASK.md, docs/CHANGELOG.md, AGENTS.md, docs/process/CODEX_HARNESS_MANIFEST.json.
+
 Core policy:
-- Performance Track covers 60-task benchmark, SDK, Skill runtime, DAG team, learned orchestration, Cyber runtime, and Fable comparison.
-- It is non-authoritative, not required for Core Activation, and superiority is not proven.
+- Performance Track covers 60-task benchmark, SDK, Skill runtime, DAG team, learned orchestration, Cyber runtime, and Fable comparison; it is deferred, non-authoritative, and superiority is not proven.
 - IRIS/FUNKY may resume under HARNESS v1.3.0 Core governance.
-- Performance Track, target rollout waves, and Skill install remain forbidden unless explicitly scoped.
+- Performance Track, target rollout waves, and Skill install remain forbidden unless scoped.
 
 Forbidden action classes:
-- authority weakening
-- required-check bypass or removal
-- branch protection weakening
-- direct main push
-- GitHub approval review
+- authority weakening or required-check bypass/removal
+- branch protection weakening, direct main push, GitHub approval review
 - product/runtime/package/lockfile/target mutation
-- deployment, wallet, RPC, secret access
-- same-run Skill generation/activation
-- unlimited retry, agent recursion, or parallel writers on the same file
+- deploy/wallet/RPC/secret access
+- same-run Skill generation/activation, unlimited retry, agent recursion, or parallel same-file writers
 
-Historical version details live in their versioned specs. Do not duplicate them here.
 <!-- CODEX_QUALITY_HARNESS_END -->

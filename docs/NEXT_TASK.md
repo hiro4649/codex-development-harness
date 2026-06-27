@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Request owner approval to push the local Source harness-only ambiguity hardening branch and run remote checks after GitHub Actions usage is allowed.
+Finalize local-only HARNESS v1.3.0 Core Final Freeze Candidate and request owner approval before any remote action.
 
 ## Required Files
 
@@ -36,6 +36,18 @@ Request owner approval to push the local Source harness-only ambiguity hardening
 - `node scripts/codex-v130-self-test.mjs --stage=all`
 - Source core local quality gate with `CODEX_HARNESS_SOURCE_REPO=1`, `CODEX_HARNESS_MODE=core`, `CODEX_PROFILE_COMPAT_MODE=optional`, `CODEX_REQUIRE_NPM=1`, and `CODEX_QUALITY_REPORT=json`
 - Remote `quality-gate` and `v130-shadow-gate` only after owner approval
+- Extra grep checks for accidental v1.3.1, Performance Track activation, Fable superiority, target rollout, self-approval, or GitHub approval review wording
+
+## Stop Conditions
+
+- Project memory and machine policy disagree.
+- A new status family, new artifact family, required check, Skill, SDK benchmark, Fable comparator, DAG runtime, subagent runtime, v1.3.1, or target rollout appears.
+- Product/runtime/package/lockfile/deploy/wallet/RPC/secret mutation appears.
+- Remote CI would be required before owner approval.
+
+## Remote CI Rule
+
+No remote CI without owner approval. Estimated GitHub Actions impact must be reported before any future remote run.
 
 ## Estimated Complexity
 
