@@ -108,6 +108,13 @@ candidate, and reason selected fields so existing target gates can evaluate
 `bestOfNEvidenceStatus` without changing the gate, score model, threshold, or
 artifact family.
 
+The same display-only projection renders the existing v085 PR-profile heading
+`## Validation commands` with the v130 self-test command, local quality-gate
+command, `git diff --check`, and remote same-head quality-gate requirement for
+metadata, full-quality, and product-heavy target profiles. This lets existing
+target gates evaluate `v085StabilityStatus` without changing the gate, score
+model, threshold, or artifact family.
+
 ## Performance Track
 
 The Performance Track is deferred, non-authoritative, and not required for Core
