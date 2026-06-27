@@ -3,12 +3,10 @@
 
 Active Source: v1.3.0 Core
 Candidate: v1.3.0 active
-Immediate rollback: v1.2.9
-Blocking compatibility: v1.2.8
-Legacy compatibility: v1.2.7
+Compatibility Adapter: v1.3.0 internal compatibility evidence
 Final Decision authority: v1.1.8_final_decision_kernel
-Target harness: v1.2.9
-Target rollout: not_started for v1.3.0; v1.2.9 target development may resume
+Target harness display: HARNESS v1.3.0 Core
+Target rollout: profile-gated; Performance Track deferred
 
 Codex Development Harness is an AI PR safety gate. It helps decide whether an
 AI-authored change can be trusted, what evidence supports that decision, who is
@@ -20,13 +18,14 @@ Current authority is:
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
 - `docs/process/CODEX_V130_SPEC.md`
-- `docs/process/CODEX_V129_SPEC.md` (immediate rollback)
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 
 v1.3.0 Core is the active Source authority. It is a minimal Source release that
-preserves v1.2.9 target authority and lets IRIS/FUNKY target development resume
-under the v1.2.9 target harness. The v1.3.0 Performance Track is deferred,
-non-authoritative, and not required for Core Activation.
+keeps target development resumable through the v1.3.0 Compatibility Adapter.
+The adapter preserves internal compatibility evidence for existing target gates
+without making old harness names active operator surfaces. The v1.3.0
+Performance Track is deferred, non-authoritative, and not required for Core
+Activation.
 
 It does not add target rollout authority, new P0 artifacts, new top-level
 operator statuses, new Skills, SDK runtime authority, DAG agent-team runtime,

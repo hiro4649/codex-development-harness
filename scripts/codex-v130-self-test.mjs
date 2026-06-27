@@ -290,6 +290,9 @@ function contractTests() {
   const exact = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
   const bridge = source.targetCompatibilityBridge || {};
   const docsBridge = docsManifest.targetCompatibilityBridge || {};
+  const compatibilityAdapter = source.compatibilityAdapter || {};
+  const docsCompatibilityAdapter = docsManifest.compatibilityAdapter || {};
+  const activeCompatibilityAdapter = activePolicy.compatibilityAdapter || {};
   const bridgeProfiles = bridge.targetProfiles || {};
   const bridgeChain = bridge.compatibilityChain || {};
   const bridgeOverlay = bridge.targetManifestOverlay || {};
@@ -314,6 +317,17 @@ function contractTests() {
     ...(bridgeProfiles.product_heavy_target?.repositories || []),
   ];
   const bridgeRequiredProfiles = ['metadata_gate_target', 'full_quality_gate_target', 'product_heavy_target'];
+  const readmeOperatorSurface = readme.split('Historical material below')[0] || readme;
+  const agentsOperatorSurface = agents.match(/<!-- CODEX_QUALITY_HARNESS_BEGIN -->[\s\S]*?<!-- CODEX_QUALITY_HARNESS_END -->/)?.[0] || agents;
+  const combinedOperatorSurface = `${readmeOperatorSurface}\n${agentsOperatorSurface}`;
+  const oldActiveHarnessTerms = [
+    'v111 harness',
+    'v127 harness',
+    'v128 harness',
+    'v129 harness',
+    'old harness is active',
+    'legacy harness controls rollout',
+  ];
   const forbiddenBridgeBypasses = [
     'new_checker',
     'new_status_family',
@@ -382,6 +396,10 @@ function contractTests() {
     test('v130_skill_catalog_lite_present', () => source.skillCatalogLite?.state === 'active' && source.skillCatalogLite?.routineSelectedSkill === 0 && source.skillCatalogLite?.projectionMaxBytes <= 512 && source.skillCatalogLite?.typedTaskSelectedSkillMax === 1 && source.skillCatalogLite?.authorityTaskSkill === 0 && source.skillCatalogLite?.skillBodyLazyLoadOnlyAfterSelection === true && source.skillCatalogLite?.newSkillInCore === false && source.skillCatalogLite?.skillRuntimeState === 'deferred' && source.skillCatalogLite?.skillPerformanceState === 'not_proven'),
     test('v130_target_profile_strategy_guidance_only', () => ['thin_target', 'metadata_gate_target', 'full_quality_gate_target', 'product_heavy_target'].every((profile) => source.targetProfileStrategy?.profiles?.includes(profile)) && source.targetProfileStrategy?.state === 'guidance_only' && source.targetProfileStrategy?.startsTargetRollout === false && source.targetProfileStrategy?.createsTargetPr === false && source.targetProfileStrategy?.mutatesTargetRepositories === false),
     test('v130_target_compatibility_bridge_declared_once', () => bridge.state === 'active' && exact(bridge, docsBridge) && source.targetProfileStrategy?.compatibilityBridge === 'v111_v129_preserved_for_standard_metadata_full_targets'),
+    test('v130_operator_surface_v130_only', () => combinedOperatorSurface.includes('HARNESS v1.3.0 Core') && combinedOperatorSurface.includes('v1.3.0 Compatibility Adapter') && oldActiveHarnessTerms.every((term) => !combinedOperatorSurface.toLowerCase().includes(term))),
+    test('v130_compatibility_adapter_declared_once', () => compatibilityAdapter.state === 'active' && exact(compatibilityAdapter, docsCompatibilityAdapter) && exact(compatibilityAdapter, activeCompatibilityAdapter)),
+    test('v130_compatibility_adapter_internal_only', () => compatibilityAdapter.authority === 'internal_compatibility_only' && compatibilityAdapter.createsAuthority === false && compatibilityAdapter.affectsFinalDecision === false && compatibilityAdapter.affectsTargetRollout === false && compatibilityAdapter.operatorSurface === 'HARNESS v1.3.0 Core'),
+    test('v130_compatibility_adapter_preserves_legacy_machine_aliases', () => compatibilityAdapter.preserves?.v111SelfTestStatus === 'v130CompatibilityAdapter.v111Status' && compatibilityAdapter.preserves?.v080_v112 === 'v130CompatibilityAdapter.legacyShadowRange' && compatibilityAdapter.preserves?.v127 === 'v130CompatibilityAdapter.readableCompatibility' && compatibilityAdapter.preserves?.v128 === 'v130CompatibilityAdapter.rollbackCompatibility' && compatibilityAdapter.preserves?.v129 === 'v130CompatibilityAdapter.immediateRollback' && compatibilityAdapter.v130CompatibilityAdapter?.v111Status === 'preserved_machine_alias' && compatibilityAdapter.v130CompatibilityAdapter?.legacyShadowRange === 'target_shadow_legacy_count_only' && compatibilityAdapter.v130CompatibilityAdapter?.readableCompatibility === 'preserved' && compatibilityAdapter.v130CompatibilityAdapter?.rollbackCompatibility === 'preserved' && compatibilityAdapter.v130CompatibilityAdapter?.immediateRollback === 'preserved'),
     test('v130_target_compatibility_bridge_profiles_classified', () => bridgeProfiles.thin_target?.allowedRepositories?.includes('hiro4649/VGC-FUNKY-TOKEN') && bridgeProfiles.thin_target?.standardTargetTemplate === false && bridgeProfiles.metadata_gate_target?.repositories?.includes('hiro4649/iris-live2d-renderer') && bridgeProfiles.metadata_gate_target?.repositories?.includes('hiro4649/disco-funky-repair') && bridgeProfiles.metadata_gate_target?.repositories?.includes('hiro4649/iris') && bridgeProfiles.full_quality_gate_target?.repositories?.includes('hiro4649/VOXWEAVE') && bridgeProfiles.product_heavy_target?.repositories?.includes('hiro4649/CRIPTO-TIP') && bridgeRequiredProfiles.every((profile) => bridgeProfiles[profile]?.compatibilityBridgeRequired === true)),
     test('v130_target_compatibility_bridge_v111_missing_blocking_forbidden', () => bridgeChain.v111SelfTestStatus?.required === true && bridgeChain.v111SelfTestStatus?.preserveOrGenerate === true && bridgeChain.v111SelfTestStatus?.missingBlockingForbidden === true && bridgeChain.v111SelfTestStatus?.requiredStatus === 'pass' && bridgeChain.v111SelfTestStatus?.sourceFiles?.includes('scripts/codex-v111-token-hard-cap.mjs') && bridgeChain.v111SelfTestStatus?.sourceFiles?.includes('scripts/codex-v111-self-test.mjs')),
     test('v130_target_compatibility_bridge_preserves_v080_v129_chain', () => bridgeChain.v080_v112 === 'target_shadow_legacy_count_only' && bridgeChain.v127 === 'blocking_compatibility' && bridgeChain.v128 === 'blocking_compatibility_rollback' && bridgeChain.v129 === 'immediate_rollback_or_blocking_current_before_activation' && bridgeOverlay.legacySelfTests?.v080_v112 === 'target_shadow_legacy_count_only' && bridgeOverlay.legacySelfTests?.v127 === 'blocking_compatibility' && bridgeOverlay.legacySelfTests?.v128 === 'blocking_compatibility_rollback' && bridgeOverlay.legacySelfTests?.v129 === 'immediate_rollback' && bridgeOverlay.versionAuthority?.v129 === 'immediate_rollback'),

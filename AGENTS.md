@@ -4,9 +4,9 @@
 CODEX_QUALITY_HARNESS_FILE v1.3.0
 
 Active Source: v1.3.0 Core.
-Immediate rollback Source: v1.2.9.
-Target harness: v1.2.9.
-Target rollout for v1.3.0: not_started.
+Compatibility Adapter: v1.3.0 internal evidence.
+Target harness display: HARNESS v1.3.0 Core.
+Target rollout: profile-gated; Performance Track deferred.
 Final Decision authority: v1.1.8_final_decision_kernel.
 Active policy pointer: docs/process/CODEX_HARNESS_MANIFEST.json.
 v1.3.0 Core policy pointer: docs/process/CODEX_V130_POLICY.json.
@@ -31,15 +31,15 @@ machineBindingId=PROJECTION_NONAUTH: Safe Summary/Projection/Goal/Router/Receipt
 
 Routine read profile:
 - Read this file, docs/process/CODEX_HARNESS_MANIFEST.json, and the compiled instruction envelope.
-- Defer v1.2.9/v1.2.8/v1.2.7 specs unless a rollback, safe artifact, or compatibility failure requires them.
+- Defer adapter internals unless rollback, safe artifact, or compatibility failure requires them.
 - Routine selected Skill count is 0.
 - Routine cold artifact reads are 0.
 
 v1.3.0 Core policy:
 - Performance Track covers 60-task benchmark, SDK, Skill runtime, DAG team, learned orchestration, Cyber runtime, and Fable comparison.
 - It is non-authoritative, not required for Core Activation, and superiority is not proven.
-- IRIS/FUNKY may resume under target harness v1.2.9.
-- v1.3.0 target rollout and Skill install remain forbidden.
+- IRIS/FUNKY may resume under HARNESS v1.3.0 Core governance.
+- Performance Track, target rollout waves, and Skill install remain forbidden unless explicitly scoped.
 
 Forbidden action classes:
 - authority weakening

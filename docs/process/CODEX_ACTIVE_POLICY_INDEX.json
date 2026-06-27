@@ -617,5 +617,29 @@
     ],
     "oneRepairMax": true,
     "sameBlockerAction": "auto_quarantine"
+  },
+  "compatibilityAdapter": {
+    "state": "active",
+    "name": "v1.3.0 Compatibility Adapter",
+    "authority": "internal_compatibility_only",
+    "createsAuthority": false,
+    "affectsFinalDecision": false,
+    "affectsTargetRollout": false,
+    "operatorSurface": "HARNESS v1.3.0 Core",
+    "machineAliasesPreserved": true,
+    "preserves": {
+      "v111SelfTestStatus": "v130CompatibilityAdapter.v111Status",
+      "v080_v112": "v130CompatibilityAdapter.legacyShadowRange",
+      "v127": "v130CompatibilityAdapter.readableCompatibility",
+      "v128": "v130CompatibilityAdapter.rollbackCompatibility",
+      "v129": "v130CompatibilityAdapter.immediateRollback"
+    },
+    "v130CompatibilityAdapter": {
+      "v111Status": "preserved_machine_alias",
+      "legacyShadowRange": "target_shadow_legacy_count_only",
+      "readableCompatibility": "preserved",
+      "rollbackCompatibility": "preserved",
+      "immediateRollback": "preserved"
+    }
   }
 }
