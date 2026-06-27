@@ -1067,5 +1067,24 @@
       "rollbackCompatibility": "preserved",
       "immediateRollback": "preserved"
     }
+  },
+  "sourceCoreTargetRolloutState": "not_started",
+  "installedTargetHarnessVersion": "1.2.9",
+  "operatorTargetHarnessDisplay": "HARNESS v1.3.0 Core",
+  "compatibilityAdapterInternalHarnessVersion": "1.2.9",
+  "targetManifestOverlay": {
+    "projectionKind": "profile_install_template_only",
+    "appliesOnlyAfterOwnerScopedProfileInstall": true,
+    "mutatesTargetRepositories": false
+  },
+  "actionPinPolicy": {
+    "state": "active",
+    "coreWorkflowsRequirePinnedCheckoutAndSetupNode": true,
+    "pinnedActions": {
+      "checkout": "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5",
+      "setupNode": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020"
+    },
+    "floatingCheckoutOrSetupNodeAllowedInCoreWorkflows": false,
+    "permissionWeakeningAllowed": false
   }
 }

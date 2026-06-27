@@ -49,24 +49,6 @@
       "selectedSkillsMax": 1,
       "thirdSkillAllowed": false
     },
-    "target_rollout": {
-      "requiredReads": [
-        "AGENTS.md",
-        "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V129_SPEC.md",
-        "owner_rollout_instruction"
-      ],
-      "deferredReads": [
-        "docs/process/CODEX_V128_SPEC.md",
-        "docs/process/CODEX_V127_SPEC.md",
-        "README.md",
-        "legacy_specs",
-        "pr_history_docs"
-      ],
-      "mdFilesReadMax": 4,
-      "selectedSkillsMax": 2,
-      "thirdSkillAllowed": false
-    },
     "harness_source_body": {
       "requiredReads": [
         "AGENTS.md",
@@ -123,6 +105,31 @@
       "routineColdArtifactReadMax": 0,
       "fullHistory": "forbidden",
       "rawLogs": "forbidden"
+    },
+    "target_compatibility_profile_install": {
+      "requiredReads": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "compiled_instruction_envelope",
+        "owner_rollout_instruction"
+      ],
+      "deferredReads": [
+        "docs/process/CODEX_V128_SPEC.md",
+        "docs/process/CODEX_V127_SPEC.md",
+        "README.md",
+        "legacy_specs",
+        "pr_history_docs",
+        "docs/process/CODEX_V129_SPEC.md"
+      ],
+      "mdFilesReadMax": 4,
+      "selectedSkillsMax": 2,
+      "thirdSkillAllowed": false,
+      "profilePurpose": "v1.3.0 Compatibility Adapter scoped target profile install instructions only",
+      "activeOperatorAuthority": false,
+      "authority": "internal_compatibility_adapter_reference_only",
+      "compatibilityReferenceReads": {
+        "docs/process/CODEX_V129_SPEC.md": "failing_compatibility_adapter_reference"
+      }
     }
   },
   "requiredReads": [
@@ -641,5 +648,26 @@
       "rollbackCompatibility": "preserved",
       "immediateRollback": "preserved"
     }
-  }
+  },
+  "sourceCoreTargetRolloutState": "not_started",
+  "installedTargetHarnessVersion": "1.2.9",
+  "operatorTargetHarnessDisplay": "HARNESS v1.3.0 Core",
+  "compatibilityAdapterInternalHarnessVersion": "1.2.9",
+  "targetManifestOverlay": {
+    "projectionKind": "profile_install_template_only",
+    "appliesOnlyAfterOwnerScopedProfileInstall": true,
+    "mutatesTargetRepositories": false
+  },
+  "actionPinPolicy": {
+    "state": "active",
+    "coreWorkflowsRequirePinnedCheckoutAndSetupNode": true,
+    "pinnedActions": {
+      "checkout": "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5",
+      "setupNode": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020"
+    },
+    "floatingCheckoutOrSetupNodeAllowedInCoreWorkflows": false,
+    "permissionWeakeningAllowed": false
+  },
+  "targetRolloutProfileRenamedFrom": "target_rollout",
+  "targetRolloutProfileRenamedTo": "target_compatibility_profile_install"
 }
