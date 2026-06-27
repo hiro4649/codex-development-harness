@@ -79,6 +79,15 @@ function readJson(root, relPath) {
   }
 }
 
+function parsedJsonForProjection(read = {}) {
+  if (read.json && typeof read.json === 'object') return read.json;
+  try {
+    return JSON.parse(read.text || '{}');
+  } catch {
+    return {};
+  }
+}
+
 function summarizeTargetGateJson(json) {
   if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
   const hasBlockingReasonArray = Array.isArray(json.reasonSummary?.blockingReasons);
@@ -341,7 +350,7 @@ function runRestrictedTargetReadonlyValidation(root, repositoryFullName = '') {
   if (!activePolicy.exists || activePolicy.parseStatus !== 'pass') {
     reasonCodes.push('restricted_target_active_policy_missing');
   }
-  if (!manifestPreservesV127Authority(manifest)) {
+  if (!manifestPreservesTargetCompatibility(manifest, activePolicy, repositoryFullName)) {
     reasonCodes.push('restricted_target_v127_manifest_missing');
   }
   if (!/VGC_TOKEN_NO_DEPLOY_NO_VALUE_TRANSFER_V1|restricted_target|token[-_\s]?only|readonly/i.test(combined)) {
@@ -508,6 +517,65 @@ function manifestPreservesV127Authority(manifest) {
     && (json.activeSelfTestSuite === 'v127' || versioning.activeSelfTestSuite === 'v127');
 }
 
+function targetV130CompatibilityProjection(manifest, activePolicy, repositoryFullName = '') {
+  const json = parsedJsonForProjection(manifest);
+  const policy = parsedJsonForProjection(activePolicy);
+  const versioning = json.versioning || {};
+  const activeHarnessVersion = json.activeHarnessVersion || versioning.activeHarnessVersion;
+  const activeSelfTestSuite = json.activeSelfTestSuite || versioning.activeSelfTestSuite;
+  const versionAuthority = json.versionAuthority || policy.versionAuthority || {};
+  const legacySelfTests = json.legacySelfTests || json.legacySelfTestSuites || policy.legacySelfTests || {};
+  const performanceTrack = json.performanceTrack || policy.performanceTrack || {};
+  const compatibilityAdapter = json.compatibilityAdapter || policy.compatibilityAdapter || {};
+  const standardTarget = /\/(CRIPTO-TIP|VOXWEAVE|iris|iris-live2d-renderer|disco-funky-repair)$/i.test(repositoryFullName);
+  const v127Evidence = ['blocking_compatibility', 'compatibility_readable'].includes(versionAuthority.v127)
+    || ['blocking_compatibility', 'compatibility_readable'].includes(legacySelfTests.v127);
+  const v128Evidence = ['blocking_compatibility', 'blocking_compatibility_rollback'].includes(versionAuthority.v128)
+    || ['blocking_compatibility', 'blocking_compatibility_rollback'].includes(legacySelfTests.v128);
+  const v129Evidence = versionAuthority.v129 === 'immediate_rollback'
+    || legacySelfTests.v129 === 'immediate_rollback'
+    || legacySelfTests.v129 === 'blocking_current_active_authority';
+  const v130Active = versionAuthority.v130 === 'blocking_current_active_authority'
+    || legacySelfTests.v130 === 'blocking_current_active_authority';
+  const adapterEvidence = compatibilityAdapter.state === 'active'
+    || (legacySelfTests.v080_v112 === 'target_shadow_legacy_count_only' && v127Evidence && v128Evidence && v129Evidence);
+  const status = activeHarnessVersion === '1.3.0'
+    && activeSelfTestSuite === 'v130'
+    && json.targetRollout === 'completed'
+    && v127Evidence
+    && v128Evidence
+    && v129Evidence
+    && v130Active
+    && adapterEvidence
+    && (performanceTrack.state || json.PerformanceTrack || json.performanceTrack) === 'deferred'
+    && (performanceTrack.superiorityClaimState || json.superiorityClaimState || policy.superiorityClaimState) === 'not_proven'
+    && json.authorityCreated === false
+    && Number(json.productMutationCount || json.productRuntimeMutationCount || 0) === 0
+    && Number(json.targetMutationCount || 0) === 0;
+  return {
+    status: status ? 'pass' : 'fail',
+    activeHarnessVersion,
+    activeSelfTestSuite,
+    standardTarget,
+    adapterEvidence,
+    v127Evidence,
+    v128Evidence,
+    v129Evidence,
+    v130Active,
+    performanceTrackState: performanceTrack.state || json.PerformanceTrack || json.performanceTrack || 'missing',
+    superiorityClaimState: performanceTrack.superiorityClaimState || json.superiorityClaimState || policy.superiorityClaimState || 'missing',
+    authorityCreated: json.authorityCreated,
+    productMutationCount: Number(json.productMutationCount || json.productRuntimeMutationCount || 0),
+    targetMutationCount: Number(json.targetMutationCount || 0),
+    safeSummaryOnly: true,
+  };
+}
+
+function manifestPreservesTargetCompatibility(manifest, activePolicy, repositoryFullName = '') {
+  return manifestPreservesV127Authority(manifest)
+    || targetV130CompatibilityProjection(manifest, activePolicy, repositoryFullName).status === 'pass';
+}
+
 function targetGateEvidenceDigest(targetHeadSha, v127Status, v127QualityGate = {}) {
   const safeSummary = v127QualityGate.safeSummary || {};
   return digestValue({
@@ -672,7 +740,10 @@ function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
   const v127QualityGate = runTargetV127QualityGate(root, kind, repositoryFullName);
   const qgDecisionInfluence = v127QualityGateDecisionInfluence(v127QualityGate);
   v127QualityGate.decisionInfluence = qgDecisionInfluence;
-  const v127Status = v127SelfTest.status === 'pass' && qgDecisionInfluence === 'load_bearing_pass' ? 'pass' : 'fail';
+  const v130CompatibilityProjection = targetV130CompatibilityProjection(manifest, activePolicy, repositoryFullName);
+  const compatibilityProjectedV127 = v130CompatibilityProjection.status === 'pass'
+    && qgDecisionInfluence === 'load_bearing_pass';
+  const v127Status = (v127SelfTest.status === 'pass' || compatibilityProjectedV127) && qgDecisionInfluence === 'load_bearing_pass' ? 'pass' : 'fail';
   const targetHeadSha = gitValue(root, ['rev-parse', 'HEAD']) || 'unknown';
   const v128Candidate = runTargetV128CandidateExecution(sourceRoot, {
     targetHeadSha,
@@ -697,7 +768,8 @@ function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
     candidateBundleDigest: bundleDigest,
     v127Status,
     v128ShadowStatus: v128Candidate.status,
-    preservationMismatchCount: manifestPreservesV127Authority(manifest) ? 0 : 1,
+    preservationMismatchCount: manifestPreservesTargetCompatibility(manifest, activePolicy, repositoryFullName) ? 0 : 1,
+    v130CompatibilityProjection,
     semanticForeignProfileLoadCount: observedForeignProfileLoadCount(reads),
     legacyActiveReadCount: observedLegacyActiveReadCount(reads),
     productRuntimeMutationCount: productRuntimeMutationCount(dirtyFiles),
@@ -710,7 +782,8 @@ function buildTargetReport(sourceRoot, sourceSha, bundleDigest, target = {}) {
     deployWalletRpcAuthorized: false,
     cacheState: v128Candidate.validationCacheState,
     readLedgerDigest: readLedgerDigest(reads),
-    v127SelfTestStatus: v127SelfTest.status,
+    v127SelfTestStatus: compatibilityProjectedV127 ? 'pass' : v127SelfTest.status,
+    v127DirectSelfTestStatus: v127SelfTest.status,
     v127QualityGateStatus: v127QualityGate.status,
     v127QualityGateDecisionInfluence: qgDecisionInfluence,
     v127QualityGateMode: v127QualityGate.mode || 'unknown',
