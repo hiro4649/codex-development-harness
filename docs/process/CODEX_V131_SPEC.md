@@ -184,6 +184,8 @@ It must fail the dry run if it would touch:
 - contracts or token deployment files
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
 
+Its operator report must stay bounded. Changed file paths, reason codes, and Source manifest copy paths are display-truncated while exact counts and omitted counts remain available for safe diagnosis.
+
 ## Product Value Return Gate
 
 Product Value Return Gate starts as advisory only:

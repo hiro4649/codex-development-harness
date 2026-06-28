@@ -378,6 +378,9 @@ export function dryRunTargetProfileInstall({
   changedFiles = [],
   sourceManifestCopied = false,
 } = {}) {
+  const maxChangedFiles = 50;
+  const maxReasonCodes = 50;
+  const maxSourceManifestCopyPaths = 20;
   const reasons = [];
   const sensitivePatterns = [
     /(^|\/)package(-lock)?\.json$/i,
@@ -403,8 +406,10 @@ export function dryRunTargetProfileInstall({
   let sensitiveDiffCount = 0;
   let sourceManifestCopyDetected = sourceManifestCopied;
   const sourceManifestCopyPaths = [];
+  const normalizedChangedFiles = [];
   for (const file of changedFiles) {
     const normalized = file.replaceAll('\\', '/');
+    normalizedChangedFiles.push(normalized);
     if (/(^|\/)CODEX_SOURCE_HARNESS_MANIFEST\.json$/i.test(normalized)) {
       sourceManifestCopyDetected = true;
       sourceManifestCopyPaths.push(normalized);
@@ -420,14 +425,19 @@ export function dryRunTargetProfileInstall({
     mode: 'dry_run_only',
     repositoryFullName,
     profile,
-    changedFiles,
+    changedFiles: normalizedChangedFiles.slice(0, maxChangedFiles),
+    changedFileCount: normalizedChangedFiles.length,
+    changedFilesOmittedCount: Math.max(0, normalizedChangedFiles.length - maxChangedFiles),
     automaticMutationAllowed: false,
     productMutationCount: changedFiles.filter((file) => /(^|\/)(src|apps|runtime|contracts?)\//i.test(file.replaceAll('\\', '/'))).length,
     sensitiveDiffCount,
     sourceManifestCopied: sourceManifestCopyDetected,
     sourceManifestCopyCount: sourceManifestCopyPaths.length,
-    sourceManifestCopyPaths,
-    reasonCodes: reasons,
+    sourceManifestCopyPaths: sourceManifestCopyPaths.slice(0, maxSourceManifestCopyPaths),
+    sourceManifestCopyPathsOmittedCount: Math.max(0, sourceManifestCopyPaths.length - maxSourceManifestCopyPaths),
+    reasonCodes: reasons.slice(0, maxReasonCodes),
+    reasonCodeCount: reasons.length,
+    reasonCodesOmittedCount: Math.max(0, reasons.length - maxReasonCodes),
     createsAuthority: false,
     safeSummaryOnly: true,
   };

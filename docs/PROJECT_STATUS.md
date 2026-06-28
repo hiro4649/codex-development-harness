@@ -35,10 +35,11 @@ Current branch is pushed to GitHub as PR #164. The exact current commit SHA is r
 - Hardened Target Profile Installer Dry Run sensitive diff detection for nested package/lockfile, runtime, contract, env, and product source paths.
 - Hardened Target Profile Installer Dry Run to reject `CODEX_SOURCE_HARNESS_MANIFEST.json` anywhere in target install diffs even when the explicit copy flag is missing.
 - Added safe source manifest copy path/count reporting to Target Profile Installer Dry Run.
+- Bounded Target Profile Installer Dry Run report arrays for changed files, reason codes, and Source manifest copy paths while preserving exact counts and omitted counts.
 
 ## Remaining Work
 
-- Review PR #164 after the latest Target Profile Installer Dry Run source-manifest path reporting commit is pushed.
+- Review PR #164 after the latest Target Profile Installer Dry Run bounded-reporting commit is pushed.
 - Resolve whether PR #164 remains stacked after the v1.3.0 Final Freeze PR/branch or is intentionally superseding it. Current policy: stacked after v1.3.0, not superseding.
 - Run normal required checks once after GitHub Actions is available.
 - Do not install v1.3.1 into target repositories until a separate rollout task is authorized.

@@ -155,6 +155,12 @@
       "secret",
       "contract"
     ],
+    "reportBounds": {
+      "changedFilesMax": 50,
+      "reasonCodesMax": 50,
+      "sourceManifestCopyPathsMax": 20,
+      "preserveExactCounts": true
+    },
     "createsAuthority": false
   },
   "productValueReturnGate": {

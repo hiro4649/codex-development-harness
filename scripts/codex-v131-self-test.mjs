@@ -124,6 +124,15 @@ function contractTests() {
     profile: 'metadata_gate_target',
     changedFiles: ['staging/CODEX_SOURCE_HARNESS_MANIFEST.json'],
   });
+  const dryRunLargeReport = dryRunTargetProfileInstall({
+    repositoryFullName: 'hiro4649/CRIPTO-TIP',
+    profile: 'product_heavy_target',
+    changedFiles: [
+      ...Array.from({ length: 75 }, (_, index) => `docs/generated-${index}.md`),
+      ...Array.from({ length: 25 }, (_, index) => `stage-${index}/CODEX_SOURCE_HARNESS_MANIFEST.json`),
+      ...Array.from({ length: 60 }, (_, index) => `runtime/generated-${index}.js`),
+    ],
+  });
   const productValue = evaluateProductValueReturnGate({ consecutiveHarnessOrDocsPrs: 3 });
   return [
     test('v131_core_active_tuple', () => source.activeHarnessVersion === V131_VERSION
@@ -224,6 +233,20 @@ function contractTests() {
       && dryRunSourceManifestPathBad.sourceManifestCopyCount === 1
       && dryRunSourceManifestPathBad.sourceManifestCopyPaths.includes('staging/CODEX_SOURCE_HARNESS_MANIFEST.json')
       && dryRunSourceManifestPathBad.reasonCodes.includes('source_manifest_copy_forbidden')),
+    test('v131_target_profile_installer_report_is_bounded', () => dryRunLargeReport.status === 'fail'
+      && policy.targetProfileInstallerDryRun?.reportBounds?.changedFilesMax === 50
+      && policy.targetProfileInstallerDryRun?.reportBounds?.reasonCodesMax === 50
+      && policy.targetProfileInstallerDryRun?.reportBounds?.sourceManifestCopyPathsMax === 20
+      && policy.targetProfileInstallerDryRun?.reportBounds?.preserveExactCounts === true
+      && dryRunLargeReport.changedFileCount === 160
+      && dryRunLargeReport.changedFiles.length === 50
+      && dryRunLargeReport.changedFilesOmittedCount === 110
+      && dryRunLargeReport.sourceManifestCopyCount === 25
+      && dryRunLargeReport.sourceManifestCopyPaths.length === 20
+      && dryRunLargeReport.sourceManifestCopyPathsOmittedCount === 5
+      && dryRunLargeReport.reasonCodeCount === 61
+      && dryRunLargeReport.reasonCodes.length === 50
+      && dryRunLargeReport.reasonCodesOmittedCount === 11),
     test('v131_product_value_return_gate_advisory_nonblocking', () => productValue.status === 'pass'
       && productValue.state === 'advisory'
       && productValue.blocking === false),

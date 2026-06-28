@@ -25,6 +25,7 @@ The Source repository defines harness policy, compatibility projection, local qu
 - Target Profile Installer Dry Run rejects sensitive target diffs, including nested package/lockfile, runtime, contract, deploy, wallet, RPC, secret, env, and product source paths.
 - Target Profile Installer Dry Run rejects `CODEX_SOURCE_HARNESS_MANIFEST.json` anywhere in target install diffs, even if the caller forgot to set the explicit source-manifest-copied flag.
 - Target Profile Installer Dry Run reports safe source manifest copy paths and count when a forbidden Source manifest copy is detected.
+- Target Profile Installer Dry Run report surfaces are bounded: changed files, reason codes, and Source manifest copy paths are truncated for display while exact counts and omitted counts remain available.
 - Remote CI Cost Gate must not treat remote-pending or billing-blocked checks as remote pass.
 - Remote CI Cost Gate and Decision Capsule v2 must expose `remoteRequiredChecksPassed=false`, `mergeAllowed=false`, and `requiredCheckBypassAllowed=false` until remote validation has actually passed and merge readiness is `merge_ready`.
 
