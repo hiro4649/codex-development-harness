@@ -91,6 +91,28 @@ function safeRead(file) {
   }
 }
 
+function resolveGitDir(repoRoot) {
+  const dotGit = path.join(repoRoot, '.git');
+  if (fs.existsSync(dotGit) && fs.statSync(dotGit).isDirectory()) return dotGit;
+  const dotGitText = safeRead(dotGit).trim();
+  const match = dotGitText.match(/^gitdir:\s*(.+)$/i);
+  if (!match) return null;
+  const gitdir = match[1].trim();
+  return path.resolve(repoRoot, gitdir);
+}
+
+function readGitConfigSurface(repoRoot) {
+  const gitDir = resolveGitDir(repoRoot);
+  if (!gitDir) return '';
+  const configParts = [safeRead(path.join(gitDir, 'config'))];
+  const commonDirText = safeRead(path.join(gitDir, 'commondir')).trim();
+  if (commonDirText) {
+    const commonDir = path.resolve(gitDir, commonDirText);
+    configParts.push(safeRead(path.join(commonDir, 'config')));
+  }
+  return configParts.join('\n');
+}
+
 function normalize(value) {
   return String(value || '').replaceAll('\\', '/').toLowerCase();
 }
@@ -102,7 +124,7 @@ export function evaluateWorkspaceIdentity({
   expectedSelfTestSuite = V131_SELF_TEST_SUITE,
 } = {}) {
   const reasons = [];
-  const gitConfig = safeRead(path.join(repoRoot, '.git', 'config'));
+  const gitConfig = readGitConfigSurface(repoRoot);
   const agents = safeRead(path.join(repoRoot, 'AGENTS.md'));
   const sourceManifestPath = path.join(repoRoot, 'CODEX_SOURCE_HARNESS_MANIFEST.json');
   const manifestPath = path.join(repoRoot, 'docs', 'process', 'CODEX_HARNESS_MANIFEST.json');
@@ -186,6 +208,14 @@ export function classifyValidationState({
 export function lintTargetProfileDrift({ registeredTargets = [], targetProfileStrategy = {} } = {}) {
   const reasons = [];
   const seen = new Map();
+  const expectedProfiles = {
+    'hiro4649/VGC-FUNKY-TOKEN': 'thin_target',
+    'hiro4649/iris-live2d-renderer': 'metadata_gate_target',
+    'hiro4649/disco-funky-repair': 'metadata_gate_target',
+    'hiro4649/iris': 'metadata_gate_target',
+    'hiro4649/VOXWEAVE': 'full_quality_gate_target',
+    'hiro4649/CRIPTO-TIP': 'product_heavy_target',
+  };
   const profileClassification = targetProfileStrategy.profileClassification || {};
   for (const [profile, repos] of Object.entries(profileClassification)) {
     for (const repo of repos || []) {
@@ -196,9 +226,10 @@ export function lintTargetProfileDrift({ registeredTargets = [], targetProfileSt
   for (const target of registeredTargets) {
     const repo = target.repositoryFullName;
     if (!seen.has(repo)) reasons.push(`target_profile_missing:${repo}`);
-    if (repo === 'hiro4649/VGC-FUNKY-TOKEN' && seen.get(repo) !== 'thin_target') reasons.push('vgc_thin_profile_drift');
-    if (repo === 'hiro4649/VOXWEAVE' && seen.get(repo) !== 'full_quality_gate_target') reasons.push('voxweave_profile_drift');
-    if (repo === 'hiro4649/CRIPTO-TIP' && seen.get(repo) !== 'product_heavy_target') reasons.push('cripto_profile_drift');
+    const expectedProfile = expectedProfiles[repo];
+    if (expectedProfile && seen.get(repo) !== expectedProfile) {
+      reasons.push(`target_profile_drift:${repo}:${expectedProfile}`);
+    }
   }
   return {
     status: reasons.length ? 'fail' : 'pass',
@@ -218,6 +249,7 @@ export function evaluateRemoteCiCostGate({
   const reasons = [];
   if (!remoteCiAllowed && workflowDispatch) reasons.push('workflow_dispatch_forbidden_when_remote_ci_blocked');
   if (!remoteCiAllowed && rerun) reasons.push('actions_rerun_forbidden_when_remote_ci_blocked');
+  if (!remoteCiAllowed && action === 'merge') reasons.push('merge_forbidden_when_remote_ci_blocked');
   const mergeReadiness = remoteCiAllowed ? 'remote_required_checks_required' : 'merge_blocked';
   const remoteValidation = remoteCiAllowed ? 'remote_pending' : 'blocked_ci_quota';
   return {

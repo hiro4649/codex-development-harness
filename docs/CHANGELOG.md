@@ -14,3 +14,4 @@
 - Did not run GitHub Actions.
 - Opened Source PR #164 for external review.
 - Repaired PR #164 review blockers: removed BOM from load-bearing files, restored v1.3.0 marker compatibility beside v1.3.1, clarified project memory, and removed v1.3.0 spec from the v1.3.1 source-body hot required reads.
+- Hardened v1.3.1 convergence edge cases: git worktree identity resolution, metadata target profile drift detection, and explicit merge failure while remote CI is blocked.

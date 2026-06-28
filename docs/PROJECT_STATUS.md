@@ -28,10 +28,11 @@ Current branch is pushed to GitHub as PR #164. The exact current commit SHA is r
 - Pushed the v1.3.1 Source branch and opened PR #164 for external review.
 - Removed BOM from load-bearing scripts/workflows and preserved both v1.3.0 and v1.3.1 markers in workspace identity compatibility.
 - Re-scoped the v1.3.1 `harness_source_body` profile so v1.3.0 spec is a compatibility reference, not a hot required read.
+- Hardened v1.3.1 edge cases for git worktree identity, metadata target profile drift, and merge attempts while remote CI is blocked.
 
 ## Remaining Work
 
-- Review PR #164 after this repair commit is pushed.
+- Review PR #164 after the latest edge-case hardening commit is pushed.
 - Resolve whether PR #164 remains stacked after the v1.3.0 Final Freeze PR/branch or is intentionally superseding it. Current policy: stacked after v1.3.0, not superseding.
 - Run normal required checks once after GitHub Actions is available.
 - Do not install v1.3.1 into target repositories until a separate rollout task is authorized.

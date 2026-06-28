@@ -12399,7 +12399,7 @@ async function runSourceHarnessGate() {
 
 
 
-  if (jsonReport) console.log(JSON.stringify(report, null, 2));
+  if (jsonReport) fs.writeSync(1, `${JSON.stringify(report, null, 2)}\n`);
 
 
 
@@ -14457,7 +14457,7 @@ async function runTargetHarnessGate() {
 
 
 
-  if (jsonReport) console.log(JSON.stringify(report, null, 2));
+  if (jsonReport) fs.writeSync(1, `${JSON.stringify(report, null, 2)}\n`);
 
 
 
@@ -15139,7 +15139,7 @@ async function runSourceHarnessCoreContractGate() {
   applyV127PostClosureConsistency(report, { failures, warnings });
   writeV117LoadBearingArtifacts(report);
 
-  if (jsonReport) console.log(JSON.stringify(report, null, 2));
+  if (jsonReport) fs.writeSync(1, `${JSON.stringify(report, null, 2)}\n`);
   else {
     console.log(`status: ${report.status}`);
     console.log(`qualityScore: ${report.qualityScoreStatus.score}`);

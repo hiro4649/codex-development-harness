@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Repair and review HARNESS v1.3.1 PR #164 as a Source harness-only stacked PR.
+Review HARNESS v1.3.1 PR #164 after Source harness-only edge-case hardening.
 
 ## Required Files
 
@@ -23,10 +23,11 @@ Repair and review HARNESS v1.3.1 PR #164 as a Source harness-only stacked PR.
 ## Implementation Strategy
 
 1. Keep PR #164 Source harness-only.
-2. Treat PR #164 as stacked after the v1.3.0 Final Freeze lineage, not as a replacement for it.
-3. Do not merge PR #164 until the v1.3.0 relationship is resolved.
-4. Run normal required checks once after Actions are available.
-5. If CI fails after steps start, inspect logs once and propose the smallest fix.
+2. Confirm git worktree identity, metadata target profile drift, and blocked-CI merge action fixtures remain covered by v131 self-test.
+3. Treat PR #164 as stacked after the v1.3.0 Final Freeze lineage, not as a replacement for it.
+4. Do not merge PR #164 until the v1.3.0 relationship is resolved.
+5. Run normal required checks once after Actions are available.
+6. If CI fails after steps start, inspect logs once and propose the smallest fix.
 
 ## Expected Risks
 

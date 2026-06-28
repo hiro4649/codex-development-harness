@@ -2,6 +2,8 @@
 // CODEX_QUALITY_HARNESS_FILE v1.3.1
 
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   V131_BACKLOG_ORDER,
@@ -44,11 +46,31 @@ function contractTests() {
   const operationalModule = readText('scripts/codex-v131-operational-convergence.mjs');
   const orchestrationCapsule = readText('scripts/codex-orchestration-capsule.mjs');
   const workspaceIdentity = evaluateWorkspaceIdentity();
+  const worktreeRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v131-worktree-'));
+  fs.mkdirSync(path.join(worktreeRoot, 'admin', 'worktrees', 'current'), { recursive: true });
+  fs.mkdirSync(path.join(worktreeRoot, 'docs', 'process'), { recursive: true });
+  fs.writeFileSync(path.join(worktreeRoot, '.git'), `gitdir: ${path.join(worktreeRoot, 'admin', 'worktrees', 'current')}\n`);
+  fs.writeFileSync(path.join(worktreeRoot, 'admin', 'worktrees', 'current', 'commondir'), '../..\n');
+  fs.writeFileSync(path.join(worktreeRoot, 'admin', 'config'), '[remote "origin"]\n\turl = https://github.com/hiro4649/codex-development-harness.git\n');
+  fs.writeFileSync(path.join(worktreeRoot, 'AGENTS.md'), `CODEX_QUALITY_HARNESS_FILE v${V131_VERSION}\n`);
+  fs.writeFileSync(path.join(worktreeRoot, 'CODEX_SOURCE_HARNESS_MANIFEST.json'), JSON.stringify({
+    activeHarnessVersion: V131_VERSION,
+    activeSelfTestSuite: V131_SELF_TEST_SUITE,
+  }));
+  fs.writeFileSync(path.join(worktreeRoot, 'docs', 'process', 'CODEX_HARNESS_MANIFEST.json'), JSON.stringify({
+    activeHarnessVersion: V131_VERSION,
+    activeSelfTestSuite: V131_SELF_TEST_SUITE,
+  }));
+  const worktreeIdentity = evaluateWorkspaceIdentity({ repoRoot: worktreeRoot });
   const manifestStrict = validateManifestStrict({ sourceManifest: source, docsManifest, activePolicy });
   const validationState = classifyValidationState({ localChecksPass: true, remoteCiAllowed: false });
   const drift = lintTargetProfileDrift({
     registeredTargets: source.registeredTargetRepositories || [],
     targetProfileStrategy: source.targetProfileStrategy || {},
+  });
+  const metadataDrift = lintTargetProfileDrift({
+    registeredTargets: [{ repositoryFullName: 'hiro4649/disco-funky-repair' }],
+    targetProfileStrategy: { profileClassification: { product_heavy_target: ['hiro4649/disco-funky-repair'] } },
   });
   const costGate = evaluateRemoteCiCostGate({
     remoteCiAllowed: false,
@@ -59,6 +81,10 @@ function contractTests() {
     remoteCiAllowed: false,
     workflowDispatch: true,
     rerun: true,
+  });
+  const costGateMergeBad = evaluateRemoteCiCostGate({
+    remoteCiAllowed: false,
+    action: 'merge',
   });
   const decisionCapsule = buildDecisionCapsuleV2({
     changedFiles: Array.from({ length: 30 }, (_, index) => `file-${index}.txt`),
@@ -107,6 +133,8 @@ function contractTests() {
     test('v131_backlog_order_locked', () => JSON.stringify(policy.backlogOrder) === JSON.stringify(V131_BACKLOG_ORDER)
       && JSON.stringify(source.v131OperationalConvergenceCore?.backlogOrder) === JSON.stringify(V131_BACKLOG_ORDER)),
     test('v131_workspace_identity_gate_pass', () => workspaceIdentity.status === 'pass' && workspaceIdentity.createsAuthority === false),
+    test('v131_workspace_identity_supports_git_worktree_file', () => worktreeIdentity.status === 'pass'
+      && worktreeIdentity.reasonCodes.length === 0),
     test('v131_manifest_strict_validator_pass', () => manifestStrict.status === 'pass' && manifestStrict.createsAuthority === false),
     test('v131_duplicate_key_detector_fails_closed', () => {
       try {
@@ -122,6 +150,8 @@ function contractTests() {
       && validationState.mergeReadiness === 'merge_blocked'
       && validationState.localPassPromotedToRemotePass === false),
     test('v131_target_profile_drift_linter_pass', () => drift.status === 'pass'),
+    test('v131_target_profile_drift_linter_checks_metadata_targets', () => metadataDrift.status === 'fail'
+      && metadataDrift.reasonCodes.includes('target_profile_drift:hiro4649/disco-funky-repair:metadata_gate_target')),
     test('v131_remote_ci_cost_gate_allows_push_pr_blocks_rerun', () => costGate.status === 'pass'
       && costGate.pushAllowed === true
       && costGate.prCreationAllowed === true
@@ -130,6 +160,9 @@ function contractTests() {
       && costGate.remoteValidation === 'blocked_ci_quota'
       && costGate.mergeReadiness === 'merge_blocked'
       && costGateBad.status === 'fail'),
+    test('v131_remote_ci_cost_gate_blocks_merge_action_when_ci_blocked', () => costGateMergeBad.status === 'fail'
+      && costGateMergeBad.reasonCodes.includes('merge_forbidden_when_remote_ci_blocked')
+      && costGateMergeBad.mergeReadiness === 'merge_blocked'),
     test('v131_decision_capsule_v2_bounded_display', () => decisionCapsule.capsuleVersion === 'v2'
       && decisionCapsule.changedFiles.length === 20
       && decisionCapsule.blockers.length === 5
