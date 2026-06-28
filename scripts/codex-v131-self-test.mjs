@@ -9,6 +9,7 @@ import {
   V131_BACKLOG_ORDER,
   V131_SELF_TEST_STATUS_KEY,
   V131_SELF_TEST_SUITE,
+  V131_TARGET_DRY_RUN_REPORT_BOUNDS,
   V131_VERSION,
   buildCompatibilityDebtLedger,
   buildDecisionCapsuleV2,
@@ -234,9 +235,9 @@ function contractTests() {
       && dryRunSourceManifestPathBad.sourceManifestCopyPaths.includes('staging/CODEX_SOURCE_HARNESS_MANIFEST.json')
       && dryRunSourceManifestPathBad.reasonCodes.includes('source_manifest_copy_forbidden')),
     test('v131_target_profile_installer_report_is_bounded', () => dryRunLargeReport.status === 'fail'
-      && policy.targetProfileInstallerDryRun?.reportBounds?.changedFilesMax === 50
-      && policy.targetProfileInstallerDryRun?.reportBounds?.reasonCodesMax === 50
-      && policy.targetProfileInstallerDryRun?.reportBounds?.sourceManifestCopyPathsMax === 20
+      && policy.targetProfileInstallerDryRun?.reportBounds?.changedFilesMax === V131_TARGET_DRY_RUN_REPORT_BOUNDS.changedFilesMax
+      && policy.targetProfileInstallerDryRun?.reportBounds?.reasonCodesMax === V131_TARGET_DRY_RUN_REPORT_BOUNDS.reasonCodesMax
+      && policy.targetProfileInstallerDryRun?.reportBounds?.sourceManifestCopyPathsMax === V131_TARGET_DRY_RUN_REPORT_BOUNDS.sourceManifestCopyPathsMax
       && policy.targetProfileInstallerDryRun?.reportBounds?.preserveExactCounts === true
       && dryRunLargeReport.changedFileCount === 160
       && dryRunLargeReport.changedFiles.length === 50

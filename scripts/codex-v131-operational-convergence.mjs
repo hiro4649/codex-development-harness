@@ -21,6 +21,13 @@ export const V131_BACKLOG_ORDER = [
   'product_value_return_gate_advisory',
 ];
 
+export const V131_TARGET_DRY_RUN_REPORT_BOUNDS = {
+  changedFilesMax: 50,
+  reasonCodesMax: 50,
+  sourceManifestCopyPathsMax: 20,
+  preserveExactCounts: true,
+};
+
 export function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
@@ -378,9 +385,11 @@ export function dryRunTargetProfileInstall({
   changedFiles = [],
   sourceManifestCopied = false,
 } = {}) {
-  const maxChangedFiles = 50;
-  const maxReasonCodes = 50;
-  const maxSourceManifestCopyPaths = 20;
+  const {
+    changedFilesMax,
+    reasonCodesMax,
+    sourceManifestCopyPathsMax,
+  } = V131_TARGET_DRY_RUN_REPORT_BOUNDS;
   const reasons = [];
   const sensitivePatterns = [
     /(^|\/)package(-lock)?\.json$/i,
@@ -425,19 +434,19 @@ export function dryRunTargetProfileInstall({
     mode: 'dry_run_only',
     repositoryFullName,
     profile,
-    changedFiles: normalizedChangedFiles.slice(0, maxChangedFiles),
+    changedFiles: normalizedChangedFiles.slice(0, changedFilesMax),
     changedFileCount: normalizedChangedFiles.length,
-    changedFilesOmittedCount: Math.max(0, normalizedChangedFiles.length - maxChangedFiles),
+    changedFilesOmittedCount: Math.max(0, normalizedChangedFiles.length - changedFilesMax),
     automaticMutationAllowed: false,
     productMutationCount: changedFiles.filter((file) => /(^|\/)(src|apps|runtime|contracts?)\//i.test(file.replaceAll('\\', '/'))).length,
     sensitiveDiffCount,
     sourceManifestCopied: sourceManifestCopyDetected,
     sourceManifestCopyCount: sourceManifestCopyPaths.length,
-    sourceManifestCopyPaths: sourceManifestCopyPaths.slice(0, maxSourceManifestCopyPaths),
-    sourceManifestCopyPathsOmittedCount: Math.max(0, sourceManifestCopyPaths.length - maxSourceManifestCopyPaths),
-    reasonCodes: reasons.slice(0, maxReasonCodes),
+    sourceManifestCopyPaths: sourceManifestCopyPaths.slice(0, sourceManifestCopyPathsMax),
+    sourceManifestCopyPathsOmittedCount: Math.max(0, sourceManifestCopyPaths.length - sourceManifestCopyPathsMax),
+    reasonCodes: reasons.slice(0, reasonCodesMax),
     reasonCodeCount: reasons.length,
-    reasonCodesOmittedCount: Math.max(0, reasons.length - maxReasonCodes),
+    reasonCodesOmittedCount: Math.max(0, reasons.length - reasonCodesMax),
     createsAuthority: false,
     safeSummaryOnly: true,
   };

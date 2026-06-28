@@ -36,6 +36,7 @@ Current branch is pushed to GitHub as PR #164. The exact current commit SHA is r
 - Hardened Target Profile Installer Dry Run to reject `CODEX_SOURCE_HARNESS_MANIFEST.json` anywhere in target install diffs even when the explicit copy flag is missing.
 - Added safe source manifest copy path/count reporting to Target Profile Installer Dry Run.
 - Bounded Target Profile Installer Dry Run report arrays for changed files, reason codes, and Source manifest copy paths while preserving exact counts and omitted counts.
+- Centralized v131 Target Profile Installer Dry Run report bounds in Source code and self-tested them against policy metadata.
 
 ## Remaining Work
 

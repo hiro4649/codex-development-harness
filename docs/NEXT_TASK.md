@@ -23,7 +23,7 @@ Review HARNESS v1.3.1 PR #164 after Source harness-only Target Profile Installer
 ## Implementation Strategy
 
 1. Keep PR #164 Source harness-only.
-2. Confirm git worktree identity, exact remote slug matching, metadata target profile drift, sensitive target diff dry-run detection, source manifest basename rejection with safe path/count reporting, bounded dry-run report arrays, blocked-CI merge action, explicit `remoteRequiredChecksPassed=false`, and `mergeAllowed=false` fixtures remain covered by v131 self-test.
+2. Confirm git worktree identity, exact remote slug matching, metadata target profile drift, sensitive target diff dry-run detection, source manifest basename rejection with safe path/count reporting, bounded dry-run report arrays, dry-run report bound policy synchronization, blocked-CI merge action, explicit `remoteRequiredChecksPassed=false`, and `mergeAllowed=false` fixtures remain covered by v131 self-test.
 3. Treat PR #164 as stacked after the v1.3.0 Final Freeze lineage, not as a replacement for it.
 4. Do not merge PR #164 until the v1.3.0 relationship is resolved.
 5. Run normal required checks once after Actions are available.

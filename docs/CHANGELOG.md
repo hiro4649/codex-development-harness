@@ -22,3 +22,4 @@
 - Hardened Target Profile Installer Dry Run to detect `CODEX_SOURCE_HARNESS_MANIFEST.json` anywhere in changed file paths as a forbidden source manifest copy.
 - Added safe source manifest copy path/count reporting to Target Profile Installer Dry Run.
 - Bounded Target Profile Installer Dry Run report arrays for changed files, reason codes, and Source manifest copy paths while preserving exact counts and omitted counts.
+- Centralized v131 Target Profile Installer Dry Run report bounds and added self-test coverage that policy metadata stays synchronized with the Source constants.
