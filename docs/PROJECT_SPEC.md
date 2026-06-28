@@ -22,6 +22,7 @@ The Source repository defines harness policy, compatibility projection, local qu
 - Compatibility Debt entries require `mustReviewBefore`.
 - Product Value Return Gate is advisory and nonblocking.
 - Target Profile Installer is dry-run only.
+- Target Profile Installer Dry Run rejects sensitive target diffs, including nested package/lockfile, runtime, contract, deploy, wallet, RPC, secret, env, and product source paths.
 - Remote CI Cost Gate must not treat remote-pending or billing-blocked checks as remote pass.
 - Remote CI Cost Gate and Decision Capsule v2 must expose `remoteRequiredChecksPassed=false`, `mergeAllowed=false`, and `requiredCheckBypassAllowed=false` until remote validation has actually passed and merge readiness is `merge_ready`.
 

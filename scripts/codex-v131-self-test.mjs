@@ -116,7 +116,7 @@ function contractTests() {
   const dryRunBad = dryRunTargetProfileInstall({
     repositoryFullName: 'hiro4649/CRIPTO-TIP',
     profile: 'product_heavy_target',
-    changedFiles: ['package.json', 'src/index.js'],
+    changedFiles: ['web/package.json', 'runtime/runner.js', 'contracts/Token.sol', '.env.production', 'src/index.js'],
     sourceManifestCopied: true,
   });
   const productValue = evaluateProductValueReturnGate({ consecutiveHarnessOrDocsPrs: 3 });
@@ -205,8 +205,15 @@ function contractTests() {
     test('v131_target_profile_installer_is_dry_run_only', () => dryRun.status === 'pass'
       && dryRun.mode === 'dry_run_only'
       && dryRun.automaticMutationAllowed === false
+      && dryRun.sensitiveDiffCount === 0
       && dryRunBad.status === 'fail'
-      && dryRunBad.reasonCodes.includes('source_manifest_copy_forbidden')),
+      && dryRunBad.sensitiveDiffCount === 5
+      && dryRunBad.productMutationCount === 3
+      && dryRunBad.reasonCodes.includes('source_manifest_copy_forbidden')
+      && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:web/package.json')
+      && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:runtime/runner.js')
+      && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:contracts/Token.sol')
+      && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:.env.production')),
     test('v131_product_value_return_gate_advisory_nonblocking', () => productValue.status === 'pass'
       && productValue.state === 'advisory'
       && productValue.blocking === false),

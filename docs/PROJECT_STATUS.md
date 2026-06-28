@@ -32,10 +32,11 @@ Current branch is pushed to GitHub as PR #164. The exact current commit SHA is r
 - Added explicit `mergeAllowed=false` projection to Remote CI Cost Gate and Decision Capsule v2 so blocked or pending remote validation cannot appear merge-ready.
 - Added explicit `remoteRequiredChecksPassed=false`, `requiredCheckBypassAllowed=false`, and `localPassPromotedToRemotePass=false` projection to prevent remote evidence ambiguity.
 - Replaced Workspace Identity remote substring matching with exact GitHub `owner/repo` slug matching, including a misleading-remote regression fixture.
+- Hardened Target Profile Installer Dry Run sensitive diff detection for nested package/lockfile, runtime, contract, env, and product source paths.
 
 ## Remaining Work
 
-- Review PR #164 after the latest Workspace Identity exact remote matching hardening commit is pushed.
+- Review PR #164 after the latest Target Profile Installer Dry Run sensitive-scope hardening commit is pushed.
 - Resolve whether PR #164 remains stacked after the v1.3.0 Final Freeze PR/branch or is intentionally superseding it. Current policy: stacked after v1.3.0, not superseding.
 - Run normal required checks once after GitHub Actions is available.
 - Do not install v1.3.1 into target repositories until a separate rollout task is authorized.

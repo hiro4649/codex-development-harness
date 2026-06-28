@@ -380,24 +380,33 @@ export function dryRunTargetProfileInstall({
 } = {}) {
   const reasons = [];
   const sensitivePatterns = [
-    /^package(-lock)?\.json$/i,
-    /^pnpm-lock\.yaml$/i,
-    /^yarn\.lock$/i,
-    /^contracts\//i,
-    /^deploy/i,
+    /(^|\/)package(-lock)?\.json$/i,
+    /(^|\/)pnpm-lock\.yaml$/i,
+    /(^|\/)yarn\.lock$/i,
+    /(^|\/)bun\.lockb$/i,
+    /(^|\/)contracts?\//i,
+    /(^|\/)migrations?\//i,
+    /(^|\/)runtime\//i,
+    /(^|\/)deploy(ment)?\//i,
+    /(^|\/)scripts\/deploy/i,
     /^\.github\/workflows\/deploy/i,
     /wallet/i,
     /rpc/i,
     /secret/i,
+    /(^|\/)\.env(\.|$)/i,
     /^src\//i,
     /^apps\//i,
   ];
   if (!repositoryFullName) reasons.push('target_repository_missing');
   if (!profile) reasons.push('target_profile_missing');
   if (sourceManifestCopied) reasons.push('source_manifest_copy_forbidden');
+  let sensitiveDiffCount = 0;
   for (const file of changedFiles) {
     const normalized = file.replaceAll('\\', '/');
-    if (sensitivePatterns.some((pattern) => pattern.test(normalized))) reasons.push(`sensitive_diff_forbidden:${normalized}`);
+    if (sensitivePatterns.some((pattern) => pattern.test(normalized))) {
+      sensitiveDiffCount += 1;
+      reasons.push(`sensitive_diff_forbidden:${normalized}`);
+    }
   }
   return {
     status: reasons.length ? 'fail' : 'pass',
@@ -406,7 +415,8 @@ export function dryRunTargetProfileInstall({
     profile,
     changedFiles,
     automaticMutationAllowed: false,
-    productMutationCount: changedFiles.filter((file) => /^src\//i.test(file.replaceAll('\\', '/'))).length,
+    productMutationCount: changedFiles.filter((file) => /(^|\/)(src|apps|runtime|contracts?)\//i.test(file.replaceAll('\\', '/'))).length,
+    sensitiveDiffCount,
     sourceManifestCopied,
     reasonCodes: reasons,
     createsAuthority: false,

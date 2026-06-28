@@ -18,3 +18,4 @@
 - Added explicit non-authoritative merge-readiness projection: Remote CI Cost Gate and Decision Capsule v2 now report `mergeAllowed=false` until remote validation is truly passed.
 - Added remote evidence ambiguity hardening: Remote CI Cost Gate and Decision Capsule v2 now expose `remoteRequiredChecksPassed=false`, `requiredCheckBypassAllowed=false`, and `localPassPromotedToRemotePass=false` when remote checks have not actually passed.
 - Hardened Workspace Identity remote matching by parsing GitHub remote URLs to exact `owner/repo` slugs and rejecting misleading substring matches.
+- Hardened Target Profile Installer Dry Run sensitive diff detection for nested package/lockfile, runtime, contract, env, and product source paths without enabling target mutation.
