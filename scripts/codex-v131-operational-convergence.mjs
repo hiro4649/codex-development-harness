@@ -404,7 +404,7 @@ export function dryRunTargetProfileInstall({
   let sourceManifestCopyDetected = sourceManifestCopied;
   for (const file of changedFiles) {
     const normalized = file.replaceAll('\\', '/');
-    if (normalized === 'CODEX_SOURCE_HARNESS_MANIFEST.json') {
+    if (/(^|\/)CODEX_SOURCE_HARNESS_MANIFEST\.json$/i.test(normalized)) {
       sourceManifestCopyDetected = true;
       if (!reasons.includes('source_manifest_copy_forbidden')) reasons.push('source_manifest_copy_forbidden');
     }

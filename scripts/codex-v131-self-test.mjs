@@ -122,7 +122,7 @@ function contractTests() {
   const dryRunSourceManifestPathBad = dryRunTargetProfileInstall({
     repositoryFullName: 'hiro4649/disco-funky-repair',
     profile: 'metadata_gate_target',
-    changedFiles: ['CODEX_SOURCE_HARNESS_MANIFEST.json'],
+    changedFiles: ['staging/CODEX_SOURCE_HARNESS_MANIFEST.json'],
   });
   const productValue = evaluateProductValueReturnGate({ consecutiveHarnessOrDocsPrs: 3 });
   return [
