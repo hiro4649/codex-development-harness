@@ -56,6 +56,7 @@ No product or runtime APIs are changed. v1.3.1 adds Source harness scripts and p
 ## Design Decisions
 
 - v1.3.1 focuses on operational convergence: correct repo, correct manifest, correct state classification, correct target profile wording, and bounded operator output.
+- Workspace Identity Gate parses GitHub remote URLs into exact `owner/repo` slugs instead of accepting substring matches.
 - It does not start Performance Track, Fable comparison, SDK benchmark, Skill runtime, DAG runtime, target rollout, or v1.3.2.
 - It does not create merge authority outside Final Decision.
 - It keeps PR/target installer behavior dry-run or metadata-only until a separate rollout task explicitly authorizes target work.

@@ -62,6 +62,20 @@ function contractTests() {
     activeSelfTestSuite: V131_SELF_TEST_SUITE,
   }));
   const worktreeIdentity = evaluateWorkspaceIdentity({ repoRoot: worktreeRoot });
+  const misleadingRemoteRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v131-misleading-remote-'));
+  fs.mkdirSync(path.join(misleadingRemoteRoot, '.git'), { recursive: true });
+  fs.mkdirSync(path.join(misleadingRemoteRoot, 'docs', 'process'), { recursive: true });
+  fs.writeFileSync(path.join(misleadingRemoteRoot, '.git', 'config'), '[remote "origin"]\n\turl = https://github.com/hiro4649/codex-development-harness-backup.git\n');
+  fs.writeFileSync(path.join(misleadingRemoteRoot, 'AGENTS.md'), `CODEX_QUALITY_HARNESS_FILE v${V131_VERSION}\n`);
+  fs.writeFileSync(path.join(misleadingRemoteRoot, 'CODEX_SOURCE_HARNESS_MANIFEST.json'), JSON.stringify({
+    activeHarnessVersion: V131_VERSION,
+    activeSelfTestSuite: V131_SELF_TEST_SUITE,
+  }));
+  fs.writeFileSync(path.join(misleadingRemoteRoot, 'docs', 'process', 'CODEX_HARNESS_MANIFEST.json'), JSON.stringify({
+    activeHarnessVersion: V131_VERSION,
+    activeSelfTestSuite: V131_SELF_TEST_SUITE,
+  }));
+  const misleadingRemoteIdentity = evaluateWorkspaceIdentity({ repoRoot: misleadingRemoteRoot });
   const manifestStrict = validateManifestStrict({ sourceManifest: source, docsManifest, activePolicy });
   const validationState = classifyValidationState({ localChecksPass: true, remoteCiAllowed: false });
   const drift = lintTargetProfileDrift({
@@ -135,6 +149,9 @@ function contractTests() {
     test('v131_workspace_identity_gate_pass', () => workspaceIdentity.status === 'pass' && workspaceIdentity.createsAuthority === false),
     test('v131_workspace_identity_supports_git_worktree_file', () => worktreeIdentity.status === 'pass'
       && worktreeIdentity.reasonCodes.length === 0),
+    test('v131_workspace_identity_uses_exact_remote_slug', () => misleadingRemoteIdentity.status === 'fail'
+      && misleadingRemoteIdentity.observedRemoteRepositories.includes('hiro4649/codex-development-harness-backup')
+      && misleadingRemoteIdentity.reasonCodes.includes('workspace_identity_remote_mismatch')),
     test('v131_manifest_strict_validator_pass', () => manifestStrict.status === 'pass' && manifestStrict.createsAuthority === false),
     test('v131_duplicate_key_detector_fails_closed', () => {
       try {

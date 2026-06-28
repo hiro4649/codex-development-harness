@@ -117,6 +117,33 @@ function normalize(value) {
   return String(value || '').replaceAll('\\', '/').toLowerCase();
 }
 
+function canonicalRepositorySlug(value) {
+  return normalize(value)
+    .replace(/^https?:\/\/github\.com\//, '')
+    .replace(/^git@github\.com:/, '')
+    .replace(/\.git$/, '')
+    .replace(/^\/+|\/+$/g, '');
+}
+
+function repositorySlugFromRemoteUrl(remoteUrl) {
+  const raw = normalize(remoteUrl).trim();
+  const match = raw.match(/github\.com[:/]([^/\s:#?]+)\/([^/\s#?]+)/);
+  if (!match) return null;
+  const owner = match[1];
+  const repo = match[2].replace(/\.git$/, '').replace(/[?#].*$/, '');
+  return `${owner}/${repo}`;
+}
+
+function extractRepositorySlugsFromGitConfig(gitConfig) {
+  const slugs = [];
+  for (const line of String(gitConfig || '').split(/\r?\n/)) {
+    const match = line.match(/^\s*url\s*=\s*(.+?)\s*$/i);
+    const slug = match ? repositorySlugFromRemoteUrl(match[1]) : null;
+    if (slug) slugs.push(slug);
+  }
+  return Array.from(new Set(slugs));
+}
+
 export function evaluateWorkspaceIdentity({
   repoRoot = process.cwd(),
   expectedRepository = 'hiro4649/codex-development-harness',
@@ -130,7 +157,9 @@ export function evaluateWorkspaceIdentity({
   const manifestPath = path.join(repoRoot, 'docs', 'process', 'CODEX_HARNESS_MANIFEST.json');
   const sourceManifest = fs.existsSync(sourceManifestPath) ? readJsonStrict(sourceManifestPath) : {};
   const manifest = fs.existsSync(manifestPath) ? readJsonStrict(manifestPath) : {};
-  const remoteMatches = normalize(gitConfig).includes(normalize(expectedRepository));
+  const expectedRepositorySlug = canonicalRepositorySlug(expectedRepository);
+  const observedRemoteRepositories = extractRepositorySlugsFromGitConfig(gitConfig);
+  const remoteMatches = observedRemoteRepositories.includes(expectedRepositorySlug);
   if (!remoteMatches) reasons.push('workspace_identity_remote_mismatch');
   if (!agents.includes(`CODEX_QUALITY_HARNESS_FILE v${expectedHarnessVersion}`)) reasons.push('workspace_identity_agents_marker_mismatch');
   if (sourceManifest.activeHarnessVersion !== expectedHarnessVersion) reasons.push('workspace_identity_source_active_version_mismatch');
@@ -140,6 +169,8 @@ export function evaluateWorkspaceIdentity({
   return {
     status: reasons.length ? 'fail' : 'pass',
     expectedRepository,
+    expectedRepositorySlug,
+    observedRemoteRepositories,
     expectedHarnessVersion,
     expectedSelfTestSuite,
     reasonCodes: reasons,
