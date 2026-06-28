@@ -2,59 +2,53 @@
 
 ## Current Branch
 
-`codex/v130-final-freeze-local`
+`codex/v131-operational-convergence-core-local`
 
 ## Current Commit SHA
 
-Base HEAD: `be06232adbe9072456bc9a36a1b298f5ba900470`
+Base local HEAD before this work: `24437a08791ae2508e9b4d2e5f32b1e337a0bda8`
 
-Local commit SHA: reported in final handoff after the local commit is created. The file does not self-embed the commit SHA because doing so would change that SHA.
+Current v1.3.1 work is uncommitted local implementation.
 
 ## Open PRs
 
-No PR was created or updated in this session.
+No PR was created or updated for v1.3.1 in this session.
 
 ## Completed Work
 
-- Verified `origin/main` at expected Source SHA.
-- Created local branch from `origin/main`.
-- Confirmed HARNESS v1.3.0 Core remains active and Performance Track remains deferred.
-- Reconciled the local post-merge audit stream and project-memory stream into `codex/v130-final-freeze-local`.
-- Updated Source workflow markers for `quality-gate` and `weekly-health-check` to v1.3.0.
-- Pinned `actions/checkout` and `actions/setup-node` in those workflows to full SHAs.
-- Added template-only target overlay fields to Source manifests.
-- Re-scoped the active policy target install profile to `target_compatibility_profile_install`.
-- Added v130 self-test cases for workflow markers, target overlay template state, profile scoping, no package.json npm applicability, v129 shadow cross-call documentation, and action pin consistency.
-- Added project-memory docs and local-only cost-control rules.
-- Declared v1.2.8 and v1.2.9 strengths as preserved through the v1.3.0 Compatibility Adapter, not active operator surfaces.
+- Implemented HARNESS v1.3.1 Operational Convergence Core as Source body only.
+- Added v131 policy/spec documents.
+- Added v131 operational convergence module and self-test.
+- Updated Source manifests, active policy index, README, AGENTS, harness version script, local quality gate, orchestration capsule, and Source workflow markers to v1.3.1.
+- Preserved Final Decision authority.
+- Preserved Compatibility Adapter as internal-only evidence.
+- Kept Performance Track deferred and superiority not proven.
+- Kept target rollout out of scope.
 
 ## Remaining Work
 
-- Push/open PR only after owner approval.
-- Run remote `quality-gate` and `v130-shadow-gate` on exact main/head only after owner approval and Actions billing/quota constraints are cleared.
+- Review diff and create a local commit when ready.
+- Push/open PR only after owner accepts remote Actions impact.
+- Run normal required checks once after GitHub Actions is available.
+- Do not install v1.3.1 into target repositories until a separate rollout task is authorized.
 
 ## Active Blockers
 
-- Remote GitHub Actions are intentionally avoided for the current quota/billing window.
-- Remote workflow_dispatch evidence is not collected. Needs verification.
-- Current mode is local-only for the quota-control period.
+- GitHub Actions billing/account lock prevents trusted remote CI.
+- Remote v1.3.1 PR evaluation is not yet available.
 
 ## Risks
 
-- Active policy profile rename may affect code that still expects the literal `target_rollout` key. Local v130 self-test and quality gate passed, but downstream consumers need remote validation.
-- Workflow action SHA pins reduce supply-chain ambiguity but require future intentional update if upstream action versions change.
-- Project memory is human guidance and must remain synchronized with stricter machine policy.
-
-## GitHub Actions Cost Control Rule
-
-Do not push, open PRs, update PRs, rerun remote CI, or trigger workflow_dispatch without explicit owner approval during the current quota-control period. Run local checks first and report estimated Actions impact before requesting any future remote run.
+- v1.3.1 touches load-bearing Source harness policy and quality gate paths.
+- Remote checks may expose workflow-only issues not visible locally.
+- Target rollout must remain separate to avoid mixing Source body changes with target installation.
 
 ## Test Status
 
 - `git diff --check`: pass
-- `node scripts/codex-v130-self-test.mjs --stage=all`: pass
-- Source core local quality gate JSON: pass, `mergeReady=true`, `v130SelfTestStatus=pass`, `qualityScore=100`
+- `node scripts/codex-v131-self-test.mjs --stage=all`: pass
+- Source core local quality gate JSON: pass, `mergeReady=true`, `v131SelfTestStatus=pass`, `qualityScore=100`, `blockingCount=0`
 
 ## CI Status
 
-Remote CI not run in this session. Needs owner approval after GitHub Actions usage is allowed.
+Remote CI not run. GitHub Actions remain unavailable due billing/account lock.

@@ -1,72 +1,75 @@
 # Project Specification
 
-## HARNESS v1.3.0 Core Purpose
+## HARNESS v1.3.1 Operational Convergence Core Purpose
 
-HARNESS v1.3.0 Core is the active Source governance layer for realistic autonomous development. It is meant to be lightweight, stable, token-efficient, long-running, and safe without losing the practical strengths of v1.2.8 or v1.2.9.
+HARNESS v1.3.1 Operational Convergence Core is the active Source governance layer for reducing operational mistakes. It is not a capability expansion track. Its purpose is to make the harness harder to misuse across local work, remote CI state, target profile planning, and compatibility debt handling.
 
 ## Current Architecture
 
-HARNESS v1.3.0 Core is active for `hiro4649/codex-development-harness`. The Source authority remains bound to `v1.1.8_final_decision_kernel`, with the v1.3.0 Compatibility Adapter carrying internal compatibility evidence for older target gates.
+The Source repository `hiro4649/codex-development-harness` now declares `activeHarnessVersion=1.3.1` and `activeSelfTestSuite=v131`. The Final Decision authority remains `v1.1.8_final_decision_kernel`. v1.3.0 remains immediate rollback, and v1.2.9 remains immediate rollback compatibility through the Compatibility Adapter.
 
 ## Source Repo vs Target Repo Boundary
 
-The Source repository defines harness policy, compatibility projection, local quality gates, and operator instructions. Target repositories contain product or target-local code and must not be mutated by Source-only tasks. Target rollout remains separate, owner-scoped, and not implied by Source Core metadata.
+The Source repository defines harness policy, compatibility projection, local quality gates, operator instructions, and v1.3.1 convergence checks. Target repositories are not mutated by this Source body work. Target rollout remains separate and has not started from v1.3.1.
 
 ## Functional Specifications
 
-- Active Source: `activeHarnessVersion=1.3.0`, `activeSelfTestSuite=v130`.
-- Final Decision authority: `v1.1.8_final_decision_kernel`.
-- Compatibility Adapter: active, `authority=internal_compatibility_only`.
-- `authorityCreated=false`, `targetMutationCount=0`.
-- Performance Track, Fable comparison, SDK / 60-task benchmark, Skill runtime, DAG agent-team runtime, target rollout waves, and v1.3.1 are out of scope.
-- Performance Track is deferred and non-authoritative.
-- Core workflows must carry current v1.3.0 harness markers.
-- Core workflow checkout/setup-node actions are pinned to full SHAs.
-- Target overlay fields are template-only and must not imply target repository mutation.
+- Active Source: `activeHarnessVersion=1.3.1`, `activeSelfTestSuite=v131`.
+- Final authority: `v1.1.8_final_decision_kernel`.
+- Compatibility Adapter: active, internal-only, non-authoritative.
+- v1.3.1 gate order: Workspace Identity Gate, Manifest Strict Validator, Validation State Machine, Target Profile Drift Linter, Remote CI Cost Gate, Decision Capsule v2, Compatibility Debt Ledger, Target Profile Installer Dry Run, Product Value Return Gate advisory.
+- Validation State Machine precedes Remote CI Cost Gate.
+- Compatibility Debt entries require `mustReviewBefore`.
+- Product Value Return Gate is advisory and nonblocking.
+- Target Profile Installer is dry-run only.
+- Remote CI Cost Gate must not treat remote-pending or billing-blocked checks as remote pass.
 
 ## Data Models
 
-- `sourceCoreTargetRolloutState=not_started`
-- `installedTargetHarnessVersion=1.2.9`
-- `operatorTargetHarnessDisplay=HARNESS v1.3.0 Core`
-- `compatibilityAdapterInternalHarnessVersion=1.2.9`
-- `targetManifestOverlay.projectionKind=profile_install_template_only`
-- `targetManifestOverlay.appliesOnlyAfterOwnerScopedProfileInstall=true`
-- `targetManifestOverlay.mutatesTargetRepositories=false`
-- `actionPinPolicy.state=active`
+- `v131SelfTestStatus`
+- `v131OperationalConvergenceCore`
+- `validationStateMachine`
+- `remoteCiCostGate`
+- `decisionCapsuleV2`
+- `compatibilityDebtLedger`
+- `targetProfileInstallerDryRun`
+- `productValueReturnGate`
 
-## Preserved v1.2.8 Strengths
+Compatibility debt entry shape:
 
-v1.2.8 strengths are preserved through the v1.3.0 Compatibility Adapter as internal compatibility evidence: deterministic decision projection, token-minimal read, compatibility router, validation DAG / evidence reuse, projection integrity, rollback compatibility, source/head binding, and safe summary non-authority.
-
-## Preserved v1.2.9 Strengths
-
-v1.2.9 strengths are preserved through the v1.3.0 Compatibility Adapter as internal compatibility evidence: goal-contracted capability router, independent verifier, immediate rollback, host dispatch / plugin broker compatibility as non-authoritative internal evidence, real-host qualification discipline, and `v129SelfTestStatus` compatibility where required.
+```json
+{
+  "state": "pass_with_compatibility_debt",
+  "reason": "legacy target gate shape preserved",
+  "introducedIn": "1.3.0",
+  "mustReviewBefore": "1.3.2",
+  "affectsAuthority": false,
+  "blocking": false
+}
+```
 
 ## APIs
 
-No product or runtime APIs are changed. This work only updates Source harness metadata, workflow metadata, and self-test coverage.
+No product or runtime APIs are changed. v1.3.1 adds Source harness scripts and policy/spec metadata only.
 
 ## Design Decisions
 
-- The former active-policy `target_rollout` profile is replaced by `target_compatibility_profile_install` to avoid implying active legacy operator authority.
-- `docs/process/CODEX_V129_SPEC.md` remains available only as a failing compatibility adapter reference, not active operator surface.
-- Core workflow supply-chain posture uses full-SHA pins for checkout and setup-node rather than a floating-action allowance.
-- Root project docs are human project memory. `docs/process/*` files are machine policy and compatibility evidence.
+- v1.3.1 focuses on operational convergence: correct repo, correct manifest, correct state classification, correct target profile wording, and bounded operator output.
+- It does not start Performance Track, Fable comparison, SDK benchmark, Skill runtime, DAG runtime, target rollout, or v1.3.2.
+- It does not create merge authority outside Final Decision.
+- It keeps PR/target installer behavior dry-run or metadata-only until a separate rollout task explicitly authorizes target work.
 
 ## Constraints
 
-- No target repository mutation.
+- No target repository mutation from this Source body task.
 - No product/runtime/package/lockfile/deploy/wallet/RPC/secret mutation.
 - No branch protection bypass or required-check bypass.
 - No GitHub approval review and no self-approval.
 - Raw logs, secrets, prompts, and model outputs are forbidden as stored evidence.
-- No GitHub Actions rerun unless owner explicitly approves after quota/billing constraints are resolved.
-
-## Conflict Rule
-
-If root project memory and machine policy disagree, stop and report the conflict. Do not infer authority from project memory when machine policy is stricter.
+- GitHub Actions must not be used while account/billing lock remains.
 
 ## Known Limitations
 
-- Remote main workflow_dispatch validation was not run in this local session because GitHub Actions usage is currently restricted and prior target checks showed account billing lock behavior. Needs verification after owner approval.
+- Remote CI for v1.3.1 has not run because Actions are currently unavailable.
+- Target repositories have not received v1.3.1.
+- Other AI evaluation from GitHub will require a future push/PR after remote CI usage is allowed.

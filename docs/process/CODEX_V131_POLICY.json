@@ -1,0 +1,186 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.1",
+  "schemaVersion": "1.3.1",
+  "name": "HARNESS v1.3.1 Operational Convergence Core",
+  "purpose": "prevent operational premise mistakes without adding product, runtime, target rollout, or merge authority",
+  "candidateHarnessVersion": "1.3.1",
+  "candidateSelfTestSuite": "v131",
+  "candidateSelfTestStatusKey": "v131SelfTestStatus",
+  "candidateActivationState": "active",
+  "sourceActivation": "active",
+  "previousVersion": "1.3.0",
+  "finalAuthority": "v1.1.8_final_decision_kernel",
+  "authorityCreated": false,
+  "targetRollout": "not_started",
+  "targetMutationCount": 0,
+  "backlogOrder": [
+    "workspace_identity_gate",
+    "manifest_strict_validator",
+    "validation_state_machine",
+    "target_profile_drift_linter",
+    "remote_ci_cost_gate",
+    "decision_capsule_v2",
+    "compatibility_debt_ledger",
+    "target_profile_installer_dry_run",
+    "product_value_return_gate_advisory"
+  ],
+  "nonGoals": [
+    "Performance Track",
+    "Fable comparison",
+    "SDK benchmark",
+    "Skill runtime",
+    "DAG runtime",
+    "automatic target mutation",
+    "product runtime authority",
+    "package or lockfile mutation",
+    "deploy wallet RPC secret mutation",
+    "v1.3.2 planning"
+  ],
+  "workspaceIdentityGate": {
+    "state": "active",
+    "checks": [
+      "repository remote matches expected owner/repo",
+      "AGENTS marker matches active harness version",
+      "source manifest active tuple matches active harness version",
+      "docs manifest active tuple matches active harness version",
+      "old worktree copy is not silently accepted"
+    ],
+    "failureAction": "hard_stop_before_quality_gate",
+    "createsAuthority": false
+  },
+  "manifestStrictValidator": {
+    "state": "active",
+    "duplicateKeysForbidden": true,
+    "activeTupleConsistencyRequired": true,
+    "parserSmokeTargets": [
+      "node",
+      "powershell",
+      "python_equivalent"
+    ],
+    "createsAuthority": false
+  },
+  "validationStateMachine": {
+    "state": "active",
+    "states": {
+      "localReadiness": [
+        "ready",
+        "fail"
+      ],
+      "remoteValidation": [
+        "pass",
+        "remote_pending",
+        "blocked_ci_quota",
+        "run_failed_or_pending"
+      ],
+      "mergeReadiness": [
+        "merge_ready",
+        "merge_blocked"
+      ]
+    },
+    "localPassPromotedToRemotePass": false,
+    "remotePendingPromotedToPass": false,
+    "createsAuthority": false
+  },
+  "targetProfileDriftLinter": {
+    "state": "active",
+    "detects": [
+      "wrong repository profile wording",
+      "wrong target profile class",
+      "stale active version marker",
+      "source manifest copied to target",
+      "restricted token profile reused as standard profile"
+    ],
+    "createsAuthority": false
+  },
+  "remoteCiCostGate": {
+    "state": "active",
+    "whenRemoteCiAllowedFalse": {
+      "localChecks": "allowed",
+      "commit": "allowed",
+      "push": "allowed",
+      "pullRequestCreate": "allowed",
+      "workflowDispatch": "forbidden",
+      "actionsRerun": "forbidden",
+      "remoteUnexecutedAsPass": "forbidden",
+      "mergeReadiness": "merge_blocked",
+      "remoteValidation": "blocked_ci_quota"
+    },
+    "createsAuthority": false
+  },
+  "decisionCapsuleV2": {
+    "state": "active",
+    "maxDisplayLines": 50,
+    "fields": [
+      "activeHarnessVersion",
+      "branch",
+      "head",
+      "changedFiles",
+      "localChecks",
+      "remoteValidation",
+      "mergeReadiness",
+      "blockers",
+      "nextSafeAction"
+    ],
+    "createsAuthority": false
+  },
+  "compatibilityDebtLedger": {
+    "state": "active",
+    "location": "compatibilityAdapter.debt",
+    "requiredFields": [
+      "state",
+      "reason",
+      "introducedIn",
+      "mustReviewBefore",
+      "affectsAuthority",
+      "blocking"
+    ],
+    "defaultState": "pass_with_compatibility_debt",
+    "defaultMustReviewBefore": "1.3.2",
+    "blocking": false,
+    "createsAuthority": false
+  },
+  "targetProfileInstallerDryRun": {
+    "state": "active",
+    "mode": "dry_run_only",
+    "automaticMutationAllowed": false,
+    "sourceManifestCopyForbidden": true,
+    "forbiddenDiffClasses": [
+      "product",
+      "runtime",
+      "package",
+      "lockfile",
+      "deploy",
+      "wallet",
+      "rpc",
+      "secret",
+      "contract"
+    ],
+    "createsAuthority": false
+  },
+  "productValueReturnGate": {
+    "state": "advisory",
+    "blocking": false,
+    "thresholdConsecutiveHarnessOrDocsPrs": 3,
+    "purpose": "warn when harness work is delaying product value",
+    "createsAuthority": false
+  },
+  "performanceTrack": {
+    "state": "deferred",
+    "authority": "non_authoritative",
+    "superiorityClaimState": "not_proven",
+    "affectsQualityScore": false,
+    "affectsBlockingCount": false,
+    "affectsMergeAllowed": false,
+    "affectsFinalDecision": false,
+    "affectsActivation": false,
+    "affectsTargetRollout": false
+  },
+  "tokenBudgets": {
+    "safeSummaryBytes": 5600,
+    "routineReadSurfaceBytes": 2500,
+    "orchestrationCapsuleBytes": 48000,
+    "routineSkillCount": 0,
+    "routineColdArtifactRead": 0,
+    "fullConversationReplay": 0
+  }
+}

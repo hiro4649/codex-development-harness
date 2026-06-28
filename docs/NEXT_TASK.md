@@ -2,16 +2,19 @@
 
 ## Highest-Priority Next Task
 
-Finalize local-only HARNESS v1.3.0 Core Final Freeze Candidate and request owner approval before any remote action.
+Prepare HARNESS v1.3.1 Operational Convergence Core for review as a Source harness-only PR after GitHub Actions usage is available.
 
 ## Required Files
 
-- `.github/workflows/quality-gate.yml`
-- `.github/workflows/weekly-health-check.yml`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
-- `scripts/codex-v130-self-test.mjs`
+- `docs/process/CODEX_V131_POLICY.json`
+- `docs/process/CODEX_V131_SPEC.md`
+- `scripts/codex-v131-operational-convergence.mjs`
+- `scripts/codex-v131-self-test.mjs`
+- `scripts/codex-local-quality-gate.mjs`
+- `scripts/codex-orchestration-capsule.mjs`
 - `docs/PROJECT_SPEC.md`
 - `docs/PROJECT_STATUS.md`
 - `docs/NEXT_TASK.md`
@@ -19,36 +22,31 @@ Finalize local-only HARNESS v1.3.0 Core Final Freeze Candidate and request owner
 
 ## Implementation Strategy
 
-1. Inspect the local commit and verify it is Source harness-only.
-2. Confirm no target repository or product/runtime/package/lockfile files are changed.
-3. Request owner approval before any push, PR creation, or remote workflow dispatch.
-4. If approved, push the branch and run only the required remote checks once.
+1. Review local diff for Source-only scope.
+2. Commit v1.3.1 Source body locally.
+3. After Actions are available, push one branch and open one Source harness-only PR.
+4. Run normal required checks once.
+5. If CI fails after steps start, inspect logs once and propose the smallest fix.
 
 ## Expected Risks
 
-- Remote Actions may still be blocked by billing/quota state.
-- Remote validation remains `Needs verification.`
-- Consumers of the old `target_rollout` active policy profile may need compatibility review.
+- Remote Actions may still be blocked.
+- v1.3.1 is load-bearing Source harness policy, so review should focus on authority boundaries and report classification.
+- Target rollout must not be started from this PR.
 
 ## Validation Steps
 
 - `git diff --check`
-- `node scripts/codex-v130-self-test.mjs --stage=all`
-- Source core local quality gate with `CODEX_HARNESS_SOURCE_REPO=1`, `CODEX_HARNESS_MODE=core`, `CODEX_PROFILE_COMPAT_MODE=optional`, `CODEX_REQUIRE_NPM=1`, and `CODEX_QUALITY_REPORT=json`
-- Remote `quality-gate` and `v130-shadow-gate` only after owner approval
-- Extra grep checks for accidental v1.3.1, Performance Track activation, Fable superiority, target rollout, self-approval, or GitHub approval review wording
+- `node scripts/codex-v131-self-test.mjs --stage=all`
+- `CODEX_HARNESS_SOURCE_REPO=1 CODEX_HARNESS_MODE=core CODEX_PROFILE_COMPAT_MODE=optional CODEX_REQUIRE_NPM=1 CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs`
 
 ## Stop Conditions
 
-- Project memory and machine policy disagree.
-- A new status family, new artifact family, required check, Skill, SDK benchmark, Fable comparator, DAG runtime, subagent runtime, v1.3.1, or target rollout appears.
 - Product/runtime/package/lockfile/deploy/wallet/RPC/secret mutation appears.
-- Remote CI would be required before owner approval.
-
-## Remote CI Rule
-
-No remote CI without owner approval. Estimated GitHub Actions impact must be reported before any future remote run.
+- Target repository mutation appears.
+- Performance Track, Fable comparison, SDK benchmark, Skill runtime, DAG runtime, target rollout, or v1.3.2 appears.
+- Remote CI would be required while Actions remain blocked.
 
 ## Estimated Complexity
 
-Medium. The code change is metadata-focused, but policy/profile naming and workflow pinning affect load-bearing harness paths.
+Medium-high. The feature is operational rather than product-facing, but it updates load-bearing Source quality and policy paths.

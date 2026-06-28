@@ -1,11 +1,11 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.3.0 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.3.1 -->
 # Codex Development Harness
 
-Active Source: v1.3.0 Core
-Candidate: v1.3.0 active
-Compatibility Adapter: v1.3.0 internal compatibility evidence
+Active Source: v1.3.1 Operational Convergence Core
+Candidate: v1.3.1 active
+Compatibility Adapter: v1.3.1 internal compatibility evidence with visible compatibility debt
 Final Decision authority: v1.1.8_final_decision_kernel
-Target harness display: HARNESS v1.3.0 Core
+Target harness display: HARNESS v1.3.1 Operational Convergence Core
 Target rollout: profile-gated; Performance Track deferred
 
 Codex Development Harness is an AI PR safety gate. It helps decide whether an
@@ -17,13 +17,19 @@ Current authority is:
 - `AGENTS.md`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
-- `docs/process/CODEX_V130_SPEC.md`
+- `docs/process/CODEX_V131_SPEC.md`
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 
-v1.3.0 Core is the active Source authority. It is a minimal Source release that
-keeps target development resumable through the v1.3.0 Compatibility Adapter.
+v1.3.1 Operational Convergence Core is the active Source authority. It is a
+minimal Source release that makes v1.3.0 safer to operate across many
+repositories by preventing repo/worktree mistakes, profile drift, manifest
+divergence, CI state misclassification, local/remote evidence confusion,
+hidden compatibility debt, oversized operator output, and target install
+dry-run mistakes.
+
+It keeps target development resumable through the v1.3.1 Compatibility Adapter.
 The adapter preserves internal compatibility evidence for existing target gates
-without making old harness names active operator surfaces. The v1.3.0
+without making old harness names active operator surfaces. The v1.3.1
 Performance Track is deferred, non-authoritative, and not required for Core
 Activation.
 

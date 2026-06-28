@@ -1,15 +1,15 @@
 # AGENTS.md
 
 <!-- CODEX_QUALITY_HARNESS_BEGIN -->
-CODEX_QUALITY_HARNESS_FILE v1.3.0
+CODEX_QUALITY_HARNESS_FILE v1.3.1
 
-Active Source: v1.3.0 Core.
-Compatibility Adapter: v1.3.0 internal evidence.
-Target harness display: HARNESS v1.3.0 Core.
+Active Source: v1.3.1 Operational Convergence Core.
+Compatibility Adapter: v1.3.1 internal evidence with visible compatibility debt.
+Target harness display: HARNESS v1.3.1 Operational Convergence Core.
 Target rollout: profile-gated; Performance deferred.
 Final Decision authority: v1.1.8_final_decision_kernel.
 Active policy pointer: docs/process/CODEX_HARNESS_MANIFEST.json.
-v1.3.0 Core policy pointer: docs/process/CODEX_V130_POLICY.json.
+v1.3.1 Core policy pointer: docs/process/CODEX_V131_POLICY.json.
 Execution entrypoint: scripts/codex-local-quality-gate.mjs.
 
 Prime Directive: smallest correct change for product value; do not weaken truth, trust, security, or maintainability.
@@ -38,9 +38,11 @@ Routine read profile:
 Architect/reviewer project-memory read order: docs/PROJECT_SPEC.md, docs/PROJECT_STATUS.md, docs/NEXT_TASK.md, docs/CHANGELOG.md, AGENTS.md, docs/process/CODEX_HARNESS_MANIFEST.json.
 
 Core policy:
+- HARNESS v1.3.1 is Operational Convergence Core: it prevents repo/worktree mistakes, profile drift, manifest divergence, CI state misclassification, local/remote evidence confusion, hidden compatibility debt, oversized operator output, and target install dry-run mistakes.
 - Performance Track covers 60-task benchmark, SDK, Skill runtime, DAG team, learned orchestration, Cyber runtime, and Fable comparison; it is deferred, non-authoritative, and superiority is not proven.
-- IRIS/FUNKY may resume under HARNESS v1.3.0 Core governance.
+- IRIS/FUNKY may resume under HARNESS v1.3.1 Core governance after their existing target PR/check state permits it.
 - Performance Track, target rollout waves, and Skill install remain forbidden unless scoped.
+- Target Profile Installer is dry-run only in v1.3.1 and must not mutate target repositories.
 
 Forbidden action classes:
 - authority weakening or required-check bypass/removal
