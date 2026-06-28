@@ -1,16 +1,16 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.0",
-  "schemaVersion": "1.3.0",
-  "sourceHarnessVersion": "1.3.0",
-  "harnessVersion": "1.3.0",
-  "activeHarnessVersion": "1.3.0",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.1",
+  "schemaVersion": "1.3.1",
+  "sourceHarnessVersion": "1.3.1",
+  "harnessVersion": "1.3.1",
+  "activeHarnessVersion": "1.3.1",
   "targetHarnessVersion": "1.2.9",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
   "upgradePath": "v128_to_v129_goal_contracted_capability_router",
-  "activeSelfTestSuite": "v130",
-  "activeSelfTestStatusKey": "v130SelfTestStatus",
+  "activeSelfTestSuite": "v131",
+  "activeSelfTestStatusKey": "v131SelfTestStatus",
   "legacySelfTests": {
     "v129": "immediate_rollback",
     "v128": "blocking_compatibility",
@@ -678,16 +678,17 @@
     "postMergeReplayCoverage": "release_drill_passed",
     "placeholderReceiptValid": false
   },
-  "currentVersion": "1.3.0",
-  "previousVersion": "1.2.9",
-  "candidateHarnessVersion": "1.3.0",
-  "candidateSelfTestSuite": "v130",
-  "candidateSelfTestStatusKey": "v130SelfTestStatus",
+  "currentVersion": "1.3.1",
+  "previousVersion": "1.3.0",
+  "candidateHarnessVersion": "1.3.1",
+  "candidateSelfTestSuite": "v131",
+  "candidateSelfTestStatusKey": "v131SelfTestStatus",
   "candidateActivationState": "active",
   "sourceActivation": "active",
   "finalAuthority": "v1.1.8_final_decision_kernel",
   "versionAuthority": {
-    "v130": "blocking_current_active_authority",
+    "v131": "blocking_current_active_authority",
+    "v130": "immediate_rollback",
     "v129": "immediate_rollback",
     "v128": "blocking_compatibility",
     "v127": "compatibility_readable"
@@ -733,7 +734,8 @@
   "legacySelfTestSuites": {
     "v129": "immediate_rollback",
     "v128": "blocking_compatibility",
-    "v127": "compatibility_readable"
+    "v127": "compatibility_readable",
+    "v130": "immediate_rollback"
   },
   "authorityCreated": false,
   "performanceTrack": {
@@ -773,13 +775,13 @@
     "forbidden": [
       "v130_target_rollout",
       "v130_skill_install",
-      "v131",
       "new_benchmark_blocker",
       "fable_superiority_claim",
       "authority_weakening",
       "required_check_bypass",
       "product_deploy",
-      "wallet_rpc_secret_mutation"
+      "wallet_rpc_secret_mutation",
+      "v132"
     ]
   },
   "antiSpinPolicy": {
@@ -1046,12 +1048,12 @@
   },
   "compatibilityAdapter": {
     "state": "active",
-    "name": "v1.3.0 Compatibility Adapter",
+    "name": "v1.3.1 Compatibility Adapter",
     "authority": "internal_compatibility_only",
     "createsAuthority": false,
     "affectsFinalDecision": false,
     "affectsTargetRollout": false,
-    "operatorSurface": "HARNESS v1.3.0 Core",
+    "operatorSurface": "HARNESS v1.3.1 Operational Convergence Core",
     "machineAliasesPreserved": true,
     "preserves": {
       "v111SelfTestStatus": "v130CompatibilityAdapter.v111Status",
@@ -1066,6 +1068,146 @@
       "readableCompatibility": "preserved",
       "rollbackCompatibility": "preserved",
       "immediateRollback": "preserved"
-    }
+    },
+    "debt": [
+      {
+        "state": "pass_with_compatibility_debt",
+        "reason": "legacy target gate shape preserved",
+        "introducedIn": "1.3.0",
+        "mustReviewBefore": "1.3.2",
+        "affectsAuthority": false,
+        "blocking": false
+      }
+    ]
+  },
+  "sourceCoreTargetRolloutState": "not_started",
+  "installedTargetHarnessVersion": "1.2.9",
+  "operatorTargetHarnessDisplay": "HARNESS v1.3.1 Operational Convergence Core",
+  "compatibilityAdapterInternalHarnessVersion": "1.2.9",
+  "targetManifestOverlay": {
+    "projectionKind": "profile_install_template_only",
+    "appliesOnlyAfterOwnerScopedProfileInstall": true,
+    "mutatesTargetRepositories": false
+  },
+  "actionPinPolicy": {
+    "state": "active",
+    "coreWorkflowsRequirePinnedCheckoutAndSetupNode": true,
+    "pinnedActions": {
+      "checkout": "actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5",
+      "setupNode": "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020"
+    },
+    "floatingCheckoutOrSetupNodeAllowedInCoreWorkflows": false,
+    "permissionWeakeningAllowed": false
+  },
+  "v131OperationalConvergenceCore": {
+    "version": "1.3.1",
+    "name": "HARNESS v1.3.1 Operational Convergence Core",
+    "purpose": "prevent operational premise mistakes without adding product runtime target rollout or merge authority",
+    "candidateHarnessVersion": "1.3.1",
+    "candidateSelfTestSuite": "v131",
+    "candidateSelfTestStatusKey": "v131SelfTestStatus",
+    "candidateActivationState": "active",
+    "sourceActivation": "active",
+    "targetRollout": "not_started",
+    "newP0Artifact": false,
+    "newTopLevelStatus": false,
+    "newSkill": false,
+    "authorityCreated": false,
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "policy": "docs/process/CODEX_V131_POLICY.json",
+    "spec": "docs/process/CODEX_V131_SPEC.md",
+    "selfTest": "scripts/codex-v131-self-test.mjs",
+    "runtime": "scripts/codex-v131-operational-convergence.mjs",
+    "safeSummaryOnly": true,
+    "backlogOrder": [
+      "workspace_identity_gate",
+      "manifest_strict_validator",
+      "validation_state_machine",
+      "target_profile_drift_linter",
+      "remote_ci_cost_gate",
+      "decision_capsule_v2",
+      "compatibility_debt_ledger",
+      "target_profile_installer_dry_run",
+      "product_value_return_gate_advisory"
+    ],
+    "workspaceIdentityGate": {
+      "state": "active",
+      "failureAction": "hard_stop_before_quality_gate",
+      "createsAuthority": false
+    },
+    "manifestStrictValidator": {
+      "state": "active",
+      "duplicateKeysForbidden": true,
+      "activeTupleConsistencyRequired": true,
+      "createsAuthority": false
+    },
+    "validationStateMachine": {
+      "state": "active",
+      "localPassPromotedToRemotePass": false,
+      "remotePendingPromotedToPass": false,
+      "createsAuthority": false,
+      "states": {
+        "localReadiness": [
+          "ready",
+          "fail"
+        ],
+        "remoteValidation": [
+          "pass",
+          "remote_pending",
+          "blocked_ci_quota",
+          "run_failed_or_pending"
+        ],
+        "mergeReadiness": [
+          "merge_ready",
+          "merge_blocked"
+        ]
+      }
+    },
+    "targetProfileDriftLinter": {
+      "state": "active",
+      "createsAuthority": false
+    },
+    "remoteCiCostGate": {
+      "state": "active",
+      "localChecksAllowedWhenBlocked": true,
+      "pushAllowedWhenBlocked": true,
+      "prCreationAllowedWhenBlocked": true,
+      "workflowDispatchAllowedWhenBlocked": false,
+      "rerunAllowedWhenBlocked": false,
+      "blockedRemoteValidationState": "blocked_ci_quota",
+      "blockedMergeReadiness": "merge_blocked",
+      "createsAuthority": false
+    },
+    "decisionCapsuleV2": {
+      "state": "active",
+      "maxDisplayLines": 50,
+      "createsAuthority": false
+    },
+    "compatibilityDebtLedger": {
+      "state": "active",
+      "location": "compatibilityAdapter.debt",
+      "defaultState": "pass_with_compatibility_debt",
+      "defaultMustReviewBefore": "1.3.2",
+      "blocking": false,
+      "createsAuthority": false
+    },
+    "targetProfileInstallerDryRun": {
+      "state": "active",
+      "mode": "dry_run_only",
+      "automaticMutationAllowed": false,
+      "sourceManifestCopyForbidden": true,
+      "createsAuthority": false
+    },
+    "productValueReturnGate": {
+      "state": "advisory",
+      "blocking": false,
+      "createsAuthority": false
+    },
+    "targetRolloutStarted": false,
+    "performanceTrackStarted": false,
+    "fableComparisonStarted": false,
+    "sdkBenchmarkStarted": false,
+    "skillRuntimeStarted": false,
+    "dagRuntimeStarted": false
   }
 }
