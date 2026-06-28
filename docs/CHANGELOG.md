@@ -16,3 +16,4 @@
 - Repaired PR #164 review blockers: removed BOM from load-bearing files, restored v1.3.0 marker compatibility beside v1.3.1, clarified project memory, and removed v1.3.0 spec from the v1.3.1 source-body hot required reads.
 - Hardened v1.3.1 convergence edge cases: git worktree identity resolution, metadata target profile drift detection, and explicit merge failure while remote CI is blocked.
 - Added explicit non-authoritative merge-readiness projection: Remote CI Cost Gate and Decision Capsule v2 now report `mergeAllowed=false` until remote validation is truly passed.
+- Added remote evidence ambiguity hardening: Remote CI Cost Gate and Decision Capsule v2 now expose `remoteRequiredChecksPassed=false`, `requiredCheckBypassAllowed=false`, and `localPassPromotedToRemotePass=false` when remote checks have not actually passed.

@@ -159,19 +159,27 @@ function contractTests() {
       && costGate.rerunAllowed === false
       && costGate.remoteValidation === 'blocked_ci_quota'
       && costGate.mergeReadiness === 'merge_blocked'
+      && costGate.remoteRequiredChecksPassed === false
       && costGate.mergeAllowed === false
       && costGate.mergeActionAllowed === false
+      && costGate.requiredCheckBypassAllowed === false
+      && costGate.localPassPromotedToRemotePass === false
       && costGateBad.status === 'fail'),
     test('v131_remote_ci_cost_gate_blocks_merge_action_when_ci_blocked', () => costGateMergeBad.status === 'fail'
       && costGateMergeBad.reasonCodes.includes('merge_forbidden_when_remote_ci_blocked')
       && costGateMergeBad.mergeReadiness === 'merge_blocked'
+      && costGateMergeBad.remoteRequiredChecksPassed === false
       && costGateMergeBad.mergeAllowed === false
-      && costGateMergeBad.mergeActionAllowed === false),
+      && costGateMergeBad.mergeActionAllowed === false
+      && costGateMergeBad.requiredCheckBypassAllowed === false),
     test('v131_decision_capsule_v2_bounded_display', () => decisionCapsule.capsuleVersion === 'v2'
       && decisionCapsule.changedFiles.length === 20
       && decisionCapsule.blockers.length === 5
       && decisionCapsule.maxDisplayLines === 50
+      && decisionCapsule.remoteRequiredChecksPassed === false
       && decisionCapsule.mergeAllowed === false
+      && decisionCapsule.requiredCheckBypassAllowed === false
+      && decisionCapsule.localPassPromotedToRemotePass === false
       && decisionCapsule.createsAuthority === false),
     test('v131_compatibility_debt_requires_review_deadline', () => debtLedger.status === 'pass'
       && debtLedger.debts.every((debt) => debt.mustReviewBefore)
