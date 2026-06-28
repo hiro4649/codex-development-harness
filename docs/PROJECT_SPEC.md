@@ -23,6 +23,7 @@ The Source repository defines harness policy, compatibility projection, local qu
 - Product Value Return Gate is advisory and nonblocking.
 - Target Profile Installer is dry-run only.
 - Remote CI Cost Gate must not treat remote-pending or billing-blocked checks as remote pass.
+- Remote CI Cost Gate and Decision Capsule v2 must expose `mergeAllowed=false` until remote validation has actually passed and merge readiness is `merge_ready`.
 
 ## Data Models
 

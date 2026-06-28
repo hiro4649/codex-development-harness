@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Review HARNESS v1.3.1 PR #164 after Source harness-only edge-case hardening.
+Review HARNESS v1.3.1 PR #164 after Source harness-only remote-validation clarity hardening.
 
 ## Required Files
 
@@ -23,7 +23,7 @@ Review HARNESS v1.3.1 PR #164 after Source harness-only edge-case hardening.
 ## Implementation Strategy
 
 1. Keep PR #164 Source harness-only.
-2. Confirm git worktree identity, metadata target profile drift, and blocked-CI merge action fixtures remain covered by v131 self-test.
+2. Confirm git worktree identity, metadata target profile drift, blocked-CI merge action, and explicit `mergeAllowed=false` fixtures remain covered by v131 self-test.
 3. Treat PR #164 as stacked after the v1.3.0 Final Freeze lineage, not as a replacement for it.
 4. Do not merge PR #164 until the v1.3.0 relationship is resolved.
 5. Run normal required checks once after Actions are available.

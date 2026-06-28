@@ -252,6 +252,7 @@ export function evaluateRemoteCiCostGate({
   if (!remoteCiAllowed && action === 'merge') reasons.push('merge_forbidden_when_remote_ci_blocked');
   const mergeReadiness = remoteCiAllowed ? 'remote_required_checks_required' : 'merge_blocked';
   const remoteValidation = remoteCiAllowed ? 'remote_pending' : 'blocked_ci_quota';
+  const mergeAllowed = false;
   return {
     status: reasons.length ? 'fail' : 'pass',
     action,
@@ -259,8 +260,10 @@ export function evaluateRemoteCiCostGate({
     estimatedRuns,
     remoteValidation,
     mergeReadiness,
+    mergeAllowed,
     pushAllowed: true,
     prCreationAllowed: true,
+    mergeActionAllowed: mergeAllowed,
     workflowDispatchAllowed: remoteCiAllowed,
     rerunAllowed: remoteCiAllowed,
     reasonCodes: reasons,
@@ -280,6 +283,7 @@ export function buildDecisionCapsuleV2({
   blockers = [],
   nextSafeAction = 'run_local_checks',
 } = {}) {
+  const mergeAllowed = mergeReadiness === 'merge_ready' && remoteValidation === 'pass';
   return {
     capsuleVersion: 'v2',
     activeHarnessVersion,
@@ -290,6 +294,7 @@ export function buildDecisionCapsuleV2({
     localChecks,
     remoteValidation,
     mergeReadiness,
+    mergeAllowed,
     blockers: blockers.slice(0, 5),
     nextSafeAction,
     maxDisplayLines: 50,
