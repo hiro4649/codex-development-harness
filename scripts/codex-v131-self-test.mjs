@@ -119,6 +119,11 @@ function contractTests() {
     changedFiles: ['web/package.json', 'runtime/runner.js', 'contracts/Token.sol', '.env.production', 'src/index.js'],
     sourceManifestCopied: true,
   });
+  const dryRunSourceManifestPathBad = dryRunTargetProfileInstall({
+    repositoryFullName: 'hiro4649/disco-funky-repair',
+    profile: 'metadata_gate_target',
+    changedFiles: ['CODEX_SOURCE_HARNESS_MANIFEST.json'],
+  });
   const productValue = evaluateProductValueReturnGate({ consecutiveHarnessOrDocsPrs: 3 });
   return [
     test('v131_core_active_tuple', () => source.activeHarnessVersion === V131_VERSION
@@ -213,7 +218,10 @@ function contractTests() {
       && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:web/package.json')
       && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:runtime/runner.js')
       && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:contracts/Token.sol')
-      && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:.env.production')),
+      && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:.env.production')
+      && dryRunSourceManifestPathBad.status === 'fail'
+      && dryRunSourceManifestPathBad.sourceManifestCopied === true
+      && dryRunSourceManifestPathBad.reasonCodes.includes('source_manifest_copy_forbidden')),
     test('v131_product_value_return_gate_advisory_nonblocking', () => productValue.status === 'pass'
       && productValue.state === 'advisory'
       && productValue.blocking === false),

@@ -401,8 +401,13 @@ export function dryRunTargetProfileInstall({
   if (!profile) reasons.push('target_profile_missing');
   if (sourceManifestCopied) reasons.push('source_manifest_copy_forbidden');
   let sensitiveDiffCount = 0;
+  let sourceManifestCopyDetected = sourceManifestCopied;
   for (const file of changedFiles) {
     const normalized = file.replaceAll('\\', '/');
+    if (normalized === 'CODEX_SOURCE_HARNESS_MANIFEST.json') {
+      sourceManifestCopyDetected = true;
+      if (!reasons.includes('source_manifest_copy_forbidden')) reasons.push('source_manifest_copy_forbidden');
+    }
     if (sensitivePatterns.some((pattern) => pattern.test(normalized))) {
       sensitiveDiffCount += 1;
       reasons.push(`sensitive_diff_forbidden:${normalized}`);
@@ -417,7 +422,7 @@ export function dryRunTargetProfileInstall({
     automaticMutationAllowed: false,
     productMutationCount: changedFiles.filter((file) => /(^|\/)(src|apps|runtime|contracts?)\//i.test(file.replaceAll('\\', '/'))).length,
     sensitiveDiffCount,
-    sourceManifestCopied,
+    sourceManifestCopied: sourceManifestCopyDetected,
     reasonCodes: reasons,
     createsAuthority: false,
     safeSummaryOnly: true,
