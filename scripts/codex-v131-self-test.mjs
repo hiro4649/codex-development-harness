@@ -42,6 +42,7 @@ function contractTests() {
   const agents = readText('AGENTS.md');
   const versionRegistry = readText('scripts/codex-harness-version.mjs');
   const operationalModule = readText('scripts/codex-v131-operational-convergence.mjs');
+  const orchestrationCapsule = readText('scripts/codex-orchestration-capsule.mjs');
   const workspaceIdentity = evaluateWorkspaceIdentity();
   const manifestStrict = validateManifestStrict({ sourceManifest: source, docsManifest, activePolicy });
   const validationState = classifyValidationState({ localChecksPass: true, remoteCiAllowed: false });
@@ -157,6 +158,26 @@ function contractTests() {
     test('v131_version_registry_updated', () => versionRegistry.includes("currentVersion = '1.3.1'")
       && versionRegistry.includes("previousVersion = '1.3.0'")
       && versionRegistry.includes("'1.3.1'")),
+    test('v131_no_bom_in_load_bearing_files', () => [
+      'scripts/codex-local-quality-gate.mjs',
+      'scripts/codex-orchestration-capsule.mjs',
+      '.github/workflows/quality-gate.yml',
+      '.github/workflows/weekly-health-check.yml',
+    ].every((file) => {
+      const bytes = fs.readFileSync(file);
+      return !(bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf);
+    })),
+    test('v131_workspace_marker_allowlist_preserves_v130_and_v131', () => orchestrationCapsule.includes("'CODEX_QUALITY_HARNESS_FILE v1.3.0'")
+      && orchestrationCapsule.includes("'CODEX_QUALITY_HARNESS_FILE v1.3.1'")
+      && !orchestrationCapsule.includes("'CODEX_QUALITY_HARNESS_FILE v1.3.1', 'CODEX_QUALITY_HARNESS_FILE v1.3.1'")),
+    test('v131_source_body_profile_no_hot_v130_spec', () => {
+      const sourceBody = activePolicy.profiles?.harness_source_body || {};
+      return Array.isArray(sourceBody.requiredReads)
+        && sourceBody.requiredReads.includes('compiled_instruction_envelope')
+        && sourceBody.requiredReads.includes('docs/process/CODEX_V131_POLICY.json')
+        && !sourceBody.requiredReads.includes('docs/process/CODEX_V130_SPEC.md')
+        && sourceBody.compatibilityReferenceReads?.v130 === 'immediate_rollback_reference_only';
+    }),
     test('v131_operational_module_no_remote_or_target_mutation', () => !operationalModule.includes('child_process')
       && !operationalModule.includes('https://api.github.com')
       && !operationalModule.includes('fs.writeFileSync')),

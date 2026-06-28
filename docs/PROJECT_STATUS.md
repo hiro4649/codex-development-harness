@@ -8,11 +8,12 @@
 
 Base local HEAD before this work: `24437a08791ae2508e9b4d2e5f32b1e337a0bda8`
 
-Current v1.3.1 work is uncommitted local implementation.
+Current branch is pushed to GitHub as PR #164. The exact current commit SHA is recorded in git and PR metadata rather than embedded here.
 
 ## Open PRs
 
-No PR was created or updated for v1.3.1 in this session.
+- `hiro4649/codex-development-harness` PR #164: `[codex] Add HARNESS v1.3.1 Operational Convergence Core`
+- PR #164 is stacked after the v1.3.0 Final Freeze branch/PR lineage. It must not merge before the v1.3.0 final-freeze relationship is resolved.
 
 ## Completed Work
 
@@ -24,18 +25,22 @@ No PR was created or updated for v1.3.1 in this session.
 - Preserved Compatibility Adapter as internal-only evidence.
 - Kept Performance Track deferred and superiority not proven.
 - Kept target rollout out of scope.
+- Pushed the v1.3.1 Source branch and opened PR #164 for external review.
+- Removed BOM from load-bearing scripts/workflows and preserved both v1.3.0 and v1.3.1 markers in workspace identity compatibility.
+- Re-scoped the v1.3.1 `harness_source_body` profile so v1.3.0 spec is a compatibility reference, not a hot required read.
 
 ## Remaining Work
 
-- Review diff and create a local commit when ready.
-- Push/open PR only after owner accepts remote Actions impact.
+- Review PR #164 after this repair commit is pushed.
+- Resolve whether PR #164 remains stacked after the v1.3.0 Final Freeze PR/branch or is intentionally superseding it. Current policy: stacked after v1.3.0, not superseding.
 - Run normal required checks once after GitHub Actions is available.
 - Do not install v1.3.1 into target repositories until a separate rollout task is authorized.
 
 ## Active Blockers
 
 - GitHub Actions billing/account lock prevents trusted remote CI.
-- Remote v1.3.1 PR evaluation is not yet available.
+- Remote v1.3.1 PR evaluation is blocked before runner steps while billing/account lock remains.
+- PR #164 must not merge until the v1.3.0 final-freeze relationship is resolved and remote checks can run.
 
 ## Risks
 
@@ -51,4 +56,4 @@ No PR was created or updated for v1.3.1 in this session.
 
 ## CI Status
 
-Remote CI not run. GitHub Actions remain unavailable due billing/account lock.
+Remote CI has not produced trusted runner-step evidence. GitHub Actions remain unavailable due billing/account lock; do not rerun blindly.

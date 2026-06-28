@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 // CODEX_QUALITY_HARNESS_FILE v1.3.1
 
 import fs from 'node:fs';
@@ -2129,7 +2129,7 @@ export function validateFinalDecisionClosure(closure = {}) {
 export function validateWorkspaceIdentityGate(gate = {}) {
   const reasons = [];
   if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0', '1.3.1'].includes(gate.workspaceIdentityVersion)) reasons.push('workspace_identity_version_invalid');
-  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9', 'CODEX_QUALITY_HARNESS_FILE v1.3.1', 'CODEX_QUALITY_HARNESS_FILE v1.3.1'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
+  if (!['CODEX_QUALITY_HARNESS_FILE v1.2.3', 'CODEX_QUALITY_HARNESS_FILE v1.2.4', 'CODEX_QUALITY_HARNESS_FILE v1.2.5', 'CODEX_QUALITY_HARNESS_FILE v1.2.6', 'CODEX_QUALITY_HARNESS_FILE v1.2.7', 'CODEX_QUALITY_HARNESS_FILE v1.2.8', 'CODEX_QUALITY_HARNESS_FILE v1.2.9', 'CODEX_QUALITY_HARNESS_FILE v1.3.0', 'CODEX_QUALITY_HARNESS_FILE v1.3.1'].includes(gate.agentsMarker)) reasons.push('workspace_identity_agents_marker_invalid');
   if (!['1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0', '1.3.1'].includes(gate.manifestActiveHarnessVersion)) reasons.push('workspace_identity_manifest_version_invalid');
   if (gate.wrongRepo === true && gate.readOnlyAudit !== true) reasons.push('wrong_workspace_blocked');
   if (gate.frozenBranchUsed === true) reasons.push('frozen_branch_blocked');

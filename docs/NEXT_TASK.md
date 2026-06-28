@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Prepare HARNESS v1.3.1 Operational Convergence Core for review as a Source harness-only PR after GitHub Actions usage is available.
+Repair and review HARNESS v1.3.1 PR #164 as a Source harness-only stacked PR.
 
 ## Required Files
 
@@ -22,10 +22,10 @@ Prepare HARNESS v1.3.1 Operational Convergence Core for review as a Source harne
 
 ## Implementation Strategy
 
-1. Review local diff for Source-only scope.
-2. Commit v1.3.1 Source body locally.
-3. After Actions are available, push one branch and open one Source harness-only PR.
-4. Run normal required checks once.
+1. Keep PR #164 Source harness-only.
+2. Treat PR #164 as stacked after the v1.3.0 Final Freeze lineage, not as a replacement for it.
+3. Do not merge PR #164 until the v1.3.0 relationship is resolved.
+4. Run normal required checks once after Actions are available.
 5. If CI fails after steps start, inspect logs once and propose the smallest fix.
 
 ## Expected Risks
@@ -33,6 +33,7 @@ Prepare HARNESS v1.3.1 Operational Convergence Core for review as a Source harne
 - Remote Actions may still be blocked.
 - v1.3.1 is load-bearing Source harness policy, so review should focus on authority boundaries and report classification.
 - Target rollout must not be started from this PR.
+- PR #164 can be misread as superseding v1.3.0 unless the stacked relationship remains explicit.
 
 ## Validation Steps
 
@@ -46,6 +47,7 @@ Prepare HARNESS v1.3.1 Operational Convergence Core for review as a Source harne
 - Target repository mutation appears.
 - Performance Track, Fable comparison, SDK benchmark, Skill runtime, DAG runtime, target rollout, or v1.3.2 appears.
 - Remote CI would be required while Actions remain blocked.
+- PR #164 is proposed for merge before the v1.3.0 final-freeze relationship is resolved.
 
 ## Estimated Complexity
 

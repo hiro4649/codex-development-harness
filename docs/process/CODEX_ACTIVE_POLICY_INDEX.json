@@ -54,22 +54,32 @@
       "requiredReads": [
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "docs/process/CODEX_V130_SPEC.md",
-        "compiled_instruction_envelope"
+        "compiled_instruction_envelope",
+        "docs/process/CODEX_V131_POLICY.json"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V131_SPEC.md",
+        "docs/process/CODEX_V130_SPEC.md",
+        "docs/process/CODEX_V129_SPEC.md",
         "docs/process/CODEX_V128_SPEC.md",
         "docs/process/CODEX_V127_SPEC.md",
         "README.md",
         "legacy_specs",
-        "pr_history_docs",
-        "docs/process/CODEX_V129_SPEC.md"
+        "pr_history_docs"
       ],
       "mdFilesReadMax": 6,
       "selectedSkillsMax": 0,
       "thirdSkillAllowed": true,
       "thirdSkillRequiresTypedJustification": true,
-      "routineColdArtifactReadMax": 0
+      "routineColdArtifactReadMax": 0,
+      "activeSourceBodyPolicy": "v131_operational_convergence_core",
+      "activeSpecPointer": "docs/process/CODEX_V131_SPEC.md",
+      "compatibilityReferenceReads": {
+        "v130": "immediate_rollback_reference_only",
+        "v129": "immediate_rollback_reference_only",
+        "v128": "blocking_compatibility_reference_only",
+        "v127": "readable_compatibility_reference_only"
+      }
     },
     "compatibility_repair": {
       "requiredReads": [
