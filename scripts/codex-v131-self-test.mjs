@@ -221,6 +221,8 @@ function contractTests() {
       && dryRunBad.reasonCodes.includes('sensitive_diff_forbidden:.env.production')
       && dryRunSourceManifestPathBad.status === 'fail'
       && dryRunSourceManifestPathBad.sourceManifestCopied === true
+      && dryRunSourceManifestPathBad.sourceManifestCopyCount === 1
+      && dryRunSourceManifestPathBad.sourceManifestCopyPaths.includes('staging/CODEX_SOURCE_HARNESS_MANIFEST.json')
       && dryRunSourceManifestPathBad.reasonCodes.includes('source_manifest_copy_forbidden')),
     test('v131_product_value_return_gate_advisory_nonblocking', () => productValue.status === 'pass'
       && productValue.state === 'advisory'

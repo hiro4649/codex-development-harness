@@ -20,3 +20,4 @@
 - Hardened Workspace Identity remote matching by parsing GitHub remote URLs to exact `owner/repo` slugs and rejecting misleading substring matches.
 - Hardened Target Profile Installer Dry Run sensitive diff detection for nested package/lockfile, runtime, contract, env, and product source paths without enabling target mutation.
 - Hardened Target Profile Installer Dry Run to detect `CODEX_SOURCE_HARNESS_MANIFEST.json` anywhere in changed file paths as a forbidden source manifest copy.
+- Added safe source manifest copy path/count reporting to Target Profile Installer Dry Run.
