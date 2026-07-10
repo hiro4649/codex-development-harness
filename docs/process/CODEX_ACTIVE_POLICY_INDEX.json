@@ -1,6 +1,19 @@
 {
-  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.1",
-  "schemaVersion": "1.3.1",
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.2",
+  "schemaVersion": "1.3.2",
+  "harnessVersion": "1.3.2",
+  "sourceHarnessVersion": "1.3.2",
+  "provisionalBaseSha": "35fbdd0e7075701516de3b2de722b3b7014f1dbf",
+  "requiresRebaseAfterV131Merge": true,
+  "activationAllowed": false,
+  "targetRolloutAllowed": false,
+  "remoteValidationState": "not_observed",
+  "sourceCandidateDisplay": "HARNESS v1.3.2 Evidence-Converged Lean Core",
+  "targetInstalledState": "per_repository_dynamic_observation",
+  "targetRolloutState": "not_started",
+  "canonicalPolicySource": "docs/process/CODEX_V132_POLICY.json",
+  "canonicalPolicyDigest": "sha256:f2fe3fdf2ff7856702607e47e85ef68fa4d8a90294b3f0abb9d92508eaad204d",
+  "compiledEffectivePolicyDigest": "sha256:2496d31c7d298f07fb4262db7381001f9246bad9c137653a15cd9bbf5613dfca",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
   "purpose": "Bound md and skill reads by task profile while preserving active authority.",
@@ -14,10 +27,11 @@
     "routine": {
       "requiredReads": [
         "AGENTS.md",
-        "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "compiled_instruction_envelope"
+        "docs/process/CODEX_EFFECTIVE_POLICY.compact.json",
+        "task_delta_capsule"
       ],
       "deferredReads": [
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
         "docs/process/CODEX_V130_SPEC.md",
         "docs/process/CODEX_V129_SPEC.md",
         "docs/process/CODEX_V128_SPEC.md",
@@ -55,9 +69,10 @@
         "AGENTS.md",
         "docs/process/CODEX_HARNESS_MANIFEST.json",
         "compiled_instruction_envelope",
-        "docs/process/CODEX_V131_POLICY.json"
+        "docs/process/CODEX_V132_POLICY.json"
       ],
       "deferredReads": [
+        "docs/process/CODEX_V132_SPEC.md",
         "docs/process/CODEX_V131_SPEC.md",
         "docs/process/CODEX_V130_SPEC.md",
         "docs/process/CODEX_V129_SPEC.md",
@@ -72,11 +87,12 @@
       "thirdSkillAllowed": true,
       "thirdSkillRequiresTypedJustification": true,
       "routineColdArtifactReadMax": 0,
-      "activeSourceBodyPolicy": "v131_operational_convergence_core",
-      "activeSpecPointer": "docs/process/CODEX_V131_SPEC.md",
+      "activeSourceBodyPolicy": "v132_evidence_converged_lean_core",
+      "activeSpecPointer": "docs/process/CODEX_V132_SPEC.md",
       "compatibilityReferenceReads": {
-        "v130": "immediate_rollback_reference_only",
-        "v129": "immediate_rollback_reference_only",
+        "v131": "immediate_rollback_reference_only",
+        "v130": "secondary_rollback_reference_only",
+        "v129": "emergency_legacy_rollback_reference_only",
         "v128": "blocking_compatibility_reference_only",
         "v127": "readable_compatibility_reference_only"
       }
@@ -139,7 +155,7 @@
       "mdFilesReadMax": 4,
       "selectedSkillsMax": 2,
       "thirdSkillAllowed": false,
-      "profilePurpose": "v1.3.0 Compatibility Adapter scoped target profile install instructions only",
+      "profilePurpose": "v1.3.2 Compatibility Adapter scoped profile-install template only; never active target authority",
       "activeOperatorAuthority": false,
       "authority": "internal_compatibility_adapter_reference_only",
       "compatibilityReferenceReads": {
@@ -149,10 +165,11 @@
   },
   "requiredReads": [
     "AGENTS.md",
-    "docs/process/CODEX_HARNESS_MANIFEST.json",
-    "compiled_instruction_envelope"
+    "docs/process/CODEX_EFFECTIVE_POLICY.compact.json",
+    "task_delta_capsule"
   ],
   "deferredReads": [
+    "docs/process/CODEX_HARNESS_MANIFEST.json",
     "docs/process/CODEX_V130_SPEC.md",
     "docs/process/CODEX_V129_SPEC.md",
     "docs/process/CODEX_V128_SPEC.md",
@@ -214,6 +231,8 @@
   "mandatorySafetySelectedSkillsMax": 2,
   "mandatorySafetyTriggerRequiresAllowlist": true,
   "deterministicDecisionProjectionAndTokenMinimalLoopClosure": {
+    "authorityScope": "historical_compatibility_reference",
+    "activeForV132": false,
     "version": "1.2.8",
     "name": "Deterministic Decision Projection and Token-Minimal Loop Closure",
     "sourceOnlyRelease": true,
@@ -274,6 +293,8 @@
     "placeholderReceiptValid": false
   },
   "v129SourceShadowCandidate": {
+    "authorityScope": "historical_compatibility_reference",
+    "activeForV132": false,
     "version": "1.2.9",
     "name": "Goal-Contracted Capability Router",
     "activationState": "active",
@@ -307,26 +328,28 @@
       "runtimeRegistryDigest": "sha256:b563d3cf6fe049b20cde125b8db0c74fc7891bccd06773162231a6f51d06e8e4"
     }
   },
-  "activeHarnessVersion": "1.3.1",
-  "activeSelfTestSuite": "v131",
-  "activeSelfTestStatusKey": "v131SelfTestStatus",
-  "currentVersion": "1.3.1",
-  "previousVersion": "1.3.0",
-  "candidateHarnessVersion": "1.3.1",
-  "candidateSelfTestSuite": "v131",
-  "candidateSelfTestStatusKey": "v131SelfTestStatus",
-  "candidateActivationState": "active",
-  "sourceActivation": "active",
-  "targetRollout": "not_started",
+  "activeHarnessVersion": "1.3.2",
+  "activeSelfTestSuite": "v132",
+  "activeSelfTestStatusKey": "v132SelfTestStatus",
+  "currentVersion": "1.3.2",
+  "previousVersion": "1.3.1",
+  "candidateHarnessVersion": "1.3.2",
+  "candidateSelfTestSuite": "v132",
+  "candidateSelfTestStatusKey": "v132SelfTestStatus",
+  "candidateActivationState": "local_source_candidate",
+  "sourceActivation": "forbidden_until_v131_main_and_exact_head_remote_pass",
   "finalAuthority": "v1.1.8_final_decision_kernel",
   "versionAuthority": {
-    "v131": "blocking_current_active_authority",
-    "v130": "immediate_rollback",
-    "v129": "immediate_rollback",
+    "v132": "local_source_candidate",
+    "v131": "immediate_rollback",
+    "v130": "secondary_rollback",
+    "v129": "emergency_legacy_rollback",
     "v128": "blocking_compatibility",
-    "v127": "compatibility_readable"
+    "v127": "readable_compatibility"
   },
   "v130SourceShadowCandidate": {
+    "authorityScope": "historical_compatibility_reference",
+    "activeForV132": false,
     "version": "1.3.0",
     "name": "Verified Goal Intake, Adaptive Capability Escalation, and Transactional Agent Teams",
     "candidateHarnessVersion": "1.3.0",
@@ -363,13 +386,13 @@
       "affectsTargetRollout": false
     }
   },
-  "targetHarnessVersion": "1.2.9",
   "authorityCreated": false,
   "legacySelfTestSuites": {
-    "v129": "immediate_rollback",
+    "v131": "immediate_rollback",
+    "v130": "secondary_rollback",
+    "v129": "emergency_legacy_rollback",
     "v128": "blocking_compatibility",
-    "v127": "compatibility_readable",
-    "v130": "immediate_rollback"
+    "v127": "readable_compatibility"
   },
   "performanceTrack": {
     "state": "deferred",
@@ -531,6 +554,8 @@
     }
   },
   "targetCompatibilityBridge": {
+    "authorityScope": "historical_target_profile_template",
+    "activeForV132": false,
     "state": "active",
     "purpose": "preserve_v111_v129_target_compatibility_chain_for_v130_core_target_profiles",
     "startsTargetRollout": false,
@@ -644,12 +669,12 @@
   },
   "compatibilityAdapter": {
     "state": "active",
-    "name": "v1.3.1 Compatibility Adapter",
+    "name": "v1.3.2 Compatibility Adapter",
     "authority": "internal_compatibility_only",
     "createsAuthority": false,
     "affectsFinalDecision": false,
     "affectsTargetRollout": false,
-    "operatorSurface": "HARNESS v1.3.1 Operational Convergence Core",
+    "operatorSurface": "HARNESS v1.3.2 Evidence-Converged Lean Core",
     "machineAliasesPreserved": true,
     "preserves": {
       "v111SelfTestStatus": "v130CompatibilityAdapter.v111Status",
@@ -667,18 +692,19 @@
     },
     "debt": [
       {
-        "state": "pass_with_compatibility_debt",
+        "state": "reclassified_with_reason",
         "reason": "legacy target gate shape preserved",
         "introducedIn": "1.3.0",
         "mustReviewBefore": "1.3.2",
+        "disposition": "reclassified_with_reason",
+        "reviewedIn": "1.3.2",
+        "retirementCondition": "all registered targets consume canonical v132 evidence fields",
+        "silentExtension": false,
         "affectsAuthority": false,
         "blocking": false
       }
     ]
   },
-  "sourceCoreTargetRolloutState": "not_started",
-  "installedTargetHarnessVersion": "1.2.9",
-  "operatorTargetHarnessDisplay": "HARNESS v1.3.1 Operational Convergence Core",
   "compatibilityAdapterInternalHarnessVersion": "1.2.9",
   "targetManifestOverlay": {
     "projectionKind": "profile_install_template_only",
@@ -699,6 +725,8 @@
   "targetRolloutProfileRenamedTo": "target_compatibility_profile_install",
   "targetMutationCount": 0,
   "v131OperationalConvergenceCore": {
+    "authorityScope": "historical_compatibility_reference",
+    "activeForV132": false,
     "version": "1.3.1",
     "name": "HARNESS v1.3.1 Operational Convergence Core",
     "purpose": "prevent operational premise mistakes without adding product runtime target rollout or merge authority",
@@ -808,5 +836,31 @@
     "sdkBenchmarkStarted": false,
     "skillRuntimeStarted": false,
     "dagRuntimeStarted": false
-  }
+  },
+  "v132EvidenceConvergedLeanCore": {
+    "version": "1.3.2",
+    "name": "HARNESS v1.3.2 Evidence-Converged Lean Core",
+    "state": "local_source_candidate",
+    "policy": "docs/process/CODEX_V132_POLICY.json",
+    "spec": "docs/process/CODEX_V132_SPEC.md",
+    "selfTest": "scripts/codex-v132-self-test.mjs",
+    "qualityGate": "scripts/codex-v132-quality-gate.mjs",
+    "activationAllowed": false,
+    "targetRolloutAllowed": false,
+    "remoteValidationState": "not_observed",
+    "automaticTargetMutation": false,
+    "authorityCreated": false
+  },
+  "acceptedMainVersion": "1.3.0",
+  "acceptedMainSha": "be06232adbe9072456bc9a36a1b298f5ba900470",
+  "developmentParentVersion": "1.3.1",
+  "candidateVersion": "1.3.2",
+  "executionHarnessVersion": "1.3.2",
+  "candidateLifecycleState": "local_validated",
+  "activeHarnessVersionAliasState": "deprecated_execution_compatibility_alias",
+  "activeHarnessVersionAuthority": false,
+  "acceptedMainVersionAuthority": "published_authority_version",
+  "candidateVersionAuthority": "unmerged_candidate_version",
+  "acceptedMainShaRole": "candidate_lineage_baseline_only",
+  "acceptedMainShaCreatesTrustAuthority": false
 }

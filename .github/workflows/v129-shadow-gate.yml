@@ -2,16 +2,6 @@
 name: v129-shadow-gate
 
 on:
-  pull_request:
-    paths:
-      - "docs/process/CODEX_V129_SPEC.md"
-      - "docs/process/CODEX_V129_CONTRACT_SCHEMA.json"
-      - "docs/process/CODEX_V129_CAPABILITY_REGISTRY.schema.json"
-      - "docs/process/CODEX_V129_CAPABILITY_POLICY.json"
-      - "scripts/codex-v129-*.mjs"
-      - "scripts/codex-orchestration-capsule.mjs"
-      - "scripts/codex-local-quality-gate.mjs"
-      - ".github/workflows/v129-shadow-gate.yml"
   workflow_dispatch:
 
 permissions:

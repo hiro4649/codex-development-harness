@@ -1,25 +1,60 @@
 # Changelog
 
-## 2026-06-28
+## 2026-07-10
 
-- Implemented HARNESS v1.3.1 Operational Convergence Core locally as Source body only.
-- Added Workspace Identity Gate, Manifest Strict Validator, Validation State Machine, Target Profile Drift Linter, Remote CI Cost Gate, Decision Capsule v2, Compatibility Debt Ledger, Target Profile Installer Dry Run, and Product Value Return Gate advisory surfaces.
-- Added v131 policy, spec, module, and self-test.
-- Updated Source manifests and active policy metadata to `activeHarnessVersion=1.3.1` and `activeSelfTestSuite=v131`.
-- Kept Compatibility Adapter internal-only and non-authoritative.
-- Kept Performance Track deferred and superiority not proven.
-- Did not start target rollout.
-- Did not mutate target repositories.
-- Did not change product/runtime/package/lockfile/deploy/wallet/RPC/secret files.
-- Did not run GitHub Actions.
-- Opened Source PR #164 for external review.
-- Repaired PR #164 review blockers: removed BOM from load-bearing files, restored v1.3.0 marker compatibility beside v1.3.1, clarified project memory, and removed v1.3.0 spec from the v1.3.1 source-body hot required reads.
-- Hardened v1.3.1 convergence edge cases: git worktree identity resolution, metadata target profile drift detection, and explicit merge failure while remote CI is blocked.
-- Added explicit non-authoritative merge-readiness projection: Remote CI Cost Gate and Decision Capsule v2 now report `mergeAllowed=false` until remote validation is truly passed.
-- Added remote evidence ambiguity hardening: Remote CI Cost Gate and Decision Capsule v2 now expose `remoteRequiredChecksPassed=false`, `requiredCheckBypassAllowed=false`, and `localPassPromotedToRemotePass=false` when remote checks have not actually passed.
-- Hardened Workspace Identity remote matching by parsing GitHub remote URLs to exact `owner/repo` slugs and rejecting misleading substring matches.
-- Hardened Target Profile Installer Dry Run sensitive diff detection for nested package/lockfile, runtime, contract, env, and product source paths without enabling target mutation.
-- Hardened Target Profile Installer Dry Run to detect `CODEX_SOURCE_HARNESS_MANIFEST.json` anywhere in changed file paths as a forbidden source manifest copy.
-- Added safe source manifest copy path/count reporting to Target Profile Installer Dry Run.
-- Bounded Target Profile Installer Dry Run report arrays for changed files, reason codes, and Source manifest copy paths while preserving exact counts and omitted counts.
-- Centralized v131 Target Profile Installer Dry Run report bounds and added self-test coverage that policy metadata stays synchronized with the Source constants.
+- Added v1.3.2 Release Context Closure: every automatic Source job now binds exact head and current-base ancestry.
+- Added Pull Request plus Compare API re-observation and canonical `observedBaseSha`, `baseAncestryState`, and `mergeContextDigest` fields.
+- Bound Final Decision receipts to PR number, base, head, and the accepted-main trust-bound merge context; base movement invalidates earlier authorization.
+- Replaced implicit compatibility path filters and three jobs with one always-applicable lightweight aggregate job, reducing automatic Source topology from four jobs to two.
+- Added positive/negative ancestry, stale-base, base-advanced Final Decision, workflow base mismatch, and existing synthetic-merge fixtures without creating authority or target/product mutation.
+- Bound all four automatic v1.3.2 Source jobs to the exact pull-request head, disabled persisted checkout credentials, and rejected synthetic merge-commit execution before checks.
+- Preserved queued, in-progress, canceled, failed, billing-unavailable, and pre-runner-unavailable observations as distinct non-authoritative states.
+- Added workflow semantic fixtures for exact checkout order, workflow-dispatch SHA binding, report/artifact head equality, and synthetic-merge rejection.
+- Clarified that only the observed required-workflow set must exactly match the accepted-main contract; unrelated workflows create no authority.
+- Replaced fixed CI SHA/run history with dynamic GitHub observation wording.
+- Removed duplicate display and registry-detail fields from the routine compact policy and added a 1800-byte operating target under the unchanged 2048-byte hard limit.
+- Removed the self-referential commit SHA from the authoritative trust document and bound Final Decision to an observed main HEAD/blob/path envelope digest.
+- Added a real-git trust bootstrap fixture, exact required-workflow closure with latest-attempt normalization, required-check GitHub App identity, and exact Ruleset path/ref/SHA/repository binding.
+- Added the owner-credential `codex-v132-collect-remote-evidence` CLI; its serialized receipt is non-authoritative and creates no Final Decision authority.
+- Bounded artifact archives to 8 MiB, payloads to 256 KiB, and ZIPs to 64 entries; duplicate contracted entries and ZIP64 fail closed.
+- Expanded trust and compatibility tests without target, product, package, workflow, deploy, wallet, RPC, or secret mutation.
+- Bound production collection to the GitHub-observed current PR and exact head, with API-discovered latest runs; supplied run IDs are hints only.
+- Persisted billing, pre-runner, and failed observations with no authority and added deterministic production-path mock API coverage through receipt re-observation.
+- Added Checks read to the owner credential contract and made Ruleset workflow support explicitly SHA-pinned-only.
+- The preceding Remote Collector Truth Closure changed no workflow file. This Exact-Head Workflow Closure changes only the two Source harness workflows; no target or product workflow changed.
+- Kept benchmark sizes and timings exclusively in generated `verificationMetrics`; measured timing samples vary around the baseline while compact output is substantially smaller, and non-comparable coverage keeps superiority not proven.
+
+- Built HARNESS v1.3.2 Evidence-Converged Lean Core as a local Source-only candidate.
+- Added typed evidence truth, canonical state, strict manifest compilation, Registry v2, incremental validation, resumable receipts, bounded context/output, allowlist target planning, CI cost planning, debt closure, and long-run budgets.
+- Registered all eight repositories, including APS-GATE as `lite_action_target`, without persisting dynamic observations.
+- Removed `edited` from the heavy quality workflow trigger and changed Source markers to v1.3.2.
+- Reclassified compatibility debt due in v1.3.2 with an explicit reason and retirement condition.
+- Preserved Final Decision authority, rollback chain, `authorityCreated=false`, and `targetMutationCount=0`.
+- Pushed the Source branch and opened Draft PR #165 for review.
+- Automatic PR checks were created but failed before runner steps; no manual rerun or `workflow_dispatch` was performed.
+- Added execution-attested graph nodes, trusted collector receipts, compact workflow-runner support, and v1.3.2-aware compatibility jobs.
+- Replaced the declared CI estimate with workflow-file parsing and reduced automatic Source topology to four jobs across two workflows.
+- Kept remote evidence `not_observed`; did not merge, activate, or roll out targets.
+- Did not change any target, product, runtime, package, lockfile, deploy, wallet, RPC, or secret file.
+- Bound resume receipts to complete workspace content and added same-path and untracked invalidation fixtures.
+- Added GitHub API re-observation, multi-run required-check binding, artifact digest enforcement, and Ed25519 Final Decision verification.
+- Rejected nonzero gate exits and contradictory canonical state in the workflow adapter.
+- Executed bounded rollback/compatibility invariants under the v1.3.2 tuple.
+- Separated Source candidate display from per-repository target-installed observation.
+- Replaced node-count approximations with direct subprocess/write/retry/checkpoint accounting and output-digest benchmark coverage.
+- Removed repository fallback and made malformed, missing, unsupported, lookalike, or mismatched origins fail closed.
+- Added an accepted-main Ed25519 trust-root protocol with key ID, fingerprint, rotation, revocation, and candidate self-authorization rejection.
+- Bound remote evidence to repository, PR, event, base/head, workflow identity, run attempts, observed required checks, contracted artifacts, and observation time.
+- Split unknown pre-runner failure from authoritative billing unavailability.
+- Added real bounded compatibility behavior contracts for v1.3.1 through v1.2.7 without reactivating historical self-tests.
+- Added candidate lifecycle fields and allowed transitions, keeping accepted main, development parent, candidate, and execution versions distinct.
+- Added a generated routine effective policy within the 2048-byte contract and deferred full-manifest reads; exact size is reported only by generated `verificationMetrics`.
+- Added the v1.3.2 lean Source workflow path, eight-line Summary, and full-SHA action pins.
+- Verified the implementation checkpoint with the v1.3.2 self-test suite, compact/full Source gates, actionlint, parser equivalence, negative trust/evidence fixtures, and one-warm-up/five-run benchmark.
+- Anchored trust-root loading to the GitHub-observed protected Source default-branch HEAD and rejected candidate or detached commit substitution.
+- Added one stable classic-protection/Ruleset snapshot shared across multiple workflow runs.
+- Bound workflow identity to exact content digest and optional reusable-workflow ref.
+- Bound artifact payload values to repository, exact head, pass status, schema, and semantic digest.
+- Added classic, Ruleset-only, two-run, content-tamper, and value-tamper fixtures to the v1.3.2 suite.
+- Deprecated `activeHarnessVersion` as a non-authoritative execution alias in generated projections.
+- Consolidated output-size and timing provenance into generated benchmark JSON `verificationMetrics`.

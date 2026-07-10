@@ -2,7 +2,7 @@
 
 
 
-// CODEX_QUALITY_HARNESS_FILE v1.3.1
+// CODEX_QUALITY_HARNESS_FILE v1.3.2
 
 
 
@@ -123,7 +123,7 @@ import {
 
 
 
-const HARNESS_VERSION = '1.3.1';
+const HARNESS_VERSION = '1.3.2';
 
 
 
@@ -14596,6 +14596,23 @@ async function main() {
 
   if (shouldAutoSelectTargetHarnessMode(process.env)) {
     process.env.CODEX_HARNESS_MODE = 'target';
+  }
+
+  if (manifestForAutoMode?.activeHarnessVersion === '1.3.2'
+    && process.env.CODEX_HARNESS_SOURCE_REPO === '1'
+    && process.env.CODEX_HARNESS_MODE === 'core') {
+    const { runV132SourceQualityGateWithDurableEvidence } = await import('./codex-v132-quality-gate.mjs');
+    const result = await runV132SourceQualityGateWithDurableEvidence({ repoRoot: process.cwd() });
+    if (process.env.CODEX_QUALITY_REPORT === 'json') fs.writeSync(1, `${JSON.stringify(result.report)}\n`);
+    else {
+      console.log('== Codex v1.3.2 compact Source quality gate ==');
+      console.log(`status: ${result.report.status}`);
+      console.log(`localValidationState: ${result.report.localValidationState}`);
+      console.log(`remoteValidationState: ${result.report.remoteValidationState}`);
+      console.log(`mergeAllowed: ${result.report.mergeAllowed}`);
+      console.log(`nextSafeAction: ${result.report.nextSafeAction}`);
+    }
+    process.exit(result.exitCode);
   }
 
 

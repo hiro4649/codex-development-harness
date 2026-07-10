@@ -2,14 +2,6 @@
 name: v130-shadow-gate
 
 on:
-  pull_request:
-    paths:
-      - "CODEX_SOURCE_HARNESS_MANIFEST.json"
-      - "docs/process/CODEX_V130_POLICY.json"
-      - "docs/process/CODEX_V130_SCHEMA.json"
-      - "docs/process/CODEX_V130_SPEC.md"
-      - "scripts/codex-v130-*.mjs"
-      - ".github/workflows/v130-shadow-gate.yml"
   workflow_dispatch:
 
 permissions:

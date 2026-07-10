@@ -2,54 +2,54 @@
 
 ## Highest-Priority Next Task
 
-Review HARNESS v1.3.1 PR #164 after Source harness-only Target Profile Installer Dry Run bounded-reporting hardening.
+Review the exact pushed HARNESS v1.3.2 Release Context Closure on Draft PR #165. Confirm both automatic jobs validate exact PR head and current-base ancestry, Compare API observations bind the current PR, Final Decision binds PR/base/head/merge context, compatibility is always one lightweight job, and authority boundaries remain unchanged. Inspect one automatic required-check attempt without rerunning it. Do not activate or roll out targets.
 
 ## Required Files
 
+- `docs/process/CODEX_V132_POLICY.json`
+- `docs/process/CODEX_V132_SPEC.md`
+- `docs/process/CODEX_EFFECTIVE_POLICY.compact.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
-- `docs/process/CODEX_V131_POLICY.json`
-- `docs/process/CODEX_V131_SPEC.md`
-- `scripts/codex-v131-operational-convergence.mjs`
-- `scripts/codex-v131-self-test.mjs`
-- `scripts/codex-local-quality-gate.mjs`
-- `scripts/codex-orchestration-capsule.mjs`
-- `docs/PROJECT_SPEC.md`
-- `docs/PROJECT_STATUS.md`
-- `docs/NEXT_TASK.md`
-- `docs/CHANGELOG.md`
+- `scripts/codex-v132-*.mjs`
+- `scripts/codex-workflow-quality-runner.mjs`
+- `scripts/codex-v132-evidence-truth.mjs`
+- `scripts/codex-v132-collect-remote-evidence.mjs`
+- `scripts/codex-v132-compatibility-invariants.mjs`
+- `.github/workflows/quality-gate.yml`
+- `.github/workflows/v132-compatibility-gate.yml`
 
 ## Implementation Strategy
 
-1. Keep PR #164 Source harness-only.
-2. Confirm git worktree identity, exact remote slug matching, metadata target profile drift, sensitive target diff dry-run detection, source manifest basename rejection with safe path/count reporting, bounded dry-run report arrays, dry-run report bound policy synchronization, blocked-CI merge action, explicit `remoteRequiredChecksPassed=false`, and `mergeAllowed=false` fixtures remain covered by v131 self-test.
-3. Treat PR #164 as stacked after the v1.3.0 Final Freeze lineage, not as a replacement for it.
-4. Do not merge PR #164 until the v1.3.0 relationship is resolved.
-5. Run normal required checks once after Actions are available.
-6. If CI fails after steps start, inspect logs once and propose the smallest fix.
+1. Review exact-head/current-base checkout assertions in both jobs, current-PR plus Compare API binding, latest-run discovery independent of hints, non-self-referential trust, app-bound checks, SHA-pinned Rulesets, bounded artifacts, and PR/base/head-bound Final Decision digest in PR #165.
+2. Keep remote state `not_observed` while jobs cannot start; do not rerun blindly.
+3. Treat owner-key trust-document bootstrap and owner-managed collector credential setup as separate owner-governed actions; never authorize either from the candidate branch.
+4. After v1.3.1 main acceptance, rebase and recompute policy, workspace, and receipt digests if inputs change.
+5. Run strict projections, compact/full gates, workflow exact-head/base and synthetic-merge fixtures, collector current/stale-base mock E2E, Final Decision context invalidation, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
+6. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
 
 ## Expected Risks
 
-- Remote Actions may still be blocked.
-- v1.3.1 is load-bearing Source harness policy, so review should focus on authority boundaries and report classification.
-- Target rollout must not be started from this PR.
-- PR #164 can be misread as superseding v1.3.0 unless the stacked relationship remains explicit.
+- Rebase conflicts in active tuple, workflow, or project-memory files.
+- New v1.3.1 main changes can invalidate benchmark comparison and receipt digests.
+- Remote checks may remain unavailable.
+- A trust-root or required-check contract placed only on the candidate branch must remain non-authoritative; the collector must observe accepted main.
 
 ## Validation Steps
 
 - `git diff --check`
-- `node scripts/codex-v131-self-test.mjs --stage=all`
-- `CODEX_HARNESS_SOURCE_REPO=1 CODEX_HARNESS_MODE=core CODEX_PROFILE_COMPAT_MODE=optional CODEX_REQUIRE_NPM=1 CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs`
+- `node scripts/codex-v132-self-test.mjs --stage=all`
+- `CODEX_HARNESS_SOURCE_REPO=1 CODEX_HARNESS_MODE=core CODEX_PROFILE_COMPAT_MODE=optional CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs`
+- Repeat with `CODEX_V132_DIAGNOSTICS=1` once after compact pass.
+- Run actionlint over all workflow files.
+- Run `node scripts/codex-v132-benchmark.mjs` with one warm-up and five measured runs per side.
+- Treat its `verificationMetrics` object as the only machine metric source.
 
 ## Stop Conditions
 
-- Product/runtime/package/lockfile/deploy/wallet/RPC/secret mutation appears.
-- Target repository mutation appears.
-- Performance Track, Fable comparison, SDK benchmark, Skill runtime, DAG runtime, target rollout, or v1.3.2 appears.
-- Remote CI would be required while Actions remain blocked.
-- PR #164 is proposed for merge before the v1.3.0 final-freeze relationship is resolved.
+Stop on target/product/sensitive mutation, authority weakening, candidate-controlled trust, output-limit breach, stale-base or unobserved remote pass, or merge permission without exact typed remote evidence and same-context Final Decision.
 
 ## Estimated Complexity
 
-Medium-high. The feature is operational rather than product-facing, but it updates load-bearing Source quality and policy paths.
+Low after this closure. Remaining work is independent review, owner-key bootstrap, rebase-sensitive verification, and exact-head remote validation, not feature expansion.
