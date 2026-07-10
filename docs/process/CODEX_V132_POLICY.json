@@ -166,6 +166,10 @@
     "requiredWorkflowExactSet": true,
     "requiredWorkflowLatestAttemptOnly": true,
     "requiredWorkflowSelectedRunMustSucceed": true,
+    "currentPullRequestApiObservationRequired": true,
+    "currentPullRequestBindings": ["repository", "pullRequestNumber", "headSha", "baseSha"],
+    "userSuppliedRunIdAuthority": "hint_only",
+    "latestRunDiscoverySource": "github_api_current_pr_exact_head",
     "artifactRepositoryHeadStatusBindingsRequired": true,
     "requiredCheckIdentityFields": ["name", "appId"],
     "rulesetWorkflowIdentityFields": ["path", "ref", "sha", "repositoryId"],
@@ -182,12 +186,22 @@
       "Contents read",
       "Actions read",
       "Pull requests read",
-      "Administration read"
+      "Administration read",
+      "Checks read"
     ],
-    "checksReadCondition": "required_when_app_bound_check_run_identity_endpoint_requires_it",
+    "checksReadRequired": true,
     "ordinaryProductWorkflowExposureAllowed": false,
     "serializedReceiptAuthority": "none",
-    "createsFinalDecisionAuthority": false
+    "createsFinalDecisionAuthority": false,
+    "persistedObservationStates": ["passed", "unavailable_billing", "unavailable_pre_runner", "failed"],
+    "nonPassedObservationMergeAllowed": false
+  },
+  "rulesetWorkflowSupport": {
+    "state": "sha_pinned_only",
+    "requiredFields": ["path", "sha", "repositoryId"],
+    "optionalFields": ["ref"],
+    "missingShaReason": "github_ruleset_workflow_not_sha_pinned_unsupported",
+    "failOpen": false
   },
   "artifactResourceBounds": {
     "maximumArchiveBytes": 8388608,

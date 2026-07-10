@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Review the exact pushed HARNESS v1.3.2 Trust Bootstrap Closure on Draft PR #165. Confirm the SHA-free trust document/envelope, exact workflow/check/ruleset bindings, collector credential isolation, and artifact resource limits. Inspect one automatic required-check attempt without rerunning it. Do not activate or roll out targets.
+Review the exact pushed HARNESS v1.3.2 Remote Collector Truth Closure on Draft PR #165. Confirm current-PR/exact-head observation, authoritative latest-run discovery, unavailable receipt persistence, Checks permission, SHA-pinned Ruleset support, and production mock E2E. Inspect one automatic required-check attempt without rerunning it. Do not activate or roll out targets.
 
 ## Required Files
 
@@ -22,11 +22,11 @@ Review the exact pushed HARNESS v1.3.2 Trust Bootstrap Closure on Draft PR #165.
 
 ## Implementation Strategy
 
-1. Review the non-self-referential trust envelope, exact required-workflow set, app-bound checks, Ruleset identity, bounded artifact parser, Final Decision digest, and compatibility in PR #165.
+1. Review current-PR binding, latest-run discovery independent of hints, non-self-referential trust, app-bound checks, SHA-pinned Rulesets, bounded artifacts, and Final Decision digest in PR #165.
 2. Keep remote state `not_observed` while jobs cannot start; do not rerun blindly.
 3. Treat owner-key trust-document bootstrap and owner-managed collector credential setup as separate owner-governed actions; never authorize either from the candidate branch.
 4. After v1.3.1 main acceptance, rebase and recompute policy, workspace, and receipt digests if inputs change.
-5. Run strict projections, compact/full gates, workflow adapter negatives, two-run/ruleset/tamper fixtures, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
+5. Run strict projections, compact/full gates, collector mock E2E and stale-run negatives, unavailable-state fixtures, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
 6. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
 
 ## Expected Risks

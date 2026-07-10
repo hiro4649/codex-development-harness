@@ -11,13 +11,16 @@ import {
   aggregateGithubRunObservations,
   buildRequiredCheckTrustSnapshot,
   canonicalJson,
+  collectAcceptedMainTrustRoot,
   collectVerifiedGithubEvidence,
+  createFixtureGithubHttpClient,
   createFixtureFinalDecision,
   createFixtureGithubEvidence,
   createFixtureTrustRoot,
   deriveCanonicalState,
   effectiveTrustRootDigest,
   readArtifactZipEntry,
+  reobserveSerializedGithubEvidence,
   sha256,
   trustRootContractDigest,
   validateAcceptedMainIdentityObservation,
@@ -31,6 +34,7 @@ import {
   V132_TRUST_ROOT_PATH,
   V132_VERSION,
 } from './codex-v132-evidence-truth.mjs';
+import { runCollectorCli } from './codex-v132-collect-remote-evidence.mjs';
 import {
   compileEffectivePolicy,
   deriveCandidateLifecycleState,
@@ -71,6 +75,7 @@ import * as harnessVersion from './codex-harness-version.mjs';
 
 const ROOT = process.cwd();
 const results = [];
+const pendingTests = [];
 const selfTestAccounting = { subprocessExecutions: 0, harnessFileWrites: 0, retryCount: 0, retryPerNode: 0, checkpointCount: 0 };
 
 function countedSpawnSync(command, args, options) {
@@ -89,8 +94,15 @@ function accountNestedExecution(report) {
 
 function test(id, fn) {
   try {
-    fn();
-    results.push({ id, status: 'pass' });
+    const value = fn();
+    if (value && typeof value.then === 'function') {
+      pendingTests.push(value.then(
+        () => results.push({ id, status: 'pass' }),
+        (error) => results.push({ id, status: 'fail', reason: String(error?.message || error).slice(0, 400) }),
+      ));
+    } else {
+      results.push({ id, status: 'pass' });
+    }
   } catch (error) {
     results.push({ id, status: 'fail', reason: String(error.message || error).slice(0, 400) });
   }
@@ -285,6 +297,129 @@ function createStoredZip(entries) {
   eocd.writeUInt32LE(centralDirectory.length, 12);
   eocd.writeUInt32LE(localOffset, 16);
   return Buffer.concat([...localParts, centralDirectory, eocd]);
+}
+
+function createCollectorMockScenario(mode = 'pass') {
+  const repository = V132_SOURCE_REPOSITORY;
+  const repositoryId = 1243452288;
+  const pullRequestNumber = 165;
+  const mainSha = 'c'.repeat(40);
+  const baseSha = 'b'.repeat(40);
+  const headSha = 'a'.repeat(40);
+  const oldHeadSha = 'e'.repeat(40);
+  const appId = 15368;
+  const qualityPath = '.github/workflows/quality-gate.yml';
+  const compatibilityPath = '.github/workflows/v132-compatibility-gate.yml';
+  const qualityText = 'name: quality-gate\non: pull_request\njobs:\n  quality-gate:\n    runs-on: ubuntu-latest\n';
+  const compatibilityText = 'name: v132-compatibility-gate\non: pull_request\njobs:\n  aggregate-contract:\n    runs-on: ubuntu-latest\n';
+  const requiredFieldValues = { repository: '$repository', headSha: '$headSha', status: 'pass' };
+  const { publicKey } = crypto.generateKeyPairSync('ed25519');
+  const seed = createFixtureTrustRoot({
+    repository,
+    trustSourceHeadSha: mainSha,
+    publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
+    requiredWorkflows: [
+      { workflowId: 1001, path: qualityPath, workflowContentDigest: sha256(qualityText), reusableWorkflowRef: null },
+      { workflowId: 1002, path: compatibilityPath, workflowContentDigest: sha256(compatibilityText), reusableWorkflowRef: null },
+    ],
+    requiredArtifacts: [
+      { name: 'quality-safe', workflowPath: qualityPath, entryPath: 'quality.json', schemaVersion: V132_VERSION, requiredFields: ['schemaVersion', 'repository', 'headSha', 'status'], requiredFieldValues },
+      { name: 'compat-safe', workflowPath: compatibilityPath, entryPath: 'compat.json', schemaVersion: V132_VERSION, requiredFields: ['schemaVersion', 'repository', 'headSha', 'status'], requiredFieldValues },
+    ],
+  });
+  const trustBytes = Buffer.from(`${JSON.stringify(seed.document, null, 2)}\n`, 'utf8');
+  const trustBlobSha = crypto.createHash('sha1').update(Buffer.from(`blob ${trustBytes.length}\0`)).update(trustBytes).digest('hex');
+  const payload = (entryPath) => Buffer.from(JSON.stringify({ schemaVersion: V132_VERSION, repository, headSha, status: 'pass', entryPath }));
+  const archives = new Map([
+    ['/artifacts/quality.zip', createStoredZip([{ name: 'quality.json', payload: payload('quality.json') }])],
+    ['/artifacts/compat.zip', createStoredZip([{ name: 'compat.json', payload: payload('compat.json') }])],
+  ]);
+  const digest = (bytes) => `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+  const pullRequests = [{ number: pullRequestNumber }];
+  const run = ({ id, workflowId, runNumber, attempt = 1, conclusion = 'success', runHeadSha = headSha }) => ({
+    id,
+    workflow_id: workflowId,
+    run_number: runNumber,
+    run_attempt: attempt,
+    event: 'pull_request',
+    head_sha: runHeadSha,
+    conclusion,
+    status: 'completed',
+    pull_requests: pullRequests,
+    created_at: `2026-07-10T00:${String(runNumber).padStart(2, '0')}:00Z`,
+    run_started_at: `2026-07-10T00:${String(runNumber).padStart(2, '0')}:00Z`,
+    updated_at: `2026-07-10T00:${String(runNumber).padStart(2, '0')}:30Z`,
+  });
+  const unavailable = ['billing', 'pre_runner'].includes(mode);
+  const qualityLatestConclusion = mode === 'newer_failure' || unavailable ? 'failure' : 'success';
+  const compatibilityConclusion = unavailable ? 'failure' : 'success';
+  const qualityOld = run({ id: 101, workflowId: 1001, runNumber: 10, conclusion: 'success', runHeadSha: mode === 'old_head' ? oldHeadSha : headSha });
+  const qualityLatest = run({ id: 102, workflowId: 1001, runNumber: 11, conclusion: qualityLatestConclusion, runHeadSha: mode === 'old_head' ? oldHeadSha : headSha });
+  const compatibilityLatest = run({ id: 201, workflowId: 1002, runNumber: 20, conclusion: compatibilityConclusion });
+  const workflowRuns = [qualityOld, qualityLatest, compatibilityLatest];
+  const runsById = new Map(workflowRuns.map((item) => [item.id, item]));
+  const calls = [];
+  const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
+  const text = (value) => new Response(value, { status: 200, headers: { 'content-type': 'text/plain' } });
+  const jobFor = (selectedRun) => {
+    const isQuality = selectedRun.workflow_id === 1001;
+    const jobId = isQuality ? 1102 : 1201;
+    const name = isQuality ? 'quality-gate' : 'aggregate contract';
+    return {
+      id: jobId,
+      name,
+      conclusion: selectedRun.conclusion,
+      steps: unavailable ? [] : [{ name: 'run', conclusion: selectedRun.conclusion }],
+      runner_name: unavailable ? null : 'GitHub Actions 1',
+    };
+  };
+  const httpClient = createFixtureGithubHttpClient(async (input, options = {}) => {
+    const url = new URL(String(input));
+    calls.push(`${options.method || 'GET'} ${url.pathname}${url.search}`);
+    if (url.pathname === `/repos/${repository}`) return json({ id: repositoryId, full_name: repository, default_branch: 'main' });
+    if (url.pathname === `/repos/${repository}/branches/main`) return json({ name: 'main', commit: { sha: mainSha } });
+    if ([
+      `/repos/${repository}/branches/main/protection/required_status_checks`,
+      `/repos/${repository}/branches/codex%2Fv131-base/protection/required_status_checks`,
+    ].includes(url.pathname)) {
+      return json({ strict: true, contexts: [], checks: [{ context: 'quality-gate', app_id: appId }, { context: 'aggregate contract', app_id: appId }] });
+    }
+    if ([`/repos/${repository}/rules/branches/main`, `/repos/${repository}/rules/branches/codex%2Fv131-base`].includes(url.pathname)) return json({}, 404);
+    if (url.pathname === `/repos/${repository}/contents/${V132_TRUST_ROOT_PATH}`) {
+      return json({ type: 'file', path: V132_TRUST_ROOT_PATH, encoding: 'base64', sha: trustBlobSha, content: trustBytes.toString('base64') });
+    }
+    if (url.pathname === `/repos/${repository}/pulls/${pullRequestNumber}`) {
+      return json({ number: pullRequestNumber, state: 'open', merged: false, base: { ref: 'codex/v131-base', sha: baseSha, repo: { full_name: repository } }, head: { ref: 'codex/v132-candidate', sha: headSha, repo: { full_name: repository } } });
+    }
+    if (url.pathname === `/repos/${repository}/actions/runs`) return json({ total_count: workflowRuns.length, workflow_runs: workflowRuns });
+    const runMatch = url.pathname.match(new RegExp(`^/repos/${repository}/actions/runs/(\\d+)$`));
+    if (runMatch) return json(runsById.get(Number(runMatch[1])));
+    const jobsMatch = url.pathname.match(new RegExp(`^/repos/${repository}/actions/runs/(\\d+)/jobs$`));
+    if (jobsMatch) return json({ jobs: [jobFor(runsById.get(Number(jobsMatch[1])))] });
+    const artifactsMatch = url.pathname.match(new RegExp(`^/repos/${repository}/actions/runs/(\\d+)/artifacts$`));
+    if (artifactsMatch) {
+      const selectedRun = runsById.get(Number(artifactsMatch[1]));
+      if (selectedRun.conclusion !== 'success') return json({ artifacts: [] });
+      const quality = selectedRun.workflow_id === 1001;
+      const archive = archives.get(quality ? '/artifacts/quality.zip' : '/artifacts/compat.zip');
+      return json({ artifacts: [{ id: quality ? 301 : 302, name: quality ? 'quality-safe' : 'compat-safe', size_in_bytes: archive.length, digest: digest(archive), expired: false, archive_download_url: `https://api.github.test${quality ? '/artifacts/quality.zip' : '/artifacts/compat.zip'}` }] });
+    }
+    if (url.pathname === `/repos/${repository}/actions/workflows/1001`) return json({ id: 1001, path: qualityPath });
+    if (url.pathname === `/repos/${repository}/actions/workflows/1002`) return json({ id: 1002, path: compatibilityPath });
+    if (url.pathname === `/repos/${repository}/contents/${qualityPath}`) return text(qualityText);
+    if (url.pathname === `/repos/${repository}/contents/${compatibilityPath}`) return text(compatibilityText);
+    const checkMatch = url.pathname.match(new RegExp(`^/repos/${repository}/check-runs/(\\d+)$`));
+    if (checkMatch) return json({ id: Number(checkMatch[1]), app: { id: appId } });
+    const annotationMatch = url.pathname.match(new RegExp(`^/repos/${repository}/check-runs/(\\d+)/annotations$`));
+    if (annotationMatch) {
+      if (mode === 'billing') return json([{ message: 'The job was not started because your account is locked due to a billing issue.' }]);
+      if (mode === 'pre_runner') return json([{ message: 'The job could not be assigned to a runner.' }]);
+      return json([]);
+    }
+    if (archives.has(url.pathname)) return new Response(archives.get(url.pathname), { status: 200 });
+    throw new Error(`unexpected_mock_github_request:${url.pathname}${url.search}`);
+  });
+  return { repository, pullRequestNumber, mainSha, baseSha, headSha, httpClient, calls };
 }
 
 function executeFixturePlan(plan) {
@@ -501,6 +636,19 @@ test('v132_required_check_snapshot_supports_classic_and_rulesets_fail_closed', (
   assert.equal(ruleset.source, 'github_rulesets');
   assert.equal(ruleset.requiredCheckNames.length, 0);
   assert.equal(ruleset.requiredWorkflowRefs[0].path, '.github/workflows/quality-gate.yml');
+  const pinnedWithoutRef = buildRequiredCheckTrustSnapshot({
+    repository: V132_SOURCE_REPOSITORY,
+    baseRef: 'main',
+    classicProtection: null,
+    rulesetRules: [{
+      ruleset_id: 44,
+      ruleset_source_type: 'Repository',
+      ruleset_source: V132_SOURCE_REPOSITORY,
+      type: 'workflows',
+      parameters: { workflows: [{ path: '.github/workflows/quality-gate.yml', sha: 'c'.repeat(40), repository_id: 123 }] },
+    }],
+  });
+  assert.equal(pinnedWithoutRef.requiredWorkflowRefs[0].ref, '');
   const receipts = validReceipts({ rulesetBinding: {
     path: '.github/workflows/quality-gate.yml',
     ref: 'refs/heads/main',
@@ -518,6 +666,18 @@ test('v132_required_check_snapshot_supports_classic_and_rulesets_fail_closed', (
     classicProtection: null,
     rulesetRules: null,
   }), /github_required_check_trust_root_unavailable/);
+  assert.throws(() => buildRequiredCheckTrustSnapshot({
+    repository: V132_SOURCE_REPOSITORY,
+    baseRef: 'main',
+    classicProtection: null,
+    rulesetRules: [{
+      ruleset_id: 43,
+      ruleset_source_type: 'Repository',
+      ruleset_source: V132_SOURCE_REPOSITORY,
+      type: 'workflows',
+      parameters: { workflows: [{ path: '.github/workflows/quality-gate.yml', repository_id: 123 }] },
+    }],
+  }), /github_ruleset_workflow_not_sha_pinned_unsupported/);
 });
 
 test('v132_required_check_app_identity_and_ruleset_binding_are_exact', () => {
@@ -803,6 +963,11 @@ test('v132_production_collector_cli_is_non_authoritative_and_owner_scoped', () =
   assert.match(source, /collectAcceptedMainTrustRoot/);
   assert.match(source, /collectVerifiedGithubEvidence/);
   assert.match(source, /evaluateRemoteEvidence/);
+  const ordinaryWorkflows = fs.readdirSync(path.join(ROOT, '.github', 'workflows'))
+    .filter((file) => file.endsWith('.yml') || file.endsWith('.yaml'))
+    .map((file) => fs.readFileSync(path.join(ROOT, '.github', 'workflows', file), 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(ordinaryWorkflows, /CODEX_V132_COLLECTOR_TOKEN/);
   const syntax = countedSpawnSync(process.execPath, ['--check', collectorPath], { encoding: 'utf8', windowsHide: true });
   assert.equal(syntax.status, 0, syntax.stderr);
   const output = path.join(os.tmpdir(), `codex-v132-collector-${process.pid}.json`);
@@ -812,6 +977,112 @@ test('v132_production_collector_cli_is_non_authoritative_and_owner_scoped', () =
   assert.equal(closed.status, 1);
   assert.match(closed.stderr, /owner_managed_collector_credential_required/);
   assert.equal(fs.existsSync(output), false);
+});
+
+test('v132_production_collector_mock_e2e_binds_current_pr_and_latest_runs', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v132-collector-e2e-'));
+  try {
+    const scenario = createCollectorMockScenario('pass');
+    const outputA = path.join(directory, 'receipt-a.json');
+    const resultA = await runCollectorCli({
+      argv: [`--repository=${scenario.repository}`, `--pull-request=${scenario.pullRequestNumber}`, '--run-ids=201,101', `--output=${outputA}`],
+      env: { CODEX_V132_COLLECTOR_TOKEN: 'fixture-token' },
+      httpClient: scenario.httpClient,
+    });
+    assert.equal(resultA.status, 'pass');
+    assert.equal(resultA.remoteValidationState, 'passed');
+    assert.deepEqual(resultA.runIds, [102, 201]);
+    const serializedA = JSON.parse(fs.readFileSync(outputA, 'utf8'));
+    assert.equal(serializedA.authority, 'none');
+    assert.equal(serializedA.createsAuthority, false);
+    assert.equal(serializedA.mergeAllowed, false);
+    assert.equal(serializedA.finalDecisionAuthorityCreated, false);
+    assert.equal(serializedA.receipt.pullRequestBinding.headSha, scenario.headSha);
+    assert.deepEqual(serializedA.receipt.workflowRunDiscovery.hintRunIds, [101, 201]);
+    assert.deepEqual(serializedA.receipt.runIds, [102, 201]);
+
+    const outputB = path.join(directory, 'receipt-b.json');
+    const resultB = await runCollectorCli({
+      argv: [`--repository=${scenario.repository}`, `--pull-request=${scenario.pullRequestNumber}`, '--run-ids=101,201', `--output=${outputB}`],
+      env: { CODEX_V132_COLLECTOR_TOKEN: 'fixture-token' },
+      httpClient: scenario.httpClient,
+    });
+    assert.deepEqual(resultB.runIds, resultA.runIds);
+
+    const trustRoot = await collectAcceptedMainTrustRoot({ repository: scenario.repository, token: 'fixture-token', httpClient: scenario.httpClient });
+    const reobserved = await reobserveSerializedGithubEvidence(serializedA.receipt, {
+      token: 'fixture-token',
+      acceptedMainTrustRoot: trustRoot,
+      httpClient: scenario.httpClient,
+    });
+    const evaluation = deriveCanonicalState({
+      localValidationPassed: true,
+      remoteEvidence: reobserved,
+      expected: {
+        repository: scenario.repository,
+        pullRequestNumber: scenario.pullRequestNumber,
+        event: 'pull_request',
+        baseSha: scenario.baseSha,
+        headSha: scenario.headSha,
+        acceptedMainTrustRoot: trustRoot,
+        testMode: true,
+      },
+    });
+    assert.equal(evaluation.remoteValidationState, 'passed', evaluation.remoteEvidence.reasonCodes.join(','));
+    assert.equal(evaluation.mergeAllowed, false);
+    assert.ok(scenario.calls.some((entry) => entry.includes('/actions/runs?event=pull_request') && entry.includes(`head_sha=${scenario.headSha}`)));
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('v132_collector_stale_success_old_head_and_unavailable_states_fail_closed', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v132-collector-negative-'));
+  try {
+    const stale = createCollectorMockScenario('newer_failure');
+    const staleOutput = path.join(directory, 'stale.json');
+    const staleResult = await runCollectorCli({
+      argv: [`--repository=${stale.repository}`, `--pull-request=${stale.pullRequestNumber}`, '--run-ids=101,201', `--output=${staleOutput}`],
+      env: { CODEX_V132_COLLECTOR_TOKEN: 'fixture-token' },
+      httpClient: stale.httpClient,
+    });
+    assert.equal(staleResult.status, 'fail');
+    assert.equal(staleResult.remoteValidationState, 'failed');
+    assert.ok(fs.existsSync(staleOutput));
+    assert.deepEqual(JSON.parse(fs.readFileSync(staleOutput, 'utf8')).receipt.runIds, [102, 201]);
+
+    const oldHead = createCollectorMockScenario('old_head');
+    const oldHeadOutput = path.join(directory, 'old-head.json');
+    const oldHeadResult = await runCollectorCli({
+      argv: [`--repository=${oldHead.repository}`, `--pull-request=${oldHead.pullRequestNumber}`, '--run-ids=101,201', `--output=${oldHeadOutput}`],
+      env: { CODEX_V132_COLLECTOR_TOKEN: 'fixture-token' },
+      httpClient: oldHead.httpClient,
+    });
+    assert.equal(oldHeadResult.status, 'fail');
+    assert.equal(oldHeadResult.remoteValidationState, 'failed');
+    const oldHeadSerialized = JSON.parse(fs.readFileSync(oldHeadOutput, 'utf8'));
+    assert.equal(oldHeadSerialized.receipt.headSha, oldHead.headSha);
+    assert.ok(oldHeadSerialized.receipt.workflowRunDiscovery.missingWorkflowIdentities.includes('1001:.github/workflows/quality-gate.yml'));
+
+    for (const mode of ['billing', 'pre_runner']) {
+      const unavailable = createCollectorMockScenario(mode);
+      const output = path.join(directory, `${mode}.json`);
+      const result = await runCollectorCli({
+        argv: [`--repository=${unavailable.repository}`, `--pull-request=${unavailable.pullRequestNumber}`, `--output=${output}`],
+        env: { CODEX_V132_COLLECTOR_TOKEN: 'fixture-token' },
+        httpClient: unavailable.httpClient,
+      });
+      assert.equal(result.status, 'unavailable');
+      assert.equal(result.exitCode, 2);
+      assert.equal(result.remoteValidationState, mode === 'billing' ? 'unavailable_billing' : 'unavailable_pre_runner');
+      const serialized = JSON.parse(fs.readFileSync(output, 'utf8'));
+      assert.equal(serialized.authority, 'none');
+      assert.equal(serialized.mergeAllowed, false);
+      assert.equal(serialized.finalDecisionAuthorityCreated, false);
+    }
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('v132_final_decision_serialized_signature_verification', () => {
@@ -966,8 +1237,13 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   assert.deepEqual(policy.trustRootContract.requiredCheckIdentityFields, ['name', 'appId']);
   assert.deepEqual(policy.trustRootContract.rulesetWorkflowIdentityFields, ['path', 'ref', 'sha', 'repositoryId']);
   assert.equal(policy.remoteEvidenceCollector.credentialClass, 'owner_managed_github_app_or_fine_grained_pat');
+  assert.ok(policy.remoteEvidenceCollector.requiredPermissions.includes('Checks read'));
+  assert.equal(policy.remoteEvidenceCollector.checksReadRequired, true);
   assert.equal(policy.remoteEvidenceCollector.ordinaryProductWorkflowExposureAllowed, false);
   assert.equal(policy.remoteEvidenceCollector.createsFinalDecisionAuthority, false);
+  assert.deepEqual(policy.remoteEvidenceCollector.persistedObservationStates, ['passed', 'unavailable_billing', 'unavailable_pre_runner', 'failed']);
+  assert.equal(policy.trustRootContract.userSuppliedRunIdAuthority, 'hint_only');
+  assert.equal(policy.rulesetWorkflowSupport.state, 'sha_pinned_only');
   assert.equal(policy.artifactResourceBounds.maximumArchiveBytes, V132_ARTIFACT_LIMITS.archiveBytes);
   assert.equal(policy.artifactResourceBounds.maximumPayloadBytes, V132_ARTIFACT_LIMITS.payloadBytes);
   assert.equal(policy.artifactResourceBounds.maximumEntryCount, V132_ARTIFACT_LIMITS.entryCount);
@@ -1282,6 +1558,7 @@ test('v132_source_gate_end_to_end_local_only', () => {
   }
 });
 
+await Promise.all(pendingTests);
 const failures = results.filter((result) => result.status === 'fail');
 const report = {
   schemaVersion: V132_VERSION,

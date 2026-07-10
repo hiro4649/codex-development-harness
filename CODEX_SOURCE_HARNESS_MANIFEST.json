@@ -17,8 +17,8 @@
   "targetInstalledState": "per_repository_dynamic_observation",
   "targetRolloutState": "not_started",
   "canonicalPolicySource": "docs/process/CODEX_V132_POLICY.json",
-  "canonicalPolicyDigest": "sha256:b1b060d3185c8a6d79cf0771ce2af5b9d166390e51347e10a6ca99c813475f18",
-  "compiledEffectivePolicyDigest": "sha256:9b94d89265fc47dc3772b1cdbbca6fa829b825955ae3016bd7a4bbf4248d02ea",
+  "canonicalPolicyDigest": "sha256:dd34009ffc72c8a37800ead0fb12ccde9c4d21496d7a642f5a5cd28ed20e417c",
+  "compiledEffectivePolicyDigest": "sha256:c9fb080b29c2a05835360199c716a6898f4171e0341044f01d590786dfbb20a7",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",

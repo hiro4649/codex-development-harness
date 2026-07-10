@@ -6,7 +6,12 @@
 - Added a real-git trust bootstrap fixture, exact required-workflow closure with latest-attempt normalization, required-check GitHub App identity, and exact Ruleset path/ref/SHA/repository binding.
 - Added the owner-credential `codex-v132-collect-remote-evidence` CLI; its serialized receipt is non-authoritative and creates no Final Decision authority.
 - Bounded artifact archives to 8 MiB, payloads to 256 KiB, and ZIPs to 64 entries; duplicate contracted entries and ZIP64 fail closed.
-- Expanded the v1.3.2 self-test suite to 33 trust and compatibility tests without target, product, package, workflow, deploy, wallet, RPC, or secret mutation.
+- Expanded trust and compatibility tests without target, product, package, workflow, deploy, wallet, RPC, or secret mutation.
+- Bound production collection to the GitHub-observed current PR and exact head, with API-discovered latest runs; supplied run IDs are hints only.
+- Persisted billing, pre-runner, and failed observations with no authority and added deterministic production-path mock API coverage through receipt re-observation.
+- Added Checks read to the owner credential contract and made Ruleset workflow support explicitly SHA-pinned-only.
+- This Remote Collector Truth Closure commit changes no workflow file. PR #165 overall contains Source workflow changes from earlier commits; no target or product workflow changed.
+- Kept benchmark sizes and timings exclusively in generated `verificationMetrics`; measured timing samples vary around the baseline while compact output is substantially smaller, and non-comparable coverage keeps superiority not proven.
 
 - Built HARNESS v1.3.2 Evidence-Converged Lean Core as a local Source-only candidate.
 - Added typed evidence truth, canonical state, strict manifest compilation, Registry v2, incremental validation, resumable receipts, bounded context/output, allowlist target planning, CI cost planning, debt closure, and long-run budgets.
@@ -32,13 +37,13 @@
 - Split unknown pre-runner failure from authoritative billing unavailability.
 - Added real bounded compatibility behavior contracts for v1.3.1 through v1.2.7 without reactivating historical self-tests.
 - Added candidate lifecycle fields and allowed transitions, keeping accepted main, development parent, candidate, and execution versions distinct.
-- Added a generated 1585-byte routine effective policy and deferred full-manifest reads.
+- Added a generated routine effective policy within the 2048-byte contract and deferred full-manifest reads; exact size is reported only by generated `verificationMetrics`.
 - Added the v1.3.2 lean Source workflow path, eight-line Summary, and full-SHA action pins.
-- Verified the implementation checkpoint with 24 self-tests, compact/full Source gates, actionlint, parser equivalence, negative trust/evidence fixtures, and one-warm-up/five-run benchmark.
+- Verified the implementation checkpoint with the v1.3.2 self-test suite, compact/full Source gates, actionlint, parser equivalence, negative trust/evidence fixtures, and one-warm-up/five-run benchmark.
 - Anchored trust-root loading to the GitHub-observed protected Source default-branch HEAD and rejected candidate or detached commit substitution.
 - Added one stable classic-protection/Ruleset snapshot shared across multiple workflow runs.
 - Bound workflow identity to exact content digest and optional reusable-workflow ref.
 - Bound artifact payload values to repository, exact head, pass status, schema, and semantic digest.
-- Added classic, Ruleset-only, two-run, content-tamper, and value-tamper fixtures; the v1.3.2 suite now has 29 tests.
+- Added classic, Ruleset-only, two-run, content-tamper, and value-tamper fixtures to the v1.3.2 suite.
 - Deprecated `activeHarnessVersion` as a non-authoritative execution alias in generated projections.
 - Consolidated output-size and timing provenance into generated benchmark JSON `verificationMetrics`.

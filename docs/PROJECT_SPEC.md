@@ -9,7 +9,8 @@ HARNESS v1.3.2 Evidence-Converged Lean Core is a Source-only candidate on provis
 - Remote, same-head, check-set, artifact, and Final Decision states require GitHub API observation. Structurally valid caller data is untrusted.
 - Final Decision verification requires an accepted-main trust root, allowed Ed25519 key ID and fingerprint, non-revoked rotation state, repository, exact head, decision ID, observation time, receipt digest, and signature. A candidate-supplied key cannot authorize itself.
 - The committed trust-root document contains no commit SHA. GitHub API observation adds repository, default branch, exact HEAD, Git blob SHA, fixed path, and observation time; their effective digest is the Final Decision trust binding.
-- Remote evidence binds repository, pull request, `pull_request` event, base/head SHAs, one latest successful run attempt for every contracted workflow, exact workflow ID/path/content, optional reusable workflow, Ruleset path/ref/SHA/repository ID, check name/app ID, artifact schema/values/digest, and observation time.
+- Remote evidence observes the current PR's repository, number, base/head SHAs, then discovers exact-head runs through GitHub API. Per contracted workflow, the highest run number and latest attempt are authoritative; run IDs supplied to the CLI are hints only.
+- Passed, billing-unavailable, pre-runner-unavailable, and failed observations are persisted without authority. Only a passed observation can project `remoteValidationState=passed`; every other state keeps `mergeAllowed=false`.
 - Required checks and workflows come from one observed classic-protection/Ruleset snapshot. The observed workflow set must exactly equal the accepted-main contract; omission and uncontracted additions fail closed.
 - Artifact ZIP input is bounded to 8 MiB, 64 entries, and a 256 KiB contracted payload. Duplicate contracted entries and ZIP64 are rejected.
 - Canonical state is `localValidationState`, `remoteValidationState`, `technicalMergeEligibility`, `finalDecisionState`, and `mergeAllowed`.
@@ -45,7 +46,8 @@ Source harness APIs are exported from `scripts/codex-v132-*.mjs`. `scripts/codex
 - Compatibility debt due now is reclassified with a reason, not silently extended.
 - `acceptedMainVersion`, `developmentParentVersion`, `candidateVersion`, `executionHarnessVersion`, and `candidateLifecycleState` are distinct. Source candidate display is separate from target-installed state; rollout remains not started.
 - Benchmark coverage comes from node output digests. Output reduction is separate from unproven relative performance.
-- Remote collection uses only `CODEX_V132_COLLECTOR_TOKEN`, backed by an owner-managed GitHub App or fine-grained PAT. It is never exposed to ordinary product workflows and cannot create Final Decision authority.
+- Remote collection uses only `CODEX_V132_COLLECTOR_TOKEN`, backed by an owner-managed GitHub App or fine-grained PAT with Metadata, Contents, Actions, Pull requests, Administration, and Checks read. It is never exposed to ordinary product workflows and cannot create Final Decision authority.
+- Ruleset workflow support is explicitly SHA-pinned-only in v1.3.2. Missing SHA is an unsupported fail-closed state, not an implicit malformed-ruleset claim.
 
 ## Constraints
 

@@ -69,10 +69,12 @@ CODEX_HARNESS_MODE=target CODEX_PROFILE_COMPAT_MODE=off CODEX_QUALITY_REPORT=jso
 ~~~
 
 After accepted-main trust bootstrap, an owner may collect exact remote evidence
-with `scripts/codex-v132-collect-remote-evidence.mjs`, two required run IDs, and
-an isolated `CODEX_V132_COLLECTOR_TOKEN`. The token must never be placed in an
-ordinary product workflow. The resulting JSON has no merge or Final Decision
-authority and must be re-observed before use.
+with `scripts/codex-v132-collect-remote-evidence.mjs`, a PR number, and an
+isolated `CODEX_V132_COLLECTOR_TOKEN`. Optional run IDs are hints only; GitHub's
+current PR head and latest contracted runs are authoritative. The token needs
+Metadata, Contents, Actions, Pull requests, Administration, and Checks read and
+must never enter an ordinary product workflow. Passed, unavailable, and failed
+JSON observations have no merge or Final Decision authority.
 
 The operator-facing result should compress to one verdict, one primary blocker,
 and one safe next action. Raw logs, secrets, hidden reasoning, self-approval,

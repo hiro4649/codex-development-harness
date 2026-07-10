@@ -12,12 +12,12 @@ import {
   V132_VERSION,
 } from './codex-v132-evidence-truth.mjs';
 
-function option(name) {
-  return process.argv.slice(2).find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3) || null;
+function option(name, argv) {
+  return argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3) || null;
 }
 
-function runIdsFromArgs() {
-  const values = process.argv.slice(2).flatMap((arg) => {
+function runIdsFromArgs(argv) {
+  const values = argv.flatMap((arg) => {
     if (arg.startsWith('--run-id=')) return [arg.slice(9)];
     if (arg.startsWith('--run-ids=')) return arg.slice(10).split(',');
     return [];
@@ -41,41 +41,50 @@ function writeAtomicJson(file, value) {
   return target;
 }
 
-export async function runCollectorCli() {
-  const repository = option('repository') || V132_SOURCE_REPOSITORY;
-  const runIds = runIdsFromArgs();
-  const output = option('output');
-  const expectedDefaultBranchHeadSha = option('expected-main-head') || undefined;
-  const token = process.env.CODEX_V132_COLLECTOR_TOKEN;
+export async function runCollectorCli({
+  argv = process.argv.slice(2),
+  env = process.env,
+  httpClient = null,
+} = {}) {
+  const repository = option('repository', argv) || V132_SOURCE_REPOSITORY;
+  const pullRequestNumber = Number(option('pull-request', argv));
+  const runIds = runIdsFromArgs(argv);
+  const output = option('output', argv);
+  const expectedDefaultBranchHeadSha = option('expected-main-head', argv) || undefined;
+  const token = env.CODEX_V132_COLLECTOR_TOKEN;
   if (!token) throw new Error('owner_managed_collector_credential_required');
   if (!output) throw new Error('collector_output_path_required');
-  if (!runIds.length) throw new Error('collector_run_ids_required');
+  if (!Number.isInteger(pullRequestNumber) || pullRequestNumber < 1) throw new Error('collector_pull_request_required');
 
   const trustRoot = await collectAcceptedMainTrustRoot({
     repository,
     expectedDefaultBranchHeadSha,
     token,
+    httpClient,
   });
-  const requiredWorkflowCount = trustRoot.document.workflowContract.requiredWorkflows.length;
-  if (runIds.length < requiredWorkflowCount) throw new Error('collector_required_workflow_run_omitted');
 
   const receipt = await collectVerifiedGithubEvidence({
     repository,
+    pullRequestNumber,
     runIds,
     token,
     acceptedMainTrustRoot: trustRoot,
+    httpClient,
   });
+  const testMode = trustRoot.trustSource === 'github_api_mock_fixture';
   const evaluation = evaluateRemoteEvidence(receipt, {
     repository,
-    pullRequestNumber: receipt.pullRequestNumber,
+    pullRequestNumber,
     event: 'pull_request',
-    baseSha: receipt.baseSha,
-    headSha: receipt.headSha,
+    baseSha: receipt.pullRequestBinding.baseSha,
+    headSha: receipt.pullRequestBinding.headSha,
     acceptedMainTrustRoot: trustRoot,
+    testMode,
   });
-  if (evaluation.status !== 'pass' || evaluation.remoteValidationState !== 'passed') {
-    throw new Error(`collector_remote_evidence_invalid:${evaluation.reasonCodes.join(',')}`);
-  }
+  const evaluatedRemoteValidationState = evaluation.remoteValidationState;
+  const passed = evaluation.status === 'pass' && evaluatedRemoteValidationState === 'passed';
+  const unavailable = ['unavailable_billing', 'unavailable_pre_runner'].includes(evaluatedRemoteValidationState);
+  const remoteValidationState = passed || unavailable ? evaluatedRemoteValidationState : 'failed';
 
   const serialized = {
     schemaVersion: V132_VERSION,
@@ -83,6 +92,8 @@ export async function runCollectorCli() {
     authority: 'none',
     createsAuthority: false,
     finalDecisionAuthorityCreated: false,
+    mergeAllowed: false,
+    remoteValidationState,
     trustObservation: {
       repository: trustRoot.trustSourceRepository,
       defaultBranch: trustRoot.trustSourceDefaultBranch,
@@ -96,19 +107,25 @@ export async function runCollectorCli() {
   };
   const outputPath = writeAtomicJson(output, serialized);
   return {
-    status: 'pass',
+    status: passed ? 'pass' : unavailable ? 'unavailable' : 'fail',
+    exitCode: passed ? 0 : unavailable ? 2 : 1,
+    remoteValidationState,
     repository,
     headSha: receipt.headSha,
     runIds: receipt.runIds,
     outputFile: path.basename(outputPath),
     receiptPayloadDigest: receipt.receiptPayloadDigest,
     createsAuthority: false,
+    mergeAllowed: false,
+    finalDecisionAuthorityCreated: false,
   };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
-    console.log(JSON.stringify(await runCollectorCli()));
+    const result = await runCollectorCli();
+    console.log(JSON.stringify(result));
+    process.exitCode = result.exitCode;
   } catch (error) {
     console.error(JSON.stringify({
       status: 'fail',
