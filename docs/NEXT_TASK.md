@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Review the exact pushed HARNESS v1.3.2 Trust Root and Parity Closure on Draft PR #165. Inspect one automatic required-check attempt without rerunning it. After v1.3.1 is accepted on main, rebase and repeat exact validation. Do not activate or roll out targets.
+Review the exact pushed HARNESS v1.3.2 Accepted-Main Trust Closure on Draft PR #165. Inspect one automatic required-check attempt without rerunning it. After v1.3.1 is accepted on main, rebase and repeat exact validation. Do not activate or roll out targets.
 
 ## Required Files
 
@@ -21,11 +21,11 @@ Review the exact pushed HARNESS v1.3.2 Trust Root and Parity Closure on Draft PR
 
 ## Implementation Strategy
 
-1. Review fail-closed workspace identity, accepted-main trust roots, API-observed evidence, Final Decision verification, canonical workflow adapter, and behavioral compatibility invariants in PR #165.
+1. Review observed-default-branch trust, shared protection/Ruleset snapshots, exact workflow content, artifact value bindings, Final Decision verification, and behavioral compatibility in PR #165.
 2. Keep remote state `not_observed` while jobs cannot start; do not rerun blindly.
 3. Treat accepted-main trust-root bootstrap as a separate owner-governed action; never authorize it from the candidate branch.
 4. After v1.3.1 main acceptance, rebase and recompute policy, workspace, and receipt digests if inputs change.
-5. Run strict projections, compact/full gates, workflow adapter negatives, evidence-binding fixtures, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
+5. Run strict projections, compact/full gates, workflow adapter negatives, two-run/ruleset/tamper fixtures, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
 6. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
 
 ## Expected Risks
@@ -43,6 +43,7 @@ Review the exact pushed HARNESS v1.3.2 Trust Root and Parity Closure on Draft PR
 - Repeat with `CODEX_V132_DIAGNOSTICS=1` once after compact pass.
 - Run actionlint over all workflow files.
 - Run `node scripts/codex-v132-benchmark.mjs` with one warm-up and five measured runs per side.
+- Treat its `verificationMetrics` object as the only machine metric source.
 
 ## Stop Conditions
 

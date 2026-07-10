@@ -29,3 +29,10 @@
 - Added a generated 1585-byte routine effective policy and deferred full-manifest reads.
 - Added the v1.3.2 lean Source workflow path, eight-line Summary, and full-SHA action pins.
 - Verified the implementation checkpoint with 24 self-tests, compact/full Source gates, actionlint, parser equivalence, negative trust/evidence fixtures, and one-warm-up/five-run benchmark.
+- Anchored trust-root loading to the GitHub-observed protected Source default-branch HEAD and rejected candidate or detached commit substitution.
+- Added one stable classic-protection/Ruleset snapshot shared across multiple workflow runs.
+- Bound workflow identity to exact content digest and optional reusable-workflow ref.
+- Bound artifact payload values to repository, exact head, pass status, schema, and semantic digest.
+- Added classic, Ruleset-only, two-run, content-tamper, and value-tamper fixtures; the v1.3.2 suite now has 29 tests.
+- Deprecated `activeHarnessVersion` as a non-authoritative execution alias in generated projections.
+- Consolidated output-size and timing provenance into generated benchmark JSON `verificationMetrics`.

@@ -6,6 +6,7 @@ CODEX_QUALITY_HARNESS_FILE v1.3.2
 Active local Source candidate: HARNESS v1.3.2 Evidence-Converged Lean Core.
 Accepted main: HARNESS v1.3.0 Core at be06232adbe9072456bc9a36a1b298f5ba900470; development parent is the v1.3.1 candidate and execution candidate is v1.3.2.
 Candidate lifecycle: local_validated; remote validation and activation are not complete.
+Version semantics: activeHarnessVersion is a deprecated execution-compatibility alias with no published authority; acceptedMainVersion is published authority; candidateVersion is unmerged candidate.
 Provisional base: v1.3.1 PR head; rebase and exact-head remote validation are required after v1.3.1 merges.
 Compatibility Adapter: v1.3.2 internal evidence; debt due now has an explicit disposition.
 Source candidate display: HARNESS v1.3.2 Evidence-Converged Lean Core; target installed state is observed per repository and is never inferred from this Source candidate.
@@ -44,6 +45,7 @@ Architect/reviewer project-memory read order: docs/PROJECT_SPEC.md, docs/PROJECT
 Core policy:
 - HARNESS v1.3.2 is Evidence-Converged Lean Core: typed evidence, canonical state, strict compiled manifests, deterministic incremental validation, bounded context/output, resumable receipts, allowlist target dry-run planning, and CI cost planning.
 - Local pass is never remote pass. Missing remote evidence remains `not_observed`; billing lock is unavailable infrastructure, not code failure; only `mergeAllowed` is canonical merge projection.
+- Accepted-main trust must come from the GitHub-observed Source default-branch HEAD. Workflow content and artifact repository/head/status values are exact evidence bindings.
 - Final Decision remains the authority. Decision Capsule v3 is a bounded non-authoritative projection of canonical state.
 - Performance Track covers 60-task benchmark, SDK, Skill runtime, DAG team, learned orchestration, Cyber runtime, and Fable comparison; it is deferred, non-authoritative, and superiority is not proven.
 - v1.3.1 is immediate rollback; v1.3.0 secondary rollback; v1.2.9 emergency rollback; v1.2.8 and v1.2.7 remain compatibility evidence.

@@ -18,6 +18,13 @@
   "sourceCandidateDisplay": "HARNESS v1.3.2 Evidence-Converged Lean Core",
   "targetInstalledState": "per_repository_dynamic_observation",
   "targetRolloutState": "not_started",
+  "versionSemantics": {
+    "activeHarnessVersion": "deprecated_execution_compatibility_alias",
+    "activeHarnessVersionCreatesPublishedAuthority": false,
+    "acceptedMainVersion": "published_authority_version",
+    "candidateVersion": "unmerged_candidate_version",
+    "executionHarnessVersion": "local_candidate_execution_version"
+  },
   "candidateLifecycle": {
     "states": [
       "draft",
@@ -110,6 +117,12 @@
   "trustRootContract": {
     "path": "docs/process/CODEX_V132_TRUST_ROOT.json",
     "source": "accepted_main_github_api_only",
+    "expectedRepository": "hiro4649/codex-development-harness",
+    "expectedDefaultBranch": "main",
+    "defaultBranchHeadMustEqualAcceptedMainSha": true,
+    "trustRootEmbeddedShaMustEqualObservedDefaultBranchHead": true,
+    "candidateSelectedCommitForbidden": true,
+    "alternateTrustRootPathForbidden": true,
     "candidateControlledTrustForbidden": true,
     "bootstrapState": "required_after_owner_merge",
     "finalDecisionKey": {
@@ -127,6 +140,10 @@
     },
     "keyRotationStates": ["stable", "rotation_pending"],
     "revokedKeyIdsRequired": true,
+    "workflowContentDigestRequired": true,
+    "artifactRepositoryHeadStatusBindingsRequired": true,
+    "requiredCheckObservationSources": ["github_branch_protection", "github_rulesets"],
+    "multiRunProtectionSnapshotShared": true,
     "currentCandidateCanAuthorize": false
   },
   "manifestCompiler": {
@@ -319,6 +336,21 @@
     "changedPathSamples": 50,
     "reasonSamples": 50,
     "sourceManifestSamples": 20
+  },
+  "verificationMetricsContract": {
+    "canonicalMachineSource": "codex-v132-benchmark-json.verificationMetrics",
+    "generatedNotCommitted": true,
+    "handWrittenMetricCopiesForbidden": true,
+    "requiredMetrics": [
+      "compactJsonBytes",
+      "effectivePolicyBytes",
+      "decisionCapsuleBytes",
+      "safeSummaryBytes",
+      "orchestrationReceiptBytes",
+      "baselineP50Ms",
+      "candidateP50Ms"
+    ],
+    "createsAuthority": false
   },
   "targetPlanner": {
     "mode": "dry_run_only",

@@ -11,6 +11,10 @@ export const previousVersion = '1.3.1';
 export const previousSelfTestStatusKey = 'v131SelfTestStatus';
 export const compatibilitySelfTestStatusKeys = ['v127SelfTestStatus', 'v128SelfTestStatus', 'v129SelfTestStatus', 'v130SelfTestStatus'];
 export const activeHarnessVersion = '1.3.2';
+export const activeHarnessVersionAliasState = 'deprecated_execution_compatibility_alias';
+export const activeHarnessVersionAuthority = false;
+export const acceptedMainVersionAuthority = 'published_authority_version';
+export const candidateVersionAuthority = 'unmerged_candidate_version';
 export const activeSelfTestStatusKey = 'v132SelfTestStatus';
 export const activeSelfTestSuite = 'v132';
 export const candidateHarnessVersion = '1.3.2';
@@ -85,6 +89,10 @@ export function buildHarnessVersionRegistry() {
     previousVersion,
     previousSelfTestStatusKey,
     activeHarnessVersion,
+    activeHarnessVersionAliasState,
+    activeHarnessVersionAuthority,
+    acceptedMainVersionAuthority,
+    candidateVersionAuthority,
     activeSelfTestStatusKey,
     activeSelfTestSuite,
     candidateHarnessVersion,

@@ -8,6 +8,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
+  aggregateGithubRunObservations,
+  buildRequiredCheckTrustSnapshot,
   canonicalJson,
   collectVerifiedGithubEvidence,
   createFixtureFinalDecision,
@@ -16,9 +18,12 @@ import {
   deriveCanonicalState,
   sha256,
   trustRootContractDigest,
+  validateAcceptedMainIdentityObservation,
   validateCanonicalState,
   verifySignedFinalDecisionReceipt,
   V132_FINAL_AUTHORITY,
+  V132_SOURCE_DEFAULT_BRANCH,
+  V132_SOURCE_REPOSITORY,
   V132_VERSION,
 } from './codex-v132-evidence-truth.mjs';
 import {
@@ -56,6 +61,7 @@ import {
 import { evaluateObservedWorkspaceScope, evaluateWorkspaceIdentity, repositoryFromRemote, runV132SourceQualityGate } from './codex-v132-quality-gate.mjs';
 import { runV132CompatibilityCheck } from './codex-v132-compatibility-check.mjs';
 import { buildV132WorkflowSummaryLines, evaluateV132CompactWorkflowReport } from './codex-workflow-quality-runner.mjs';
+import { buildVerificationMetrics } from './codex-v132-benchmark.mjs';
 import * as harnessVersion from './codex-harness-version.mjs';
 
 const ROOT = process.cwd();
@@ -132,16 +138,21 @@ function validReceipts() {
     acceptedMainSha: 'c'.repeat(40),
     publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
   });
-  const requiredCheckTrustRoot = {
-    source: 'explicit_test_branch_protection',
+  const requiredCheckTrustRoot = buildRequiredCheckTrustSnapshot({
+    repository,
     baseRef: 'main',
-    requiredCheckNames: ['quality-gate'],
+    classicProtection: { strict: true, contexts: ['quality-gate'], checks: [] },
+    rulesetRules: null,
     observedAt: '2026-07-10T00:00:00Z',
-  };
-  requiredCheckTrustRoot.digest = sha256(canonicalJson(requiredCheckTrustRoot));
+  });
+  const workflowContentDigest = acceptedMainTrustRoot.workflowContract.requiredWorkflows[0].workflowContentDigest;
+  const boundValues = { repository, headSha, status: 'pass' };
   const remoteEvidence = createFixtureGithubEvidence({
     repository, pullRequestNumber: 165, event: 'pull_request', baseRef: 'main', baseSha, headSha, runId: 101, runAttempt: 1,
-    workflowRuns: [{ runId: 101, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml', event: 'pull_request', pullRequestNumber: 165, baseSha, headSha }],
+    workflowRuns: [{
+      runId: 101, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml',
+      event: 'pull_request', pullRequestNumber: 165, baseSha, headSha, workflowContentDigest, reusableWorkflowRefs: [],
+    }],
     startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:01:00Z', observedAt: '2026-07-10T00:01:01Z',
     conclusion: 'success',
     requiredCheckTrustRoot,
@@ -152,9 +163,12 @@ function validReceipts() {
       name: 'safe-summary',
       sizeInBytes: 123,
       contentDigest: sha256('safe-artifact'),
+      workflowPath: '.github/workflows/quality-gate.yml',
       entryPath: 'safe-summary.json',
       schemaVersion: V132_VERSION,
       semanticDigest: sha256('safe-summary-payload'),
+      boundValues,
+      valueBindingDigest: sha256(canonicalJson(boundValues)),
     }],
   });
   const finalDecisionReceipt = createFixtureFinalDecision({
@@ -280,6 +294,241 @@ test('v132_github_evidence_binds_pr_event_workflow_base_and_head', () => {
   });
   assert.equal(state.mergeAllowed, false);
   assert.ok(state.remoteEvidence.reasonCodes.includes('candidate_controlled_required_check_list_forbidden'));
+});
+
+test('v132_accepted_main_identity_requires_observed_default_branch_head', () => {
+  const mainSha = 'c'.repeat(40);
+  const candidateSha = 'd'.repeat(40);
+  const repositoryMetadata = {
+    id: 123,
+    full_name: V132_SOURCE_REPOSITORY,
+    default_branch: V132_SOURCE_DEFAULT_BRANCH,
+  };
+  const defaultBranchMetadata = {
+    name: V132_SOURCE_DEFAULT_BRANCH,
+    commit: { sha: mainSha },
+  };
+  assert.equal(validateAcceptedMainIdentityObservation({
+    repository: V132_SOURCE_REPOSITORY,
+    acceptedMainSha: mainSha,
+    repositoryMetadata,
+    defaultBranchMetadata,
+  }).status, 'pass');
+  const candidateOwned = validateAcceptedMainIdentityObservation({
+    repository: V132_SOURCE_REPOSITORY,
+    acceptedMainSha: candidateSha,
+    repositoryMetadata,
+    defaultBranchMetadata,
+  });
+  assert.equal(candidateOwned.status, 'fail');
+  assert.ok(candidateOwned.reasonCodes.includes('accepted_main_default_branch_head_mismatch'));
+  assert.equal(validateAcceptedMainIdentityObservation({
+    repository: V132_SOURCE_REPOSITORY,
+    acceptedMainSha: mainSha,
+    repositoryMetadata: { ...repositoryMetadata, default_branch: 'candidate' },
+    defaultBranchMetadata,
+  }).status, 'fail');
+  assert.equal(validateAcceptedMainIdentityObservation({
+    repository: 'hiro4649/lookalike',
+    acceptedMainSha: mainSha,
+    repositoryMetadata,
+    defaultBranchMetadata,
+  }).status, 'fail');
+});
+
+test('v132_required_check_snapshot_supports_classic_and_rulesets_fail_closed', () => {
+  const classic = buildRequiredCheckTrustSnapshot({
+    repository: V132_SOURCE_REPOSITORY,
+    baseRef: 'main',
+    classicProtection: { strict: true, contexts: ['quality-gate'], checks: [] },
+    rulesetRules: null,
+    observedAt: '2026-07-10T00:00:00Z',
+  });
+  assert.equal(classic.source, 'github_branch_protection');
+  assert.deepEqual(classic.requiredCheckNames, ['quality-gate']);
+  const ruleset = buildRequiredCheckTrustSnapshot({
+    repository: V132_SOURCE_REPOSITORY,
+    baseRef: 'main',
+    classicProtection: null,
+    rulesetRules: [{
+      ruleset_id: 42,
+      ruleset_source_type: 'Repository',
+      ruleset_source: V132_SOURCE_REPOSITORY,
+      type: 'workflows',
+      parameters: {
+        workflows: [{
+          path: '.github/workflows/quality-gate.yml',
+          ref: 'refs/heads/main',
+          sha: 'c'.repeat(40),
+          repository_id: 123,
+        }],
+      },
+    }],
+    observedAt: '2026-07-10T00:00:01Z',
+  });
+  assert.equal(ruleset.source, 'github_rulesets');
+  assert.equal(ruleset.requiredCheckNames.length, 0);
+  assert.equal(ruleset.requiredWorkflowRefs[0].path, '.github/workflows/quality-gate.yml');
+  const receipts = validReceipts();
+  receipts.remoteEvidence.requiredCheckTrustRoot = ruleset;
+  receipts.remoteEvidence.requiredCheckSetDigest = sha256(canonicalJson([]));
+  refreshRemotePayloadDigest(receipts.remoteEvidence);
+  const rulesetState = deriveCanonicalState({ localValidationPassed: true, ...receipts });
+  assert.equal(rulesetState.remoteValidationState, 'passed', rulesetState.remoteEvidence.reasonCodes.join(','));
+  assert.throws(() => buildRequiredCheckTrustSnapshot({
+    repository: V132_SOURCE_REPOSITORY,
+    baseRef: 'main',
+    classicProtection: null,
+    rulesetRules: null,
+  }), /github_required_check_trust_root_unavailable/);
+});
+
+test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
+  const repository = V132_SOURCE_REPOSITORY;
+  const baseSha = 'b'.repeat(40);
+  const headSha = 'a'.repeat(40);
+  const qualityPath = '.github/workflows/quality-gate.yml';
+  const compatibilityPath = '.github/workflows/v132-compatibility-gate.yml';
+  const qualityDigest = sha256('fixture-workflow:quality');
+  const compatibilityDigest = sha256('fixture-workflow:compatibility');
+  const { publicKey } = crypto.generateKeyPairSync('ed25519');
+  const requiredFieldValues = { repository: '$repository', headSha: '$headSha', status: 'pass' };
+  const acceptedMainTrustRoot = createFixtureTrustRoot({
+    repository,
+    acceptedMainSha: 'c'.repeat(40),
+    publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
+    requiredWorkflows: [
+      { workflowId: 1001, path: qualityPath, workflowContentDigest: qualityDigest, reusableWorkflowRef: null },
+      { workflowId: 1002, path: compatibilityPath, workflowContentDigest: compatibilityDigest, reusableWorkflowRef: null },
+    ],
+    requiredArtifacts: [
+      { name: 'quality-safe', workflowPath: qualityPath, entryPath: 'quality.json', schemaVersion: V132_VERSION, requiredFields: ['schemaVersion', 'repository', 'headSha', 'status'], requiredFieldValues },
+      { name: 'compat-safe', workflowPath: compatibilityPath, entryPath: 'compat.json', schemaVersion: V132_VERSION, requiredFields: ['schemaVersion', 'repository', 'headSha', 'status'], requiredFieldValues },
+    ],
+  });
+  const snapshotA = buildRequiredCheckTrustSnapshot({
+    repository,
+    baseRef: 'main',
+    classicProtection: { strict: true, contexts: ['aggregate contract', 'quality-gate'], checks: [] },
+    rulesetRules: null,
+    observedAt: '2026-07-10T00:00:00Z',
+  });
+  const snapshotB = { ...structuredClone(snapshotA), observedAt: '2026-07-10T00:00:05Z' };
+  const contractArtifactDigest = sha256(canonicalJson(acceptedMainTrustRoot.artifactContract));
+  const contractWorkflowDigest = sha256(canonicalJson(acceptedMainTrustRoot.workflowContract));
+  const artifact = (artifactId, name, workflowPath, entryPath) => {
+    const boundValues = { repository, headSha, status: 'pass' };
+    return {
+      artifactId,
+      name,
+      sizeInBytes: 100,
+      contentDigest: sha256(`${name}:archive`),
+      workflowPath,
+      entryPath,
+      schemaVersion: V132_VERSION,
+      semanticDigest: sha256(`${name}:payload`),
+      boundValues,
+      valueBindingDigest: sha256(canonicalJson(boundValues)),
+    };
+  };
+  const observation = ({ runId, workflowId, workflowPath, workflowContentDigest, checkName, trustSnapshot, observedAt, artifactRecord }) => ({
+    repository,
+    pullRequestNumber: 165,
+    event: 'pull_request',
+    baseRef: 'main',
+    baseSha,
+    headSha,
+    runId,
+    runAttempt: 1,
+    workflowRuns: [{
+      runId,
+      runAttempt: 1,
+      workflowId,
+      workflowPath,
+      event: 'pull_request',
+      pullRequestNumber: 165,
+      baseSha,
+      headSha,
+      workflowContentDigest,
+      reusableWorkflowRefs: [],
+    }],
+    startedAt: observedAt,
+    completedAt: '2026-07-10T00:01:00Z',
+    observedAt,
+    conclusion: 'success',
+    failureClass: null,
+    annotationText: '',
+    requiredCheckTrustRoot: trustSnapshot,
+    requiredArtifactContractDigest: contractArtifactDigest,
+    requiredWorkflowContractDigest: contractWorkflowDigest,
+    checkRuns: [{ checkRunId: runId + 1000, name: checkName, conclusion: 'success', headSha }],
+    artifacts: [artifactRecord],
+  });
+  const observations = [
+    observation({
+      runId: 101,
+      workflowId: 1001,
+      workflowPath: qualityPath,
+      workflowContentDigest: qualityDigest,
+      checkName: 'quality-gate',
+      trustSnapshot: snapshotA,
+      observedAt: '2026-07-10T00:00:00Z',
+      artifactRecord: artifact(301, 'quality-safe', qualityPath, 'quality.json'),
+    }),
+    observation({
+      runId: 102,
+      workflowId: 1002,
+      workflowPath: compatibilityPath,
+      workflowContentDigest: compatibilityDigest,
+      checkName: 'aggregate contract',
+      trustSnapshot: snapshotB,
+      observedAt: '2026-07-10T00:00:05Z',
+      artifactRecord: artifact(302, 'compat-safe', compatibilityPath, 'compat.json'),
+    }),
+  ];
+  const receipt = aggregateGithubRunObservations(observations, { repository, testMode: true });
+  const remote = deriveCanonicalState({
+    localValidationPassed: true,
+    remoteEvidence: receipt,
+    expected: { repository, pullRequestNumber: 165, event: 'pull_request', baseSha, headSha, acceptedMainTrustRoot, testMode: true },
+  });
+  assert.equal(remote.remoteValidationState, 'passed', remote.remoteEvidence.reasonCodes.join(','));
+  assert.equal(remote.technicalMergeEligibility, 'eligible');
+  for (const mutate of [
+    (items) => { items[1].pullRequestNumber = 166; },
+    (items) => { items[1].baseSha = 'd'.repeat(40); },
+    (items) => { items[1].headSha = 'e'.repeat(40); },
+    (items) => {
+      items[1].requiredCheckTrustRoot = buildRequiredCheckTrustSnapshot({
+        repository,
+        baseRef: 'main',
+        classicProtection: { strict: true, contexts: ['different-check'], checks: [] },
+        rulesetRules: null,
+        observedAt: '2026-07-10T00:00:05Z',
+      });
+    },
+    (items) => { items[1].requiredWorkflowContractDigest = sha256('different-workflow-contract'); },
+  ]) {
+    const changed = structuredClone(observations);
+    mutate(changed);
+    assert.throws(() => aggregateGithubRunObservations(changed, { repository, testMode: true }), /github_run_set_binding_mismatch/);
+  }
+});
+
+test('v132_workflow_content_and_artifact_values_are_exactly_bound', () => {
+  for (const [reason, mutate] of [
+    ['workflow_0_content_digest_mismatch', (receipt) => { receipt.workflowRuns[0].workflowContentDigest = sha256('changed-workflow'); }],
+    ['artifact_0_repository_binding_mismatch', (receipt) => { receipt.artifacts[0].boundValues.repository = 'hiro4649/other'; }],
+    ['artifact_0_head_binding_mismatch', (receipt) => { receipt.artifacts[0].boundValues.headSha = 'd'.repeat(40); }],
+    ['artifact_0_status_binding_mismatch', (receipt) => { receipt.artifacts[0].boundValues.status = 'fail'; }],
+  ]) {
+    const receipts = validReceipts();
+    mutate(receipts.remoteEvidence);
+    refreshRemotePayloadDigest(receipts.remoteEvidence);
+    const state = deriveCanonicalState({ localValidationPassed: true, ...receipts });
+    assert.equal(state.mergeAllowed, false);
+    assert.ok(state.remoteEvidence.reasonCodes.includes(reason), `${reason}:${state.remoteEvidence.reasonCodes.join(',')}`);
+  }
 });
 
 test('v132_final_decision_serialized_signature_verification', () => {
@@ -442,6 +691,10 @@ test('v132_manifest_projection_and_registry_inventory', () => {
     assert.equal(manifest.candidateVersion, '1.3.2');
     assert.equal(manifest.executionHarnessVersion, '1.3.2');
     assert.equal(manifest.candidateLifecycleState, 'local_validated');
+    assert.equal(manifest.activeHarnessVersionAliasState, 'deprecated_execution_compatibility_alias');
+    assert.equal(manifest.activeHarnessVersionAuthority, false);
+    assert.equal(manifest.acceptedMainVersionAuthority, 'published_authority_version');
+    assert.equal(manifest.candidateVersionAuthority, 'unmerged_candidate_version');
   }
   assert.match(strictJson('docs/process/CODEX_ACTIVE_POLICY_INDEX.json').profiles.target_compatibility_profile_install.profilePurpose, /v1\.3\.2 Compatibility Adapter/);
   const compactPolicyPath = path.join(ROOT, 'docs/process/CODEX_EFFECTIVE_POLICY.compact.json');
@@ -454,6 +707,8 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   assert.equal(harnessVersion.acceptedMainVersion, '1.3.0');
   assert.equal(harnessVersion.executionHarnessVersion, '1.3.2');
   assert.equal(harnessVersion.candidateLifecycleState, 'local_validated');
+  assert.equal(harnessVersion.activeHarnessVersionAliasState, 'deprecated_execution_compatibility_alias');
+  assert.equal(harnessVersion.activeHarnessVersionAuthority, false);
   assert.deepEqual(harnessVersion.versionAuthority, {
     v132: 'local_source_candidate', v131: 'immediate_rollback', v130: 'secondary_rollback',
     v129: 'emergency_legacy_rollback', v128: 'blocking_compatibility', v127: 'readable_compatibility',
@@ -462,6 +717,27 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   assert.ok(agents.includes('Decision Capsule is a non-authoritative domain projection'));
   assert.ok(agents.includes('Final Decision remains the authority'));
   assert.ok(agents.includes('docs/process/CODEX_EFFECTIVE_POLICY.compact.json'));
+});
+
+test('v132_verification_metrics_have_one_machine_source', () => {
+  const measured = [{
+    surfaceMetrics: {
+      effectivePolicyBytes: 1800,
+      decisionCapsuleBytes: 500,
+      safeSummaryBytes: 400,
+      orchestrationReceiptBytes: 1900,
+    },
+  }];
+  const metrics = buildVerificationMetrics({
+    baseline: { p50Ms: 15000 },
+    candidate: { headSha: 'a'.repeat(40), measuredRunCount: 1, measured, p50Ms: 12000, p50OutputBytes: 6800 },
+    outputReductionPercent: 98,
+  });
+  assert.equal(metrics.source, 'codex-v132-benchmark-json');
+  assert.equal(metrics.compactJsonBytes, 6800);
+  assert.equal(metrics.effectivePolicyBytes, 1800);
+  assert.match(metrics.provenanceDigest, /^sha256:[a-f0-9]{64}$/);
+  assert.equal(metrics.createsAuthority, false);
 });
 
 test('v132_candidate_lifecycle_allows_only_explicit_transitions', () => {

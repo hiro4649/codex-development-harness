@@ -224,6 +224,10 @@ export function compileEffectivePolicy(policy = {}) {
     targetRolloutAllowed: policy.targetRolloutAllowed === true,
     remoteValidationState: policy.remoteValidationState,
     activeHarnessVersion: tuple.activeHarnessVersion,
+    activeHarnessVersionAliasState: policy.versionSemantics?.activeHarnessVersion,
+    activeHarnessVersionAuthority: policy.versionSemantics?.activeHarnessVersionCreatesPublishedAuthority,
+    acceptedMainVersionAuthority: policy.versionSemantics?.acceptedMainVersion,
+    candidateVersionAuthority: policy.versionSemantics?.candidateVersion,
     activeSelfTestSuite: tuple.activeSelfTestSuite,
     activeSelfTestStatusKey: tuple.activeSelfTestStatusKey,
     previousVersion: tuple.previousVersion,
@@ -260,6 +264,10 @@ export function compileManifestProjection(policy = {}) {
     executionHarnessVersion: policy.executionHarnessVersion,
     candidateLifecycleState: policy.candidateLifecycleState,
     activeHarnessVersion: V132_VERSION,
+    activeHarnessVersionAliasState: policy.versionSemantics?.activeHarnessVersion,
+    activeHarnessVersionAuthority: policy.versionSemantics?.activeHarnessVersionCreatesPublishedAuthority,
+    acceptedMainVersionAuthority: policy.versionSemantics?.acceptedMainVersion,
+    candidateVersionAuthority: policy.versionSemantics?.candidateVersion,
     activeSelfTestSuite: 'v132',
     activeSelfTestStatusKey: 'v132SelfTestStatus',
     currentVersion: V132_VERSION,
@@ -337,6 +345,11 @@ export function validateManifestSemanticConvergence(manifest, label = 'manifest'
   if (manifest.developmentParentVersion !== '1.3.1') reasons.push(`${label}_development_parent_version_invalid`);
   if (manifest.candidateVersion !== V132_VERSION || manifest.executionHarnessVersion !== V132_VERSION) reasons.push(`${label}_candidate_execution_version_invalid`);
   if (!V132_CANDIDATE_LIFECYCLE_STATES.includes(manifest.candidateLifecycleState)) reasons.push(`${label}_candidate_lifecycle_state_invalid`);
+  if (manifest.activeHarnessVersionAliasState !== 'deprecated_execution_compatibility_alias' || manifest.activeHarnessVersionAuthority !== false) {
+    reasons.push(`${label}_active_harness_alias_not_deprecated`);
+  }
+  if (manifest.acceptedMainVersionAuthority !== 'published_authority_version') reasons.push(`${label}_accepted_main_authority_invalid`);
+  if (manifest.candidateVersionAuthority !== 'unmerged_candidate_version') reasons.push(`${label}_candidate_version_authority_invalid`);
   return { status: reasons.length ? 'fail' : 'pass', reasonCodes: [...new Set(reasons)], authority: false };
 }
 

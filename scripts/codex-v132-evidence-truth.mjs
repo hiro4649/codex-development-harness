@@ -39,8 +39,10 @@ const ACCEPTED_MAIN_TRUST_ROOTS = new WeakSet();
 const FIXTURE_TRUST_ROOTS = new WeakSet();
 const FIXTURE_REMOTE_RECEIPTS = new WeakSet();
 const FIXTURE_FINAL_DECISION_RECEIPTS = new WeakSet();
-export const V132_GITHUB_COLLECTOR_VERSION = 'v132-github-collector-3';
+export const V132_GITHUB_COLLECTOR_VERSION = 'v132-github-collector-4';
 export const V132_TRUST_ROOT_PATH = 'docs/process/CODEX_V132_TRUST_ROOT.json';
+export const V132_SOURCE_REPOSITORY = 'hiro4649/codex-development-harness';
+export const V132_SOURCE_DEFAULT_BRANCH = 'main';
 
 export function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -122,9 +124,12 @@ function normalizedArtifacts(artifacts = []) {
     name: String(artifact.name || ''),
     sizeInBytes: Number(artifact.sizeInBytes),
     contentDigest: String(artifact.contentDigest || ''),
+    workflowPath: String(artifact.workflowPath || ''),
     entryPath: String(artifact.entryPath || ''),
     schemaVersion: String(artifact.schemaVersion || ''),
     semanticDigest: String(artifact.semanticDigest || ''),
+    boundValues: artifact.boundValues && typeof artifact.boundValues === 'object' ? artifact.boundValues : {},
+    valueBindingDigest: String(artifact.valueBindingDigest || ''),
   })).sort((a, b) => a.name.localeCompare(b.name) || a.artifactId - b.artifactId);
 }
 
@@ -138,6 +143,8 @@ function normalizedWorkflowRuns(workflowRuns = []) {
     pullRequestNumber: Number(run.pullRequestNumber),
     baseSha: String(run.baseSha || '').toLowerCase(),
     headSha: String(run.headSha || '').toLowerCase(),
+    workflowContentDigest: String(run.workflowContentDigest || ''),
+    reusableWorkflowRefs: [...new Set(run.reusableWorkflowRefs || [])].map(String).sort(),
   })).sort((a, b) => a.runId - b.runId);
 }
 
@@ -147,6 +154,7 @@ function validateTrustRootShape(root, expected = {}) {
   if (root?.state !== 'active') reasons.push('trust_root_not_active');
   if (root?.authority !== 'accepted_main_only') reasons.push('trust_root_authority_invalid');
   if (root?.repository !== expected.repository) reasons.push('trust_root_repository_mismatch');
+  if (root?.defaultBranch !== (expected.defaultBranch || V132_SOURCE_DEFAULT_BRANCH)) reasons.push('trust_root_default_branch_mismatch');
   if (!SHA_RE.test(String(root?.acceptedMainSha || ''))) reasons.push('trust_root_main_sha_invalid');
   if (expected.acceptedMainSha && root?.acceptedMainSha !== expected.acceptedMainSha) reasons.push('trust_root_main_sha_mismatch');
   const key = root?.finalDecisionKey || {};
@@ -167,8 +175,19 @@ function validateTrustRootShape(root, expected = {}) {
   const artifacts = root?.artifactContract?.requiredArtifacts;
   if (!Array.isArray(artifacts) || !artifacts.length) reasons.push('trust_root_artifact_contract_missing');
   for (const [index, artifact] of (artifacts || []).entries()) {
-    if (!artifact.name || !artifact.entryPath || !artifact.schemaVersion) reasons.push(`trust_root_artifact_${index}_invalid`);
+    if (!artifact.name || !artifact.workflowPath || !artifact.entryPath || !artifact.schemaVersion) reasons.push(`trust_root_artifact_${index}_invalid`);
     if (!Array.isArray(artifact.requiredFields)) reasons.push(`trust_root_artifact_${index}_required_fields_invalid`);
+    if (!artifact.requiredFieldValues || typeof artifact.requiredFieldValues !== 'object' || Array.isArray(artifact.requiredFieldValues)) {
+      reasons.push(`trust_root_artifact_${index}_required_values_invalid`);
+    } else {
+      for (const field of ['repository', 'headSha', 'status']) {
+        if (!Object.hasOwn(artifact.requiredFieldValues, field)) reasons.push(`trust_root_artifact_${index}_required_value_${field}_missing`);
+        if (!artifact.requiredFields?.includes(field)) reasons.push(`trust_root_artifact_${index}_required_field_${field}_missing`);
+      }
+      if (artifact.requiredFieldValues.repository !== '$repository') reasons.push(`trust_root_artifact_${index}_repository_binding_invalid`);
+      if (artifact.requiredFieldValues.headSha !== '$headSha') reasons.push(`trust_root_artifact_${index}_head_binding_invalid`);
+      if (artifact.requiredFieldValues.status !== 'pass') reasons.push(`trust_root_artifact_${index}_status_binding_invalid`);
+    }
   }
   const workflows = root?.workflowContract?.requiredWorkflows;
   if (!Array.isArray(workflows) || !workflows.length) reasons.push('trust_root_workflow_contract_missing');
@@ -176,6 +195,14 @@ function validateTrustRootShape(root, expected = {}) {
     if (!Number.isInteger(workflow.workflowId) || workflow.workflowId < 1 || !/^\.github\/workflows\/[^/]+\.ya?ml$/i.test(String(workflow.path || ''))) {
       reasons.push(`trust_root_workflow_${index}_invalid`);
     }
+    if (!DIGEST_RE.test(String(workflow.workflowContentDigest || ''))) reasons.push(`trust_root_workflow_${index}_content_digest_invalid`);
+    if (workflow.reusableWorkflowRef != null && !/^[^\s@]+\/\.github\/workflows\/[^\s@]+@[^\s@]+$/.test(String(workflow.reusableWorkflowRef))) {
+      reasons.push(`trust_root_workflow_${index}_reusable_ref_invalid`);
+    }
+  }
+  const workflowPaths = new Set((workflows || []).map((workflow) => workflow.path));
+  for (const [index, artifact] of (artifacts || []).entries()) {
+    if (artifact.workflowPath && !workflowPaths.has(artifact.workflowPath)) reasons.push(`trust_root_artifact_${index}_workflow_unknown`);
   }
   return { status: reasons.length ? 'fail' : 'pass', reasonCodes: reasons };
 }
@@ -235,7 +262,7 @@ function buildRemoteReceipt(observation = {}, { testMode = false, observationSou
   return receipt;
 }
 
-async function githubJson(url, token) {
+async function githubJson(url, token, { allowNotFound = false } = {}) {
   const response = await fetch(url, {
     headers: {
       Accept: 'application/vnd.github+json',
@@ -244,6 +271,7 @@ async function githubJson(url, token) {
       'User-Agent': 'codex-v132-evidence-collector',
     },
   });
+  if (allowNotFound && response.status === 404) return null;
   if (!response.ok) throw new Error(`github_api_observation_failed:${response.status}:${url}`);
   return response.json();
 }
@@ -261,12 +289,57 @@ async function githubText(url, token) {
   return response.text();
 }
 
+export function validateAcceptedMainIdentityObservation({
+  repository,
+  acceptedMainSha,
+  repositoryMetadata,
+  defaultBranchMetadata,
+} = {}) {
+  const reasonCodes = [];
+  const observedRepository = String(repositoryMetadata?.full_name || '');
+  const defaultBranch = String(repositoryMetadata?.default_branch || '');
+  const defaultBranchHeadSha = String(defaultBranchMetadata?.commit?.sha || '').toLowerCase();
+  if (repository !== V132_SOURCE_REPOSITORY || observedRepository !== V132_SOURCE_REPOSITORY) reasonCodes.push('accepted_main_source_repository_mismatch');
+  if (defaultBranch !== V132_SOURCE_DEFAULT_BRANCH) reasonCodes.push('accepted_main_default_branch_mismatch');
+  if (String(defaultBranchMetadata?.name || defaultBranch) !== V132_SOURCE_DEFAULT_BRANCH) reasonCodes.push('accepted_main_branch_observation_mismatch');
+  if (!SHA_RE.test(defaultBranchHeadSha)) reasonCodes.push('accepted_main_default_branch_head_invalid');
+  if (!SHA_RE.test(String(acceptedMainSha || ''))) reasonCodes.push('accepted_main_recorded_sha_invalid');
+  if (defaultBranchHeadSha !== String(acceptedMainSha || '').toLowerCase()) reasonCodes.push('accepted_main_default_branch_head_mismatch');
+  return {
+    status: reasonCodes.length ? 'fail' : 'pass',
+    repository: observedRepository || null,
+    repositoryId: Number(repositoryMetadata?.id) || null,
+    defaultBranch: defaultBranch || null,
+    defaultBranchHeadSha: SHA_RE.test(defaultBranchHeadSha) ? defaultBranchHeadSha : null,
+    reasonCodes,
+    createsAuthority: false,
+  };
+}
+
 export async function collectAcceptedMainTrustRoot({ repository, acceptedMainSha, token } = {}) {
   if (!/^[-A-Za-z0-9_.]+\/[-A-Za-z0-9_.]+$/.test(String(repository || ''))) throw new Error('trust_root_repository_invalid');
+  if (repository !== V132_SOURCE_REPOSITORY) throw new Error('trust_root_source_repository_mismatch');
   if (!SHA_RE.test(String(acceptedMainSha || ''))) throw new Error('trust_root_accepted_main_sha_invalid');
   if (!token) throw new Error('github_token_required_for_trust_root_observation');
+  const repositoryMetadata = await githubJson(`https://api.github.com/repos/${repository}`, token);
+  const observedDefaultBranch = String(repositoryMetadata?.default_branch || '');
+  const defaultBranchMetadata = observedDefaultBranch
+    ? await githubJson(`https://api.github.com/repos/${repository}/branches/${encodeURIComponent(observedDefaultBranch)}`, token)
+    : null;
+  const identity = validateAcceptedMainIdentityObservation({
+    repository,
+    acceptedMainSha,
+    repositoryMetadata,
+    defaultBranchMetadata,
+  });
+  if (identity.status !== 'pass') throw new Error(`accepted_main_identity_invalid:${identity.reasonCodes.join(',')}`);
+  const defaultBranchProtection = await observeRequiredCheckTrustSnapshot({
+    repository,
+    baseRef: identity.defaultBranch,
+    token,
+  });
   const encodedPath = V132_TRUST_ROOT_PATH.split('/').map(encodeURIComponent).join('/');
-  const text = await githubText(`https://api.github.com/repos/${repository}/contents/${encodedPath}?ref=${acceptedMainSha}`, token);
+  const text = await githubText(`https://api.github.com/repos/${repository}/contents/${encodedPath}?ref=${identity.defaultBranchHeadSha}`, token);
   let parsed;
   try {
     parsed = JSON.parse(text);
@@ -277,20 +350,31 @@ export async function collectAcceptedMainTrustRoot({ repository, acceptedMainSha
     ...parsed,
     trustSource: 'accepted_main_github_api',
     trustSourcePath: V132_TRUST_ROOT_PATH,
+    trustSourceRepositoryId: identity.repositoryId,
+    trustSourceDefaultBranch: identity.defaultBranch,
+    trustSourceHeadSha: identity.defaultBranchHeadSha,
+    trustSourceProtectionStableDigest: defaultBranchProtection.stableDigest,
     observedAt: new Date().toISOString(),
   };
-  const validation = validateTrustRootShape(trustRoot, { repository, acceptedMainSha });
+  const validation = validateTrustRootShape(trustRoot, {
+    repository,
+    acceptedMainSha: identity.defaultBranchHeadSha,
+    defaultBranch: identity.defaultBranch,
+  });
   if (validation.status !== 'pass') throw new Error(`accepted_main_trust_root_invalid:${validation.reasonCodes.join(',')}`);
+  if (trustRoot.acceptedMainSha !== identity.defaultBranchHeadSha) throw new Error('accepted_main_trust_root_embedded_sha_mismatch');
   ACCEPTED_MAIN_TRUST_ROOTS.add(trustRoot);
   return trustRoot;
 }
 
 export function createFixtureTrustRoot({ repository, acceptedMainSha, publicKeyPem, keyId = 'fixture-owner-key', requiredArtifacts, requiredWorkflows } = {}) {
+  const defaultWorkflowDigest = sha256('fixture-workflow:quality-gate');
   const trustRoot = {
     schemaVersion: V132_VERSION,
     state: 'active',
     authority: 'accepted_main_only',
     repository,
+    defaultBranch: V132_SOURCE_DEFAULT_BRANCH,
     acceptedMainSha,
     finalDecisionKey: {
       keyId,
@@ -303,22 +387,120 @@ export function createFixtureTrustRoot({ repository, acceptedMainSha, publicKeyP
     artifactContract: {
       requiredArtifacts: requiredArtifacts || [{
         name: 'safe-summary',
+        workflowPath: '.github/workflows/quality-gate.yml',
         entryPath: 'safe-summary.json',
         schemaVersion: V132_VERSION,
-        requiredFields: ['schemaVersion', 'status', 'headSha'],
+        requiredFields: ['schemaVersion', 'repository', 'status', 'headSha'],
+        requiredFieldValues: { repository: '$repository', headSha: '$headSha', status: 'pass' },
       }],
     },
     workflowContract: {
-      requiredWorkflows: requiredWorkflows || [{ workflowId: 1001, path: '.github/workflows/quality-gate.yml' }],
+      requiredWorkflows: requiredWorkflows || [{
+        workflowId: 1001,
+        path: '.github/workflows/quality-gate.yml',
+        workflowContentDigest: defaultWorkflowDigest,
+        reusableWorkflowRef: null,
+      }],
     },
     trustSource: 'explicit_test_fixture',
     trustSourcePath: null,
     observedAt: '2026-07-10T00:00:00Z',
   };
-  const validation = validateTrustRootShape(trustRoot, { repository, acceptedMainSha });
+  const validation = validateTrustRootShape(trustRoot, { repository, acceptedMainSha, defaultBranch: V132_SOURCE_DEFAULT_BRANCH });
   if (validation.status !== 'pass') throw new Error(`fixture_trust_root_invalid:${validation.reasonCodes.join(',')}`);
   FIXTURE_TRUST_ROOTS.add(trustRoot);
   return trustRoot;
+}
+
+function requiredCheckTrustStablePayload(snapshot = {}) {
+  return {
+    source: snapshot.source,
+    sourceIdentity: snapshot.sourceIdentity,
+    baseRef: snapshot.baseRef,
+    requiredCheckNames: [...new Set(snapshot.requiredCheckNames || [])].sort(),
+    requiredWorkflowRefs: [...(snapshot.requiredWorkflowRefs || [])]
+      .map((entry) => ({
+        path: String(entry.path || ''),
+        ref: String(entry.ref || ''),
+        sha: String(entry.sha || '').toLowerCase(),
+        repositoryId: Number(entry.repositoryId) || null,
+      }))
+      .sort((a, b) => a.path.localeCompare(b.path) || a.ref.localeCompare(b.ref)),
+  };
+}
+
+export function buildRequiredCheckTrustSnapshot({
+  repository,
+  baseRef,
+  classicProtection = null,
+  rulesetRules = null,
+  observedAt = new Date().toISOString(),
+} = {}) {
+  const classicObserved = classicProtection !== null;
+  const rulesetsObserved = Array.isArray(rulesetRules);
+  const classicNames = classicObserved ? [
+    ...(classicProtection?.contexts || []),
+    ...(classicProtection?.checks || []).map((entry) => entry.context),
+  ].filter(Boolean).map(String) : [];
+  const relevantRules = rulesetsObserved ? rulesetRules.filter((rule) => ['required_status_checks', 'workflows', 'required_workflows'].includes(String(rule?.type || ''))) : [];
+  const rulesetNames = relevantRules.flatMap((rule) => rule?.type === 'required_status_checks'
+    ? (rule?.parameters?.required_status_checks || []).map((entry) => entry.context)
+    : []).filter(Boolean).map(String);
+  const requiredWorkflowRefs = relevantRules.flatMap((rule) => ['workflows', 'required_workflows'].includes(rule?.type)
+    ? (rule?.parameters?.workflows || rule?.parameters?.required_workflows || []).map((entry) => ({
+      path: String(entry.path || ''),
+      ref: String(entry.ref || ''),
+      sha: String(entry.sha || '').toLowerCase(),
+      repositoryId: Number(entry.repository_id) || null,
+    }))
+    : []).filter((entry) => /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(entry.path));
+  const requiredCheckNames = [...new Set([...classicNames, ...rulesetNames])].sort();
+  if ((!classicObserved && !rulesetsObserved) || (!requiredCheckNames.length && !requiredWorkflowRefs.length)) {
+    throw new Error('github_required_check_trust_root_unavailable');
+  }
+  const source = classicObserved && relevantRules.length
+    ? 'github_branch_protection_and_rulesets'
+    : relevantRules.length
+      ? 'github_rulesets'
+      : 'github_branch_protection';
+  const snapshot = {
+    source,
+    sourceIdentity: {
+      classic: classicObserved ? {
+        repository,
+        baseRef,
+        strict: classicProtection?.strict === true,
+        integrationIds: [...new Set((classicProtection?.checks || []).map((entry) => Number(entry.app_id)).filter(Number.isInteger))].sort((a, b) => a - b),
+      } : null,
+      rulesets: relevantRules.map((rule) => ({
+        rulesetId: Number(rule.ruleset_id) || null,
+        sourceType: String(rule.ruleset_source_type || ''),
+        source: String(rule.ruleset_source || ''),
+        type: String(rule.type || ''),
+      })).sort((a, b) => Number(a.rulesetId || 0) - Number(b.rulesetId || 0) || a.type.localeCompare(b.type)),
+    },
+    baseRef: String(baseRef || ''),
+    requiredCheckNames,
+    requiredWorkflowRefs,
+    observedAt,
+  };
+  snapshot.stableDigest = sha256(canonicalJson(requiredCheckTrustStablePayload(snapshot)));
+  return snapshot;
+}
+
+async function observeRequiredCheckTrustSnapshot({ repository, baseRef, token } = {}) {
+  const encodedBranch = encodeURIComponent(baseRef);
+  const [classicProtection, rulesetRules] = await Promise.all([
+    githubJson(`https://api.github.com/repos/${repository}/branches/${encodedBranch}/protection/required_status_checks`, token, { allowNotFound: true }),
+    githubJson(`https://api.github.com/repos/${repository}/rules/branches/${encodedBranch}`, token, { allowNotFound: true }),
+  ]);
+  return buildRequiredCheckTrustSnapshot({
+    repository,
+    baseRef,
+    classicProtection,
+    rulesetRules,
+    observedAt: new Date().toISOString(),
+  });
 }
 
 async function githubBuffer(url, token) {
@@ -369,7 +551,13 @@ function readZipEntry(archive, entryPath) {
   throw new Error(`artifact_contract_entry_missing:${entryPath}`);
 }
 
-async function observeRequiredArtifact(artifact, contract, token) {
+function resolveArtifactContractValue(value, expected = {}) {
+  if (value === '$repository') return expected.repository;
+  if (value === '$headSha') return String(expected.headSha || '').toLowerCase();
+  return value;
+}
+
+async function observeRequiredArtifact(artifact, contract, token, expected = {}) {
   const archive = await githubBuffer(artifact.archive_download_url, token);
   const contentDigest = sha256Bytes(archive);
   if (artifact.digest && artifact.digest !== contentDigest) throw new Error(`artifact_archive_digest_mismatch:${artifact.name}`);
@@ -384,42 +572,55 @@ async function observeRequiredArtifact(artifact, contract, token) {
   for (const field of contract.requiredFields || []) {
     if (!Object.hasOwn(payload, field)) throw new Error(`artifact_required_field_missing:${artifact.name}:${field}`);
   }
+  const boundValues = {};
+  for (const [field, contractValue] of Object.entries(contract.requiredFieldValues || {})) {
+    const expectedValue = resolveArtifactContractValue(contractValue, expected);
+    const observedValue = field === 'headSha' ? String(payload[field] || '').toLowerCase() : payload[field];
+    if (observedValue !== expectedValue) throw new Error(`artifact_required_value_mismatch:${artifact.name}:${field}`);
+    boundValues[field] = observedValue;
+  }
   return {
     artifactId: Number(artifact.id),
     name: artifact.name,
     sizeInBytes: Number(artifact.size_in_bytes),
     contentDigest,
+    workflowPath: contract.workflowPath,
     entryPath: contract.entryPath,
     schemaVersion: payload.schemaVersion,
     semanticDigest: sha256(canonicalJson(payload)),
+    boundValues,
+    valueBindingDigest: sha256(canonicalJson(boundValues)),
   };
 }
 
-async function observeGithubRun({ repository, runId, token, acceptedMainTrustRoot } = {}) {
+function extractReusableWorkflowRefs(text) {
+  const refs = [];
+  const pattern = /uses:\s*['"]?([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/\.github\/workflows\/[^@\s'"]+@[^\s'"#]+)/g;
+  for (const match of String(text || '').matchAll(pattern)) refs.push(match[1]);
+  return [...new Set(refs)].sort();
+}
+
+async function observeGithubRun({
+  repository,
+  run,
+  token,
+  acceptedMainTrustRoot,
+  pullRequest,
+  requiredCheckTrustRoot,
+} = {}) {
   if (!/^[-A-Za-z0-9_.]+\/[-A-Za-z0-9_.]+$/.test(String(repository || ''))) throw new Error('github_repository_invalid');
-  if (!Number.isInteger(Number(runId)) || Number(runId) < 1) throw new Error('github_run_id_invalid');
+  if (!Number.isInteger(Number(run?.id)) || Number(run.id) < 1) throw new Error('github_run_id_invalid');
   if (!token) throw new Error('github_token_required_for_verified_observation');
-  const root = `https://api.github.com/repos/${repository}/actions/runs/${Number(runId)}`;
-  const run = await githubJson(root, token);
-  const jobs = await githubJson(`${root}/jobs?per_page=100`, token);
-  const artifactResponse = await githubJson(`${root}/artifacts?per_page=100`, token);
-  const workflow = await githubJson(`https://api.github.com/repos/${repository}/actions/workflows/${Number(run.workflow_id)}`, token);
-  const pullRequestNumbers = [...new Set((run.pull_requests || []).map((item) => Number(item.number)).filter(Number.isInteger))];
-  if (run.event !== 'pull_request' || pullRequestNumbers.length !== 1) throw new Error('github_run_pull_request_binding_missing');
-  const pullRequest = await githubJson(`https://api.github.com/repos/${repository}/pulls/${pullRequestNumbers[0]}`, token);
-  const protection = await githubJson(`https://api.github.com/repos/${repository}/branches/${encodeURIComponent(pullRequest.base.ref)}/protection/required_status_checks`, token);
-  const requiredCheckNames = [...new Set([
-    ...(protection.contexts || []),
-    ...(protection.checks || []).map((item) => item.context),
-  ].filter(Boolean))].sort();
-  if (!requiredCheckNames.length) throw new Error('github_required_check_trust_root_empty');
-  const requiredCheckTrustRoot = {
-    source: 'github_branch_protection',
-    baseRef: pullRequest.base.ref,
-    requiredCheckNames,
-    observedAt: new Date().toISOString(),
-  };
-  requiredCheckTrustRoot.digest = sha256(canonicalJson(requiredCheckTrustRoot));
+  const root = `https://api.github.com/repos/${repository}/actions/runs/${Number(run.id)}`;
+  const [jobs, artifactResponse, workflow] = await Promise.all([
+    githubJson(`${root}/jobs?per_page=100`, token),
+    githubJson(`${root}/artifacts?per_page=100`, token),
+    githubJson(`https://api.github.com/repos/${repository}/actions/workflows/${Number(run.workflow_id)}`, token),
+  ]);
+  const encodedWorkflowPath = String(workflow.path || '').split('/').map(encodeURIComponent).join('/');
+  const workflowText = await githubText(`https://api.github.com/repos/${repository}/contents/${encodedWorkflowPath}?ref=${String(run.head_sha || '').toLowerCase()}`, token);
+  const workflowContentDigest = sha256Bytes(Buffer.from(workflowText, 'utf8'));
+  const reusableWorkflowRefs = extractReusableWorkflowRefs(workflowText);
 
   const jobsList = jobs.jobs || [];
   const preRunnerJobs = jobsList.filter((job) => (!Array.isArray(job.steps) || job.steps.length === 0) && !job.runner_name);
@@ -439,16 +640,24 @@ async function observeGithubRun({ repository, runId, token, acceptedMainTrustRoo
     : null;
 
   const trustRootValid = trustRootAccepted(acceptedMainTrustRoot, false)
-    && validateTrustRootShape(acceptedMainTrustRoot, { repository, acceptedMainSha: acceptedMainTrustRoot?.acceptedMainSha }).status === 'pass';
+    && validateTrustRootShape(acceptedMainTrustRoot, {
+      repository,
+      acceptedMainSha: acceptedMainTrustRoot?.acceptedMainSha,
+      defaultBranch: V132_SOURCE_DEFAULT_BRANCH,
+    }).status === 'pass';
   if (run.conclusion === 'success' && !trustRootValid) throw new Error('accepted_main_trust_root_required_for_success_evidence');
-  const artifactContracts = acceptedMainTrustRoot?.artifactContract?.requiredArtifacts || [];
+  const artifactContracts = (acceptedMainTrustRoot?.artifactContract?.requiredArtifacts || [])
+    .filter((contract) => contract.workflowPath === workflow.path);
   const artifactsByName = new Map((artifactResponse.artifacts || []).filter((artifact) => artifact.expired !== true).map((artifact) => [artifact.name, artifact]));
   const artifacts = [];
   if (run.conclusion === 'success') {
     for (const contract of artifactContracts) {
       const artifact = artifactsByName.get(contract.name);
       if (!artifact) throw new Error(`required_artifact_missing:${contract.name}`);
-      artifacts.push(await observeRequiredArtifact(artifact, contract, token));
+      artifacts.push(await observeRequiredArtifact(artifact, contract, token, {
+        repository,
+        headSha: run.head_sha,
+      }));
     }
   }
   return {
@@ -469,6 +678,8 @@ async function observeGithubRun({ repository, runId, token, acceptedMainTrustRoo
       pullRequestNumber: Number(pullRequest.number),
       baseSha: pullRequest.base.sha,
       headSha: run.head_sha,
+      workflowContentDigest,
+      reusableWorkflowRefs,
     }],
     startedAt: run.run_started_at || run.created_at,
     completedAt: run.updated_at,
@@ -477,7 +688,7 @@ async function observeGithubRun({ repository, runId, token, acceptedMainTrustRoo
     failureClass,
     annotationText,
     requiredCheckTrustRoot,
-    requiredArtifactContractDigest: artifactContracts.length ? sha256(canonicalJson(acceptedMainTrustRoot.artifactContract)) : '',
+    requiredArtifactContractDigest: acceptedMainTrustRoot?.artifactContract ? sha256(canonicalJson(acceptedMainTrustRoot.artifactContract)) : '',
     requiredWorkflowContractDigest: acceptedMainTrustRoot?.workflowContract ? sha256(canonicalJson(acceptedMainTrustRoot.workflowContract)) : '',
     checkRuns: (jobs.jobs || []).map((job) => ({
       checkRunId: Number(job.id),
@@ -487,6 +698,62 @@ async function observeGithubRun({ repository, runId, token, acceptedMainTrustRoo
     })),
     artifacts,
   };
+}
+
+export function aggregateGithubRunObservations(observations, { repository, testMode = false } = {}) {
+  if (!Array.isArray(observations) || !observations.length) throw new Error('github_run_observations_missing');
+  const stableTrustDigest = (item) => {
+    const snapshot = item.requiredCheckTrustRoot || {};
+    const derived = sha256(canonicalJson(requiredCheckTrustStablePayload(snapshot)));
+    if (snapshot.stableDigest !== derived) throw new Error('github_required_check_trust_snapshot_digest_invalid');
+    return derived;
+  };
+  const bindingDigest = (item) => canonicalJson({
+    repository: item.repository,
+    pullRequestNumber: item.pullRequestNumber,
+    event: item.event,
+    baseRef: item.baseRef,
+    baseSha: item.baseSha,
+    headSha: item.headSha,
+    requiredCheckTrustStableDigest: stableTrustDigest(item),
+    requiredArtifactContractDigest: item.requiredArtifactContractDigest,
+    requiredWorkflowContractDigest: item.requiredWorkflowContractDigest,
+  });
+  if (observations.some((item) => bindingDigest(item) !== bindingDigest(observations[0]))) throw new Error('github_run_set_binding_mismatch');
+  const failureClass = observations.some((item) => item.failureClass === 'account_billing_lock')
+    ? 'account_billing_lock'
+    : observations.some((item) => item.failureClass === 'pre_runner_unavailable')
+      ? 'pre_runner_unavailable'
+      : null;
+  const observation = {
+    repository,
+    pullRequestNumber: observations[0].pullRequestNumber,
+    event: observations[0].event,
+    baseRef: observations[0].baseRef,
+    baseSha: observations[0].baseSha,
+    headSha: observations[0].headSha,
+    runIds: observations.map((item) => item.runId),
+    runAttempts: observations.map((item) => ({ runId: item.runId, runAttempt: item.runAttempt })),
+    workflowRuns: observations.flatMap((item) => item.workflowRuns),
+    startedAt: observations.map((item) => item.startedAt).sort()[0],
+    completedAt: observations.map((item) => item.completedAt).sort().at(-1),
+    observedAt: new Date().toISOString(),
+    conclusion: observations.every((item) => item.conclusion === 'success') ? 'success' : 'failure',
+    failureClass,
+    annotationText: observations.map((item) => item.annotationText).filter(Boolean).join('\n'),
+    checkRuns: observations.flatMap((item) => item.checkRuns),
+    artifacts: observations.flatMap((item) => item.artifacts),
+    requiredCheckTrustRoot: observations[0].requiredCheckTrustRoot,
+    requiredArtifactContractDigest: observations[0].requiredArtifactContractDigest,
+    requiredWorkflowContractDigest: observations[0].requiredWorkflowContractDigest,
+  };
+  const receipt = buildRemoteReceipt(observation, {
+    testMode,
+    observationSource: testMode ? 'explicit_test_collector' : 'github_api_verified_collector',
+  });
+  if (testMode) FIXTURE_REMOTE_RECEIPTS.add(receipt);
+  else API_OBSERVED_REMOTE_RECEIPTS.add(receipt);
+  return receipt;
 }
 
 export function collectVerifiedGithubEvidence(request = {}) {
@@ -499,56 +766,33 @@ export function collectVerifiedGithubEvidence(request = {}) {
   const runIds = [...new Set((request.runIds || [request.runId]).map(Number))].filter((runId) => Number.isInteger(runId) && runId > 0);
   if (!runIds.length || runIds.length > 4) throw new Error('github_run_id_set_invalid');
   if (request.acceptedMainTrustRoot && !trustRootAccepted(request.acceptedMainTrustRoot, false)) throw new Error('caller_supplied_untrusted_root_forbidden');
-  return Promise.all(runIds.map((runId) => observeGithubRun({
-    repository: request.repository,
-    runId,
-    token: request.token,
-    acceptedMainTrustRoot: request.acceptedMainTrustRoot,
-  }))).then((observations) => {
-    const headSha = observations[0].headSha;
-    const bindingDigest = (item) => canonicalJson({
-      repository: item.repository,
-      pullRequestNumber: item.pullRequestNumber,
-      event: item.event,
-      baseRef: item.baseRef,
-      baseSha: item.baseSha,
-      headSha: item.headSha,
-      requiredCheckTrustRoot: item.requiredCheckTrustRoot,
-      requiredArtifactContractDigest: item.requiredArtifactContractDigest,
-      requiredWorkflowContractDigest: item.requiredWorkflowContractDigest,
+  return (async () => {
+    const runs = await Promise.all(runIds.map((runId) => githubJson(
+      `https://api.github.com/repos/${request.repository}/actions/runs/${runId}`,
+      request.token,
+    )));
+    const pullRequestNumbers = runs.map((run) => {
+      const values = [...new Set((run.pull_requests || []).map((item) => Number(item.number)).filter(Number.isInteger))];
+      if (run.event !== 'pull_request' || values.length !== 1) throw new Error('github_run_pull_request_binding_missing');
+      return values[0];
     });
-    if (observations.some((item) => bindingDigest(item) !== bindingDigest(observations[0]))) throw new Error('github_run_set_binding_mismatch');
-    const failureClass = observations.some((item) => item.failureClass === 'account_billing_lock')
-      ? 'account_billing_lock'
-      : observations.some((item) => item.failureClass === 'pre_runner_unavailable')
-        ? 'pre_runner_unavailable'
-        : null;
-    const observation = {
+    if (new Set(pullRequestNumbers).size !== 1) throw new Error('github_run_set_pull_request_mismatch');
+    const pullRequest = await githubJson(`https://api.github.com/repos/${request.repository}/pulls/${pullRequestNumbers[0]}`, request.token);
+    const requiredCheckTrustRoot = await observeRequiredCheckTrustSnapshot({
       repository: request.repository,
-      pullRequestNumber: observations[0].pullRequestNumber,
-      event: observations[0].event,
-      baseRef: observations[0].baseRef,
-      baseSha: observations[0].baseSha,
-      headSha,
-      runIds: observations.map((item) => item.runId),
-      runAttempts: observations.map((item) => ({ runId: item.runId, runAttempt: item.runAttempt })),
-      workflowRuns: observations.flatMap((item) => item.workflowRuns),
-      startedAt: observations.map((item) => item.startedAt).sort()[0],
-      completedAt: observations.map((item) => item.completedAt).sort().at(-1),
-      observedAt: new Date().toISOString(),
-      conclusion: observations.every((item) => item.conclusion === 'success') ? 'success' : 'failure',
-      failureClass,
-      annotationText: observations.map((item) => item.annotationText).filter(Boolean).join('\n'),
-      checkRuns: observations.flatMap((item) => item.checkRuns),
-      artifacts: observations.flatMap((item) => item.artifacts),
-      requiredCheckTrustRoot: observations[0].requiredCheckTrustRoot,
-      requiredArtifactContractDigest: observations[0].requiredArtifactContractDigest,
-      requiredWorkflowContractDigest: observations[0].requiredWorkflowContractDigest,
-    };
-    const receipt = buildRemoteReceipt(observation, { testMode: false, observationSource: 'github_api_verified_collector' });
-    API_OBSERVED_REMOTE_RECEIPTS.add(receipt);
-    return receipt;
-  });
+      baseRef: pullRequest.base.ref,
+      token: request.token,
+    });
+    const observations = await Promise.all(runs.map((run) => observeGithubRun({
+      repository: request.repository,
+      run,
+      token: request.token,
+      acceptedMainTrustRoot: request.acceptedMainTrustRoot,
+      pullRequest,
+      requiredCheckTrustRoot,
+    })));
+    return aggregateGithubRunObservations(observations, { repository: request.repository, testMode: false });
+  })();
 }
 
 export function reobserveSerializedGithubEvidence(receipt, request = {}) {
@@ -577,7 +821,7 @@ export function reobserveSerializedGithubEvidence(receipt, request = {}) {
       annotationDigest: value.annotationDigest,
       checkRuns: value.checkRuns,
       artifacts: value.artifacts,
-      requiredCheckTrustRoot: value.requiredCheckTrustRoot,
+      requiredCheckTrustStableDigest: value.requiredCheckTrustRoot?.stableDigest || null,
       requiredArtifactContractDigest: value.requiredArtifactContractDigest,
       requiredWorkflowContractDigest: value.requiredWorkflowContractDigest,
       requiredCheckSetDigest: value.requiredCheckSetDigest,
@@ -615,6 +859,7 @@ export function trustRootContractDigest(root) {
     state: root?.state,
     authority: root?.authority,
     repository: root?.repository,
+    defaultBranch: root?.defaultBranch,
     acceptedMainSha: root?.acceptedMainSha,
     finalDecisionKey: root?.finalDecisionKey,
     revokedKeyIds: root?.revokedKeyIds,
@@ -709,7 +954,11 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   if (workflowRuns.length !== receipt.runIds?.length) reasons.push('remote_workflow_run_binding_count_mismatch');
   const trustRoot = expected.acceptedMainTrustRoot;
   const trustedRoot = trustRootAccepted(trustRoot, expected.testMode === true)
-    && validateTrustRootShape(trustRoot, { repository, acceptedMainSha: trustRoot?.acceptedMainSha }).status === 'pass';
+    && validateTrustRootShape(trustRoot, {
+      repository,
+      acceptedMainSha: trustRoot?.acceptedMainSha,
+      defaultBranch: V132_SOURCE_DEFAULT_BRANCH,
+    }).status === 'pass';
   const workflowContract = trustedRoot ? trustRoot.workflowContract.requiredWorkflows : [];
   for (const [index, workflowRun] of workflowRuns.entries()) {
     if (!receipt.runIds?.includes(workflowRun.runId)) reasons.push(`workflow_${index}_run_id_mismatch`);
@@ -717,9 +966,17 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     if (workflowRun.pullRequestNumber !== pullRequestNumber) reasons.push(`workflow_${index}_pr_mismatch`);
     if (workflowRun.baseSha !== baseSha) reasons.push(`workflow_${index}_base_mismatch`);
     if (workflowRun.headSha !== headSha) reasons.push(`workflow_${index}_head_mismatch`);
-    if (receipt.evidenceType !== 'github_job_not_started'
-      && !workflowContract.some((entry) => entry.workflowId === workflowRun.workflowId && entry.path === workflowRun.workflowPath)) {
+    const contractedWorkflow = workflowContract.find((entry) => entry.workflowId === workflowRun.workflowId && entry.path === workflowRun.workflowPath);
+    if (receipt.evidenceType !== 'github_job_not_started' && !contractedWorkflow) {
       reasons.push(`workflow_${index}_not_in_accepted_main_contract`);
+    }
+    if (receipt.evidenceType !== 'github_job_not_started' && contractedWorkflow
+      && workflowRun.workflowContentDigest !== contractedWorkflow.workflowContentDigest) {
+      reasons.push(`workflow_${index}_content_digest_mismatch`);
+    }
+    if (receipt.evidenceType !== 'github_job_not_started' && contractedWorkflow?.reusableWorkflowRef
+      && !workflowRun.reusableWorkflowRefs.includes(contractedWorkflow.reusableWorkflowRef)) {
+      reasons.push(`workflow_${index}_reusable_ref_mismatch`);
     }
   }
   if (receipt.evidenceType !== 'github_job_not_started'
@@ -755,18 +1012,27 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     if (String(check.headSha || '').toLowerCase() !== headSha) reasons.push(`check_${index}_head_mismatch`);
   }
   const checkTrust = receipt.requiredCheckTrustRoot || {};
-  const validCheckTrustSource = checkTrust.source === 'github_branch_protection'
-    || (expected.testMode === true && checkTrust.source === 'explicit_test_branch_protection');
+  const validCheckTrustSource = [
+    'github_branch_protection',
+    'github_rulesets',
+    'github_branch_protection_and_rulesets',
+    'explicit_test_branch_protection',
+    'explicit_test_rulesets',
+    'explicit_test_branch_protection_and_rulesets',
+  ].includes(checkTrust.source);
   if (!validCheckTrustSource) reasons.push('required_check_trust_root_invalid');
   if (checkTrust.baseRef !== receipt.baseRef) reasons.push('required_check_trust_root_base_mismatch');
   if (!validRfc3339(checkTrust.observedAt)) reasons.push('required_check_trust_root_timestamp_invalid');
-  const checkTrustPayload = { ...checkTrust };
-  delete checkTrustPayload.digest;
-  if (checkTrust.digest !== sha256(canonicalJson(checkTrustPayload))) reasons.push('required_check_trust_root_digest_invalid');
+  const derivedStableTrustDigest = sha256(canonicalJson(requiredCheckTrustStablePayload(checkTrust)));
+  if (checkTrust.stableDigest !== derivedStableTrustDigest) reasons.push('required_check_trust_root_digest_invalid');
   const expectedCheckNames = [...new Set(checkTrust.requiredCheckNames || [])].sort();
-  if (!expectedCheckNames.length) reasons.push('required_check_name_set_empty');
+  const requiredWorkflowRefs = checkTrust.requiredWorkflowRefs || [];
+  if (!expectedCheckNames.length && !requiredWorkflowRefs.length) reasons.push('required_check_and_workflow_set_empty');
   const observedCheckNames = [...new Set(checkRuns.filter((check) => check.conclusion === 'success').map((check) => check.name))].sort();
   if (expectedCheckNames.some((name) => !observedCheckNames.includes(name))) reasons.push('required_check_name_set_mismatch');
+  for (const [index, requiredWorkflow] of requiredWorkflowRefs.entries()) {
+    if (!workflowRuns.some((run) => run.workflowPath === requiredWorkflow.path)) reasons.push(`ruleset_workflow_${index}_missing`);
+  }
   if (Array.isArray(expected.requiredCheckNames) && canonicalJson([...new Set(expected.requiredCheckNames)].sort()) !== canonicalJson(expectedCheckNames)) {
     reasons.push('candidate_controlled_required_check_list_forbidden');
   }
@@ -787,14 +1053,18 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     if (!artifact.name || typeof artifact.name !== 'string') reasons.push(`artifact_${index}_name_invalid`);
     if (!Number.isInteger(artifact.sizeInBytes) || artifact.sizeInBytes < 0) reasons.push(`artifact_${index}_size_invalid`);
     if (!DIGEST_RE.test(String(artifact.contentDigest || ''))) reasons.push(`artifact_${index}_content_digest_missing`);
-    if (!artifact.entryPath || !artifact.schemaVersion || !DIGEST_RE.test(String(artifact.semanticDigest || ''))) reasons.push(`artifact_${index}_semantic_binding_invalid`);
+    if (!artifact.workflowPath || !artifact.entryPath || !artifact.schemaVersion || !DIGEST_RE.test(String(artifact.semanticDigest || ''))) reasons.push(`artifact_${index}_semantic_binding_invalid`);
+    if (artifact.boundValues?.repository !== repository) reasons.push(`artifact_${index}_repository_binding_mismatch`);
+    if (String(artifact.boundValues?.headSha || '').toLowerCase() !== headSha) reasons.push(`artifact_${index}_head_binding_mismatch`);
+    if (artifact.boundValues?.status !== 'pass') reasons.push(`artifact_${index}_status_binding_mismatch`);
+    if (artifact.valueBindingDigest !== sha256(canonicalJson(artifact.boundValues || {}))) reasons.push(`artifact_${index}_value_binding_digest_invalid`);
   }
   if (!trustedRoot) reasons.push('accepted_main_trust_root_required');
   const requiredArtifactContractDigest = trustedRoot ? sha256(canonicalJson(trustRoot.artifactContract)) : '';
   if (receipt.requiredArtifactContractDigest !== requiredArtifactContractDigest) reasons.push('required_artifact_contract_digest_mismatch');
   const requiredArtifacts = trustedRoot ? trustRoot.artifactContract.requiredArtifacts : [];
-  if (canonicalJson(artifacts.map(({ name, entryPath, schemaVersion }) => ({ name, entryPath, schemaVersion })).sort((a, b) => a.name.localeCompare(b.name)))
-    !== canonicalJson(requiredArtifacts.map(({ name, entryPath, schemaVersion }) => ({ name, entryPath, schemaVersion })).sort((a, b) => a.name.localeCompare(b.name)))) {
+  if (canonicalJson(artifacts.map(({ name, workflowPath, entryPath, schemaVersion }) => ({ name, workflowPath, entryPath, schemaVersion })).sort((a, b) => a.name.localeCompare(b.name)))
+    !== canonicalJson(requiredArtifacts.map(({ name, workflowPath, entryPath, schemaVersion }) => ({ name, workflowPath, entryPath, schemaVersion })).sort((a, b) => a.name.localeCompare(b.name)))) {
     reasons.push('required_artifact_exact_set_mismatch');
   }
   if (receipt.conclusion !== 'success') reasons.push('remote_conclusion_not_success');

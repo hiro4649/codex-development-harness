@@ -57,6 +57,7 @@ function runGate(repoRoot, expectedVersion) {
     PerformanceTrack: report.PerformanceTrack || report.performanceTrack?.state || sourceManifest.performanceTrack?.state || null,
     superiorityClaimState: report.superiorityClaimState || sourceManifest.performanceTrack?.superiorityClaimState || null,
   };
+  const effectivePolicyPath = path.join(repoRoot, 'docs', 'process', 'CODEX_EFFECTIVE_POLICY.compact.json');
   return {
     elapsedMs: Number(elapsedMs.toFixed(2)),
     outputBytes: Buffer.byteLength(result.stdout.trim(), 'utf8'),
@@ -67,6 +68,13 @@ function runGate(repoRoot, expectedVersion) {
     validationCoverageDigest: report.validationCoverage?.coverageDigest || null,
     validationCoverageNodeCount: report.validationCoverage?.nodeCount ?? null,
     validationCoverageDerivedFromOutputDigests: report.validationCoverage?.derivation === 'executed_or_attested_node_output_digests',
+    surfaceMetrics: {
+      compactJsonBytes: Buffer.byteLength(result.stdout.trim(), 'utf8'),
+      effectivePolicyBytes: fs.existsSync(effectivePolicyPath) ? fs.statSync(effectivePolicyPath).size : null,
+      decisionCapsuleBytes: Number(report.outputMetrics?.decisionCapsuleBytes) || null,
+      safeSummaryBytes: Number(report.outputMetrics?.safeSummaryBytes) || null,
+      orchestrationReceiptBytes: Number(report.outputMetrics?.orchestrationReceiptBytes) || null,
+    },
     safetyInvariantProjection,
     safetyInvariantDigest: sha256(canonicalJson(safetyInvariantProjection)),
   };
@@ -95,6 +103,30 @@ function measure(repoRoot, expectedVersion, warmupCount, measuredRunCount) {
   };
 }
 
+function stableMeasuredMetric(runs, field) {
+  const values = [...new Set((runs || []).map((run) => run.surfaceMetrics?.[field]).filter((value) => Number.isFinite(value)))];
+  return values.length === 1 ? values[0] : null;
+}
+
+export function buildVerificationMetrics({ baseline, candidate, outputReductionPercent } = {}) {
+  const metrics = {
+    source: 'codex-v132-benchmark-json',
+    headSha: candidate?.headSha || null,
+    sampleCount: Number(candidate?.measuredRunCount) || 0,
+    compactJsonBytes: Number(candidate?.p50OutputBytes) || null,
+    effectivePolicyBytes: stableMeasuredMetric(candidate?.measured, 'effectivePolicyBytes'),
+    decisionCapsuleBytes: stableMeasuredMetric(candidate?.measured, 'decisionCapsuleBytes'),
+    safeSummaryBytes: stableMeasuredMetric(candidate?.measured, 'safeSummaryBytes'),
+    orchestrationReceiptBytes: stableMeasuredMetric(candidate?.measured, 'orchestrationReceiptBytes'),
+    baselineP50Ms: Number(baseline?.p50Ms) || null,
+    candidateP50Ms: Number(candidate?.p50Ms) || null,
+    outputReductionPercent,
+    derivedFromMeasuredGateOutputs: true,
+    createsAuthority: false,
+  };
+  return { ...metrics, provenanceDigest: sha256(canonicalJson(metrics)) };
+}
+
 export function runComparableBenchmark({ baselineRoot, candidateRoot = process.cwd(), warmupCount = 1, measuredRunCount = 5 } = {}) {
   if (!baselineRoot) throw new Error('baseline_root_required');
   const baseline = measure(path.resolve(baselineRoot), '1.3.1', warmupCount, measuredRunCount);
@@ -114,6 +146,7 @@ export function runComparableBenchmark({ baselineRoot, candidateRoot = process.c
       && value.PerformanceTrack === 'deferred'
       && value.superiorityClaimState === 'not_proven';
   });
+  const verificationMetrics = buildVerificationMetrics({ baseline, candidate, outputReductionPercent });
   return {
     schemaVersion: '1.3.2',
     benchmarkType: 'same_machine_output_and_coverage_attested_runs',
@@ -129,6 +162,7 @@ export function runComparableBenchmark({ baselineRoot, candidateRoot = process.c
     },
     baseline,
     candidate,
+    verificationMetrics,
     outputSizeReduction: { state: 'proven_same_command_output_boundary', percent: outputReductionPercent },
     legacyShadowOracleStatus: {
       status: safetyParityPassed ? 'pass' : 'fail',
