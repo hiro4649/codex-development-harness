@@ -30,11 +30,12 @@ typed evidence truth, canonical merge state, strict compiled manifests,
 deterministic incremental validation, digest-bound resumability, bounded
 context and output, allowlist target planning, and CI cost planning. Local pass
 never becomes remote pass, and missing remote evidence never becomes approval.
-Final Decision keys and artifact/workflow contracts must come from an
-accepted-main GitHub API trust root; a candidate-selected key cannot authorize
-itself. The observed default-branch HEAD must equal accepted main. Required
-checks come from one shared branch-protection/ruleset snapshot, workflows bind
-exact content digests, and artifacts bind repository, head, and pass status.
+Final Decision keys and artifact/workflow contracts must come from a SHA-free
+trust document observed at the accepted-main GitHub default-branch HEAD and
+Git blob; a candidate-selected key cannot authorize itself. Required workflows
+form an exact set, checks bind GitHub App identity when required, Rulesets bind
+path/ref/SHA/repository ID, and bounded artifacts bind repository, head, and
+pass status. The owner-credential collector writes no authority.
 
 It keeps rollback readable through the v1.3.2 Compatibility Adapter.
 The adapter preserves internal compatibility evidence for existing target gates
@@ -66,6 +67,12 @@ Target repository installs use target mode:
 ~~~bash
 CODEX_HARNESS_MODE=target CODEX_PROFILE_COMPAT_MODE=off CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs
 ~~~
+
+After accepted-main trust bootstrap, an owner may collect exact remote evidence
+with `scripts/codex-v132-collect-remote-evidence.mjs`, two required run IDs, and
+an isolated `CODEX_V132_COLLECTOR_TOKEN`. The token must never be placed in an
+ordinary product workflow. The resulting JSON has no merge or Final Decision
+authority and must be re-observed before use.
 
 The operator-facing result should compress to one verdict, one primary blocker,
 and one safe next action. Raw logs, secrets, hidden reasoning, self-approval,

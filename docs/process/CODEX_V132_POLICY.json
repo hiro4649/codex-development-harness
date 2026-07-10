@@ -6,6 +6,8 @@
   "purpose": "derive truthful evidence, run deterministic deltas, resume exact work, and bound operational output without creating authority",
   "acceptedMainVersion": "1.3.0",
   "acceptedMainSha": "be06232adbe9072456bc9a36a1b298f5ba900470",
+  "acceptedMainShaRole": "candidate_lineage_baseline_only",
+  "acceptedMainShaCreatesTrustAuthority": false,
   "developmentParentVersion": "1.3.1",
   "candidateVersion": "1.3.2",
   "executionHarnessVersion": "1.3.2",
@@ -119,10 +121,30 @@
     "source": "accepted_main_github_api_only",
     "expectedRepository": "hiro4649/codex-development-harness",
     "expectedDefaultBranch": "main",
-    "defaultBranchHeadMustEqualAcceptedMainSha": true,
-    "trustRootEmbeddedShaMustEqualObservedDefaultBranchHead": true,
+    "authoritativeDocumentContainsCommitSha": false,
+    "observedEnvelopeFields": [
+      "document",
+      "trustSourceRepository",
+      "trustSourceDefaultBranch",
+      "trustSourceHeadSha",
+      "trustSourceBlobSha",
+      "trustSourcePath",
+      "observedAt"
+    ],
+    "effectiveDigestBindings": [
+      "document",
+      "trustSourceRepository",
+      "trustSourceDefaultBranch",
+      "trustSourceHeadSha",
+      "trustSourceBlobSha",
+      "trustSourcePath"
+    ],
+    "finalDecisionBindsEffectiveTrustRootDigest": true,
     "candidateSelectedCommitForbidden": true,
+    "detachedHeadForbidden": true,
+    "nonDefaultBranchForbidden": true,
     "alternateTrustRootPathForbidden": true,
+    "alternateRepositoryForbidden": true,
     "candidateControlledTrustForbidden": true,
     "bootstrapState": "required_after_owner_merge",
     "finalDecisionKey": {
@@ -141,10 +163,39 @@
     "keyRotationStates": ["stable", "rotation_pending"],
     "revokedKeyIdsRequired": true,
     "workflowContentDigestRequired": true,
+    "requiredWorkflowExactSet": true,
+    "requiredWorkflowLatestAttemptOnly": true,
+    "requiredWorkflowSelectedRunMustSucceed": true,
     "artifactRepositoryHeadStatusBindingsRequired": true,
+    "requiredCheckIdentityFields": ["name", "appId"],
+    "rulesetWorkflowIdentityFields": ["path", "ref", "sha", "repositoryId"],
     "requiredCheckObservationSources": ["github_branch_protection", "github_rulesets"],
     "multiRunProtectionSnapshotShared": true,
     "currentCandidateCanAuthorize": false
+  },
+  "remoteEvidenceCollector": {
+    "cli": "scripts/codex-v132-collect-remote-evidence.mjs",
+    "credentialEnvironmentVariable": "CODEX_V132_COLLECTOR_TOKEN",
+    "credentialClass": "owner_managed_github_app_or_fine_grained_pat",
+    "requiredPermissions": [
+      "Metadata read",
+      "Contents read",
+      "Actions read",
+      "Pull requests read",
+      "Administration read"
+    ],
+    "checksReadCondition": "required_when_app_bound_check_run_identity_endpoint_requires_it",
+    "ordinaryProductWorkflowExposureAllowed": false,
+    "serializedReceiptAuthority": "none",
+    "createsFinalDecisionAuthority": false
+  },
+  "artifactResourceBounds": {
+    "maximumArchiveBytes": 8388608,
+    "maximumPayloadBytes": 262144,
+    "maximumEntryCount": 64,
+    "duplicateContractedEntryAction": "reject",
+    "zip64Action": "reject_unsupported",
+    "decompressionLimitEnforced": true
   },
   "manifestCompiler": {
     "state": "active",

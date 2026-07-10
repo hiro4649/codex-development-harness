@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Review the exact pushed HARNESS v1.3.2 Accepted-Main Trust Closure on Draft PR #165. Inspect one automatic required-check attempt without rerunning it. After v1.3.1 is accepted on main, rebase and repeat exact validation. Do not activate or roll out targets.
+Review the exact pushed HARNESS v1.3.2 Trust Bootstrap Closure on Draft PR #165. Confirm the SHA-free trust document/envelope, exact workflow/check/ruleset bindings, collector credential isolation, and artifact resource limits. Inspect one automatic required-check attempt without rerunning it. Do not activate or roll out targets.
 
 ## Required Files
 
@@ -15,15 +15,16 @@ Review the exact pushed HARNESS v1.3.2 Accepted-Main Trust Closure on Draft PR #
 - `scripts/codex-v132-*.mjs`
 - `scripts/codex-workflow-quality-runner.mjs`
 - `scripts/codex-v132-evidence-truth.mjs`
+- `scripts/codex-v132-collect-remote-evidence.mjs`
 - `scripts/codex-v132-compatibility-invariants.mjs`
 - `.github/workflows/quality-gate.yml`
 - `.github/workflows/v132-compatibility-gate.yml`
 
 ## Implementation Strategy
 
-1. Review observed-default-branch trust, shared protection/Ruleset snapshots, exact workflow content, artifact value bindings, Final Decision verification, and behavioral compatibility in PR #165.
+1. Review the non-self-referential trust envelope, exact required-workflow set, app-bound checks, Ruleset identity, bounded artifact parser, Final Decision digest, and compatibility in PR #165.
 2. Keep remote state `not_observed` while jobs cannot start; do not rerun blindly.
-3. Treat accepted-main trust-root bootstrap as a separate owner-governed action; never authorize it from the candidate branch.
+3. Treat owner-key trust-document bootstrap and owner-managed collector credential setup as separate owner-governed actions; never authorize either from the candidate branch.
 4. After v1.3.1 main acceptance, rebase and recompute policy, workspace, and receipt digests if inputs change.
 5. Run strict projections, compact/full gates, workflow adapter negatives, two-run/ruleset/tamper fixtures, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
 6. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
@@ -33,7 +34,7 @@ Review the exact pushed HARNESS v1.3.2 Accepted-Main Trust Closure on Draft PR #
 - Rebase conflicts in active tuple, workflow, or project-memory files.
 - New v1.3.1 main changes can invalidate benchmark comparison and receipt digests.
 - Remote checks may remain unavailable.
-- A trust-root or required-check contract placed only on the candidate branch must remain non-authoritative.
+- A trust-root or required-check contract placed only on the candidate branch must remain non-authoritative; the collector must observe accepted main.
 
 ## Validation Steps
 
@@ -51,4 +52,4 @@ Stop on target/product/sensitive mutation, authority weakening, candidate-contro
 
 ## Estimated Complexity
 
-Medium. The Source body is locally complete; remaining work is independent review, accepted-main trust bootstrap, rebase-sensitive verification, and exact-head remote validation, not feature expansion.
+Medium. The Source body is locally complete; remaining work is independent review, owner-key bootstrap, rebase-sensitive verification, and exact-head remote validation, not feature expansion.

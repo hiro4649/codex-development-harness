@@ -2,6 +2,12 @@
 
 ## 2026-07-10
 
+- Removed the self-referential commit SHA from the authoritative trust document and bound Final Decision to an observed main HEAD/blob/path envelope digest.
+- Added a real-git trust bootstrap fixture, exact required-workflow closure with latest-attempt normalization, required-check GitHub App identity, and exact Ruleset path/ref/SHA/repository binding.
+- Added the owner-credential `codex-v132-collect-remote-evidence` CLI; its serialized receipt is non-authoritative and creates no Final Decision authority.
+- Bounded artifact archives to 8 MiB, payloads to 256 KiB, and ZIPs to 64 entries; duplicate contracted entries and ZIP64 fail closed.
+- Expanded the v1.3.2 self-test suite to 33 trust and compatibility tests without target, product, package, workflow, deploy, wallet, RPC, or secret mutation.
+
 - Built HARNESS v1.3.2 Evidence-Converged Lean Core as a local Source-only candidate.
 - Added typed evidence truth, canonical state, strict manifest compilation, Registry v2, incremental validation, resumable receipts, bounded context/output, allowlist target planning, CI cost planning, debt closure, and long-run budgets.
 - Registered all eight repositories, including APS-GATE as `lite_action_target`, without persisting dynamic observations.

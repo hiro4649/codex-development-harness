@@ -4,6 +4,8 @@
 export const currentVersion = '1.3.2';
 export const acceptedMainVersion = '1.3.0';
 export const acceptedMainSha = 'be06232adbe9072456bc9a36a1b298f5ba900470';
+export const acceptedMainShaRole = 'candidate_lineage_baseline_only';
+export const acceptedMainShaCreatesTrustAuthority = false;
 export const developmentParentVersion = '1.3.1';
 export const executionHarnessVersion = '1.3.2';
 export const candidateLifecycleState = 'local_validated';
@@ -83,6 +85,8 @@ export function buildHarnessVersionRegistry() {
     currentVersion,
     acceptedMainVersion,
     acceptedMainSha,
+    acceptedMainShaRole,
+    acceptedMainShaCreatesTrustAuthority,
     developmentParentVersion,
     executionHarnessVersion,
     candidateLifecycleState,

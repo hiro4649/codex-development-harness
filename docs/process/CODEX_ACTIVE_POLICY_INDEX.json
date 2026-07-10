@@ -12,8 +12,8 @@
   "targetInstalledState": "per_repository_dynamic_observation",
   "targetRolloutState": "not_started",
   "canonicalPolicySource": "docs/process/CODEX_V132_POLICY.json",
-  "canonicalPolicyDigest": "sha256:7934f2d85c5793c0b63b5de651d4321de8444bfeddc3ceabc2d2ad9abe1850ff",
-  "compiledEffectivePolicyDigest": "sha256:63412cd196ce3aa81a31ccf283c9a7e32de83cbd7f5ad2b7d035eda52a96af36",
+  "canonicalPolicyDigest": "sha256:b1b060d3185c8a6d79cf0771ce2af5b9d166390e51347e10a6ca99c813475f18",
+  "compiledEffectivePolicyDigest": "sha256:9b94d89265fc47dc3772b1cdbbca6fa829b825955ae3016bd7a4bbf4248d02ea",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
   "purpose": "Bound md and skill reads by task profile while preserving active authority.",
@@ -860,5 +860,7 @@
   "activeHarnessVersionAliasState": "deprecated_execution_compatibility_alias",
   "activeHarnessVersionAuthority": false,
   "acceptedMainVersionAuthority": "published_authority_version",
-  "candidateVersionAuthority": "unmerged_candidate_version"
+  "candidateVersionAuthority": "unmerged_candidate_version",
+  "acceptedMainShaRole": "candidate_lineage_baseline_only",
+  "acceptedMainShaCreatesTrustAuthority": false
 }

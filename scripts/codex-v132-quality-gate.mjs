@@ -460,17 +460,16 @@ export async function runV132SourceQualityGateWithDurableEvidence(options = {}) 
   const finalReceiptFile = process.env.CODEX_V132_FINAL_DECISION_RECEIPT_FILE || '';
   let acceptedMainTrustRoot = options.acceptedMainTrustRoot || null;
   if ((remoteReceiptFile || finalReceiptFile) && !acceptedMainTrustRoot) {
-    const policy = loadV132Policy(options.repoRoot || process.cwd());
     acceptedMainTrustRoot = await collectAcceptedMainTrustRoot({
       repository: 'hiro4649/codex-development-harness',
-      acceptedMainSha: policy.acceptedMainSha,
-      token: process.env.GITHUB_TOKEN,
+      token: process.env.CODEX_V132_COLLECTOR_TOKEN,
     });
   }
   if (!remoteEvidence && remoteReceiptFile) {
-    const serialized = JSON.parse(fs.readFileSync(path.resolve(remoteReceiptFile), 'utf8'));
+    const serializedEnvelope = JSON.parse(fs.readFileSync(path.resolve(remoteReceiptFile), 'utf8'));
+    const serialized = serializedEnvelope?.receipt || serializedEnvelope;
     remoteEvidence = await reobserveSerializedGithubEvidence(serialized, {
-      token: process.env.GITHUB_TOKEN,
+      token: process.env.CODEX_V132_COLLECTOR_TOKEN,
       acceptedMainTrustRoot,
     });
     expectedRemoteEvidence = {

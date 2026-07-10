@@ -2,15 +2,16 @@
 
 ## Current Architecture
 
-HARNESS v1.3.2 Evidence-Converged Lean Core is a Source-only candidate on provisional v1.3.1 PR head `35fbdd0e7075701516de3b2de722b3b7014f1dbf`. Accepted main remains v1.3.0 at `be06232adbe9072456bc9a36a1b298f5ba900470`. The candidate uses one declared-observed-validation-decision-projection model, a GitHub-observed default-branch trust root, a shared protection/ruleset snapshot, exact workflow and artifact bindings, a strict manifest compiler, Registry v2, an executable validation graph, content-addressed resumability, bounded output, and pure compatibility behavior contracts.
+HARNESS v1.3.2 Evidence-Converged Lean Core is a Source-only candidate on provisional v1.3.1 PR head `35fbdd0e7075701516de3b2de722b3b7014f1dbf`. Accepted main remains v1.3.0 at `be06232adbe9072456bc9a36a1b298f5ba900470`. The candidate uses one declared-observed-validation-decision-projection model, a non-self-referential GitHub-observed default-branch trust envelope, exact workflow/check/artifact closure, a strict manifest compiler, Registry v2, an executable validation graph, content-addressed resumability, bounded output, and pure compatibility behavior contracts.
 
 ## Functional Specifications
 
 - Remote, same-head, check-set, artifact, and Final Decision states require GitHub API observation. Structurally valid caller data is untrusted.
 - Final Decision verification requires an accepted-main trust root, allowed Ed25519 key ID and fingerprint, non-revoked rotation state, repository, exact head, decision ID, observation time, receipt digest, and signature. A candidate-supplied key cannot authorize itself.
-- The trust-root file is accepted only from the GitHub-observed Source `main` HEAD when that HEAD equals the recorded accepted-main SHA and authoritative protection or Rulesets are observable.
-- Remote evidence binds repository, pull request, `pull_request` event, base/head SHAs, workflow ID/path/content digest, optional reusable workflow ref, run IDs/attempts, shared protection/ruleset snapshot, artifact contract/schema/values/digest, and observation time.
-- Required checks and required workflows come from one observed classic-protection/Ruleset snapshot, never only from candidate policy.
+- The committed trust-root document contains no commit SHA. GitHub API observation adds repository, default branch, exact HEAD, Git blob SHA, fixed path, and observation time; their effective digest is the Final Decision trust binding.
+- Remote evidence binds repository, pull request, `pull_request` event, base/head SHAs, one latest successful run attempt for every contracted workflow, exact workflow ID/path/content, optional reusable workflow, Ruleset path/ref/SHA/repository ID, check name/app ID, artifact schema/values/digest, and observation time.
+- Required checks and workflows come from one observed classic-protection/Ruleset snapshot. The observed workflow set must exactly equal the accepted-main contract; omission and uncontracted additions fail closed.
+- Artifact ZIP input is bounded to 8 MiB, 64 entries, and a 256 KiB contracted payload. Duplicate contracted entries and ZIP64 are rejected.
 - Canonical state is `localValidationState`, `remoteValidationState`, `technicalMergeEligibility`, `finalDecisionState`, and `mergeAllowed`.
 - Local-only pass leaves remote `not_observed`, technical eligibility blocked, and `mergeAllowed=false`.
 - Candidate lifecycle is `draft -> local_validated -> remote_unavailable|remote_validated -> activation_eligible -> active`, with `superseded` as a terminal replacement state.
@@ -25,11 +26,11 @@ HARNESS v1.3.2 Evidence-Converged Lean Core is a Source-only candidate on provis
 
 ## Data Models
 
-The normative model is `docs/process/CODEX_V132_POLICY.json`; generated manifests and `docs/process/CODEX_EFFECTIVE_POLICY.compact.json` are checked projections. Declared policy, observed workspace/GitHub facts, validation results, decision, and output projections remain separate. Resumable receipts bind repository, base/head, workspace content, policy, registry, graph, command, toolchain, and environment digests and are optimization-only, not merge authority. Generated `codex-v132-benchmark` JSON `verificationMetrics` is the single machine source for output sizes and benchmark timing.
+The normative model is `docs/process/CODEX_V132_POLICY.json`; generated manifests and `docs/process/CODEX_EFFECTIVE_POLICY.compact.json` are checked projections. Declared policy, observed workspace/GitHub facts, validation results, decision, and output projections remain separate. The trust-root document and observed envelope are separate data models; the policy `acceptedMainSha` is lineage-only and never trust authority. Resumable receipts bind repository, base/head, workspace content, policy, registry, graph, command, toolchain, and environment digests and are optimization-only. Generated `codex-v132-benchmark` JSON `verificationMetrics` is the single machine source for output sizes and benchmark timing.
 
 ## APIs
 
-Source harness APIs are exported from `scripts/codex-v132-*.mjs`. No product or runtime API changes.
+Source harness APIs are exported from `scripts/codex-v132-*.mjs`. `scripts/codex-v132-collect-remote-evidence.mjs` is the supported production collector CLI; its serialized receipt is non-authoritative and must be re-observed before decision use. No product or runtime API changes.
 
 ## Design Decisions
 
@@ -44,6 +45,7 @@ Source harness APIs are exported from `scripts/codex-v132-*.mjs`. No product or 
 - Compatibility debt due now is reclassified with a reason, not silently extended.
 - `acceptedMainVersion`, `developmentParentVersion`, `candidateVersion`, `executionHarnessVersion`, and `candidateLifecycleState` are distinct. Source candidate display is separate from target-installed state; rollout remains not started.
 - Benchmark coverage comes from node output digests. Output reduction is separate from unproven relative performance.
+- Remote collection uses only `CODEX_V132_COLLECTOR_TOKEN`, backed by an owner-managed GitHub App or fine-grained PAT. It is never exposed to ordinary product workflows and cannot create Final Decision authority.
 
 ## Constraints
 
@@ -52,7 +54,7 @@ No activation, target rollout, target mutation, product/runtime/package/lockfile
 ## Known Limitations
 
 - The candidate must be rebased after v1.3.1 is accepted on main.
-- The accepted-main trust-root file is not yet available on accepted main. This deliberately prevents candidate self-authorization and requires owner-governed bootstrap after merge sequencing is resolved.
+- The accepted-main trust-root document is not yet available on accepted main. Its SHA-free document can be committed normally; only a later GitHub observation of the accepted default-branch HEAD and blob can make an envelope trusted.
 - Remote CI is not observed; no remote approval, activation, or merge readiness is claimed.
 - Remote runner-step behavior remains unverified because current automatic jobs fail before steps.
 - Workflow topology parsing is conservative static analysis, not a full YAML semantic proof.

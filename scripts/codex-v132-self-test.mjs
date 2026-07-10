@@ -16,14 +16,19 @@ import {
   createFixtureGithubEvidence,
   createFixtureTrustRoot,
   deriveCanonicalState,
+  effectiveTrustRootDigest,
+  readArtifactZipEntry,
   sha256,
   trustRootContractDigest,
   validateAcceptedMainIdentityObservation,
   validateCanonicalState,
+  validateObservedTrustRootEnvelope,
   verifySignedFinalDecisionReceipt,
+  V132_ARTIFACT_LIMITS,
   V132_FINAL_AUTHORITY,
   V132_SOURCE_DEFAULT_BRANCH,
   V132_SOURCE_REPOSITORY,
+  V132_TRUST_ROOT_PATH,
   V132_VERSION,
 } from './codex-v132-evidence-truth.mjs';
 import {
@@ -128,36 +133,58 @@ function parseThroughPython(file) {
   return JSON.parse(result.stdout.trim());
 }
 
-function validReceipts() {
+function validReceipts({ rulesetBinding = null, requiredAppId = null } = {}) {
   const repository = 'hiro4649/codex-development-harness';
   const headSha = 'a'.repeat(40);
   const baseSha = 'b'.repeat(40);
   const { publicKey } = crypto.generateKeyPairSync('ed25519');
   const acceptedMainTrustRoot = createFixtureTrustRoot({
     repository,
-    acceptedMainSha: 'c'.repeat(40),
+    trustSourceHeadSha: 'c'.repeat(40),
     publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
+    requiredWorkflows: [{
+      workflowId: 1001,
+      path: '.github/workflows/quality-gate.yml',
+      workflowContentDigest: sha256('fixture-workflow:quality-gate'),
+      reusableWorkflowRef: null,
+      rulesetBinding,
+    }],
   });
   const requiredCheckTrustRoot = buildRequiredCheckTrustSnapshot({
     repository,
     baseRef: 'main',
-    classicProtection: { strict: true, contexts: ['quality-gate'], checks: [] },
-    rulesetRules: null,
+    classicProtection: rulesetBinding ? null : {
+      strict: true,
+      contexts: requiredAppId == null ? ['quality-gate'] : [],
+      checks: requiredAppId == null ? [] : [{ context: 'quality-gate', app_id: requiredAppId }],
+    },
+    rulesetRules: rulesetBinding ? [{
+      ruleset_id: 42,
+      ruleset_source_type: 'Repository',
+      ruleset_source: repository,
+      type: 'workflows',
+      parameters: { workflows: [{
+        path: rulesetBinding.path,
+        ref: rulesetBinding.ref,
+        sha: rulesetBinding.sha,
+        repository_id: rulesetBinding.repositoryId,
+      }] },
+    }] : null,
     observedAt: '2026-07-10T00:00:00Z',
   });
-  const workflowContentDigest = acceptedMainTrustRoot.workflowContract.requiredWorkflows[0].workflowContentDigest;
+  const workflowContentDigest = acceptedMainTrustRoot.document.workflowContract.requiredWorkflows[0].workflowContentDigest;
   const boundValues = { repository, headSha, status: 'pass' };
   const remoteEvidence = createFixtureGithubEvidence({
     repository, pullRequestNumber: 165, event: 'pull_request', baseRef: 'main', baseSha, headSha, runId: 101, runAttempt: 1,
     workflowRuns: [{
       runId: 101, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml',
-      event: 'pull_request', pullRequestNumber: 165, baseSha, headSha, workflowContentDigest, reusableWorkflowRefs: [],
+      event: 'pull_request', pullRequestNumber: 165, baseSha, headSha, conclusion: 'success', workflowContentDigest, reusableWorkflowRefs: [], rulesetBinding,
     }],
     startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:01:00Z', observedAt: '2026-07-10T00:01:01Z',
     conclusion: 'success',
     requiredCheckTrustRoot,
     acceptedMainTrustRoot,
-    checkRuns: [{ checkRunId: 202, name: 'quality-gate', conclusion: 'success', headSha }],
+    checkRuns: [{ checkRunId: 202, name: 'quality-gate', appId: requiredAppId, conclusion: 'success', headSha }],
     artifacts: [{
       artifactId: 303,
       name: 'safe-summary',
@@ -213,6 +240,51 @@ function fixtureWorkspaceState(changedPaths, salt = 'a') {
   };
   state.workspaceStateDigest = calculateWorkspaceStateDigest(state, { baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40) });
   return state;
+}
+
+function createStoredZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let localOffset = 0;
+  for (const entry of entries) {
+    const name = Buffer.from(entry.name, 'utf8');
+    const payload = Buffer.from(entry.payload || '');
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0);
+    local.writeUInt16LE(20, 4);
+    local.writeUInt16LE(0, 6);
+    local.writeUInt16LE(0, 8);
+    local.writeUInt32LE(0, 14);
+    local.writeUInt32LE(payload.length, 18);
+    local.writeUInt32LE(payload.length, 22);
+    local.writeUInt16LE(name.length, 26);
+    local.writeUInt16LE(0, 28);
+    localParts.push(local, name, payload);
+
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0);
+    central.writeUInt16LE(20, 4);
+    central.writeUInt16LE(20, 6);
+    central.writeUInt16LE(0, 8);
+    central.writeUInt16LE(0, 10);
+    central.writeUInt32LE(0, 16);
+    central.writeUInt32LE(payload.length, 20);
+    central.writeUInt32LE(payload.length, 24);
+    central.writeUInt16LE(name.length, 28);
+    central.writeUInt16LE(0, 30);
+    central.writeUInt16LE(0, 32);
+    central.writeUInt32LE(localOffset, 42);
+    centralParts.push(central, name);
+    localOffset += local.length + name.length + payload.length;
+  }
+  const centralDirectory = Buffer.concat(centralParts);
+  const eocd = Buffer.alloc(22);
+  eocd.writeUInt32LE(0x06054b50, 0);
+  eocd.writeUInt16LE(entries.length, 8);
+  eocd.writeUInt16LE(entries.length, 10);
+  eocd.writeUInt32LE(centralDirectory.length, 12);
+  eocd.writeUInt32LE(localOffset, 16);
+  return Buffer.concat([...localParts, centralDirectory, eocd]);
 }
 
 function executeFixturePlan(plan) {
@@ -310,13 +382,13 @@ test('v132_accepted_main_identity_requires_observed_default_branch_head', () => 
   };
   assert.equal(validateAcceptedMainIdentityObservation({
     repository: V132_SOURCE_REPOSITORY,
-    acceptedMainSha: mainSha,
+    expectedDefaultBranchHeadSha: mainSha,
     repositoryMetadata,
     defaultBranchMetadata,
   }).status, 'pass');
   const candidateOwned = validateAcceptedMainIdentityObservation({
     repository: V132_SOURCE_REPOSITORY,
-    acceptedMainSha: candidateSha,
+    expectedDefaultBranchHeadSha: candidateSha,
     repositoryMetadata,
     defaultBranchMetadata,
   });
@@ -324,16 +396,76 @@ test('v132_accepted_main_identity_requires_observed_default_branch_head', () => 
   assert.ok(candidateOwned.reasonCodes.includes('accepted_main_default_branch_head_mismatch'));
   assert.equal(validateAcceptedMainIdentityObservation({
     repository: V132_SOURCE_REPOSITORY,
-    acceptedMainSha: mainSha,
+    expectedDefaultBranchHeadSha: mainSha,
     repositoryMetadata: { ...repositoryMetadata, default_branch: 'candidate' },
     defaultBranchMetadata,
   }).status, 'fail');
   assert.equal(validateAcceptedMainIdentityObservation({
     repository: 'hiro4649/lookalike',
-    acceptedMainSha: mainSha,
+    expectedDefaultBranchHeadSha: mainSha,
     repositoryMetadata,
     defaultBranchMetadata,
   }).status, 'fail');
+});
+
+test('v132_trust_root_real_git_bootstrap_is_non_self_referential', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v132-trust-bootstrap-'));
+  try {
+    const { publicKey } = crypto.generateKeyPairSync('ed25519');
+    const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' });
+    const seed = createFixtureTrustRoot({
+      repository: V132_SOURCE_REPOSITORY,
+      trustSourceHeadSha: 'a'.repeat(40),
+      publicKeyPem,
+    });
+    const trustPath = path.join(directory, 'docs', 'process', 'CODEX_V132_TRUST_ROOT.json');
+    fs.mkdirSync(path.dirname(trustPath), { recursive: true });
+    fs.writeFileSync(trustPath, `${JSON.stringify(seed.document, null, 2)}\n`, 'utf8');
+    const git = (...args) => countedSpawnSync('git', args, { cwd: directory, encoding: 'utf8', windowsHide: true });
+    assert.equal(git('init').status, 0);
+    assert.equal(git('checkout', '-b', V132_SOURCE_DEFAULT_BRANCH).status, 0);
+    assert.equal(git('config', 'user.name', 'Codex Fixture').status, 0);
+    assert.equal(git('config', 'user.email', 'codex-fixture@example.invalid').status, 0);
+    assert.equal(git('add', 'docs/process/CODEX_V132_TRUST_ROOT.json').status, 0);
+    assert.equal(git('commit', '-m', 'test: add trust root').status, 0);
+    const headSha = git('rev-parse', 'HEAD').stdout.trim();
+    const blobSha = git('rev-parse', `HEAD:${V132_TRUST_ROOT_PATH}`).stdout.trim();
+    assert.match(headSha, /^[a-f0-9]{40}$/);
+    assert.match(blobSha, /^[a-f0-9]{40}$/);
+    const observed = createFixtureTrustRoot({
+      repository: V132_SOURCE_REPOSITORY,
+      trustSourceHeadSha: headSha,
+      trustSourceBlobSha: blobSha,
+      publicKeyPem,
+    });
+    assert.deepEqual(observed.document, JSON.parse(fs.readFileSync(trustPath, 'utf8')));
+    assert.equal(Object.hasOwn(observed.document, 'acceptedMainSha'), false);
+    assert.equal(validateObservedTrustRootEnvelope(observed, {
+      repository: V132_SOURCE_REPOSITORY,
+      defaultBranch: V132_SOURCE_DEFAULT_BRANCH,
+      headSha,
+    }).status, 'pass');
+
+    for (const [reason, mutate] of [
+      ['trust_root_source_head_mismatch', (root) => { root.trustSourceHeadSha = 'e'.repeat(40); }],
+      ['trust_root_source_path_mismatch', (root) => { root.trustSourcePath = 'docs/process/alternate.json'; }],
+      ['trust_root_source_repository_mismatch', (root) => { root.trustSourceRepository = 'hiro4649/lookalike'; }],
+      ['trust_root_source_default_branch_mismatch', (root) => { root.trustSourceDefaultBranch = 'candidate'; }],
+    ]) {
+      const changed = structuredClone(observed);
+      mutate(changed);
+      changed.effectiveTrustRootDigest = effectiveTrustRootDigest(changed);
+      const result = validateObservedTrustRootEnvelope(changed, {
+        repository: V132_SOURCE_REPOSITORY,
+        defaultBranch: V132_SOURCE_DEFAULT_BRANCH,
+        headSha,
+      });
+      assert.equal(result.status, 'fail');
+      assert.ok(result.reasonCodes.includes(reason), `${reason}:${result.reasonCodes.join(',')}`);
+    }
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test('v132_required_check_snapshot_supports_classic_and_rulesets_fail_closed', () => {
@@ -369,7 +501,12 @@ test('v132_required_check_snapshot_supports_classic_and_rulesets_fail_closed', (
   assert.equal(ruleset.source, 'github_rulesets');
   assert.equal(ruleset.requiredCheckNames.length, 0);
   assert.equal(ruleset.requiredWorkflowRefs[0].path, '.github/workflows/quality-gate.yml');
-  const receipts = validReceipts();
+  const receipts = validReceipts({ rulesetBinding: {
+    path: '.github/workflows/quality-gate.yml',
+    ref: 'refs/heads/main',
+    sha: 'c'.repeat(40),
+    repositoryId: 123,
+  } });
   receipts.remoteEvidence.requiredCheckTrustRoot = ruleset;
   receipts.remoteEvidence.requiredCheckSetDigest = sha256(canonicalJson([]));
   refreshRemotePayloadDigest(receipts.remoteEvidence);
@@ -381,6 +518,61 @@ test('v132_required_check_snapshot_supports_classic_and_rulesets_fail_closed', (
     classicProtection: null,
     rulesetRules: null,
   }), /github_required_check_trust_root_unavailable/);
+});
+
+test('v132_required_check_app_identity_and_ruleset_binding_are_exact', () => {
+  const appReceipts = validReceipts({ requiredAppId: 15368 });
+  assert.equal(deriveCanonicalState({ localValidationPassed: true, ...appReceipts }).remoteValidationState, 'passed');
+  appReceipts.remoteEvidence.checkRuns[0].appId = 99999;
+  appReceipts.remoteEvidence.requiredCheckSetDigest = sha256(canonicalJson(appReceipts.remoteEvidence.checkRuns.map((check) => ({
+    checkRunId: check.checkRunId,
+    name: check.name,
+    appId: check.appId,
+    conclusion: check.conclusion,
+    headSha: check.headSha,
+  }))));
+  refreshRemotePayloadDigest(appReceipts.remoteEvidence);
+  const appMismatch = deriveCanonicalState({ localValidationPassed: true, ...appReceipts });
+  assert.equal(appMismatch.mergeAllowed, false);
+  assert.ok(appMismatch.remoteEvidence.reasonCodes.includes('required_check_app_identity_mismatch:quality-gate'));
+
+  const binding = {
+    path: '.github/workflows/quality-gate.yml',
+    ref: 'refs/heads/main',
+    sha: 'c'.repeat(40),
+    repositoryId: 123,
+  };
+  for (const mutate of [
+    (entry) => { entry.ref = 'refs/heads/candidate'; },
+    (entry) => { entry.sha = 'e'.repeat(40); },
+    (entry) => { entry.repository_id = 999; },
+  ]) {
+    const receipts = validReceipts({ rulesetBinding: binding });
+    const observedRule = {
+      path: binding.path,
+      ref: binding.ref,
+      sha: binding.sha,
+      repository_id: binding.repositoryId,
+    };
+    mutate(observedRule);
+    receipts.remoteEvidence.requiredCheckTrustRoot = buildRequiredCheckTrustSnapshot({
+      repository: V132_SOURCE_REPOSITORY,
+      baseRef: 'main',
+      classicProtection: null,
+      rulesetRules: [{
+        ruleset_id: 42,
+        ruleset_source_type: 'Repository',
+        ruleset_source: V132_SOURCE_REPOSITORY,
+        type: 'workflows',
+        parameters: { workflows: [observedRule] },
+      }],
+      observedAt: '2026-07-10T00:00:00Z',
+    });
+    refreshRemotePayloadDigest(receipts.remoteEvidence);
+    const mismatch = deriveCanonicalState({ localValidationPassed: true, ...receipts });
+    assert.equal(mismatch.mergeAllowed, false);
+    assert.ok(mismatch.remoteEvidence.reasonCodes.includes('ruleset_workflow_exact_binding_mismatch'));
+  }
 });
 
 test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
@@ -395,7 +587,7 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
   const requiredFieldValues = { repository: '$repository', headSha: '$headSha', status: 'pass' };
   const acceptedMainTrustRoot = createFixtureTrustRoot({
     repository,
-    acceptedMainSha: 'c'.repeat(40),
+    trustSourceHeadSha: 'c'.repeat(40),
     publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
     requiredWorkflows: [
       { workflowId: 1001, path: qualityPath, workflowContentDigest: qualityDigest, reusableWorkflowRef: null },
@@ -414,8 +606,8 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
     observedAt: '2026-07-10T00:00:00Z',
   });
   const snapshotB = { ...structuredClone(snapshotA), observedAt: '2026-07-10T00:00:05Z' };
-  const contractArtifactDigest = sha256(canonicalJson(acceptedMainTrustRoot.artifactContract));
-  const contractWorkflowDigest = sha256(canonicalJson(acceptedMainTrustRoot.workflowContract));
+  const contractArtifactDigest = sha256(canonicalJson(acceptedMainTrustRoot.document.artifactContract));
+  const contractWorkflowDigest = sha256(canonicalJson(acceptedMainTrustRoot.document.workflowContract));
   const artifact = (artifactId, name, workflowPath, entryPath) => {
     const boundValues = { repository, headSha, status: 'pass' };
     return {
@@ -449,6 +641,7 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
       pullRequestNumber: 165,
       baseSha,
       headSha,
+      conclusion: 'success',
       workflowContentDigest,
       reusableWorkflowRefs: [],
     }],
@@ -494,6 +687,51 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
   });
   assert.equal(remote.remoteValidationState, 'passed', remote.remoteEvidence.reasonCodes.join(','));
   assert.equal(remote.technicalMergeEligibility, 'eligible');
+
+  const omittedReceipt = aggregateGithubRunObservations(observations.slice(0, 1), { repository, testMode: true });
+  const omitted = deriveCanonicalState({
+    localValidationPassed: true,
+    remoteEvidence: omittedReceipt,
+    expected: { repository, pullRequestNumber: 165, event: 'pull_request', baseSha, headSha, acceptedMainTrustRoot, testMode: true },
+  });
+  assert.equal(omitted.mergeAllowed, false);
+  assert.ok(omitted.remoteEvidence.reasonCodes.includes('required_workflow_exact_set_mismatch'));
+
+  const rerun = structuredClone(observations[0]);
+  rerun.runId = 103;
+  rerun.runAttempt = 2;
+  rerun.workflowRuns[0].runId = 103;
+  rerun.workflowRuns[0].runAttempt = 2;
+  rerun.checkRuns[0].checkRunId = 1103;
+  rerun.artifacts[0].artifactId = 303;
+  const normalizedRerun = aggregateGithubRunObservations([...observations, rerun], { repository, testMode: true });
+  assert.deepEqual(normalizedRerun.runIds, [102, 103]);
+  const rerunState = deriveCanonicalState({
+    localValidationPassed: true,
+    remoteEvidence: normalizedRerun,
+    expected: { repository, pullRequestNumber: 165, event: 'pull_request', baseSha, headSha, acceptedMainTrustRoot, testMode: true },
+  });
+  assert.equal(rerunState.remoteValidationState, 'passed', rerunState.remoteEvidence.reasonCodes.join(','));
+
+  const failedLatest = structuredClone(rerun);
+  failedLatest.runId = 104;
+  failedLatest.runAttempt = 3;
+  failedLatest.conclusion = 'failure';
+  failedLatest.workflowRuns[0].runId = 104;
+  failedLatest.workflowRuns[0].runAttempt = 3;
+  failedLatest.workflowRuns[0].conclusion = 'failure';
+  failedLatest.checkRuns[0].checkRunId = 1104;
+  failedLatest.checkRuns[0].conclusion = 'failure';
+  failedLatest.artifacts = [];
+  const failedLatestReceipt = aggregateGithubRunObservations([...observations, rerun, failedLatest], { repository, testMode: true });
+  const failedLatestState = deriveCanonicalState({
+    localValidationPassed: true,
+    remoteEvidence: failedLatestReceipt,
+    expected: { repository, pullRequestNumber: 165, event: 'pull_request', baseSha, headSha, acceptedMainTrustRoot, testMode: true },
+  });
+  assert.equal(failedLatestState.mergeAllowed, false);
+  assert.ok(failedLatestState.remoteEvidence.reasonCodes.includes('workflow_1_conclusion_not_success')
+    || failedLatestState.remoteEvidence.reasonCodes.includes('workflow_0_conclusion_not_success'));
   for (const mutate of [
     (items) => { items[1].pullRequestNumber = 166; },
     (items) => { items[1].baseSha = 'd'.repeat(40); },
@@ -531,13 +769,58 @@ test('v132_workflow_content_and_artifact_values_are_exactly_bound', () => {
   }
 });
 
+test('v132_artifact_parser_is_resource_bounded_and_duplicate_closed', () => {
+  const payload = Buffer.from(JSON.stringify({ schemaVersion: V132_VERSION, status: 'pass' }));
+  const valid = createStoredZip([{ name: 'safe-summary.json', payload }]);
+  assert.deepEqual(readArtifactZipEntry(valid, 'safe-summary.json'), payload);
+  const duplicate = createStoredZip([
+    { name: 'safe-summary.json', payload },
+    { name: 'safe-summary.json', payload },
+  ]);
+  assert.throws(() => readArtifactZipEntry(duplicate, 'safe-summary.json'), /artifact_contract_entry_duplicate/);
+  const tooMany = createStoredZip(Array.from({ length: V132_ARTIFACT_LIMITS.entryCount + 1 }, (_, index) => ({
+    name: `entry-${index}.json`,
+    payload: '{}',
+  })));
+  assert.throws(() => readArtifactZipEntry(tooMany, 'entry-0.json'), /artifact_zip_entry_count_exceeded/);
+  const oversizedPayload = createStoredZip([{
+    name: 'safe-summary.json',
+    payload: Buffer.alloc(V132_ARTIFACT_LIMITS.payloadBytes + 1),
+  }]);
+  assert.throws(() => readArtifactZipEntry(oversizedPayload, 'safe-summary.json'), /artifact_payload_size_exceeded/);
+  assert.throws(() => readArtifactZipEntry(Buffer.alloc(V132_ARTIFACT_LIMITS.archiveBytes + 1), 'safe-summary.json'), /artifact_archive_size_exceeded/);
+  const zip64Marked = Buffer.concat([valid, Buffer.from([0x50, 0x4b, 0x06, 0x06])]);
+  assert.throws(() => readArtifactZipEntry(zip64Marked, 'safe-summary.json'), /artifact_zip64_unsupported/);
+});
+
+test('v132_production_collector_cli_is_non_authoritative_and_owner_scoped', () => {
+  const collectorPath = path.join(ROOT, 'scripts', 'codex-v132-collect-remote-evidence.mjs');
+  const source = fs.readFileSync(collectorPath, 'utf8');
+  assert.match(source, /CODEX_V132_COLLECTOR_TOKEN/);
+  assert.doesNotMatch(source, /process\.env\.GITHUB_TOKEN/);
+  assert.match(source, /createsAuthority:\s*false/);
+  assert.match(source, /finalDecisionAuthorityCreated:\s*false/);
+  assert.match(source, /collectAcceptedMainTrustRoot/);
+  assert.match(source, /collectVerifiedGithubEvidence/);
+  assert.match(source, /evaluateRemoteEvidence/);
+  const syntax = countedSpawnSync(process.execPath, ['--check', collectorPath], { encoding: 'utf8', windowsHide: true });
+  assert.equal(syntax.status, 0, syntax.stderr);
+  const output = path.join(os.tmpdir(), `codex-v132-collector-${process.pid}.json`);
+  const env = { ...process.env };
+  delete env.CODEX_V132_COLLECTOR_TOKEN;
+  const closed = countedSpawnSync(process.execPath, [collectorPath, '--run-ids=1,2', `--output=${output}`], { encoding: 'utf8', windowsHide: true, env });
+  assert.equal(closed.status, 1);
+  assert.match(closed.stderr, /owner_managed_collector_credential_required/);
+  assert.equal(fs.existsSync(output), false);
+});
+
 test('v132_final_decision_serialized_signature_verification', () => {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const repository = 'hiro4649/codex-development-harness';
   const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' });
   const trustRoot = createFixtureTrustRoot({
     repository,
-    acceptedMainSha: 'c'.repeat(40),
+    trustSourceHeadSha: 'c'.repeat(40),
     publicKeyPem,
     keyId: 'owner-final-key-001',
   });
@@ -554,7 +837,7 @@ test('v132_final_decision_serialized_signature_verification', () => {
     observedAt: '2026-07-10T00:02:00Z',
     signatureAlgorithm: 'ed25519',
     signingKeyId: 'owner-final-key-001',
-    signingKeyFingerprint: trustRoot.finalDecisionKey.publicKeyFingerprint,
+    signingKeyFingerprint: trustRoot.document.finalDecisionKey.publicKeyFingerprint,
     trustRootDigest: trustRootContractDigest(trustRoot),
   };
   const signature = crypto.sign(null, Buffer.from(canonicalJson(payload)), privateKey).toString('base64');
@@ -567,7 +850,7 @@ test('v132_final_decision_serialized_signature_verification', () => {
   const { publicKey: arbitraryPublicKey } = crypto.generateKeyPairSync('ed25519');
   const arbitraryRoot = createFixtureTrustRoot({
     repository,
-    acceptedMainSha: 'c'.repeat(40),
+    trustSourceHeadSha: 'c'.repeat(40),
     publicKeyPem: arbitraryPublicKey.export({ type: 'spki', format: 'pem' }),
     keyId: 'owner-final-key-002',
   });
@@ -669,6 +952,25 @@ test('v132_actual_manifests_parser_equivalence', () => {
 
 test('v132_manifest_projection_and_registry_inventory', () => {
   const policy = loadV132Policy(ROOT);
+  assert.equal(policy.acceptedMainShaCreatesTrustAuthority, false);
+  assert.equal(policy.trustRootContract.authoritativeDocumentContainsCommitSha, false);
+  assert.deepEqual(policy.trustRootContract.effectiveDigestBindings, [
+    'document',
+    'trustSourceRepository',
+    'trustSourceDefaultBranch',
+    'trustSourceHeadSha',
+    'trustSourceBlobSha',
+    'trustSourcePath',
+  ]);
+  assert.equal(policy.trustRootContract.requiredWorkflowExactSet, true);
+  assert.deepEqual(policy.trustRootContract.requiredCheckIdentityFields, ['name', 'appId']);
+  assert.deepEqual(policy.trustRootContract.rulesetWorkflowIdentityFields, ['path', 'ref', 'sha', 'repositoryId']);
+  assert.equal(policy.remoteEvidenceCollector.credentialClass, 'owner_managed_github_app_or_fine_grained_pat');
+  assert.equal(policy.remoteEvidenceCollector.ordinaryProductWorkflowExposureAllowed, false);
+  assert.equal(policy.remoteEvidenceCollector.createsFinalDecisionAuthority, false);
+  assert.equal(policy.artifactResourceBounds.maximumArchiveBytes, V132_ARTIFACT_LIMITS.archiveBytes);
+  assert.equal(policy.artifactResourceBounds.maximumPayloadBytes, V132_ARTIFACT_LIMITS.payloadBytes);
+  assert.equal(policy.artifactResourceBounds.maximumEntryCount, V132_ARTIFACT_LIMITS.entryCount);
   const validation = validateManifestProjections({
     policy,
     sourceManifest: strictJson('CODEX_SOURCE_HARNESS_MANIFEST.json'),
@@ -705,10 +1007,15 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   assert.equal(harnessVersion.activeHarnessVersion, '1.3.2');
   assert.equal(harnessVersion.activeSelfTestSuite, 'v132');
   assert.equal(harnessVersion.acceptedMainVersion, '1.3.0');
+  assert.equal(harnessVersion.acceptedMainShaRole, 'candidate_lineage_baseline_only');
+  assert.equal(harnessVersion.acceptedMainShaCreatesTrustAuthority, false);
   assert.equal(harnessVersion.executionHarnessVersion, '1.3.2');
   assert.equal(harnessVersion.candidateLifecycleState, 'local_validated');
   assert.equal(harnessVersion.activeHarnessVersionAliasState, 'deprecated_execution_compatibility_alias');
   assert.equal(harnessVersion.activeHarnessVersionAuthority, false);
+  const sourceManifest = strictJson('CODEX_SOURCE_HARNESS_MANIFEST.json');
+  assert.ok(sourceManifest.managedFiles.includes('scripts/codex-v132-collect-remote-evidence.mjs'));
+  assert.ok(sourceManifest.scriptNames.includes('codex-v132-collect-remote-evidence.mjs'));
   assert.deepEqual(harnessVersion.versionAuthority, {
     v132: 'local_source_candidate', v131: 'immediate_rollback', v130: 'secondary_rollback',
     v129: 'emergency_legacy_rollback', v128: 'blocking_compatibility', v127: 'readable_compatibility',
