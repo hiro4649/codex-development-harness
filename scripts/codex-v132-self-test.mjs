@@ -2,16 +2,20 @@
 // CODEX_QUALITY_HARNESS_FILE v1.3.2
 
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
   canonicalJson,
-  collectTrustedFinalDecision,
   collectVerifiedGithubEvidence,
+  createFixtureFinalDecision,
+  createFixtureGithubEvidence,
   deriveCanonicalState,
   sha256,
+  validateCanonicalState,
+  verifySignedFinalDecisionReceipt,
   V132_FINAL_AUTHORITY,
   V132_VERSION,
 } from './codex-v132-evidence-truth.mjs';
@@ -25,9 +29,12 @@ import {
 } from './codex-v132-manifest-compiler.mjs';
 import {
   buildContextCacheEnvelope,
+  calculateWorkspaceStateDigest,
+  collectWorkspaceState,
   createValidationReceipt,
   planIncrementalValidation,
   validateResumeReceipt,
+  V132_WORKSPACE_DIGEST_VERSION,
 } from './codex-v132-incremental-validation.mjs';
 import { executeValidationPlan, V132_NODE_EXECUTOR_VERSION } from './codex-v132-node-executor.mjs';
 import {
@@ -49,6 +56,21 @@ import * as harnessVersion from './codex-harness-version.mjs';
 
 const ROOT = process.cwd();
 const results = [];
+const selfTestAccounting = { subprocessExecutions: 0, harnessFileWrites: 0, retryCount: 0, retryPerNode: 0, checkpointCount: 0 };
+
+function countedSpawnSync(command, args, options) {
+  selfTestAccounting.subprocessExecutions += 1;
+  return spawnSync(command, args, options);
+}
+
+function accountNestedExecution(report) {
+  const nested = report?.executionAccounting || {};
+  selfTestAccounting.subprocessExecutions += Number(nested.subprocessExecutions || 0);
+  selfTestAccounting.harnessFileWrites += Number(nested.fileWrites || 0);
+  selfTestAccounting.retryCount += Number(nested.retryCount || 0);
+  selfTestAccounting.retryPerNode = Math.max(selfTestAccounting.retryPerNode, Number(nested.retryPerNode || 0));
+  selfTestAccounting.checkpointCount += Number(nested.checkpointCount || 0);
+}
 
 function test(id, fn) {
   try {
@@ -69,7 +91,7 @@ function resolvePython() {
     : '';
   const candidates = [process.env.CODEX_PYTHON, 'python3', 'python', bundled].filter(Boolean);
   for (const command of candidates) {
-    const probe = spawnSync(command, ['--version'], { encoding: 'utf8', windowsHide: true });
+    const probe = countedSpawnSync(command, ['--version'], { encoding: 'utf8', windowsHide: true });
     if (probe.status === 0) return command;
   }
   throw new Error('python_runtime_not_available_for_parser_equivalence');
@@ -77,7 +99,7 @@ function resolvePython() {
 
 function resolvePowerShell() {
   for (const command of ['pwsh', 'powershell', 'powershell.exe']) {
-    const probe = spawnSync(command, ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'], { encoding: 'utf8', windowsHide: true });
+    const probe = countedSpawnSync(command, ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'], { encoding: 'utf8', windowsHide: true });
     if (probe.status === 0) return command;
   }
   throw new Error('powershell_runtime_not_available_for_parser_equivalence');
@@ -85,13 +107,13 @@ function resolvePowerShell() {
 
 function parseThroughPowerShell(file) {
   const escaped = file.replaceAll("'", "''");
-  const result = spawnSync(resolvePowerShell(), ['-NoProfile', '-Command', `$x=Get-Content -Raw '${escaped}' | ConvertFrom-Json; $x | ConvertTo-Json -Depth 100 -Compress`], { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+  const result = countedSpawnSync(resolvePowerShell(), ['-NoProfile', '-Command', `$x=Get-Content -Raw '${escaped}' | ConvertFrom-Json; $x | ConvertTo-Json -Depth 100 -Compress`], { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout.replace(/^\uFEFF/, '').trim());
 }
 
 function parseThroughPython(file) {
-  const result = spawnSync(resolvePython(), ['-c', 'import json,sys; print(json.dumps(json.load(open(sys.argv[1], encoding="utf-8")), ensure_ascii=False, separators=(",",":")))', file], { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+  const result = countedSpawnSync(resolvePython(), ['-c', 'import json,sys; print(json.dumps(json.load(open(sys.argv[1], encoding="utf-8")), ensure_ascii=False, separators=(",",":")))', file], { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout.trim());
 }
@@ -99,23 +121,39 @@ function parseThroughPython(file) {
 function validReceipts() {
   const repository = 'hiro4649/codex-development-harness';
   const headSha = 'a'.repeat(40);
-  const remoteEvidence = collectVerifiedGithubEvidence({
+  const remoteEvidence = createFixtureGithubEvidence({
     repository, headSha, runId: 101, runAttempt: 1,
     startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:01:00Z', observedAt: '2026-07-10T00:01:01Z',
     conclusion: 'success',
     checkRuns: [{ checkRunId: 202, name: 'quality-gate', conclusion: 'success', headSha }],
     artifacts: [{ artifactId: 303, name: 'safe-summary', sizeInBytes: 123, contentDigest: sha256('safe-artifact') }],
-  }, { testMode: true });
-  const finalDecisionReceipt = collectTrustedFinalDecision({
+  });
+  const finalDecisionReceipt = createFixtureFinalDecision({
     authority: V132_FINAL_AUTHORITY, decision: 'allow_merge', decisionId: 'decision:test:001',
     repository, headSha, observedAt: '2026-07-10T00:02:00Z',
-  }, { testMode: true });
-  const expected = { repository, headSha, requiredCheckSetDigest: remoteEvidence.requiredCheckSetDigest, artifactDigest: remoteEvidence.artifactDigest, testMode: true };
+  });
+  const expected = { repository, headSha, runId: 101, runAttempt: 1, requiredCheckNames: ['quality-gate'], requiredCheckSetDigest: remoteEvidence.requiredCheckSetDigest, artifactDigest: remoteEvidence.artifactDigest, testMode: true };
   return {
     expected,
     remoteEvidence,
     finalDecisionReceipt,
   };
+}
+
+function fixtureWorkspaceState(changedPaths, salt = 'a') {
+  const state = {
+    workspaceDigestVersion: V132_WORKSPACE_DIGEST_VERSION,
+    contentAddressed: true,
+    changedPaths: [...changedPaths],
+    untrackedPaths: [],
+    committedPatchDigest: sha256(`committed:${salt}`),
+    stagedPatchDigest: sha256(`staged:${salt}`),
+    unstagedPatchDigest: sha256(`unstaged:${salt}`),
+    trackedEntries: changedPaths.map((file) => ({ path: file, fixtureDigest: sha256(`${file}:${salt}`) })),
+    untrackedEntries: [],
+  };
+  state.workspaceStateDigest = calculateWorkspaceStateDigest(state, { baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40) });
+  return state;
 }
 
 function executeFixturePlan(plan) {
@@ -157,18 +195,55 @@ test('v132_evidence_truth_typed_receipts_authorize_only_exact_state', () => {
   const invalid = structuredClone(receipts.remoteEvidence);
   invalid.remoteChecksPass = true;
   assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: invalid, expected: receipts.expected }).mergeAllowed, false);
+  assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: receipts.remoteEvidence, expected: { ...receipts.expected, runAttempt: 2 } }).technicalMergeEligibility, 'blocked');
   const plainTypedJson = structuredClone(receipts.remoteEvidence);
   const plainDecision = structuredClone(receipts.finalDecisionReceipt);
   assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: plainTypedJson, finalDecisionReceipt: plainDecision, expected: receipts.expected }).mergeAllowed, false);
   assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: receipts.remoteEvidence, finalDecisionReceipt: receipts.finalDecisionReceipt, expected: { ...receipts.expected, testMode: false } }).mergeAllowed, false);
+  assert.throws(() => collectVerifiedGithubEvidence({
+    repository: receipts.expected.repository,
+    runId: 1,
+    headSha: receipts.expected.headSha,
+    checkRuns: [],
+  }), /caller_supplied_github_observation_forbidden/);
+  const modifiedSerialized = structuredClone(receipts.remoteEvidence);
+  modifiedSerialized.runAttempts[0].runAttempt = 2;
+  assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: modifiedSerialized, expected: receipts.expected }).mergeAllowed, false);
+});
+
+test('v132_final_decision_serialized_signature_verification', () => {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const payload = {
+    evidenceType: 'final_decision_authorization',
+    trustClass: 'signed_final_decision_kernel',
+    testMode: false,
+    observationSource: 'final_decision_kernel_verified',
+    authority: V132_FINAL_AUTHORITY,
+    decision: 'allow_merge',
+    decisionId: 'decision:signed:001',
+    repository: 'hiro4649/codex-development-harness',
+    headSha: 'a'.repeat(40),
+    observedAt: '2026-07-10T00:02:00Z',
+    signatureAlgorithm: 'ed25519',
+    signingKeyId: 'self-test-key',
+  };
+  const signature = crypto.sign(null, Buffer.from(canonicalJson(payload)), privateKey).toString('base64');
+  const serialized = { ...payload, signature };
+  serialized.receiptDigest = sha256(canonicalJson(serialized));
+  const verified = verifySignedFinalDecisionReceipt(serialized, { publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }) });
+  const evaluation = deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: verified });
+  assert.equal(evaluation.finalDecisionState, 'authorized');
+  const modified = structuredClone(serialized);
+  modified.headSha = 'b'.repeat(40);
+  assert.equal(deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: modified, expected: { finalDecisionPublicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }) } }).finalDecisionState, 'not_authorized');
 });
 
 test('v132_billing_lock_is_unavailable_not_code_failure', () => {
-  const receipt = collectVerifiedGithubEvidence({
+  const receipt = createFixtureGithubEvidence({
     repository: 'hiro4649/codex-development-harness', headSha: 'a'.repeat(40), runId: 1, runAttempt: 1,
     failureClass: 'account_billing_lock', annotationText: 'account billing lock',
     startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:00:01Z', observedAt: '2026-07-10T00:00:02Z',
-  }, { testMode: true });
+  });
   const state = deriveCanonicalState({ localValidationPassed: true, remoteEvidence: receipt, expected: { testMode: true } });
   assert.equal(state.remoteValidationState, 'unavailable_billing');
   assert.equal(state.remoteFailureClass, 'account_billing_lock');
@@ -188,8 +263,8 @@ test('v132_node_powershell_python_parser_equivalence', () => {
   try {
     const nodeValue = parseJsonStrict(fs.readFileSync(file, 'utf8'));
     const escaped = file.replaceAll("'", "''");
-    const powershell = spawnSync(resolvePowerShell(), ['-NoProfile', '-Command', `$x=Get-Content -Raw '${escaped}' | ConvertFrom-Json; Write-Output ($x.schemaVersion+'|'+$x.nested.value)`], { encoding: 'utf8', windowsHide: true });
-    const python = spawnSync(resolvePython(), ['-c', 'import json,sys; x=json.load(open(sys.argv[1], encoding="utf-8")); print(x["schemaVersion"]+"|"+str(x["nested"]["value"]))', file], { encoding: 'utf8', windowsHide: true });
+    const powershell = countedSpawnSync(resolvePowerShell(), ['-NoProfile', '-Command', `$x=Get-Content -Raw '${escaped}' | ConvertFrom-Json; Write-Output ($x.schemaVersion+'|'+$x.nested.value)`], { encoding: 'utf8', windowsHide: true });
+    const python = countedSpawnSync(resolvePython(), ['-c', 'import json,sys; x=json.load(open(sys.argv[1], encoding="utf-8")); print(x["schemaVersion"]+"|"+str(x["nested"]["value"]))', file], { encoding: 'utf8', windowsHide: true });
     assert.equal(powershell.status, 0, powershell.stderr);
     assert.equal(python.status, 0, python.stderr);
     const expected = `${nodeValue.schemaVersion}|${nodeValue.nested.value}`;
@@ -223,6 +298,15 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   assert.equal(validateStaticRegistry(policy.staticRegistry).classifiedRepositoryCount, 8);
   assert.equal(policy.staticRegistry.find((entry) => entry.repositoryFullName === 'hiro4649/APS-GATE').profileClass, 'lite_action_target');
   assert.equal(policy.dynamicObservationSchema.persistInStaticRegistry, false);
+  for (const manifest of [strictJson('CODEX_SOURCE_HARNESS_MANIFEST.json'), strictJson('docs/process/CODEX_HARNESS_MANIFEST.json'), strictJson('docs/process/CODEX_ACTIVE_POLICY_INDEX.json')]) {
+    assert.equal(manifest.sourceCandidateDisplay, 'HARNESS v1.3.2 Evidence-Converged Lean Core');
+    assert.equal(manifest.targetInstalledState, 'per_repository_dynamic_observation');
+    assert.equal(manifest.targetRolloutState, 'not_started');
+    assert.equal(Object.hasOwn(manifest, 'targetHarnessVersion'), false);
+    assert.equal(Object.hasOwn(manifest, 'operatorTargetHarnessDisplay'), false);
+    assert.equal(Object.hasOwn(manifest, 'installedTargetHarnessVersion'), false);
+  }
+  assert.match(strictJson('docs/process/CODEX_ACTIVE_POLICY_INDEX.json').profiles.target_compatibility_profile_install.profilePurpose, /v1\.3\.2 Compatibility Adapter/);
   assert.ok(compileEffectivePolicy(policy).compactCanonicalBytes <= 8192);
   assert.equal(harnessVersion.activeHarnessVersion, '1.3.2');
   assert.equal(harnessVersion.activeSelfTestSuite, 'v132');
@@ -237,7 +321,8 @@ test('v132_manifest_projection_and_registry_inventory', () => {
 
 test('v132_incremental_validation_resume_and_invalidation', () => {
   const policy = loadV132Policy(ROOT);
-  const args = { repository: 'hiro4649/codex-development-harness', profile: 'source_control_plane', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), changedFiles: ['scripts/codex-v132-self-test.mjs'], policy, registry: policy.staticRegistry, workflowInputs: { 'quality-gate.yml': sha256('workflow-a') } };
+  const changedFiles = ['scripts/codex-v132-self-test.mjs'];
+  const args = { repository: 'hiro4649/codex-development-harness', profile: 'source_control_plane', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), changedFiles, workspaceState: fixtureWorkspaceState(changedFiles), policy, registry: policy.staticRegistry, workflowInputs: { 'quality-gate.yml': sha256('workflow-a') } };
   const first = planIncrementalValidation(args);
   const execution = executeFixturePlan(first);
   assert.equal(execution.status, 'pass', execution.failureCodes.join(','));
@@ -248,7 +333,8 @@ test('v132_incremental_validation_resume_and_invalidation', () => {
   assert.equal(resumed.skippedNodeCount, 7);
   assert.equal(resumed.selectedNodeCount, 3);
   assert.equal(validateResumeReceipt(receipt, { ...args, ...first.digests, headSha: 'c'.repeat(40) }).resumeAllowed, false);
-  const unknown = planIncrementalValidation({ ...args, changedFiles: ['backend/server.ts'] });
+  const unknownPaths = ['backend/server.ts'];
+  const unknown = planIncrementalValidation({ ...args, changedFiles: unknownPaths, workspaceState: fixtureWorkspaceState(unknownPaths, 'unknown') });
   assert.equal(unknown.status, 'full_gate_required');
   assert.equal(unknown.selectedNodeCount, 10);
   assert.throws(() => createValidationReceipt({ plan: first, repository: args.repository, baseSha: args.baseSha, headSha: args.headSha, completedNodeResults: [{ nodeId: 'workspace_identity', status: 'pass', inputDigest: first.selectedNodes[0].inputDigest }] }), /unattested_node/);
@@ -270,6 +356,45 @@ test('v132_incremental_validation_resume_and_invalidation', () => {
   const evidenceB = planIncrementalValidation({ ...args, evidenceReceipt: { receiptDigest: sha256('b') } });
   assert.notEqual(evidenceA.selectedNodes.find((node) => node.nodeId === 'evidence_truth_projection').inputDigest, evidenceB.selectedNodes.find((node) => node.nodeId === 'evidence_truth_projection').inputDigest);
   assert.equal(receipt.completedNodes.every((node) => node.outputDigest === sha256(canonicalJson(node.output))), true);
+});
+
+test('v132_workspace_content_digest_invalidates_same_path_and_untracked', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v132-workspace-'));
+  const runGit = (args) => {
+    const result = countedSpawnSync('git', args, { cwd: dir, encoding: 'utf8', windowsHide: true });
+    assert.equal(result.status, 0, String(result.stderr || result.stdout));
+    return String(result.stdout || '').trim();
+  };
+  try {
+    runGit(['init']);
+    runGit(['config', 'user.email', 'v132-self-test@example.invalid']);
+    runGit(['config', 'user.name', 'v132-self-test']);
+    fs.mkdirSync(path.join(dir, 'scripts'));
+    fs.writeFileSync(path.join(dir, 'scripts', 'fixture.mjs'), 'export const value = 1;\n');
+    runGit(['add', '.']);
+    runGit(['commit', '-m', 'fixture']);
+    const headSha = runGit(['rev-parse', 'HEAD']);
+    fs.writeFileSync(path.join(dir, 'scripts', 'fixture.mjs'), 'export const value = 2;\n');
+    const firstState = collectWorkspaceState({ repoRoot: dir, baseSha: headSha, headSha, accounting: selfTestAccounting });
+    const policy = loadV132Policy(ROOT);
+    const args = { repository: 'hiro4649/codex-development-harness', baseSha: headSha, headSha, workspaceState: firstState, policy, registry: policy.staticRegistry };
+    const firstPlan = planIncrementalValidation(args);
+    const execution = executeFixturePlan(firstPlan);
+    const receipt = createValidationReceipt({ plan: firstPlan, repository: args.repository, baseSha: headSha, headSha, completedNodeResults: execution.completedNodeResults });
+    fs.writeFileSync(path.join(dir, 'scripts', 'fixture.mjs'), 'export const value = 3;\n');
+    const secondState = collectWorkspaceState({ repoRoot: dir, baseSha: headSha, headSha, accounting: selfTestAccounting });
+    assert.notEqual(secondState.workspaceStateDigest, firstState.workspaceStateDigest);
+    const changedContentPlan = planIncrementalValidation({ ...args, workspaceState: secondState, previousReceipt: receipt });
+    assert.equal(changedContentPlan.receiptValidation.resumeAllowed, false);
+    assert.equal(changedContentPlan.selectedNodeCount, 10);
+    fs.writeFileSync(path.join(dir, 'untracked.txt'), 'new evidence boundary\n');
+    const untrackedState = collectWorkspaceState({ repoRoot: dir, baseSha: headSha, headSha, accounting: selfTestAccounting });
+    assert.notEqual(untrackedState.workspaceStateDigest, secondState.workspaceStateDigest);
+    assert.ok(untrackedState.changedPaths.includes('untracked.txt'));
+    assert.ok(untrackedState.untrackedPaths.includes('untracked.txt'));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('v132_context_cache_envelope_limits', () => {
@@ -319,6 +444,11 @@ test('v132_compatibility_projection_is_active_tuple_neutral', () => {
     const result = runV132CompatibilityCheck({ repoRoot: ROOT, lane });
     assert.equal(result.status, 'pass', `${lane}:${result.reasonCodes.join(',')}`);
     assert.equal(result.historicalSelfTestsExecutedAsActiveTuple, false);
+    assert.equal(result.sourcePresentStatus, 'pass');
+    assert.equal(result.projectionValidStatus, 'pass');
+    assert.equal(result.behaviorInvariantsStatus, 'pass');
+    assert.equal(result.boundedBehaviorInvariantsExecuted, true);
+    assert.equal(result.compatibilityEvidence.every((entry) => entry.executionMode === 'bounded_invariants_under_v132_active_tuple'), true);
   }
 });
 
@@ -348,10 +478,21 @@ test('v132_workflow_runner_accepts_compact_technical_pass', () => {
   process.env.CODEX_SKIP_V132_SELF_TEST = '1';
   try {
     const { report } = runV132SourceQualityGate({ repoRoot: ROOT, diagnostics: false });
+    accountNestedExecution(report);
     const result = evaluateV132CompactWorkflowReport(report, { gateExit: 0 });
     assert.equal(result.status, 'pass', result.failures.join(','));
     assert.equal(result.technicalRequiredCheckPassed, true);
     assert.equal(result.mergeAllowed, false);
+    assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 7 }).status, 'fail');
+    const remoteContradiction = { ...structuredClone(report), remoteValidationState: 'failed', remoteEvidenceStatus: 'fail', technicalMergeEligibility: 'eligible' };
+    assert.equal(evaluateV132CompactWorkflowReport(remoteContradiction, { gateExit: 0 }).status, 'fail');
+    const unobservedEligible = { ...structuredClone(report), remoteValidationState: 'not_observed', technicalMergeEligibility: 'eligible' };
+    assert.equal(evaluateV132CompactWorkflowReport(unobservedEligible, { gateExit: 0 }).status, 'fail');
+    const unauthorizedEvidence = { ...structuredClone(report), finalDecisionState: 'authorized', finalDecisionEvidenceStatus: 'not_observed' };
+    assert.equal(evaluateV132CompactWorkflowReport(unauthorizedEvidence, { gateExit: 0 }).status, 'fail');
+    const missingExecutionAttestation = structuredClone(report);
+    missingExecutionAttestation.executionAttestationStatus.status = 'fail';
+    assert.equal(evaluateV132CompactWorkflowReport(missingExecutionAttestation, { gateExit: 0 }).status, 'fail');
   } finally {
     if (previous === undefined) delete process.env.CODEX_SKIP_V132_SELF_TEST;
     else process.env.CODEX_SKIP_V132_SELF_TEST = previous;
@@ -363,6 +504,7 @@ test('v132_source_gate_end_to_end_local_only', () => {
   process.env.CODEX_SKIP_V132_SELF_TEST = '1';
   try {
     const { report, exitCode } = runV132SourceQualityGate({ repoRoot: ROOT, diagnostics: false });
+    accountNestedExecution(report);
     assert.equal(exitCode, 0, report.blockerCodes.join(','));
     assert.equal(report.status, 'pass');
     assert.equal(report.localValidationState, 'passed');
@@ -373,6 +515,11 @@ test('v132_source_gate_end_to_end_local_only', () => {
     assert.equal(report.targetMutationCount, 0);
     assert.equal(report.remoteUnobservedPassCount, 0);
     assert.equal(report.longRunBudgetStatus.status, 'within_budget');
+    assert.ok(report.executionAccounting.subprocessExecutions > 0);
+    assert.equal(report.executionAccounting.toolCalls, report.executionAccounting.subprocessExecutions);
+    assert.equal(report.validationCoverage.nodeCount, 10);
+    assert.match(report.validationCoverage.coverageDigest, /^sha256:[a-f0-9]{64}$/);
+    assert.equal(report.validationCoverage.derivation, 'executed_or_attested_node_output_digests');
     assert.ok(Buffer.byteLength(JSON.stringify(report), 'utf8') <= 8192);
   } finally {
     if (previous === undefined) delete process.env.CODEX_SKIP_V132_SELF_TEST;
@@ -393,6 +540,7 @@ const report = {
   targetMutationCount: 0,
   PerformanceTrack: 'deferred',
   superiorityClaimState: 'not_proven',
+  executionAccounting: selfTestAccounting,
 };
 
 console.log(JSON.stringify(report, null, 2));

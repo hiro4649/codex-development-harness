@@ -9,10 +9,12 @@
   "activationAllowed": false,
   "targetRolloutAllowed": false,
   "remoteValidationState": "not_observed",
+  "sourceCandidateDisplay": "HARNESS v1.3.2 Evidence-Converged Lean Core",
+  "targetInstalledState": "per_repository_dynamic_observation",
+  "targetRolloutState": "not_started",
   "canonicalPolicySource": "docs/process/CODEX_V132_POLICY.json",
-  "canonicalPolicyDigest": "sha256:fc3709d4088fb0f51cdd842ec938cd42de8b365e8b11f74d9cc8596128ce550e",
-  "compiledEffectivePolicyDigest": "sha256:424507050d55f2870787a953f8203b991d8924b4a925c036af20144f2c6b530a",
-  "targetHarnessVersion": "1.2.9",
+  "canonicalPolicyDigest": "sha256:47e5c2ddb65873803c83e9a927a6305cfdf5bbcf84393f0fb278ff403fd1d408",
+  "compiledEffectivePolicyDigest": "sha256:5a840199f71a77728cdb3ef9eb1aea59fef6a94e61a9441a6df9f7f79315830d",
   "evidenceSchemaVersion": 6,
   "profileTemplateVersion": "1.1.6",
   "futureHarnessArtifact": false,
@@ -27,7 +29,6 @@
     "v127": "readable_compatibility"
   },
   "sourceOnlyRelease": true,
-  "targetRollout": "not_started",
   "representativeRealPrValidation": "not_started",
   "representativeRealPrReplay": "required",
   "representativeLivePrValidation": "required",
@@ -1102,9 +1103,6 @@
       }
     ]
   },
-  "sourceCoreTargetRolloutState": "not_started",
-  "installedTargetHarnessVersion": "1.2.9",
-  "operatorTargetHarnessDisplay": "HARNESS v1.3.2 Evidence-Converged Lean Core",
   "compatibilityAdapterInternalHarnessVersion": "1.2.9",
   "targetManifestOverlay": {
     "projectionKind": "profile_install_template_only",

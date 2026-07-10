@@ -6,7 +6,7 @@ CODEX_QUALITY_HARNESS_FILE v1.3.2
 Active local Source candidate: HARNESS v1.3.2 Evidence-Converged Lean Core.
 Provisional base: v1.3.1 PR head; rebase and exact-head remote validation are required after v1.3.1 merges.
 Compatibility Adapter: v1.3.2 internal evidence; debt due now has an explicit disposition.
-Target harness display: unchanged until a separately authorized rollout.
+Source candidate display: HARNESS v1.3.2 Evidence-Converged Lean Core; target installed state is observed per repository and is never inferred from this Source candidate.
 Target rollout: not started; Performance deferred.
 Final Decision authority: v1.1.8_final_decision_kernel.
 Active policy pointer: docs/process/CODEX_HARNESS_MANIFEST.json.

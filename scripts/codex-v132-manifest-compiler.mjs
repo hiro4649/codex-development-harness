@@ -191,7 +191,9 @@ export function compileEffectivePolicy(policy = {}) {
     previousVersion: tuple.previousVersion,
     finalAuthority: tuple.finalAuthority,
     authorityCreated: tuple.authorityCreated,
-    targetRollout: tuple.targetRollout,
+    sourceCandidateDisplay: policy.sourceCandidateDisplay,
+    targetInstalledState: policy.targetInstalledState,
+    targetRolloutState: tuple.targetRolloutState,
     targetMutationCount: tuple.targetMutationCount,
     performanceTrack: policy.performanceTrack,
     registryDigest: sha256(canonicalJson(policy.staticRegistry || [])),
@@ -226,7 +228,9 @@ export function compileManifestProjection(policy = {}) {
     activationAllowed: false,
     targetRolloutAllowed: false,
     remoteValidationState: 'not_observed',
-    targetRollout: 'not_started',
+    sourceCandidateDisplay: policy.sourceCandidateDisplay,
+    targetInstalledState: policy.targetInstalledState,
+    targetRolloutState: policy.targetRolloutState,
     finalAuthority: V132_FINAL_AUTHORITY,
     authorityCreated: false,
     targetMutationCount: 0,
@@ -256,6 +260,10 @@ function validateDeepActiveSemantics(value, pathName, reasons, inheritedHistoric
       reasons.push(`stale_source_activation:${childPath}:${child}`);
     }
     if (!historical && key === 'activationReady' && child === true) reasons.push(`stale_activation_ready_true:${childPath}`);
+    if (!historical && key === 'targetHarnessVersion') reasons.push(`global_target_harness_version_forbidden:${childPath}`);
+    if (!historical && ['installedTargetHarnessVersion', 'operatorTargetHarnessDisplay', 'sourceCoreTargetRolloutState'].includes(key)) {
+      reasons.push(`ambiguous_target_display_field_forbidden:${childPath}`);
+    }
     if (!historical && key === 'theme' && /v1\.3\.0|Goal-Contracted|Operational Convergence/i.test(String(child))) {
       reasons.push(`stale_active_theme:${childPath}`);
     }
@@ -276,6 +284,9 @@ function validateDeepActiveSemantics(value, pathName, reasons, inheritedHistoric
 export function validateManifestSemanticConvergence(manifest, label = 'manifest') {
   const reasons = [];
   validateDeepActiveSemantics(manifest, label, reasons);
+  if (manifest.sourceCandidateDisplay !== 'HARNESS v1.3.2 Evidence-Converged Lean Core') reasons.push(`${label}_source_candidate_display_invalid`);
+  if (manifest.targetInstalledState !== 'per_repository_dynamic_observation') reasons.push(`${label}_target_installed_state_invalid`);
+  if (manifest.targetRolloutState !== 'not_started') reasons.push(`${label}_target_rollout_state_invalid`);
   return { status: reasons.length ? 'fail' : 'pass', reasonCodes: [...new Set(reasons)], authority: false };
 }
 

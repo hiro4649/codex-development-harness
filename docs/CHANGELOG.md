@@ -14,3 +14,9 @@
 - Replaced the declared CI estimate with workflow-file parsing and reduced automatic Source topology to four jobs across two workflows.
 - Kept remote evidence `not_observed`; did not merge, activate, or roll out targets.
 - Did not change any target, product, runtime, package, lockfile, deploy, wallet, RPC, or secret file.
+- Bound resume receipts to complete workspace content and added same-path and untracked invalidation fixtures.
+- Added GitHub API re-observation, multi-run required-check binding, artifact digest enforcement, and Ed25519 Final Decision verification.
+- Rejected nonzero gate exits and contradictory canonical state in the workflow adapter.
+- Executed bounded rollback/compatibility invariants under the v1.3.2 tuple.
+- Separated Source candidate display from per-repository target-installed observation.
+- Replaced node-count approximations with direct subprocess/write/retry/checkpoint accounting and output-digest benchmark coverage.

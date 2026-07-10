@@ -8,19 +8,6 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { canonicalJson, sha256 } from './codex-v132-evidence-truth.mjs';
 
-const REQUIRED_INVARIANTS = Object.freeze([
-  'workspace_identity',
-  'manifest_compile_and_semantic_convergence',
-  'registered_repository_inventory',
-  'changed_file_classification',
-  'dependency_closure',
-  'active_self_test',
-  'rollback_compatibility_chain',
-  'canonical_evidence_state',
-  'bounded_output',
-  'ci_cost_topology',
-]);
-
 function parseArgs(argv) {
   return Object.fromEntries(argv.slice(2).filter((arg) => arg.startsWith('--')).map((arg) => {
     const [key, ...parts] = arg.slice(2).split('=');
@@ -68,12 +55,16 @@ function runGate(repoRoot, expectedVersion) {
     executedNodes: report.executedNodeCount ?? null,
     reusedNodes: report.reusedNodeCount ?? null,
     activeSelfTestStatus: activeStatus,
+    validationCoverageDigest: report.validationCoverage?.coverageDigest || null,
+    validationCoverageNodeCount: report.validationCoverage?.nodeCount ?? null,
+    validationCoverageDerivedFromOutputDigests: report.validationCoverage?.derivation === 'executed_or_attested_node_output_digests',
   };
 }
 
 function measure(repoRoot, expectedVersion, warmupCount, measuredRunCount) {
   const warmups = Array.from({ length: warmupCount }, () => runGate(repoRoot, expectedVersion));
   const measured = Array.from({ length: measuredRunCount }, () => runGate(repoRoot, expectedVersion));
+  const coverageDigests = [...new Set(measured.map((run) => run.validationCoverageDigest).filter(Boolean))];
   return {
     repositoryRootDigest: sha256(path.resolve(repoRoot)),
     headSha: git(repoRoot, ['rev-parse', 'HEAD']),
@@ -83,30 +74,43 @@ function measure(repoRoot, expectedVersion, warmupCount, measuredRunCount) {
     measured,
     p50Ms: percentile50(measured.map((run) => run.elapsedMs)),
     p50OutputBytes: percentile50(measured.map((run) => run.outputBytes)),
+    coverageAttestation: {
+      state: coverageDigests.length === 1 && measured.every((run) => run.validationCoverageDerivedFromOutputDigests)
+        ? 'attested_from_executed_output_digests'
+        : 'not_attested_from_executed_output_digests',
+      coverageDigest: coverageDigests.length === 1 ? coverageDigests[0] : null,
+      observedDigestCount: coverageDigests.length,
+    },
   };
 }
 
 export function runComparableBenchmark({ baselineRoot, candidateRoot = process.cwd(), warmupCount = 1, measuredRunCount = 5 } = {}) {
   if (!baselineRoot) throw new Error('baseline_root_required');
-  const requiredInvariantDigest = sha256(canonicalJson(REQUIRED_INVARIANTS));
   const baseline = measure(path.resolve(baselineRoot), '1.3.1', warmupCount, measuredRunCount);
   const candidate = measure(path.resolve(candidateRoot), '1.3.2', warmupCount, measuredRunCount);
+  const comparableCoverage = baseline.coverageAttestation.state === 'attested_from_executed_output_digests'
+    && candidate.coverageAttestation.state === 'attested_from_executed_output_digests'
+    && baseline.coverageAttestation.coverageDigest === candidate.coverageAttestation.coverageDigest;
   const outputReductionPercent = baseline.p50OutputBytes
     ? Number(((1 - candidate.p50OutputBytes / baseline.p50OutputBytes) * 100).toFixed(4))
     : null;
   return {
     schemaVersion: '1.3.2',
-    benchmarkType: 'same_machine_shared_required_invariant_set',
+    benchmarkType: 'same_machine_output_and_coverage_attested_runs',
     machineProfile: { platform: process.platform, arch: process.arch, release: os.release(), cpuCount: os.cpus().length, totalMemoryBytes: os.totalmem() },
     nodeVersion: process.version,
     baseSha: baseline.headSha,
     headSha: candidate.headSha,
-    requiredInvariants: REQUIRED_INVARIANTS,
-    requiredInvariantDigest,
-    baseline: { ...baseline, requiredInvariantDigest },
-    candidate: { ...candidate, requiredInvariantDigest },
-    outputSizeReduction: { state: 'proven_same_serialization_boundary', percent: outputReductionPercent },
-    relativePerformanceClaimState: 'not_proven_until_remote_equivalent_coverage',
+    coverageComparison: {
+      state: comparableCoverage ? 'equivalent_executed_output_digest_coverage' : 'not_comparable',
+      baselineDigest: baseline.coverageAttestation.coverageDigest,
+      candidateDigest: candidate.coverageAttestation.coverageDigest,
+      derivedFromExecutedOutputDigests: true,
+    },
+    baseline,
+    candidate,
+    outputSizeReduction: { state: 'proven_same_command_output_boundary', percent: outputReductionPercent },
+    relativePerformanceClaimState: comparableCoverage ? 'not_proven_until_remote_equivalent_coverage' : 'not_proven_missing_equivalent_executed_coverage',
     superiorityClaimState: 'not_proven',
     authorityCreated: false,
   };

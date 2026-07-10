@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Review the HARNESS v1.3.2 P0 Integration Closure on Draft PR #165. After v1.3.1 is accepted on main, rebase and repeat exact validation. Do not activate or roll out targets.
+Review the HARNESS v1.3.2 Final Truth Closure on Draft PR #165. After v1.3.1 is accepted on main, rebase and repeat exact validation. Do not activate or roll out targets.
 
 ## Required Files
 
@@ -18,10 +18,10 @@ Review the HARNESS v1.3.2 P0 Integration Closure on Draft PR #165. After v1.3.1 
 
 ## Implementation Strategy
 
-1. Review execution attestations, trusted collector boundary, compact workflow adapter, and compatibility projection in PR #165.
+1. Review content-addressed resume, API-reobserved evidence, signed Final Decision verification, canonical workflow adapter, and behavioral compatibility invariants in PR #165.
 2. Keep remote state `not_observed` while jobs cannot start; do not rerun blindly.
 3. After v1.3.1 main acceptance, rebase and recompute policy digests if inputs change.
-4. Run strict projections, compact/full gates, workflow adapter, compatibility lanes, parser equivalence, and comparable benchmark.
+4. Run strict projections, compact/full gates, workflow adapter negative fixtures, compatibility lanes, parser equivalence, and the coverage-attested comparable benchmark.
 5. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
 
 ## Expected Risks

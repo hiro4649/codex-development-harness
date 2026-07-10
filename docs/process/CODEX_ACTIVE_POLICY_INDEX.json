@@ -8,9 +8,12 @@
   "activationAllowed": false,
   "targetRolloutAllowed": false,
   "remoteValidationState": "not_observed",
+  "sourceCandidateDisplay": "HARNESS v1.3.2 Evidence-Converged Lean Core",
+  "targetInstalledState": "per_repository_dynamic_observation",
+  "targetRolloutState": "not_started",
   "canonicalPolicySource": "docs/process/CODEX_V132_POLICY.json",
-  "canonicalPolicyDigest": "sha256:fc3709d4088fb0f51cdd842ec938cd42de8b365e8b11f74d9cc8596128ce550e",
-  "compiledEffectivePolicyDigest": "sha256:424507050d55f2870787a953f8203b991d8924b4a925c036af20144f2c6b530a",
+  "canonicalPolicyDigest": "sha256:47e5c2ddb65873803c83e9a927a6305cfdf5bbcf84393f0fb278ff403fd1d408",
+  "compiledEffectivePolicyDigest": "sha256:5a840199f71a77728cdb3ef9eb1aea59fef6a94e61a9441a6df9f7f79315830d",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
   "purpose": "Bound md and skill reads by task profile while preserving active authority.",
@@ -151,7 +154,7 @@
       "mdFilesReadMax": 4,
       "selectedSkillsMax": 2,
       "thirdSkillAllowed": false,
-      "profilePurpose": "v1.3.0 Compatibility Adapter scoped target profile install instructions only",
+      "profilePurpose": "v1.3.2 Compatibility Adapter scoped profile-install template only; never active target authority",
       "activeOperatorAuthority": false,
       "authority": "internal_compatibility_adapter_reference_only",
       "compatibilityReferenceReads": {
@@ -333,7 +336,6 @@
   "candidateSelfTestStatusKey": "v132SelfTestStatus",
   "candidateActivationState": "local_source_candidate",
   "sourceActivation": "forbidden_until_v131_main_and_exact_head_remote_pass",
-  "targetRollout": "not_started",
   "finalAuthority": "v1.1.8_final_decision_kernel",
   "versionAuthority": {
     "v132": "local_source_candidate",
@@ -382,7 +384,6 @@
       "affectsTargetRollout": false
     }
   },
-  "targetHarnessVersion": "1.2.9",
   "authorityCreated": false,
   "legacySelfTestSuites": {
     "v131": "immediate_rollback",
@@ -702,9 +703,6 @@
       }
     ]
   },
-  "sourceCoreTargetRolloutState": "not_started",
-  "installedTargetHarnessVersion": "1.2.9",
-  "operatorTargetHarnessDisplay": "HARNESS v1.3.2 Evidence-Converged Lean Core",
   "compatibilityAdapterInternalHarnessVersion": "1.2.9",
   "targetManifestOverlay": {
     "projectionKind": "profile_install_template_only",

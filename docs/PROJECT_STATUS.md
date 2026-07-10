@@ -22,10 +22,15 @@ Draft PR #165 is open from the pushed v1.3.2 branch. PR #164 remains its provisi
 - Replaced planner-only completion with schema-validated node execution attestations and truthful resume receipts.
 - Added an opaque trusted GitHub collector boundary and compact workflow-runner adapter.
 - Converged automatic Source validation to one quality job plus three v1.3.2-aware compatibility jobs.
+- Replaced path-only resume identity with a content-addressed workspace digest covering committed, staged, unstaged, untracked, mode, and symlink state.
+- Replaced caller-fed production evidence constructors with GitHub API re-observation and signed Final Decision verification paths.
+- Centralized workflow canonical-state consistency, nonzero gate-exit rejection, and mandatory execution/budget/no-mutation attestations.
+- Added bounded behavioral compatibility invariants and removed ambiguous global target-installed display fields.
+- Connected long-run accounting and benchmark coverage to measured execution evidence.
 
 ## Remaining Work
 
-- Review the P0 integration closure on Draft PR #165.
+- Review the Final Truth Closure on Draft PR #165.
 - Rebase onto accepted v1.3.1 main later and rerun exact local and remote checks.
 - Target installation remains a later, separately authorized project.
 
@@ -39,10 +44,11 @@ Draft PR #165 is open from the pushed v1.3.2 branch. PR #164 remains its provisi
 - Rebase may change policy or workflow inputs and invalidate all resume receipts.
 - Branch protection may still expect historical checks; the replacement workflow preserves three aggregate check names but remote confirmation is pending.
 - Parser equivalence depends on Node, PowerShell, and Python availability in the local verification environment.
+- GitHub artifact content digests and the exact four-check set require runner-step evidence before release acceptance.
 
 ## Test Status
 
-Local self-test, compact gate, workflow adapter, parser equivalence, and compatibility lanes pass. Benchmark timing remains non-authoritative and does not establish superiority.
+Local self-test, content-change/untracked resume fixtures, compact/full gates, workflow adapter negative fixtures, parser equivalence, and behavioral compatibility lanes pass. Benchmark timing remains non-authoritative and does not establish superiority.
 
 ## CI Status
 
