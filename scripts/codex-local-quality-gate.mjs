@@ -14601,8 +14601,8 @@ async function main() {
   if (manifestForAutoMode?.activeHarnessVersion === '1.3.2'
     && process.env.CODEX_HARNESS_SOURCE_REPO === '1'
     && process.env.CODEX_HARNESS_MODE === 'core') {
-    const { runV132SourceQualityGate } = await import('./codex-v132-quality-gate.mjs');
-    const result = runV132SourceQualityGate({ repoRoot: process.cwd() });
+    const { runV132SourceQualityGateWithDurableEvidence } = await import('./codex-v132-quality-gate.mjs');
+    const result = await runV132SourceQualityGateWithDurableEvidence({ repoRoot: process.cwd() });
     if (process.env.CODEX_QUALITY_REPORT === 'json') fs.writeSync(1, `${JSON.stringify(result.report)}\n`);
     else {
       console.log('== Codex v1.3.2 compact Source quality gate ==');

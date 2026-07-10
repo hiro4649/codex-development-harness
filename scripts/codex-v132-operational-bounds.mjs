@@ -187,14 +187,31 @@ export function validateCompatibilityDebtClosure(entries = []) {
 }
 
 export function evaluateLongRunBudget(usage = {}) {
+  const measured = {
+    wallClockMinutes: Number(usage.wallClockMinutes || 0),
+    toolCalls: Number(usage.subprocessExecutions ?? usage.toolCalls ?? 0),
+    subprocessExecutions: Number(usage.subprocessExecutions ?? usage.toolCalls ?? 0),
+    fileWrites: Number(usage.fileWrites || 0),
+    retryPerNode: Number(usage.retryPerNode || 0),
+    retryCount: Number(usage.retryCount || 0),
+    checkpointCount: Number(usage.checkpointCount || 0),
+    parallelAgentRuntime: Number(usage.parallelAgentRuntime || 0),
+  };
   const exceeded = Object.entries({
     wallClockMinutes: V132_LONG_RUN_BUDGET.wallClockMinutesMax,
     toolCalls: V132_LONG_RUN_BUDGET.toolCallsMax,
     fileWrites: V132_LONG_RUN_BUDGET.fileWritesMax,
     retryPerNode: V132_LONG_RUN_BUDGET.retryPerNodeMax,
     parallelAgentRuntime: V132_LONG_RUN_BUDGET.parallelAgentRuntimeMax,
-  }).filter(([key, limit]) => Number(usage[key] || 0) > limit).map(([key]) => `${key}_budget_exceeded`);
-  return { status: exceeded.length ? 'checkpoint_stop' : 'within_budget', reasonCodes: exceeded, budget: V132_LONG_RUN_BUDGET, authority: false };
+  }).filter(([key, limit]) => measured[key] > limit).map(([key]) => `${key}_budget_exceeded`);
+  return {
+    status: exceeded.length ? 'checkpoint_stop' : 'within_budget',
+    reasonCodes: exceeded,
+    usage: measured,
+    accountingSemantics: 'actual_direct_subprocess_harness_write_retry_checkpoint_counters',
+    budget: V132_LONG_RUN_BUDGET,
+    authority: false,
+  };
 }
 
 function enforceLimit(label, value, maxBytes) {
@@ -281,7 +298,8 @@ export function finalizeCompactOutput(report) {
 }
 
 export function validateFullDiagnostics(value) {
-  return { status: enforceLimit('full_diagnostics', value, V132_OUTPUT_LIMITS.fullDiagnosticsBytes) >= 0 ? 'pass' : 'fail', authority: false };
+  const bytes = enforceLimit('full_diagnostics', value, V132_OUTPUT_LIMITS.fullDiagnosticsBytes);
+  return { status: 'pass', bytes, maxBytes: V132_OUTPUT_LIMITS.fullDiagnosticsBytes, authority: false };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

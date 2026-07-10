@@ -31,9 +31,11 @@ const FORBIDDEN_AUTHORITY_BOOLEAN_KEYS = new Set([
 const SHA_RE = /^[a-f0-9]{40}$/;
 const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
 const RFC3339_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
-const TRUSTED_REMOTE_RECEIPTS = new WeakSet();
-const TRUSTED_FINAL_DECISION_RECEIPTS = new WeakSet();
-export const V132_GITHUB_COLLECTOR_VERSION = 'v132-github-collector-1';
+const API_OBSERVED_REMOTE_RECEIPTS = new WeakSet();
+const VERIFIED_FINAL_DECISION_RECEIPTS = new WeakSet();
+const FIXTURE_REMOTE_RECEIPTS = new WeakSet();
+const FIXTURE_FINAL_DECISION_RECEIPTS = new WeakSet();
+export const V132_GITHUB_COLLECTOR_VERSION = 'v132-github-collector-2';
 
 export function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -71,8 +73,15 @@ function uniquePositiveIntegers(values) {
 }
 
 function baseRemoteProjection(remoteValidationState, reasonCodes = []) {
+  const status = reasonCodes.length
+    ? 'fail'
+    : remoteValidationState === 'passed'
+      ? 'pass'
+      : remoteValidationState === 'not_observed'
+        ? 'not_observed'
+        : 'unavailable';
   return {
-    status: reasonCodes.length ? 'fail' : 'pass',
+    status,
     remoteValidationState,
     remoteFailureClass: null,
     sameHeadState: 'not_observed',
@@ -107,20 +116,24 @@ function remoteReceiptPayload(receipt) {
   return payload;
 }
 
-export function collectVerifiedGithubEvidence(observation = {}, { testMode = false } = {}) {
+function buildRemoteReceipt(observation = {}, { testMode = false, observationSource } = {}) {
   const headSha = String(observation.headSha || '').toLowerCase();
   const checkRuns = normalizedCheckRuns(observation.checkRuns, headSha);
   const artifacts = normalizedArtifacts(observation.artifacts);
+  const runIds = (observation.runIds || [observation.runId]).map(Number).filter(Number.isInteger).sort((a, b) => a - b);
+  const runAttempts = (observation.runAttempts || [{ runId: observation.runId, runAttempt: observation.runAttempt }])
+    .map((item) => ({ runId: Number(item.runId), runAttempt: Number(item.runAttempt) }))
+    .sort((a, b) => a.runId - b.runId);
   const receipt = {
     evidenceType: observation.failureClass === 'account_billing_lock' ? 'github_job_not_started' : 'github_required_check_set',
-    trustClass: testMode ? 'verified_fixture_collector' : 'verified_github_collector',
+    trustClass: testMode ? 'explicit_test_fixture' : 'github_api_reobserved',
     testMode,
     collectorVersion: V132_GITHUB_COLLECTOR_VERSION,
     repository: String(observation.repository || ''),
     headSha,
-    runIds: [Number(observation.runId)],
-    runAttempt: Number(observation.runAttempt),
-    observationSource: testMode ? 'explicit_test_collector' : 'github_api_verified_collector',
+    runIds,
+    runAttempts,
+    observationSource,
     startedAt: observation.startedAt,
     completedAt: observation.completedAt,
     observedAt: observation.observedAt,
@@ -133,16 +146,142 @@ export function collectVerifiedGithubEvidence(observation = {}, { testMode = fal
     artifactDigest: sha256(canonicalJson(artifacts)),
   };
   receipt.receiptPayloadDigest = sha256(canonicalJson(remoteReceiptPayload(receipt)));
-  TRUSTED_REMOTE_RECEIPTS.add(receipt);
   return receipt;
 }
 
-export function collectTrustedFinalDecision(observation = {}, { testMode = false } = {}) {
+async function githubJson(url, token) {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'codex-v132-evidence-collector',
+    },
+  });
+  if (!response.ok) throw new Error(`github_api_observation_failed:${response.status}:${url}`);
+  return response.json();
+}
+
+async function observeGithubRun({ repository, runId, token } = {}) {
+  if (!/^[-A-Za-z0-9_.]+\/[-A-Za-z0-9_.]+$/.test(String(repository || ''))) throw new Error('github_repository_invalid');
+  if (!Number.isInteger(Number(runId)) || Number(runId) < 1) throw new Error('github_run_id_invalid');
+  if (!token) throw new Error('github_token_required_for_verified_observation');
+  const root = `https://api.github.com/repos/${repository}/actions/runs/${Number(runId)}`;
+  const run = await githubJson(root, token);
+  const jobs = await githubJson(`${root}/jobs?per_page=100`, token);
+  const artifacts = await githubJson(`${root}/artifacts?per_page=100`, token);
+  return {
+    repository,
+    headSha: run.head_sha,
+    runId: Number(run.id),
+    runAttempt: Number(run.run_attempt),
+    startedAt: run.run_started_at || run.created_at,
+    completedAt: run.updated_at,
+    observedAt: new Date().toISOString(),
+    conclusion: run.conclusion,
+    checkRuns: (jobs.jobs || []).map((job) => ({
+      checkRunId: Number(job.id),
+      name: job.name,
+      conclusion: job.conclusion,
+      headSha: run.head_sha,
+    })),
+    artifacts: (artifacts.artifacts || []).filter((artifact) => artifact.expired !== true).map((artifact) => ({
+      artifactId: Number(artifact.id),
+      name: artifact.name,
+      sizeInBytes: Number(artifact.size_in_bytes),
+      contentDigest: artifact.digest || '',
+    })),
+  };
+}
+
+export function collectVerifiedGithubEvidence(request = {}) {
+  const callerObservationFields = ['headSha', 'runAttempt', 'checkRuns', 'artifacts', 'conclusion', 'startedAt', 'completedAt', 'observedAt'];
+  if (callerObservationFields.some((field) => Object.hasOwn(request, field))) {
+    throw new Error('caller_supplied_github_observation_forbidden');
+  }
+  const allowedRequestFields = new Set(['repository', 'runId', 'runIds', 'token']);
+  if (Object.keys(request).some((field) => !allowedRequestFields.has(field))) throw new Error('github_collector_request_field_forbidden');
+  const runIds = [...new Set((request.runIds || [request.runId]).map(Number))].filter((runId) => Number.isInteger(runId) && runId > 0);
+  if (!runIds.length || runIds.length > 4) throw new Error('github_run_id_set_invalid');
+  return Promise.all(runIds.map((runId) => observeGithubRun({ repository: request.repository, runId, token: request.token }))).then((observations) => {
+    const headSha = observations[0].headSha;
+    const observation = {
+      repository: request.repository,
+      headSha,
+      runIds: observations.map((item) => item.runId),
+      runAttempts: observations.map((item) => ({ runId: item.runId, runAttempt: item.runAttempt })),
+      startedAt: observations.map((item) => item.startedAt).sort()[0],
+      completedAt: observations.map((item) => item.completedAt).sort().at(-1),
+      observedAt: new Date().toISOString(),
+      conclusion: observations.every((item) => item.conclusion === 'success') ? 'success' : 'failure',
+      checkRuns: observations.flatMap((item) => item.checkRuns),
+      artifacts: observations.flatMap((item) => item.artifacts),
+    };
+    const receipt = buildRemoteReceipt(observation, { testMode: false, observationSource: 'github_api_verified_collector' });
+    API_OBSERVED_REMOTE_RECEIPTS.add(receipt);
+    return receipt;
+  });
+}
+
+export function reobserveSerializedGithubEvidence(receipt, request = {}) {
+  const serialized = structuredClone(receipt);
+  return collectVerifiedGithubEvidence({
+    repository: serialized.repository,
+    runIds: serialized.runIds,
+    token: request.token,
+  }).then((observed) => {
+    const comparable = (value) => ({
+      evidenceType: value.evidenceType,
+      repository: value.repository,
+      headSha: value.headSha,
+      runIds: value.runIds,
+      runAttempts: value.runAttempts,
+      startedAt: value.startedAt,
+      completedAt: value.completedAt,
+      conclusion: value.conclusion,
+      failureClass: value.failureClass,
+      annotationDigest: value.annotationDigest,
+      checkRuns: value.checkRuns,
+      artifacts: value.artifacts,
+      requiredCheckSetDigest: value.requiredCheckSetDigest,
+      artifactDigest: value.artifactDigest,
+    });
+    if (canonicalJson(comparable(serialized)) !== canonicalJson(comparable(observed))) {
+      throw new Error('serialized_github_receipt_reobservation_mismatch');
+    }
+    return observed;
+  });
+}
+
+export function createFixtureGithubEvidence(observation = {}) {
+  const receipt = buildRemoteReceipt(observation, { testMode: true, observationSource: 'explicit_test_collector' });
+  FIXTURE_REMOTE_RECEIPTS.add(receipt);
+  return receipt;
+}
+
+function finalDecisionPayload(receipt) {
+  const { signature: ignoredSignature, receiptDigest: ignoredDigest, ...payload } = receipt;
+  return payload;
+}
+
+export function verifySignedFinalDecisionReceipt(serializedReceipt, { publicKeyPem } = {}) {
+  const receipt = structuredClone(serializedReceipt);
+  if (!publicKeyPem) throw new Error('final_decision_public_key_required');
+  if (receipt.signatureAlgorithm !== 'ed25519' || typeof receipt.signature !== 'string') throw new Error('final_decision_signature_metadata_invalid');
+  const payload = finalDecisionPayload(receipt);
+  const valid = crypto.verify(null, Buffer.from(canonicalJson(payload)), publicKeyPem, Buffer.from(receipt.signature, 'base64'));
+  if (!valid) throw new Error('final_decision_signature_invalid');
+  if (receipt.receiptDigest !== sha256(canonicalJson({ ...payload, signature: receipt.signature }))) throw new Error('final_decision_digest_invalid');
+  VERIFIED_FINAL_DECISION_RECEIPTS.add(receipt);
+  return receipt;
+}
+
+export function createFixtureFinalDecision(observation = {}) {
   const receipt = {
     evidenceType: 'final_decision_authorization',
-    trustClass: testMode ? 'verified_fixture_final_decision' : 'verified_final_decision_kernel',
-    testMode,
-    observationSource: testMode ? 'explicit_test_final_decision' : 'final_decision_kernel_verified',
+    trustClass: 'explicit_test_fixture',
+    testMode: true,
+    observationSource: 'explicit_test_final_decision',
     authority: observation.authority,
     decision: observation.decision,
     decisionId: String(observation.decisionId || ''),
@@ -151,7 +290,7 @@ export function collectTrustedFinalDecision(observation = {}, { testMode = false
     observedAt: observation.observedAt,
   };
   receipt.receiptDigest = sha256(canonicalJson(receipt));
-  TRUSTED_FINAL_DECISION_RECEIPTS.add(receipt);
+  FIXTURE_FINAL_DECISION_RECEIPTS.add(receipt);
   return receipt;
 }
 
@@ -159,7 +298,9 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   if (receipt == null) return baseRemoteProjection('not_observed');
 
   const reasons = collectForbiddenBooleanClaims(receipt).map((path) => `authority_boolean_forbidden:${path}`);
-  if (!TRUSTED_REMOTE_RECEIPTS.has(receipt)) reasons.push('remote_receipt_not_trusted');
+  const productionTrusted = API_OBSERVED_REMOTE_RECEIPTS.has(receipt) && receipt.testMode === false;
+  const fixtureTrusted = FIXTURE_REMOTE_RECEIPTS.has(receipt) && receipt.testMode === true && expected.testMode === true;
+  if (!productionTrusted && !fixtureTrusted) reasons.push('remote_receipt_not_api_observed_or_reobserved');
   if (receipt.testMode === true && expected.testMode !== true) reasons.push('fixture_receipt_forbidden_outside_test_mode');
   if (receipt.collectorVersion !== V132_GITHUB_COLLECTOR_VERSION) reasons.push('remote_collector_version_invalid');
   if (receipt.receiptPayloadDigest !== sha256(canonicalJson(remoteReceiptPayload(receipt)))) reasons.push('remote_receipt_payload_digest_invalid');
@@ -176,7 +317,12 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   if (!SHA_RE.test(headSha)) reasons.push('remote_head_sha_invalid');
   if (expectedHeadSha && headSha !== expectedHeadSha) reasons.push('remote_head_sha_mismatch');
   if (!uniquePositiveIntegers(receipt.runIds)) reasons.push('remote_run_ids_invalid');
-  if (!Number.isInteger(receipt.runAttempt) || receipt.runAttempt < 1) reasons.push('remote_run_attempt_invalid');
+  const runAttempts = Array.isArray(receipt.runAttempts) ? receipt.runAttempts : [];
+  if (runAttempts.length !== receipt.runIds?.length
+    || runAttempts.some((item) => !receipt.runIds.includes(item.runId) || !Number.isInteger(item.runAttempt) || item.runAttempt < 1)
+    || new Set(runAttempts.map((item) => item.runId)).size !== runAttempts.length) reasons.push('remote_run_attempts_invalid');
+  if (expected.runId && !receipt.runIds?.includes(Number(expected.runId))) reasons.push('remote_run_id_mismatch');
+  if (expected.runAttempt && runAttempts.find((item) => item.runId === Number(expected.runId || receipt.runIds?.[0]))?.runAttempt !== Number(expected.runAttempt)) reasons.push('remote_run_attempt_mismatch');
   if (!['github_api_verified_collector', 'explicit_test_collector'].includes(receipt.observationSource)) reasons.push('remote_observation_source_invalid');
   if (!validRfc3339(receipt.startedAt) || !validRfc3339(receipt.completedAt) || !validRfc3339(receipt.observedAt)) reasons.push('remote_timestamp_invalid');
   if (validRfc3339(receipt.startedAt) && validRfc3339(receipt.completedAt)
@@ -202,6 +348,9 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     if (check.conclusion !== 'success') reasons.push(`check_${index}_conclusion_not_success`);
     if (String(check.headSha || '').toLowerCase() !== headSha) reasons.push(`check_${index}_head_mismatch`);
   }
+  const observedCheckNames = [...new Set(checkRuns.map((check) => check.name))].sort();
+  const expectedCheckNames = [...new Set(expected.requiredCheckNames || [])].sort();
+  if (expectedCheckNames.length && canonicalJson(observedCheckNames) !== canonicalJson(expectedCheckNames)) reasons.push('required_check_name_set_mismatch');
   if (!DIGEST_RE.test(requiredCheckSetDigest)) reasons.push('required_check_set_digest_invalid');
   const derivedCheckSetDigest = sha256(canonicalJson(normalizedCheckRuns(checkRuns, headSha).map(({ checkRunId, name, conclusion, headSha: checkHeadSha }) => ({ checkRunId, name, conclusion, headSha: checkHeadSha }))));
   if (requiredCheckSetDigest !== derivedCheckSetDigest) reasons.push('required_check_set_digest_not_derived');
@@ -210,6 +359,14 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   const derivedArtifactDigest = sha256(canonicalJson(normalizedArtifacts(receipt.artifacts)));
   if (artifactDigest !== derivedArtifactDigest) reasons.push('artifact_digest_not_derived');
   if (expectedArtifactDigest && artifactDigest !== expectedArtifactDigest) reasons.push('artifact_digest_mismatch');
+  const artifacts = Array.isArray(receipt.artifacts) ? receipt.artifacts : [];
+  if (!artifacts.length) reasons.push('artifact_records_missing');
+  for (const [index, artifact] of artifacts.entries()) {
+    if (!Number.isInteger(artifact.artifactId) || artifact.artifactId < 1) reasons.push(`artifact_${index}_id_invalid`);
+    if (!artifact.name || typeof artifact.name !== 'string') reasons.push(`artifact_${index}_name_invalid`);
+    if (!Number.isInteger(artifact.sizeInBytes) || artifact.sizeInBytes < 0) reasons.push(`artifact_${index}_size_invalid`);
+    if (!DIGEST_RE.test(String(artifact.contentDigest || ''))) reasons.push(`artifact_${index}_content_digest_missing`);
+  }
   if (receipt.conclusion !== 'success') reasons.push('remote_conclusion_not_success');
 
   let remoteValidationState = 'passed';
@@ -236,7 +393,17 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
 export function evaluateFinalDecisionReceipt(receipt, expected = {}) {
   if (receipt == null) return { status: 'not_observed', finalDecisionState: 'not_authorized', reasonCodes: [], createsAuthority: false };
   const reasons = collectForbiddenBooleanClaims(receipt).map((path) => `authority_boolean_forbidden:${path}`);
-  if (!TRUSTED_FINAL_DECISION_RECEIPTS.has(receipt)) reasons.push('final_decision_receipt_not_trusted');
+  let productionTrusted = VERIFIED_FINAL_DECISION_RECEIPTS.has(receipt) && receipt.testMode === false;
+  if (!productionTrusted && receipt.testMode !== true && expected.finalDecisionPublicKeyPem) {
+    try {
+      verifySignedFinalDecisionReceipt(receipt, { publicKeyPem: expected.finalDecisionPublicKeyPem });
+      productionTrusted = true;
+    } catch {
+      productionTrusted = false;
+    }
+  }
+  const fixtureTrusted = FIXTURE_FINAL_DECISION_RECEIPTS.has(receipt) && receipt.testMode === true && expected.testMode === true;
+  if (!productionTrusted && !fixtureTrusted) reasons.push('final_decision_receipt_not_signature_verified');
   if (receipt.testMode === true && expected.testMode !== true) reasons.push('fixture_final_decision_forbidden_outside_test_mode');
   if (!['final_decision_kernel_verified', 'explicit_test_final_decision'].includes(receipt.observationSource)) reasons.push('final_decision_observation_source_invalid');
   if (receipt.evidenceType !== 'final_decision_authorization') reasons.push('final_decision_receipt_type_invalid');
@@ -258,6 +425,37 @@ export function evaluateFinalDecisionReceipt(receipt, expected = {}) {
   };
 }
 
+export function validateCanonicalState(state = {}) {
+  const reasons = [];
+  const local = state.localValidationState;
+  const remote = state.remoteValidationState;
+  const technical = state.technicalMergeEligibility;
+  const finalDecision = state.finalDecisionState;
+  const remoteEvidenceStatus = state.remoteEvidence?.status || state.remoteEvidenceStatus || 'not_observed';
+  const sameHeadState = state.remoteEvidence?.sameHeadState || state.sameHeadState || 'not_observed';
+  const requiredCheckSetState = state.remoteEvidence?.requiredCheckSetState || state.requiredCheckSetState || 'not_observed';
+  const artifactIntegrityState = state.remoteEvidence?.artifactIntegrityState || state.artifactIntegrityState || 'not_observed';
+  const finalDecisionEvidenceStatus = state.finalDecisionEvidence?.status || state.finalDecisionEvidenceStatus || 'not_observed';
+  if (!['passed', 'failed'].includes(local)) reasons.push('canonical_local_validation_state_invalid');
+  if (!V132_REMOTE_VALIDATION_STATES.includes(remote)) reasons.push('canonical_remote_validation_state_invalid');
+  if (!['eligible', 'blocked'].includes(technical)) reasons.push('canonical_technical_eligibility_invalid');
+  if (!['authorized', 'not_authorized'].includes(finalDecision)) reasons.push('canonical_final_decision_state_invalid');
+  if (typeof state.mergeAllowed !== 'boolean') reasons.push('canonical_merge_allowed_invalid');
+
+  const technicalConjunction = local === 'passed'
+    && remote === 'passed'
+    && remoteEvidenceStatus === 'pass'
+    && sameHeadState === 'matched'
+    && requiredCheckSetState === 'matched'
+    && artifactIntegrityState === 'verified';
+  if ((technical === 'eligible') !== technicalConjunction) reasons.push('canonical_technical_eligibility_contradiction');
+  if (finalDecision === 'authorized' && finalDecisionEvidenceStatus !== 'pass') reasons.push('canonical_final_decision_without_trusted_evidence');
+  const mergeConjunction = technicalConjunction && finalDecision === 'authorized' && finalDecisionEvidenceStatus === 'pass';
+  if (state.mergeAllowed !== mergeConjunction) reasons.push('canonical_merge_allowed_contradiction');
+  if (remote !== 'passed' && technical === 'eligible') reasons.push('canonical_nonpassed_remote_technically_eligible');
+  return { status: reasons.length ? 'fail' : 'pass', reasonCodes: [...new Set(reasons)], authorityCreated: false };
+}
+
 export function deriveCanonicalState({
   localValidationPassed = false,
   remoteEvidence = null,
@@ -275,7 +473,7 @@ export function deriveCanonicalState({
     ? 'eligible'
     : 'blocked';
   const mergeAllowed = technicalMergeEligibility === 'eligible' && finalDecision.finalDecisionState === 'authorized';
-  return {
+  const state = {
     localValidationState,
     remoteValidationState: remote.remoteValidationState,
     remoteFailureClass: remote.remoteFailureClass,
@@ -291,8 +489,17 @@ export function deriveCanonicalState({
     finalDecisionEvidence: finalDecision,
     authorityCreated: false,
   };
+  state.canonicalStateValidation = validateCanonicalState(state);
+  return state;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  console.log(JSON.stringify(deriveCanonicalState({ localValidationPassed: true }), null, 2));
+  const runId = Number(process.argv.find((arg) => arg.startsWith('--github-run-id='))?.slice(16) || 0);
+  const repository = process.argv.find((arg) => arg.startsWith('--repository='))?.slice(13);
+  if (runId) {
+    const receipt = await collectVerifiedGithubEvidence({ repository, runId, token: process.env.GITHUB_TOKEN });
+    console.log(JSON.stringify(receipt, null, 2));
+  } else {
+    console.log(JSON.stringify(deriveCanonicalState({ localValidationPassed: true }), null, 2));
+  }
 }

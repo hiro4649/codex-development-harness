@@ -74,6 +74,7 @@ import { classifyTargetModeCompatibilityStatus } from './codex-v111-token-hard-c
 import { reconcileFinalSafeDecision } from './codex-final-decision-kernel.mjs';
 import { V119_OPERATOR_STATUS_KEYS } from './codex-orchestration-capsule.mjs';
 import { buildV128CompactQualityGateSafeSummary } from './codex-v128-token-compression.mjs';
+import { validateCanonicalState } from './codex-v132-evidence-truth.mjs';
 
 
 
@@ -3424,6 +3425,11 @@ export function evaluateV132CompactWorkflowReport(report, options = {}) {
   if (report?.v132SelfTestStatus?.status !== 'pass') failures.push('v132_self_test_not_pass');
   if (report?.manifestProjectionStatus?.status !== 'pass') failures.push('v132_manifest_projection_not_pass');
   if (report?.compatibilityDebtStatus?.status !== 'pass') failures.push('v132_compatibility_debt_not_pass');
+  if (report?.executionAttestationStatus?.status !== 'pass') failures.push('v132_execution_attestation_not_pass');
+  if (report?.longRunBudgetStatus?.status !== 'within_budget') failures.push('v132_long_run_budget_not_within_budget');
+  if (report?.automaticTargetMutation !== false) failures.push('v132_automatic_target_mutation_invalid');
+  if (report?.remoteUnobservedPassCount !== 0) failures.push('v132_remote_unobserved_pass_count_invalid');
+  if (report?.superiorityClaimState !== 'not_proven') failures.push('v132_superiority_claim_invalid');
   if (report?.authorityCreated !== false) failures.push('v132_authority_created');
   if (report?.targetMutationCount !== 0) failures.push('v132_target_mutation_detected');
   const metrics = report?.outputMetrics || {};
@@ -3431,10 +3437,10 @@ export function evaluateV132CompactWorkflowReport(report, options = {}) {
     if (!Number.isInteger(metrics[field]) || metrics[field] < 0 || metrics[field] > limit) failures.push(`v132_${field}_invalid`);
   }
   if (!Number.isInteger(metrics.topLevelFieldCount) || metrics.topLevelFieldCount > 64) failures.push('v132_top_level_field_count_invalid');
-  if (report?.mergeAllowed === true && !(report.remoteValidationState === 'passed'
-    && report.technicalMergeEligibility === 'eligible' && report.finalDecisionState === 'authorized')) {
-    failures.push('v132_merge_allowed_without_canonical_authorization');
-  }
+  const canonical = validateCanonicalState(report);
+  if (canonical.status !== 'pass') failures.push(...canonical.reasonCodes.map((reason) => `v132_${reason}`));
+  const gateExit = Number(options.gateExit || 0);
+  if (!Number.isInteger(gateExit) || gateExit !== 0) failures.push(`v132_gate_exit_nonzero:${gateExit}`);
   if (Object.hasOwn(report || {}, 'mergeReady')) failures.push('v132_legacy_mergeReady_forbidden');
   return {
     schemaVersion: '1.3.2',
@@ -3444,7 +3450,7 @@ export function evaluateV132CompactWorkflowReport(report, options = {}) {
     mergeAllowed: report?.mergeAllowed === true,
     remoteValidationState: report?.remoteValidationState || 'not_observed',
     failures,
-    gateExit: Number(options.gateExit || 0),
+    gateExit,
     authorityCreated: false,
     safeSummaryOnly: true,
   };
