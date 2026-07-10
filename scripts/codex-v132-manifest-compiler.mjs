@@ -3,9 +3,41 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { canonicalJson, sha256, V132_FINAL_AUTHORITY, V132_VERSION } from './codex-v132-evidence-truth.mjs';
 
 const WHITESPACE = /\s/;
+
+export const V132_CANDIDATE_LIFECYCLE_STATES = Object.freeze([
+  'draft',
+  'local_validated',
+  'remote_unavailable',
+  'remote_validated',
+  'activation_eligible',
+  'active',
+  'superseded',
+]);
+
+export function validateCandidateLifecycleTransition(fromState, toState, policy = {}) {
+  const configuredStates = policy.candidateLifecycle?.states || [];
+  const transitions = policy.candidateLifecycle?.allowedTransitions || {};
+  const reasons = [];
+  if (!V132_CANDIDATE_LIFECYCLE_STATES.includes(fromState) || !configuredStates.includes(fromState)) reasons.push('candidate_lifecycle_from_invalid');
+  if (!V132_CANDIDATE_LIFECYCLE_STATES.includes(toState) || !configuredStates.includes(toState)) reasons.push('candidate_lifecycle_to_invalid');
+  if (!(transitions[fromState] || []).includes(toState)) reasons.push('candidate_lifecycle_transition_forbidden');
+  if (toState === 'active' && policy.activationAllowed !== true) reasons.push('candidate_activation_not_allowed');
+  return { status: reasons.length ? 'fail' : 'pass', reasonCodes: reasons, authorityCreated: false };
+}
+
+export function deriveCandidateLifecycleState({ localValidationState, remoteValidationState, technicalMergeEligibility, finalDecisionState, active = false, superseded = false } = {}) {
+  if (superseded) return 'superseded';
+  if (active) return 'active';
+  if (localValidationState !== 'passed') return 'draft';
+  if (['unavailable_billing', 'unavailable_pre_runner'].includes(remoteValidationState)) return 'remote_unavailable';
+  if (remoteValidationState !== 'passed') return 'local_validated';
+  if (technicalMergeEligibility === 'eligible' && finalDecisionState === 'authorized') return 'activation_eligible';
+  return 'remote_validated';
+}
 
 class StrictJsonScanner {
   constructor(text) {
@@ -180,6 +212,12 @@ export function compileEffectivePolicy(policy = {}) {
     schemaVersion: V132_VERSION,
     marker: `CODEX_QUALITY_HARNESS_FILE v${V132_VERSION}`,
     name: policy.name,
+    acceptedMainVersion: policy.acceptedMainVersion,
+    acceptedMainSha: policy.acceptedMainSha,
+    developmentParentVersion: policy.developmentParentVersion,
+    candidateVersion: policy.candidateVersion,
+    executionHarnessVersion: policy.executionHarnessVersion,
+    candidateLifecycleState: policy.candidateLifecycleState,
     provisionalBaseSha: policy.provisionalBaseSha,
     requiresRebaseAfterV131Merge: policy.requiresRebaseAfterV131Merge === true,
     activationAllowed: policy.activationAllowed === true,
@@ -196,6 +234,8 @@ export function compileEffectivePolicy(policy = {}) {
     targetRolloutState: tuple.targetRolloutState,
     targetMutationCount: tuple.targetMutationCount,
     performanceTrack: policy.performanceTrack,
+    routineRequiredReads: policy.routineReadContract?.requiredReads || [],
+    fullManifestDeferredTo: policy.routineReadContract?.fullManifestDeferredTo || [],
     registryDigest: sha256(canonicalJson(policy.staticRegistry || [])),
     registryStatus,
     policyDigest: sha256(canonicalJson(policy)),
@@ -213,6 +253,12 @@ export function compileManifestProjection(policy = {}) {
     schemaVersion: V132_VERSION,
     harnessVersion: V132_VERSION,
     sourceHarnessVersion: V132_VERSION,
+    acceptedMainVersion: policy.acceptedMainVersion,
+    acceptedMainSha: policy.acceptedMainSha,
+    developmentParentVersion: policy.developmentParentVersion,
+    candidateVersion: policy.candidateVersion,
+    executionHarnessVersion: policy.executionHarnessVersion,
+    candidateLifecycleState: policy.candidateLifecycleState,
     activeHarnessVersion: V132_VERSION,
     activeSelfTestSuite: 'v132',
     activeSelfTestStatusKey: 'v132SelfTestStatus',
@@ -287,6 +333,10 @@ export function validateManifestSemanticConvergence(manifest, label = 'manifest'
   if (manifest.sourceCandidateDisplay !== 'HARNESS v1.3.2 Evidence-Converged Lean Core') reasons.push(`${label}_source_candidate_display_invalid`);
   if (manifest.targetInstalledState !== 'per_repository_dynamic_observation') reasons.push(`${label}_target_installed_state_invalid`);
   if (manifest.targetRolloutState !== 'not_started') reasons.push(`${label}_target_rollout_state_invalid`);
+  if (manifest.acceptedMainVersion !== '1.3.0') reasons.push(`${label}_accepted_main_version_invalid`);
+  if (manifest.developmentParentVersion !== '1.3.1') reasons.push(`${label}_development_parent_version_invalid`);
+  if (manifest.candidateVersion !== V132_VERSION || manifest.executionHarnessVersion !== V132_VERSION) reasons.push(`${label}_candidate_execution_version_invalid`);
+  if (!V132_CANDIDATE_LIFECYCLE_STATES.includes(manifest.candidateLifecycleState)) reasons.push(`${label}_candidate_lifecycle_state_invalid`);
   return { status: reasons.length ? 'fail' : 'pass', reasonCodes: [...new Set(reasons)], authority: false };
 }
 
@@ -319,7 +369,44 @@ export function loadV132Policy(repoRoot = process.cwd()) {
   return readJsonStrict(path.join(repoRoot, 'docs', 'process', 'CODEX_V132_POLICY.json'));
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+function writeAtomic(file, text) {
+  const temporary = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(temporary, text, { encoding: 'utf8', mode: 0o600 });
+  fs.renameSync(temporary, file);
+}
+
+export function writeManifestProjections(repoRoot = process.cwd()) {
+  const root = path.resolve(repoRoot);
+  const policy = loadV132Policy(root);
+  const projection = compileManifestProjection(policy);
+  const manifestFiles = [
+    'CODEX_SOURCE_HARNESS_MANIFEST.json',
+    'docs/process/CODEX_HARNESS_MANIFEST.json',
+    'docs/process/CODEX_ACTIVE_POLICY_INDEX.json',
+  ];
+  for (const relative of manifestFiles) {
+    const file = path.join(root, relative);
+    const current = readJsonStrict(file);
+    writeAtomic(file, `${JSON.stringify({ ...current, ...projection }, null, 2)}\n`);
+  }
+  const compact = compileEffectivePolicy(policy);
+  const compactText = `${canonicalJson(compact)}\n`;
+  if (Buffer.byteLength(compactText, 'utf8') > Number(policy.routineReadContract?.compactEffectivePolicyBytesMax || 2048)) {
+    throw new Error('compact_effective_policy_byte_limit_exceeded');
+  }
+  const compactPath = path.join(root, 'docs/process/CODEX_EFFECTIVE_POLICY.compact.json');
+  writeAtomic(compactPath, compactText);
+  return {
+    manifestFiles,
+    compactPath: 'docs/process/CODEX_EFFECTIVE_POLICY.compact.json',
+    compactBytes: Buffer.byteLength(compactText, 'utf8'),
+    projectionDigest: sha256(canonicalJson(projection)),
+  };
+}
+
+const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
+if (import.meta.url === invokedPath) {
   const policy = loadV132Policy();
-  console.log(JSON.stringify(compileEffectivePolicy(policy), null, 2));
+  if (process.argv.includes('--write')) console.log(JSON.stringify(writeManifestProjections(), null, 2));
+  else console.log(JSON.stringify(compileEffectivePolicy(policy), null, 2));
 }

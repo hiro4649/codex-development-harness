@@ -12,8 +12,8 @@
   "targetInstalledState": "per_repository_dynamic_observation",
   "targetRolloutState": "not_started",
   "canonicalPolicySource": "docs/process/CODEX_V132_POLICY.json",
-  "canonicalPolicyDigest": "sha256:47e5c2ddb65873803c83e9a927a6305cfdf5bbcf84393f0fb278ff403fd1d408",
-  "compiledEffectivePolicyDigest": "sha256:5a840199f71a77728cdb3ef9eb1aea59fef6a94e61a9441a6df9f7f79315830d",
+  "canonicalPolicyDigest": "sha256:5845a6ffb60792c675add0c9ed76cf7c70332b9e9ca07d9b0b2d8ff8293d489e",
+  "compiledEffectivePolicyDigest": "sha256:ce39e2e9538bc4b9448d0067be07d25a24b5eb0a34d5a4a210c9a8c073373338",
   "indexVersion": "1",
   "indexPath": "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
   "purpose": "Bound md and skill reads by task profile while preserving active authority.",
@@ -27,10 +27,11 @@
     "routine": {
       "requiredReads": [
         "AGENTS.md",
-        "docs/process/CODEX_HARNESS_MANIFEST.json",
-        "compiled_instruction_envelope"
+        "docs/process/CODEX_EFFECTIVE_POLICY.compact.json",
+        "task_delta_capsule"
       ],
       "deferredReads": [
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
         "docs/process/CODEX_V130_SPEC.md",
         "docs/process/CODEX_V129_SPEC.md",
         "docs/process/CODEX_V128_SPEC.md",
@@ -164,10 +165,11 @@
   },
   "requiredReads": [
     "AGENTS.md",
-    "docs/process/CODEX_HARNESS_MANIFEST.json",
-    "compiled_instruction_envelope"
+    "docs/process/CODEX_EFFECTIVE_POLICY.compact.json",
+    "task_delta_capsule"
   ],
   "deferredReads": [
+    "docs/process/CODEX_HARNESS_MANIFEST.json",
     "docs/process/CODEX_V130_SPEC.md",
     "docs/process/CODEX_V129_SPEC.md",
     "docs/process/CODEX_V128_SPEC.md",
@@ -848,5 +850,11 @@
     "remoteValidationState": "not_observed",
     "automaticTargetMutation": false,
     "authorityCreated": false
-  }
+  },
+  "acceptedMainVersion": "1.3.0",
+  "acceptedMainSha": "be06232adbe9072456bc9a36a1b298f5ba900470",
+  "developmentParentVersion": "1.3.1",
+  "candidateVersion": "1.3.2",
+  "executionHarnessVersion": "1.3.2",
+  "candidateLifecycleState": "local_validated"
 }

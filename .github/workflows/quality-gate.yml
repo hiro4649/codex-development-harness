@@ -53,7 +53,16 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '20'
+      - name: Detect v1.3.2 Source lean path
+        id: v132-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          active="$(node -e "const fs=require('fs');try{const m=JSON.parse(fs.readFileSync('CODEX_SOURCE_HARNESS_MANIFEST.json','utf8'));process.stdout.write(m.candidateVersion==='1.3.2'&&m.executionHarnessVersion==='1.3.2'?'true':'false')}catch{process.stdout.write('false')}")"
+          echo "active=$active" >> "$GITHUB_OUTPUT"
+          if [ "$active" = "true" ]; then echo "CODEX_V132_SOURCE_LEAN=1" >> "$GITHUB_ENV"; fi
       - name: Prepare v1.2.8 validation cache key
+        if: steps.v132-source.outputs.active != 'true'
         id: v128-cache-key
         shell: bash
         run: |
@@ -64,14 +73,16 @@ jobs:
           echo "primary-key=${primary_key}" >> "$GITHUB_OUTPUT"
           echo "restore-prefix=${restore_prefix}" >> "$GITHUB_OUTPUT"
       - name: Restore v1.2.8 validation cache
+        if: steps.v132-source.outputs.active != 'true'
         id: v128-cache-restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ${{ runner.temp }}/codex-v128-validation-cache
           key: ${{ steps.v128-cache-key.outputs.primary-key }}
           restore-keys: |
             ${{ steps.v128-cache-key.outputs.restore-prefix }}
       - name: Record v1.2.8 validation cache restore state
+        if: steps.v132-source.outputs.active != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -91,6 +102,7 @@ jobs:
           echo "CODEX_V128_CACHE_MATCHED_KEY_DIGEST=$digest" >> "$GITHUB_ENV"
           echo "CODEX_V128_CACHE_SAVE_STATE=planned_run_scoped_primary_key" >> "$GITHUB_ENV"
       - name: Install root dependencies if present
+        if: steps.v132-source.outputs.active != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -98,6 +110,7 @@ jobs:
             npm install --no-package-lock
           fi
       - name: Install monorepo dependencies if present
+        if: steps.v132-source.outputs.active != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -120,7 +133,7 @@ jobs:
         run: |
           node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat.json" || true
       - name: Prepare target product verification
-        if: always()
+        if: ${{ always() && steps.v132-source.outputs.active != 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -138,7 +151,7 @@ jobs:
           JSON
           # safe artifact upload is locked by the upload-artifact path list.
       - name: Generate remote product evidence
-        if: always()
+        if: ${{ always() && steps.v132-source.outputs.active != 'true' }}
         shell: bash
         env:
           CODEX_EVENT_NAME: ${{ github.event_name }}
@@ -214,6 +227,13 @@ jobs:
             export CODEX_PROFILE_COMPAT_MODE=off
             export CODEX_SKIP_NPM="${CODEX_SKIP_NPM:-1}"
           fi
+          if [ "${CODEX_V132_SOURCE_LEAN:-0}" = "1" ]; then
+            gate_exit=0
+            node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-quality-gate.json" || gate_exit=$?
+            cp "$RUNNER_TEMP/codex-quality-gate.json" codex-v132-safe-summary.json
+            node scripts/codex-workflow-quality-runner.mjs --report "$RUNNER_TEMP/codex-quality-gate.json" --gate-exit "$gate_exit"
+            exit 0
+          fi
           node scripts/codex-workflow-preflight.mjs > "$RUNNER_TEMP/codex-workflow-preflight.json"
           gate_exit=0
           node scripts/codex-local-quality-gate.mjs > "$RUNNER_TEMP/codex-quality-gate.json" || gate_exit=$?
@@ -221,8 +241,8 @@ jobs:
           CODEX_LIFEBOAT_PHASE=quality_gate_failed CODEX_LAST_KNOWN_GATE=local_quality_gate node scripts/codex-artifact-lifeboat.mjs > "$RUNNER_TEMP/codex-artifact-lifeboat-after-gate.json" || true
           node scripts/codex-workflow-quality-runner.mjs --report "$RUNNER_TEMP/codex-quality-gate.json" --gate-exit "$gate_exit"
       - name: Save v1.2.8 validation cache
-        if: always()
-        uses: actions/cache/save@v4
+        if: ${{ always() && steps.v132-source.outputs.active != 'true' }}
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ${{ runner.temp }}/codex-v128-validation-cache
           key: ${{ steps.v128-cache-key.outputs.primary-key }}
@@ -231,6 +251,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [ -f "$RUNNER_TEMP/codex-quality-gate.json" ] && REPORT="$RUNNER_TEMP/codex-quality-gate.json" node -e "const fs=require('fs');const r=JSON.parse(fs.readFileSync(process.env.REPORT,'utf8'));process.exit(r.schemaVersion==='1.3.2'?0:1)"; then
+            REPORT="$RUNNER_TEMP/codex-quality-gate.json" node --input-type=module -e "import fs from 'node:fs'; import { buildV132WorkflowSummaryLines } from './scripts/codex-workflow-quality-runner.mjs'; const report=JSON.parse(fs.readFileSync(process.env.REPORT,'utf8')); process.stdout.write(buildV132WorkflowSummaryLines(report).join('\\n')+'\\n');" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           node - <<'NODE' >> "$GITHUB_STEP_SUMMARY"
           const fs = require('fs');
           function readJson(file) {
@@ -390,10 +414,11 @@ jobs:
           NODE
       - name: Upload safe quality artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: codex-quality-gate-safe-artifacts
           path: |
+            codex-v132-safe-summary.json
             codex-quality-gate-safe-summary.json
             codex-orchestration-capsule.safe.json
             codex-worker-proof.safe.json

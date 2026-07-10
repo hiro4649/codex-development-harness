@@ -48,6 +48,14 @@ function runGate(repoRoot, expectedVersion) {
   const report = JSON.parse(result.stdout.replace(/^\uFEFF/, ''));
   const activeStatus = expectedVersion === '1.3.2' ? report.v132SelfTestStatus?.status : report.v131SelfTestStatus?.status;
   if (report.status !== 'pass' || activeStatus !== 'pass') throw new Error(`${expectedVersion}_invariant_gate_not_pass`);
+  const safetyInvariantProjection = {
+    status: report.status,
+    activeSelfTestStatus: activeStatus,
+    authorityCreated: report.authorityCreated ?? false,
+    targetMutationCount: Number(report.targetMutationCount || 0),
+    PerformanceTrack: report.PerformanceTrack || report.performanceTrack?.state || null,
+    superiorityClaimState: report.superiorityClaimState || null,
+  };
   return {
     elapsedMs: Number(elapsedMs.toFixed(2)),
     outputBytes: Buffer.byteLength(result.stdout.trim(), 'utf8'),
@@ -58,6 +66,8 @@ function runGate(repoRoot, expectedVersion) {
     validationCoverageDigest: report.validationCoverage?.coverageDigest || null,
     validationCoverageNodeCount: report.validationCoverage?.nodeCount ?? null,
     validationCoverageDerivedFromOutputDigests: report.validationCoverage?.derivation === 'executed_or_attested_node_output_digests',
+    safetyInvariantProjection,
+    safetyInvariantDigest: sha256(canonicalJson(safetyInvariantProjection)),
   };
 }
 
@@ -94,6 +104,15 @@ export function runComparableBenchmark({ baselineRoot, candidateRoot = process.c
   const outputReductionPercent = baseline.p50OutputBytes
     ? Number(((1 - candidate.p50OutputBytes / baseline.p50OutputBytes) * 100).toFixed(4))
     : null;
+  const safetyParityPassed = [...baseline.measured, ...candidate.measured].every((run) => {
+    const value = run.safetyInvariantProjection;
+    return value.status === 'pass'
+      && value.activeSelfTestStatus === 'pass'
+      && value.authorityCreated === false
+      && value.targetMutationCount === 0
+      && value.PerformanceTrack === 'deferred'
+      && value.superiorityClaimState === 'not_proven';
+  });
   return {
     schemaVersion: '1.3.2',
     benchmarkType: 'same_machine_output_and_coverage_attested_runs',
@@ -110,6 +129,12 @@ export function runComparableBenchmark({ baselineRoot, candidateRoot = process.c
     baseline,
     candidate,
     outputSizeReduction: { state: 'proven_same_command_output_boundary', percent: outputReductionPercent },
+    legacyShadowOracleStatus: {
+      status: safetyParityPassed ? 'pass' : 'fail',
+      mode: 'v131_full_gate_shadow_only',
+      activeTupleAuthority: false,
+      invariantSet: ['local_gate_pass', 'active_self_test_pass', 'authority_not_created', 'target_not_mutated', 'performance_deferred', 'superiority_not_proven'],
+    },
     relativePerformanceClaimState: comparableCoverage ? 'not_proven_until_remote_equivalent_coverage' : 'not_proven_missing_equivalent_executed_coverage',
     superiorityClaimState: 'not_proven',
     authorityCreated: false,

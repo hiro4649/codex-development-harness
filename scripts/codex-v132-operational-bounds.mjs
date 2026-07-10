@@ -143,7 +143,7 @@ export function inspectWorkflowTopology(repoRoot = process.cwd()) {
     workflowNames: automatic.map((workflow) => workflow.file),
     triggerReasons: automatic.map((workflow) => `${workflow.file}:pull_request`),
     manualRunsRequired: 0,
-    confidence: 'parsed_from_workflow_files',
+    confidence: 'constrained_static_workflow_analysis',
     workflows,
   };
 }

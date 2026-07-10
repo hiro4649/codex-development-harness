@@ -4,6 +4,12 @@
   "name": "HARNESS v1.3.2 Evidence-Converged Lean Core",
   "normativePolicySource": true,
   "purpose": "derive truthful evidence, run deterministic deltas, resume exact work, and bound operational output without creating authority",
+  "acceptedMainVersion": "1.3.0",
+  "acceptedMainSha": "be06232adbe9072456bc9a36a1b298f5ba900470",
+  "developmentParentVersion": "1.3.1",
+  "candidateVersion": "1.3.2",
+  "executionHarnessVersion": "1.3.2",
+  "candidateLifecycleState": "local_validated",
   "provisionalBaseSha": "35fbdd0e7075701516de3b2de722b3b7014f1dbf",
   "requiresRebaseAfterV131Merge": true,
   "activationAllowed": false,
@@ -12,6 +18,27 @@
   "sourceCandidateDisplay": "HARNESS v1.3.2 Evidence-Converged Lean Core",
   "targetInstalledState": "per_repository_dynamic_observation",
   "targetRolloutState": "not_started",
+  "candidateLifecycle": {
+    "states": [
+      "draft",
+      "local_validated",
+      "remote_unavailable",
+      "remote_validated",
+      "activation_eligible",
+      "active",
+      "superseded"
+    ],
+    "allowedTransitions": {
+      "draft": ["local_validated", "superseded"],
+      "local_validated": ["remote_unavailable", "remote_validated", "superseded"],
+      "remote_unavailable": ["local_validated", "remote_validated", "superseded"],
+      "remote_validated": ["activation_eligible", "local_validated", "superseded"],
+      "activation_eligible": ["active", "local_validated", "superseded"],
+      "active": ["superseded"],
+      "superseded": []
+    },
+    "candidateMaySelfActivate": false
+  },
   "intendedSourceTuple": {
     "activeHarnessVersion": "1.3.2",
     "activeSelfTestSuite": "v132",
@@ -69,12 +96,9 @@
     "localPassBecomesRemotePass": false,
     "prBodyIsEvidence": false,
     "requiredObservationSource": "github_api_verified_collector",
-    "requiredCheckNames": [
-      "aggregate contract",
-      "quality-gate",
-      "v129-shadow-aggregate",
-      "v130-shadow-aggregate"
-    ],
+    "requiredCheckTrustSource": "github_branch_protection_or_ruleset_observation",
+    "artifactContractTrustSource": "accepted_main_trust_root",
+    "workflowContractTrustSource": "accepted_main_trust_root",
     "trustedCollectorRequired": true,
     "serializedReceiptRetainsTrust": false,
     "serializedRemoteReceiptAcceptance": "github_api_reobservation_required",
@@ -83,6 +107,28 @@
     "receiptPayloadDigestRecomputed": true,
     "createsAuthority": false
   },
+  "trustRootContract": {
+    "path": "docs/process/CODEX_V132_TRUST_ROOT.json",
+    "source": "accepted_main_github_api_only",
+    "candidateControlledTrustForbidden": true,
+    "bootstrapState": "required_after_owner_merge",
+    "finalDecisionKey": {
+      "algorithm": "ed25519",
+      "requiredBindings": [
+        "signingKeyId",
+        "publicKeyFingerprint",
+        "repository",
+        "exactHeadSha",
+        "decisionId",
+        "observedAt",
+        "receiptDigest",
+        "signature"
+      ]
+    },
+    "keyRotationStates": ["stable", "rotation_pending"],
+    "revokedKeyIdsRequired": true,
+    "currentCandidateCanAuthorize": false
+  },
   "manifestCompiler": {
     "state": "active",
     "normativeSource": "docs/process/CODEX_V132_POLICY.json",
@@ -90,7 +136,7 @@
       "CODEX_SOURCE_HARNESS_MANIFEST.json",
       "docs/process/CODEX_HARNESS_MANIFEST.json",
       "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
-      "compact_effective_policy"
+      "docs/process/CODEX_EFFECTIVE_POLICY.compact.json"
     ],
     "rejectExactDuplicateKeys": true,
     "rejectCaseFoldDuplicateKeys": true,
@@ -247,6 +293,20 @@
     "skillsMcpToolsLazyLoad": true,
     "providerNeutral": true
   },
+  "routineReadContract": {
+    "requiredReads": [
+      "AGENTS.md",
+      "docs/process/CODEX_EFFECTIVE_POLICY.compact.json",
+      "task_delta_capsule"
+    ],
+    "fullManifestDeferredTo": [
+      "architect_audit",
+      "manifest_conflict",
+      "compatibility_failure",
+      "release_review"
+    ],
+    "compactEffectivePolicyBytesMax": 2048
+  },
   "outputLimits": {
     "defaultCompactJsonBytes": 8192,
     "decisionCapsuleBytes": 2048,
@@ -329,7 +389,7 @@
   },
   "ciCostPlanner": {
     "state": "workflow_file_parser",
-    "confidence": "parsed_from_workflow_files",
+    "confidence": "constrained_static_workflow_analysis",
     "heavyPullRequestTriggers": [
       "opened",
       "synchronize",

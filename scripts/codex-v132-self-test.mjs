@@ -23,11 +23,13 @@ import {
 } from './codex-v132-evidence-truth.mjs';
 import {
   compileEffectivePolicy,
+  deriveCandidateLifecycleState,
   loadV132Policy,
   parseJsonStrict,
   readJsonStrict,
   validateManifestProjections,
   validateStaticRegistry,
+  validateCandidateLifecycleTransition,
 } from './codex-v132-manifest-compiler.mjs';
 import {
   buildContextCacheEnvelope,
@@ -51,9 +53,9 @@ import {
   validateCompatibilityDebtClosure,
   V132_OUTPUT_LIMITS,
 } from './codex-v132-operational-bounds.mjs';
-import { evaluateWorkspaceIdentity, repositoryFromRemote, runV132SourceQualityGate } from './codex-v132-quality-gate.mjs';
+import { evaluateObservedWorkspaceScope, evaluateWorkspaceIdentity, repositoryFromRemote, runV132SourceQualityGate } from './codex-v132-quality-gate.mjs';
 import { runV132CompatibilityCheck } from './codex-v132-compatibility-check.mjs';
-import { evaluateV132CompactWorkflowReport } from './codex-workflow-quality-runner.mjs';
+import { buildV132WorkflowSummaryLines, evaluateV132CompactWorkflowReport } from './codex-workflow-quality-runner.mjs';
 import * as harnessVersion from './codex-harness-version.mjs';
 
 const ROOT = process.cwd();
@@ -373,6 +375,13 @@ test('v132_workspace_identity_origin_and_top_level_fail_closed', () => {
   assert.equal(evaluateWorkspaceIdentity({ ...common, remote: 'https://github.com/hiro4649/codex-development-harness', repository: 'hiro4649/codex-development-harness', gitTopLevel: os.tmpdir() }).status, 'fail');
 });
 
+test('v132_observed_workspace_dirty_and_product_mutation_fail_closed', () => {
+  assert.equal(evaluateObservedWorkspaceScope({ worktreeState: 'clean' }, 0).status, 'pass');
+  assert.equal(evaluateObservedWorkspaceScope({ worktreeState: 'dirty' }, 0).status, 'fail');
+  assert.equal(evaluateObservedWorkspaceScope({ worktreeState: 'clean' }, 1).status, 'fail');
+  assert.equal(evaluateObservedWorkspaceScope({ worktreeState: 'dirty' }, 0, { allowDirtyFixture: true }).status, 'pass');
+});
+
 test('v132_manifest_strict_duplicate_collision_rejection', () => {
   assert.throws(() => parseJsonStrict('{"a":1,"a":2}'), /exact_duplicate_key/);
   assert.throws(() => parseJsonStrict('{"A":1,"a":2}'), /case_fold_duplicate_key/);
@@ -399,7 +408,7 @@ test('v132_node_powershell_python_parser_equivalence', () => {
 });
 
 test('v132_actual_manifests_parser_equivalence', () => {
-  for (const relative of ['docs/process/CODEX_V132_POLICY.json', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json']) {
+  for (const relative of ['docs/process/CODEX_V132_POLICY.json', 'docs/process/CODEX_EFFECTIVE_POLICY.compact.json', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json']) {
     const file = path.join(ROOT, relative);
     const nodeDigest = sha256(canonicalJson(parseJsonStrict(fs.readFileSync(file, 'utf8'))));
     const powershellDigest = sha256(canonicalJson(parseThroughPowerShell(file)));
@@ -428,11 +437,23 @@ test('v132_manifest_projection_and_registry_inventory', () => {
     assert.equal(Object.hasOwn(manifest, 'targetHarnessVersion'), false);
     assert.equal(Object.hasOwn(manifest, 'operatorTargetHarnessDisplay'), false);
     assert.equal(Object.hasOwn(manifest, 'installedTargetHarnessVersion'), false);
+    assert.equal(manifest.acceptedMainVersion, '1.3.0');
+    assert.equal(manifest.developmentParentVersion, '1.3.1');
+    assert.equal(manifest.candidateVersion, '1.3.2');
+    assert.equal(manifest.executionHarnessVersion, '1.3.2');
+    assert.equal(manifest.candidateLifecycleState, 'local_validated');
   }
   assert.match(strictJson('docs/process/CODEX_ACTIVE_POLICY_INDEX.json').profiles.target_compatibility_profile_install.profilePurpose, /v1\.3\.2 Compatibility Adapter/);
-  assert.ok(compileEffectivePolicy(policy).compactCanonicalBytes <= 8192);
+  const compactPolicyPath = path.join(ROOT, 'docs/process/CODEX_EFFECTIVE_POLICY.compact.json');
+  const compactPolicyText = fs.readFileSync(compactPolicyPath, 'utf8');
+  assert.ok(Buffer.byteLength(compactPolicyText, 'utf8') <= 2048);
+  assert.deepEqual(parseJsonStrict(compactPolicyText), compileEffectivePolicy(policy));
+  assert.deepEqual(policy.routineReadContract.requiredReads, ['AGENTS.md', 'docs/process/CODEX_EFFECTIVE_POLICY.compact.json', 'task_delta_capsule']);
   assert.equal(harnessVersion.activeHarnessVersion, '1.3.2');
   assert.equal(harnessVersion.activeSelfTestSuite, 'v132');
+  assert.equal(harnessVersion.acceptedMainVersion, '1.3.0');
+  assert.equal(harnessVersion.executionHarnessVersion, '1.3.2');
+  assert.equal(harnessVersion.candidateLifecycleState, 'local_validated');
   assert.deepEqual(harnessVersion.versionAuthority, {
     v132: 'local_source_candidate', v131: 'immediate_rollback', v130: 'secondary_rollback',
     v129: 'emergency_legacy_rollback', v128: 'blocking_compatibility', v127: 'readable_compatibility',
@@ -440,6 +461,17 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   const agents = fs.readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8');
   assert.ok(agents.includes('Decision Capsule is a non-authoritative domain projection'));
   assert.ok(agents.includes('Final Decision remains the authority'));
+  assert.ok(agents.includes('docs/process/CODEX_EFFECTIVE_POLICY.compact.json'));
+});
+
+test('v132_candidate_lifecycle_allows_only_explicit_transitions', () => {
+  const policy = loadV132Policy(ROOT);
+  assert.equal(validateCandidateLifecycleTransition('draft', 'local_validated', policy).status, 'pass');
+  assert.equal(validateCandidateLifecycleTransition('local_validated', 'active', policy).status, 'fail');
+  assert.equal(validateCandidateLifecycleTransition('activation_eligible', 'active', policy).status, 'fail');
+  assert.equal(deriveCandidateLifecycleState({ localValidationState: 'failed', remoteValidationState: 'not_observed' }), 'draft');
+  assert.equal(deriveCandidateLifecycleState({ localValidationState: 'passed', remoteValidationState: 'unavailable_billing' }), 'remote_unavailable');
+  assert.equal(deriveCandidateLifecycleState({ localValidationState: 'passed', remoteValidationState: 'passed', technicalMergeEligibility: 'eligible', finalDecisionState: 'authorized' }), 'activation_eligible');
 });
 
 test('v132_incremental_validation_resume_and_invalidation', () => {
@@ -549,7 +581,7 @@ test('v132_ci_cost_and_debt_closure', () => {
   assert.equal(ci.estimatedJobs, 4);
   assert.equal(ci.estimatedWorkflowRuns, 2);
   assert.deepEqual(ci.workflowNames, ['quality-gate.yml', 'v132-compatibility-gate.yml']);
-  assert.equal(ci.confidence, 'parsed_from_workflow_files');
+  assert.equal(ci.confidence, 'constrained_static_workflow_analysis');
   assert.equal(ci.pullRequestEditedTriggersHeavyWorkflow, false);
   assert.equal(planCiCost({ repoRoot: ROOT, duplicateEvidenceRefresh: true }).estimatedJobs, 0);
   const debt = validateCompatibilityDebtClosure([{ mustReviewBefore: '1.3.2', disposition: 'reclassified_with_reason', reason: 'adapter obligation retained', silentExtension: false }]);
@@ -595,18 +627,26 @@ test('v132_workflow_heavy_trigger_excludes_edited', () => {
   const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows/quality-gate.yml'), 'utf8');
   const typesLine = workflow.split(/\r?\n/).find((line) => line.includes('types:')) || '';
   assert.equal(typesLine.includes('edited'), false);
+  assert.ok(workflow.includes('Detect v1.3.2 Source lean path'));
+  assert.ok(workflow.includes('CODEX_V132_SOURCE_LEAN=1'));
+  assert.ok(workflow.includes("steps.v132-source.outputs.active != 'true'"));
+  assert.ok(workflow.includes('codex-v132-safe-summary.json'));
+  assert.equal(/actions\/(?:cache\/(?:restore|save)|upload-artifact)@v\d/.test(workflow), false);
 });
 
 test('v132_workflow_runner_accepts_compact_technical_pass', () => {
   const previous = process.env.CODEX_SKIP_V132_SELF_TEST;
   process.env.CODEX_SKIP_V132_SELF_TEST = '1';
   try {
-    const { report } = runV132SourceQualityGate({ repoRoot: ROOT, diagnostics: false });
+    const { report } = runV132SourceQualityGate({ repoRoot: ROOT, diagnostics: false, allowDirtyFixture: true });
     accountNestedExecution(report);
     const result = evaluateV132CompactWorkflowReport(report, { gateExit: 0 });
     assert.equal(result.status, 'pass', result.failures.join(','));
     assert.equal(result.technicalRequiredCheckPassed, true);
     assert.equal(result.mergeAllowed, false);
+    const summaryLines = buildV132WorkflowSummaryLines(report);
+    assert.equal(summaryLines.length, 8);
+    assert.equal(summaryLines.some((line) => /mergeReady|qualityScore/.test(line)), false);
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 7 }).status, 'fail');
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedRepository: 'wrong/repository' }).status, 'fail');
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedHeadSha: 'f'.repeat(40) }).status, 'fail');
@@ -629,7 +669,7 @@ test('v132_source_gate_end_to_end_local_only', () => {
   const previous = process.env.CODEX_SKIP_V132_SELF_TEST;
   process.env.CODEX_SKIP_V132_SELF_TEST = '1';
   try {
-    const { report, exitCode } = runV132SourceQualityGate({ repoRoot: ROOT, diagnostics: false });
+    const { report, exitCode } = runV132SourceQualityGate({ repoRoot: ROOT, diagnostics: false, allowDirtyFixture: true });
     accountNestedExecution(report);
     assert.equal(exitCode, 0, report.blockerCodes.join(','));
     assert.equal(report.status, 'pass');
@@ -639,6 +679,9 @@ test('v132_source_gate_end_to_end_local_only', () => {
     assert.equal(report.mergeAllowed, false);
     assert.equal(report.authorityCreated, false);
     assert.equal(report.targetMutationCount, 0);
+    assert.equal(report.productMutationCount, 0);
+    assert.equal(report.observed.productMutationCount, 0);
+    assert.equal(report.candidateLifecycleState, 'local_validated');
     assert.equal(report.remoteUnobservedPassCount, 0);
     assert.equal(report.longRunBudgetStatus.status, 'within_budget');
     assert.ok(report.executionAccounting.subprocessExecutions > 0);
@@ -646,6 +689,9 @@ test('v132_source_gate_end_to_end_local_only', () => {
     assert.equal(report.validationCoverage.nodeCount, 10);
     assert.match(report.validationCoverage.coverageDigest, /^sha256:[a-f0-9]{64}$/);
     assert.equal(report.validationCoverage.derivation, 'executed_or_attested_node_output_digests');
+    assert.equal(Object.hasOwn(report, 'mergeReady'), false);
+    assert.equal(Object.hasOwn(report, 'qualityScore'), false);
+    assert.equal(Object.hasOwn(report, 'legacyLocalQualityScore'), false);
     assert.ok(Buffer.byteLength(JSON.stringify(report), 'utf8') <= 8192);
   } finally {
     if (previous === undefined) delete process.env.CODEX_SKIP_V132_SELF_TEST;

@@ -14,7 +14,7 @@ import {
   verifySignedFinalDecisionReceipt,
   V132_VERSION,
 } from './codex-v132-evidence-truth.mjs';
-import { loadV132Policy, readJsonStrict, validateManifestProjections } from './codex-v132-manifest-compiler.mjs';
+import { deriveCandidateLifecycleState, loadV132Policy, readJsonStrict, validateManifestProjections } from './codex-v132-manifest-compiler.mjs';
 import { buildToolchainSummary, collectWorkspaceState, createValidationReceipt, planIncrementalValidation } from './codex-v132-incremental-validation.mjs';
 import { executeValidationPlan } from './codex-v132-node-executor.mjs';
 import { runV132CompatibilityCheck } from './codex-v132-compatibility-check.mjs';
@@ -108,6 +108,13 @@ export function evaluateWorkspaceIdentity({
   return { status: reasons.length ? 'fail' : 'pass', reasonCodes: reasons };
 }
 
+export function evaluateObservedWorkspaceScope(workspaceState = {}, observedProductMutationCount = 0, { allowDirtyFixture = false } = {}) {
+  const reasons = [];
+  if (workspaceState.worktreeState !== 'clean' && allowDirtyFixture !== true) reasons.push('workspace_uncommitted_state_forbidden');
+  if (observedProductMutationCount > 0) reasons.push('source_scope_product_mutation_detected');
+  return { status: reasons.length ? 'fail' : 'pass', reasonCodes: reasons, observedProductMutationCount };
+}
+
 function readResumeReceipt(file) {
   if (!file || !fs.existsSync(file)) return null;
   try {
@@ -159,6 +166,7 @@ export function runV132SourceQualityGate({
   remoteEvidence = null,
   finalDecisionReceipt = null,
   expectedRemoteEvidence = {},
+  allowDirtyFixture = false,
 } = {}) {
   const root = path.resolve(repoRoot);
   const accounting = { subprocessExecutions: 0, harnessFileWrites: 0, retryCount: 0, retryPerNode: 0, checkpointCount: 0 };
@@ -219,6 +227,12 @@ export function runV132SourceQualityGate({
     sourceManifest,
     repoRoot: root,
   });
+  const observedProductMutationCount = plan.classification.unknownPaths.length;
+  const workspaceScope = evaluateObservedWorkspaceScope(workspaceState, observedProductMutationCount, { allowDirtyFixture });
+  if (workspaceScope.status !== 'pass') {
+    workspaceIdentity.status = 'fail';
+    workspaceIdentity.reasonCodes.push(...workspaceScope.reasonCodes);
+  }
   const execution = executeValidationPlan({
     plan,
     priorCompletedNodes: previousReceipt?.completedNodes || [],
@@ -287,6 +301,7 @@ export function runV132SourceQualityGate({
   const canonicalState = evidenceNode?.output
     ? { ...deriveCanonicalState({ localValidationPassed: evidenceNode.output.localValidationState === 'passed', remoteEvidence, finalDecisionReceipt, expected: locallyBoundExpectedEvidence }), ...evidenceNode.output }
     : deriveCanonicalState({ localValidationPassed: false, remoteEvidence, finalDecisionReceipt, expected: locallyBoundExpectedEvidence });
+  const candidateLifecycleState = deriveCandidateLifecycleState(canonicalState);
   const selfTestNode = execution.completedNodeResults.find((node) => node.nodeId === 'selected_local_checks');
   const selfTest = selfTestNode?.output || { status: 'fail', reasonCodes: ['selected_local_checks_not_executed'] };
   const nextSafeAction = canonicalState.localValidationState === 'passed'
@@ -307,12 +322,51 @@ export function runV132SourceQualityGate({
   const report = {
     schemaVersion: V132_VERSION,
     harnessName: 'HARNESS v1.3.2 Evidence-Converged Lean Core',
+    declared: {
+      acceptedMainVersion: policy.acceptedMainVersion,
+      developmentParentVersion: policy.developmentParentVersion,
+      candidateVersion: policy.candidateVersion,
+      executionHarnessVersion: policy.executionHarnessVersion,
+      candidateLifecycleState: policy.candidateLifecycleState,
+      targetRolloutState: policy.targetRolloutState,
+      targetMutationCount: sourceManifest.targetMutationCount,
+    },
+    observed: {
+      repository,
+      baseSha,
+      headSha,
+      workspaceStateDigest: workspaceState.workspaceStateDigest,
+      worktreeState: workspaceState.worktreeState,
+      committedChangedPathCount: workspaceState.committedChangedPathCount,
+      uncommittedChangedPathCount: workspaceState.stagedChangedPathCount + workspaceState.unstagedChangedPathCount + workspaceState.untrackedPathCount,
+      productMutationCount: observedProductMutationCount,
+      source: 'git_content_addressed_workspace_observation',
+    },
+    validation: {
+      localValidationState: canonicalState.localValidationState,
+      remoteValidationState: canonicalState.remoteValidationState,
+      executionAttestationState: execution.status,
+      compatibilityState: execution.completedNodeResults.find((node) => node.nodeId === 'compatibility_checks')?.status || 'not_observed',
+    },
+    decision: {
+      technicalMergeEligibility: canonicalState.technicalMergeEligibility,
+      finalDecisionState: canonicalState.finalDecisionState,
+      mergeAllowed: canonicalState.mergeAllowed,
+      primaryBlocker: localBlockers[0] || canonicalState.remoteEvidence?.reasonCodes?.[0] || null,
+    },
+    projection: {
+      decisionCapsuleDigest: decisionCapsuleV3.digest,
+      safeSummaryDigest: sha256(canonicalJson(safeSummary)),
+      orchestrationReceiptDigest: orchestrationReceipt.digest,
+      authority: false,
+    },
     repository,
     baseSha,
     headSha,
     status: localBlockers.length ? 'fail' : 'pass',
     localValidationState: canonicalState.localValidationState,
     remoteValidationState: canonicalState.remoteValidationState,
+    candidateLifecycleState,
     technicalMergeEligibility: canonicalState.technicalMergeEligibility,
     finalDecisionState: canonicalState.finalDecisionState,
     mergeAllowed: canonicalState.mergeAllowed,
@@ -321,8 +375,6 @@ export function runV132SourceQualityGate({
     requiredCheckSetState: canonicalState.remoteEvidence?.requiredCheckSetState || 'not_observed',
     artifactIntegrityState: canonicalState.remoteEvidence?.artifactIntegrityState || 'not_observed',
     finalDecisionEvidenceStatus: canonicalState.finalDecisionEvidence?.status || 'not_observed',
-    deprecatedLocalTechnicalReady: canonicalState.deprecatedLocalTechnicalReady,
-    legacyLocalQualityScore: { value: localBlockers.length ? 70 : 100, authority: false },
     blockingCount: localBlockers.length,
     blockerCodes: localBlockers.slice(0, 16),
     nextSafeAction,
@@ -342,10 +394,28 @@ export function runV132SourceQualityGate({
     v132SelfTestStatus: selfTest,
     manifestProjectionStatus: { status: projection.status, classifiedRepositoryCount: projection.registryStatus.classifiedRepositoryCount },
     compatibilityDebtStatus: debt,
-    longRunBudgetStatus,
+    longRunBudgetStatus: {
+      status: longRunBudgetStatus.status,
+      reasonCodes: longRunBudgetStatus.reasonCodes,
+      usage: {
+        subprocessExecutions: measuredUsage.subprocessExecutions,
+        fileWrites: measuredUsage.fileWrites,
+        retryCount: measuredUsage.retryCount,
+        checkpointCount: measuredUsage.checkpointCount,
+      },
+      authority: false,
+    },
     executionAccounting: measuredUsage,
     validationCoverage,
-    ciCostPlan,
+    ciCostPlan: {
+      status: ciCostPlan.status,
+      estimatedWorkflowRuns: ciCostPlan.estimatedWorkflowRuns,
+      estimatedJobs: ciCostPlan.estimatedJobs,
+      workflowNames: ciCostPlan.workflowNames,
+      confidence: ciCostPlan.confidence,
+      estimatedActionsImpact: ciCostPlan.estimatedActionsImpact,
+      authority: false,
+    },
     decisionCapsuleV3,
     safeSummary,
     orchestrationReceipt,
@@ -355,6 +425,7 @@ export function runV132SourceQualityGate({
       orchestrationReceiptBytes: Buffer.byteLength(JSON.stringify(orchestrationReceipt), 'utf8'),
     },
     authorityCreated: false,
+    productMutationCount: observedProductMutationCount,
     targetMutationCount: 0,
     automaticTargetMutation: false,
     PerformanceTrack: 'deferred',

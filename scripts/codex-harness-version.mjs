@@ -2,6 +2,11 @@
 // CODEX_QUALITY_HARNESS_FILE v1.3.2
 
 export const currentVersion = '1.3.2';
+export const acceptedMainVersion = '1.3.0';
+export const acceptedMainSha = 'be06232adbe9072456bc9a36a1b298f5ba900470';
+export const developmentParentVersion = '1.3.1';
+export const executionHarnessVersion = '1.3.2';
+export const candidateLifecycleState = 'local_validated';
 export const previousVersion = '1.3.1';
 export const previousSelfTestStatusKey = 'v131SelfTestStatus';
 export const compatibilitySelfTestStatusKeys = ['v127SelfTestStatus', 'v128SelfTestStatus', 'v129SelfTestStatus', 'v130SelfTestStatus'];
@@ -72,6 +77,11 @@ export const versionLineagePolicy = {
 export function buildHarnessVersionRegistry() {
   return {
     currentVersion,
+    acceptedMainVersion,
+    acceptedMainSha,
+    developmentParentVersion,
+    executionHarnessVersion,
+    candidateLifecycleState,
     previousVersion,
     previousSelfTestStatusKey,
     activeHarnessVersion,

@@ -4,6 +4,8 @@
 CODEX_QUALITY_HARNESS_FILE v1.3.2
 
 Active local Source candidate: HARNESS v1.3.2 Evidence-Converged Lean Core.
+Accepted main: HARNESS v1.3.0 Core at be06232adbe9072456bc9a36a1b298f5ba900470; development parent is the v1.3.1 candidate and execution candidate is v1.3.2.
+Candidate lifecycle: local_validated; remote validation and activation are not complete.
 Provisional base: v1.3.1 PR head; rebase and exact-head remote validation are required after v1.3.1 merges.
 Compatibility Adapter: v1.3.2 internal evidence; debt due now has an explicit disposition.
 Source candidate display: HARNESS v1.3.2 Evidence-Converged Lean Core; target installed state is observed per repository and is never inferred from this Source candidate.
@@ -31,7 +33,8 @@ machineBindingId=PROJECTION_NONAUTH: Safe Summary/Projection/Goal/Router/Receipt
 <!-- CODEX_ACTIVE_BLOCK_END -->
 
 Routine read profile:
-- Read this file, docs/process/CODEX_HARNESS_MANIFEST.json, and the compiled instruction envelope.
+- Read this file, docs/process/CODEX_EFFECTIVE_POLICY.compact.json, and the task delta capsule.
+- Defer the full manifest to architect audit, manifest conflict, compatibility failure, or release review.
 - Defer adapter internals unless rollback, safe artifact, or compatibility failure needs them.
 - Routine selected Skill count is 0.
 - Routine cold artifact reads are 0.

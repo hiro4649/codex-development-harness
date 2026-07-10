@@ -3409,6 +3409,22 @@ export function isV132CompactReport(report) {
     && Object.hasOwn(report, 'mergeAllowed');
 }
 
+export function buildV132WorkflowSummaryLines(report = {}) {
+  const primaryBlocker = report?.decision?.primaryBlocker
+    || report?.blockerCodes?.[0]
+    || (report?.remoteValidationState !== 'passed' ? 'remote_evidence_not_passed' : 'none');
+  return [
+    `status: ${report.status || 'missing'}`,
+    `localValidationState: ${report.localValidationState || 'missing'}`,
+    `remoteValidationState: ${report.remoteValidationState || 'missing'}`,
+    `technicalMergeEligibility: ${report.technicalMergeEligibility || 'missing'}`,
+    `finalDecisionState: ${report.finalDecisionState || 'missing'}`,
+    `mergeAllowed: ${report.mergeAllowed === true}`,
+    `primary blocker: ${primaryBlocker}`,
+    `next safe action: ${report.nextSafeAction || 'inspect_smallest_blocker'}`,
+  ];
+}
+
 export function evaluateV132CompactWorkflowReport(report, options = {}) {
   const failures = [];
   const requiredScalar = [

@@ -4,10 +4,13 @@
 
 This document specifies a local Source-only candidate based provisionally on `35fbdd0e7075701516de3b2de722b3b7014f1dbf`.
 
+The accepted public main remains HARNESS v1.3.0 Core at `be06232adbe9072456bc9a36a1b298f5ba900470`. The development parent is the v1.3.1 candidate, while the executing candidate is v1.3.2. `activeHarnessVersion` is retained only as a compatibility projection and is never the sole lifecycle description.
+
 - `requiresRebaseAfterV131Merge=true`
 - `activationAllowed=false`
 - `targetRolloutAllowed=false`
 - `remoteValidationState=not_observed`
+- `candidateLifecycleState=local_validated`
 
 It does not activate a target profile or create merge authority.
 
@@ -17,7 +20,9 @@ v1.3.2 converges evidence into a small truthful result, reuses deterministic val
 
 ## Evidence Truth Kernel
 
-Remote state, required checks, same-head binding, artifact integrity, and Final Decision are derived only from durable verification paths. The production GitHub collector accepts only repository/run identity and performs the GitHub API observation itself; caller-fed check, artifact, head, conclusion, or timestamp data is rejected. A serialized GitHub receipt must be re-observed before use. A serialized Final Decision receipt must pass Ed25519 signature verification. Fixture constructors are separate and forbidden outside explicit test mode. Check-set, artifact, payload, repository, local HEAD, run, and attempt bindings are validated. Boolean claims such as `remoteChecksPass`, `sameHead`, or `artifactUploaded` are rejected. A PR body is display text, not evidence. Missing observation remains `not_observed`; an account billing lock becomes `unavailable_billing`, not a code failure.
+Remote state, required checks, same-head binding, artifact integrity, and Final Decision are derived only from durable verification paths. The production GitHub collector accepts only repository/run identity and performs the GitHub API observation itself; caller-fed PR, check, artifact, head, conclusion, or timestamp data is rejected. A serialized GitHub receipt must be re-observed before use and is bound to repository, PR number, `pull_request` event, base/head SHA, workflow ID/path, run ID/attempt, branch-protection required checks, and accepted-main artifact/workflow contracts. Artifact archives are content-digested and their contracted JSON entry, schema, fields, and semantic digest are observed.
+
+A serialized Final Decision receipt must pass Ed25519 verification against a key ID and public-key fingerprint loaded through the accepted-main GitHub API trust root. Candidate-selected keys and cloned trust-root objects are rejected. The trust contract includes rotation and revocation state; this candidate cannot bootstrap its own authority. Fixture constructors are separate and forbidden outside explicit test mode. Boolean claims such as `remoteChecksPass`, `sameHead`, or `artifactUploaded` are rejected. A PR body is display text, not evidence. Missing observation remains `not_observed`; only an authoritative billing annotation becomes `unavailable_billing`. A step-less run without that signal becomes `unavailable_pre_runner`, not a guessed billing or code failure.
 
 Canonical state fields are:
 
@@ -27,11 +32,13 @@ Canonical state fields are:
 4. `finalDecisionState`
 5. `mergeAllowed`
 
-`mergeAllowed` is the only canonical merge projection. `deprecatedLocalTechnicalReady` is a non-authoritative compatibility alias and cannot override it. Local-only success therefore remains technically blocked and never becomes merge permission.
+`mergeAllowed` is the only canonical merge projection. Local-only success remains technically blocked and never becomes merge permission. The compact report separates declared policy, observed Git/worktree facts, validation results, decision, and projections; observed product mutation is derived from the actual change set rather than a manifest assertion.
 
 ## Manifest And Registry
 
-`docs/process/CODEX_V132_POLICY.json` is the normative policy. The strict compiler rejects exact, Unicode-escaped-equivalent, and case-folded duplicate keys. Source manifest, docs manifest, active policy, and compact effective policy share one compiled tuple. Valid fixtures must have equivalent meaning under Node, PowerShell, and Python parsers.
+`docs/process/CODEX_V132_POLICY.json` is the normative policy. The strict compiler rejects exact, Unicode-escaped-equivalent, and case-folded duplicate keys. Source manifest, docs manifest, active policy, and `docs/process/CODEX_EFFECTIVE_POLICY.compact.json` share one compiled tuple. The compact policy is generated atomically and limited to 2048 UTF-8 bytes. Valid fixtures must have equivalent meaning under Node, PowerShell, and Python parsers.
+
+Routine reads are `AGENTS.md`, the compact effective policy, and the task delta capsule. The full historical manifest is deferred to architect audit, manifest conflict, compatibility failure, or release review.
 
 Registry v2 separates immutable owner classification from expiring GitHub observation. All eight registered repositories have a static profile. Dynamic head, pending PR, and observed version fields never enter the static registry. An unknown repository is `unclassified_blocking` for rollout only; it does not block ordinary local product work.
 
@@ -43,11 +50,13 @@ The deterministic executor runs concrete handlers for workspace identity, manife
 
 A resumable receipt binds repository, base/head SHA, content-addressed workspace state, policy, registry, graph, toolchain, environment, node input, executor version, output digest, and completion time. Workspace state covers the committed base-to-head binary patch, staged patch, unstaged tracked patch, untracked paths and contents, file modes, and symlink targets; only Git-ignored files are excluded. A same-head same-path content edit or new untracked file invalidates reuse. Unexecuted or forged nodes cannot be stored or reused. Any mismatch or expiry invalidates reuse. Evidence, compact output, and CI planning always rerun.
 
+Missing, malformed, unsupported-host, lookalike, or mismatched `origin` fails closed. Workspace identity also binds the real Git top-level, repository slug, exact HEAD, provisional base commit, AGENTS marker, and Source manifest marker. A dirty index/worktree/untracked set cannot be locally ready outside explicit test fixtures.
+
 ## Operational Bounds
 
 The advisory compiled context order is immutable core, compiled repository policy, task delta, then evidence capsule. Limits are 1536, 1536, 2048, and 2048 bytes. It is `compiled_advisory_contract` until connected to an executable AI context compiler; it does not claim runtime enforcement.
 
-Default compact JSON is at most 8192 bytes and 64 top-level fields. Decision Capsule v3 is at most 2048 bytes, Safe Summary 3584 bytes, Orchestration Receipt 24576 bytes, and opt-in full diagnostics 131072 bytes. Paths and reason codes are bounded; exact counters and incremental digests preserve cardinality without retaining unbounded arrays. `qualityScore` is not canonical authority; the compatibility projection is `legacyLocalQualityScore` with `authority=false`.
+Default compact JSON is at most 8192 bytes and 64 top-level fields. Decision Capsule v3 is at most 2048 bytes, Safe Summary 3584 bytes, Orchestration Receipt 24576 bytes, and opt-in full diagnostics 131072 bytes. Paths and reason codes are bounded; exact counters and incremental digests preserve cardinality without retaining unbounded arrays. Neither `qualityScore` nor `mergeReady` is emitted as v1.3.2 Source authority.
 
 Long runs stop or checkpoint at 120 minutes, 300 direct subprocess executions, 100 harness file writes, one retry per node, and one parallel runtime. Accounting records actual direct subprocesses, writes, retries, and persisted checkpoints; a validation node is not counted as a tool call merely because it exists. A compact heartbeat is limited to 512 bytes every three completed nodes.
 
@@ -55,11 +64,15 @@ Long runs stop or checkpoint at 120 minutes, 300 direct subprocess executions, 1
 
 Target install planning is `dry_run_only`, allowlist-based, and never mutates a repository. Absolute, traversal, control-character, symlink-escape, Source manifest, nested package/lockfile, runtime, contract, deployment, environment, wallet, RPC, secret, and unclassified paths fail closed.
 
-The CI planner parses actual workflow files and expands job and matrix counts. Heavy PR validation listens only to `opened`, `synchronize`, and `reopened`; `edited` is excluded. Current Source Core topology is two workflows and four jobs, the hard maximum. Duplicate evidence refresh plans zero.
+The CI planner performs constrained static analysis of checked-in workflow files and expands the supported job and matrix forms without claiming full YAML-parser confidence. Heavy PR validation listens only to `opened`, `synchronize`, and `reopened`; `edited` is excluded. Current Source Core topology is two workflows and four jobs, the hard maximum. Duplicate evidence refresh plans zero.
+
+The v1.3.2 Source path skips the legacy v1.2.8 cache, target product-evidence preparation, dependency installation, and legacy multi-status summary. Its Step Summary is exactly eight bounded decision lines and contains neither `mergeReady` nor `qualityScore`. Compatibility jobs remain bounded and do not restore the old topology.
 
 ## Compatibility And Authority
 
-Rollback order is v1.3.1 immediate, v1.3.0 secondary, v1.2.9 emergency legacy, v1.2.8 blocking compatibility, and v1.2.7 readable compatibility. Each compatibility lane distinguishes historical source presence, role projection validity, and bounded behavioral invariants executed under the v1.3.2 active tuple. Old active-tuple assertions are not authoritative for v1.3.2. Compatibility debt due in v1.3.2 must be resolved, reclassified with a reason, or extended once with an owner reason. The preserved target-gate aliases are reclassified as a non-authoritative adapter obligation until targets consume canonical fields.
+Rollback order is v1.3.1 immediate, v1.3.0 secondary, v1.2.9 emergency legacy, v1.2.8 blocking compatibility, and v1.2.7 readable compatibility. Each compatibility lane requires historical source presence, projection validity, and actual bounded pure behavior invariants. The behavior contracts execute v1.3.1 state/profile/CI boundaries, v1.3.0 authority/mutation/performance boundaries, v1.2.9 routing/rollback, v1.2.8 blocking/canary behavior, and v1.2.7 receipt/same-head/token behavior. Old self-tests are never executed as active tuples. Compatibility debt due in v1.3.2 must be resolved, reclassified with a reason, or extended once with an owner reason.
+
+Candidate lifecycle is `draft -> local_validated -> remote_unavailable|remote_validated -> activation_eligible -> active`, with `superseded` as an explicit terminal path. Invalid skips fail. Because activation is forbidden for this draft, even an activation-eligible fixture cannot transition to active.
 
 Benchmark coverage is derived from executed or attested node output digests. Output-size reduction may be reported independently, but relative performance and superiority remain `not_proven` when the baseline lacks equivalent executed-output-digest coverage or exact remote evidence.
 
