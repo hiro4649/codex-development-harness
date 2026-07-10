@@ -14,7 +14,7 @@ const SCHEMA_REQUIRED_FIELDS = Object.freeze({
   v132_dependency_status: ['status', 'dependencyCount'],
   v132_local_check_status: ['status'],
   v132_compatibility_status: ['status', 'rollbackChain'],
-  v132_canonical_state: ['status', 'localValidationState', 'remoteValidationState', 'mergeAllowed'],
+  v132_canonical_state: ['status', 'localValidationState', 'remoteValidationState', 'observedBaseSha', 'baseAncestryState', 'mergeContextDigest', 'mergeAllowed'],
   v132_compact_output: ['status', 'maxBytes', 'maxTopLevelFields'],
   v132_ci_cost_plan: ['status', 'estimatedJobs', 'estimatedWorkflowRuns'],
 });
@@ -91,6 +91,9 @@ function defaultHandlers() {
         status: state.localValidationState === 'passed' ? 'pass' : 'fail',
         localValidationState: state.localValidationState,
         remoteValidationState: state.remoteValidationState,
+        observedBaseSha: state.observedBaseSha,
+        baseAncestryState: state.baseAncestryState,
+        mergeContextDigest: state.mergeContextDigest,
         technicalMergeEligibility: state.technicalMergeEligibility,
         finalDecisionState: state.finalDecisionState,
         mergeAllowed: state.mergeAllowed,

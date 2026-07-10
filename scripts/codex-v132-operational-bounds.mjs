@@ -224,7 +224,10 @@ export function buildDecisionCapsuleV3({ repository, headSha, canonicalState, bl
   const capsule = {
     schemaVersion: '3.0',
     repository: truncateUtf8(repository, 256),
+    observedBaseSha: canonicalState.observedBaseSha,
     headSha,
+    baseAncestryState: canonicalState.baseAncestryState,
+    mergeContextDigest: canonicalState.mergeContextDigest,
     localValidationState: canonicalState.localValidationState,
     remoteValidationState: canonicalState.remoteValidationState,
     technicalMergeEligibility: canonicalState.technicalMergeEligibility,
@@ -243,7 +246,10 @@ export function buildSafeSummary({ repository, headSha, canonicalState, blockerC
   const summary = {
     schemaVersion: V132_VERSION,
     repository: truncateUtf8(repository, 256),
+    observedBaseSha: canonicalState.observedBaseSha,
     headSha,
+    baseAncestryState: canonicalState.baseAncestryState,
+    mergeContextDigest: canonicalState.mergeContextDigest,
     state: `${canonicalState.localValidationState}/${canonicalState.remoteValidationState}/${canonicalState.technicalMergeEligibility}`,
     mergeAllowed: canonicalState.mergeAllowed === true,
     blockers: boundedSample(blockerCodes, { maxEntries: 12, maxEntryBytes: 128 }),

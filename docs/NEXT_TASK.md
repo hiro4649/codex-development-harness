@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-Review the exact pushed HARNESS v1.3.2 Exact-Head Workflow Closure on Draft PR #165. Confirm all four jobs validate the PR head rather than a synthetic merge commit, report/artifact head binding, current-PR latest-run discovery, truthful non-pass states, and unchanged authority boundaries. Inspect one automatic required-check attempt without rerunning it. Do not activate or roll out targets.
+Review the exact pushed HARNESS v1.3.2 Release Context Closure on Draft PR #165. Confirm both automatic jobs validate exact PR head and current-base ancestry, Compare API observations bind the current PR, Final Decision binds PR/base/head/merge context, compatibility is always one lightweight job, and authority boundaries remain unchanged. Inspect one automatic required-check attempt without rerunning it. Do not activate or roll out targets.
 
 ## Required Files
 
@@ -22,11 +22,11 @@ Review the exact pushed HARNESS v1.3.2 Exact-Head Workflow Closure on Draft PR #
 
 ## Implementation Strategy
 
-1. Review exact-head checkout/assertion in all four jobs, current-PR binding, latest-run discovery independent of hints, non-self-referential trust, app-bound checks, SHA-pinned Rulesets, bounded artifacts, and Final Decision digest in PR #165.
+1. Review exact-head/current-base checkout assertions in both jobs, current-PR plus Compare API binding, latest-run discovery independent of hints, non-self-referential trust, app-bound checks, SHA-pinned Rulesets, bounded artifacts, and PR/base/head-bound Final Decision digest in PR #165.
 2. Keep remote state `not_observed` while jobs cannot start; do not rerun blindly.
 3. Treat owner-key trust-document bootstrap and owner-managed collector credential setup as separate owner-governed actions; never authorize either from the candidate branch.
 4. After v1.3.1 main acceptance, rebase and recompute policy, workspace, and receipt digests if inputs change.
-5. Run strict projections, compact/full gates, workflow exact-head and synthetic-merge fixtures, collector mock E2E and non-pass-state fixtures, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
+5. Run strict projections, compact/full gates, workflow exact-head/base and synthetic-merge fixtures, collector current/stale-base mock E2E, Final Decision context invalidation, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
 6. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
 
 ## Expected Risks
@@ -48,7 +48,7 @@ Review the exact pushed HARNESS v1.3.2 Exact-Head Workflow Closure on Draft PR #
 
 ## Stop Conditions
 
-Stop on target/product/sensitive mutation, authority weakening, candidate-controlled trust, output-limit breach, unobserved remote pass, or merge permission without exact typed remote evidence and Final Decision.
+Stop on target/product/sensitive mutation, authority weakening, candidate-controlled trust, output-limit breach, stale-base or unobserved remote pass, or merge permission without exact typed remote evidence and same-context Final Decision.
 
 ## Estimated Complexity
 

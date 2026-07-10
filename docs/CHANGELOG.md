@@ -2,6 +2,11 @@
 
 ## 2026-07-10
 
+- Added v1.3.2 Release Context Closure: every automatic Source job now binds exact head and current-base ancestry.
+- Added Pull Request plus Compare API re-observation and canonical `observedBaseSha`, `baseAncestryState`, and `mergeContextDigest` fields.
+- Bound Final Decision receipts to PR number, base, head, and the accepted-main trust-bound merge context; base movement invalidates earlier authorization.
+- Replaced implicit compatibility path filters and three jobs with one always-applicable lightweight aggregate job, reducing automatic Source topology from four jobs to two.
+- Added positive/negative ancestry, stale-base, base-advanced Final Decision, workflow base mismatch, and existing synthetic-merge fixtures without creating authority or target/product mutation.
 - Bound all four automatic v1.3.2 Source jobs to the exact pull-request head, disabled persisted checkout credentials, and rejected synthetic merge-commit execution before checks.
 - Preserved queued, in-progress, canceled, failed, billing-unavailable, and pre-runner-unavailable observations as distinct non-authoritative states.
 - Added workflow semantic fixtures for exact checkout order, workflow-dispatch SHA binding, report/artifact head equality, and synthetic-merge rejection.

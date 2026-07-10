@@ -3441,6 +3441,12 @@ export function evaluateV132CompactWorkflowReport(report, options = {}) {
   if (report?.status === 'pass' && report?.blockingCount !== 0) failures.push('v132_pass_with_blockers');
   if (options.expectedRepository && report?.repository !== options.expectedRepository) failures.push('v132_workflow_repository_mismatch');
   if (options.expectedHeadSha && String(report?.headSha || '').toLowerCase() !== String(options.expectedHeadSha).toLowerCase()) failures.push('v132_workflow_head_mismatch');
+  if (options.baseApplicability === 'required') {
+    if (!options.expectedBaseSha || String(report?.observedBaseSha || '').toLowerCase() !== String(options.expectedBaseSha).toLowerCase()) failures.push('v132_workflow_base_mismatch');
+    if (report?.baseAncestryState !== 'matched') failures.push('v132_workflow_base_not_ancestor_of_head');
+  } else if (options.baseApplicability === 'not_applicable' && report?.baseAncestryState !== 'not_applicable') {
+    failures.push('v132_workflow_base_applicability_mismatch');
+  }
   if (report?.v132SelfTestStatus?.status !== 'pass') failures.push('v132_self_test_not_pass');
   if (report?.manifestProjectionStatus?.status !== 'pass') failures.push('v132_manifest_projection_not_pass');
   if (report?.compatibilityDebtStatus?.status !== 'pass') failures.push('v132_compatibility_debt_not_pass');
@@ -6471,12 +6477,16 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       eventName: process.env.CODEX_EVENT_NAME,
       expectedRepository: process.env.GITHUB_REPOSITORY || process.env.CODEX_REPOSITORY,
       expectedHeadSha: process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA,
+      expectedBaseSha: process.env.CODEX_PR_BASE_SHA,
+      baseApplicability: process.env.CODEX_EVENT_NAME === 'pull_request' ? 'required' : (process.env.CODEX_EVENT_NAME === 'workflow_dispatch' ? 'not_applicable' : undefined),
     });
     writeJsonReport(buildWorkflowQualityRunnerReport(loaded.report, {
       gateExit: Number(args['gate-exit'] || process.env.CODEX_GATE_EXIT || 0),
       eventName: process.env.CODEX_EVENT_NAME,
       expectedRepository: process.env.GITHUB_REPOSITORY || process.env.CODEX_REPOSITORY,
       expectedHeadSha: process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA,
+      expectedBaseSha: process.env.CODEX_PR_BASE_SHA,
+      baseApplicability: process.env.CODEX_EVENT_NAME === 'pull_request' ? 'required' : (process.env.CODEX_EVENT_NAME === 'workflow_dispatch' ? 'not_applicable' : undefined),
     }), 'CODEX_WORKFLOW_RUNNER_REPORT');
     for (const item of result.failures.slice(0, 20)) console.error(`::error title=codex-v132-quality-gate::${item}`);
     process.exit(result.technicalRequiredCheckPassed ? 0 : 1);

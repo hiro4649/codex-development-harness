@@ -51,16 +51,29 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - name: Assert exact checkout head
+      - name: Assert exact checkout head and current base
         shell: bash
         env:
           CODEX_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          CODEX_EVENT_NAME: ${{ github.event_name }}
+          CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
         run: |
           set -euo pipefail
           actual_head="$(git rev-parse HEAD)"
           if [ "$actual_head" != "$CODEX_EXPECTED_HEAD_SHA" ]; then
             echo "::error title=v1.3.2 exact-head checkout mismatch::v132_workflow_checkout_head_mismatch"
             exit 1
+          fi
+          if [ "$CODEX_EVENT_NAME" = "pull_request" ]; then
+            if [[ ! "$CODEX_PR_BASE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || ! git merge-base --is-ancestor "$CODEX_PR_BASE_SHA" HEAD; then
+              echo "::error title=v1.3.2 current-base ancestry mismatch::v132_workflow_base_not_ancestor_of_head"
+              exit 1
+            fi
+            echo "CODEX_V132_BASE_APPLICABILITY=required" >> "$GITHUB_ENV"
+            echo "CODEX_V132_BASE_ANCESTRY_STATE=matched" >> "$GITHUB_ENV"
+          else
+            echo "CODEX_V132_BASE_APPLICABILITY=not_applicable" >> "$GITHUB_ENV"
+            echo "CODEX_V132_BASE_ANCESTRY_STATE=not_applicable" >> "$GITHUB_ENV"
           fi
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020

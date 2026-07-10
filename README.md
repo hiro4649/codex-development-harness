@@ -36,8 +36,11 @@ Git blob; a candidate-selected key cannot authorize itself. The observed
 required-workflow set exactly matches the accepted-main contract, while
 unrelated workflows create no authority. Checks bind GitHub App identity when required, Rulesets bind
 path/ref/SHA/repository ID, and bounded artifacts bind repository, head, and
-pass status. Every automatic Source job checks out and asserts the exact PR
-head before validation. The owner-credential collector writes no authority.
+pass status. Every automatic Source job checks out the exact PR head, proves
+the current PR base is its ancestor, and fails closed on a stale merge context.
+The collector verifies the same ancestry through GitHub Compare API, and Final
+Decision binds PR number, base, head, and accepted-main trust. The compatibility
+workflow is one lightweight job required for every Source PR. The owner-credential collector writes no authority.
 
 It keeps rollback readable through the v1.3.2 Compatibility Adapter.
 The adapter preserves internal compatibility evidence for existing target gates

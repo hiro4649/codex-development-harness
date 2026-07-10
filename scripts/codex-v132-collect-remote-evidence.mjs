@@ -85,7 +85,7 @@ export async function runCollectorCli({
   const passed = evaluation.status === 'pass' && evaluatedRemoteValidationState === 'passed';
   const unavailable = ['unavailable_billing', 'unavailable_pre_runner'].includes(evaluatedRemoteValidationState);
   const pending = ['queued', 'in_progress'].includes(evaluatedRemoteValidationState);
-  const terminalNonPass = ['canceled', 'failed'].includes(evaluatedRemoteValidationState);
+  const terminalNonPass = ['canceled', 'failed', 'stale', 'head_mismatch', 'artifact_missing', 'required_check_set_mismatch'].includes(evaluatedRemoteValidationState);
   const remoteValidationState = passed || unavailable || pending || terminalNonPass
     ? evaluatedRemoteValidationState
     : 'failed';
@@ -98,6 +98,9 @@ export async function runCollectorCli({
     finalDecisionAuthorityCreated: false,
     mergeAllowed: false,
     remoteValidationState,
+    observedBaseSha: receipt.observedBaseSha,
+    baseAncestryState: receipt.baseAncestryState,
+    mergeContextDigest: receipt.mergeContextDigest,
     trustObservation: {
       repository: trustRoot.trustSourceRepository,
       defaultBranch: trustRoot.trustSourceDefaultBranch,
@@ -115,7 +118,10 @@ export async function runCollectorCli({
     exitCode: passed ? 0 : unavailable || pending ? 2 : 1,
     remoteValidationState,
     repository,
+    observedBaseSha: receipt.observedBaseSha,
+    baseAncestryState: receipt.baseAncestryState,
     headSha: receipt.headSha,
+    mergeContextDigest: receipt.mergeContextDigest,
     runIds: receipt.runIds,
     outputFile: path.basename(outputPath),
     receiptPayloadDigest: receipt.receiptPayloadDigest,

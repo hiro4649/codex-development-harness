@@ -40,7 +40,7 @@ const FIXTURE_TRUST_ROOTS = new WeakSet();
 const FIXTURE_REMOTE_RECEIPTS = new WeakSet();
 const FIXTURE_FINAL_DECISION_RECEIPTS = new WeakSet();
 const FIXTURE_GITHUB_HTTP_CLIENTS = new WeakSet();
-export const V132_GITHUB_COLLECTOR_VERSION = 'v132-github-collector-6';
+export const V132_GITHUB_COLLECTOR_VERSION = 'v132-github-collector-7';
 export const V132_TRUST_ROOT_PATH = 'docs/process/CODEX_V132_TRUST_ROOT.json';
 export const V132_SOURCE_REPOSITORY = 'hiro4649/codex-development-harness';
 export const V132_SOURCE_DEFAULT_BRANCH = 'main';
@@ -58,6 +58,22 @@ export function canonicalJson(value) {
 
 export function sha256(value) {
   return `sha256:${crypto.createHash('sha256').update(String(value)).digest('hex')}`;
+}
+
+export function calculateMergeContextDigest({
+  repository,
+  pullRequestNumber,
+  baseSha,
+  headSha,
+  acceptedMainTrustRootDigest,
+} = {}) {
+  return sha256(canonicalJson({
+    repository: String(repository || ''),
+    pullRequestNumber: Number(pullRequestNumber),
+    baseSha: String(baseSha || '').toLowerCase(),
+    headSha: String(headSha || '').toLowerCase(),
+    acceptedMainTrustRootDigest: String(acceptedMainTrustRootDigest || ''),
+  }));
 }
 
 export function createFixtureGithubHttpClient(fetchImplementation) {
@@ -136,6 +152,9 @@ function baseRemoteProjection(remoteValidationState, reasonCodes = []) {
     sameHeadState: 'not_observed',
     requiredCheckSetState: 'not_observed',
     artifactIntegrityState: 'not_observed',
+    observedBaseSha: null,
+    baseAncestryState: 'not_observed',
+    mergeContextDigest: null,
     remoteEvidenceObserved: false,
     reasonCodes,
     createsAuthority: false,
@@ -331,6 +350,28 @@ function buildPullRequestBinding(binding = {}) {
   return normalized;
 }
 
+function baseAncestryPayload(observation = {}) {
+  return {
+    source: observation.source,
+    repository: observation.repository,
+    pullRequestNumber: Number(observation.pullRequestNumber),
+    observedBaseSha: String(observation.observedBaseSha || '').toLowerCase(),
+    checkedHeadSha: String(observation.checkedHeadSha || '').toLowerCase(),
+    compareStatus: String(observation.compareStatus || ''),
+    mergeBaseSha: String(observation.mergeBaseSha || '').toLowerCase(),
+    state: observation.state,
+  };
+}
+
+function buildBaseAncestryObservation(observation = {}) {
+  const normalized = {
+    ...baseAncestryPayload(observation),
+    observedAt: observation.observedAt,
+  };
+  normalized.stableDigest = sha256(canonicalJson(baseAncestryPayload(normalized)));
+  return normalized;
+}
+
 function workflowDiscoveryPayload(discovery = {}) {
   return {
     source: discovery.source,
@@ -385,6 +426,26 @@ function buildRemoteReceipt(observation = {}, { testMode = false, observationSou
     headSha,
     observedAt: observation.observedAt,
   });
+  const baseAncestry = observation.baseAncestry || (testMode ? buildBaseAncestryObservation({
+    source: 'explicit_test_compare_api',
+    repository: observation.repository,
+    pullRequestNumber: observation.pullRequestNumber,
+    observedBaseSha: observation.baseSha,
+    checkedHeadSha: headSha,
+    compareStatus: 'ahead',
+    mergeBaseSha: observation.baseSha,
+    state: 'matched',
+    observedAt: observation.observedAt,
+  }) : null);
+  const acceptedMainTrustRootDigest = String(observation.acceptedMainTrustRootDigest
+    || (observation.acceptedMainTrustRoot ? trustRootContractDigest(observation.acceptedMainTrustRoot) : ''));
+  const mergeContextDigest = calculateMergeContextDigest({
+    repository: observation.repository,
+    pullRequestNumber: observation.pullRequestNumber,
+    baseSha: observation.baseSha,
+    headSha,
+    acceptedMainTrustRootDigest,
+  });
   const workflowRunDiscovery = observation.workflowRunDiscovery || buildWorkflowDiscovery({
     source: testMode ? 'explicit_test_current_pr_exact_head' : 'github_api_current_pr_exact_head',
     repository: observation.repository,
@@ -406,6 +467,11 @@ function buildRemoteReceipt(observation = {}, { testMode = false, observationSou
     repository: String(observation.repository || ''),
     pullRequestNumber: Number(observation.pullRequestNumber),
     pullRequestBinding,
+    baseAncestry,
+    observedBaseSha: String(baseAncestry?.observedBaseSha || '').toLowerCase(),
+    baseAncestryState: baseAncestry?.state || 'not_observed',
+    acceptedMainTrustRootDigest,
+    mergeContextDigest,
     event: String(observation.event || ''),
     baseRef: String(observation.baseRef || ''),
     baseSha: String(observation.baseSha || '').toLowerCase(),
@@ -486,6 +552,34 @@ async function observeCurrentPullRequest({ repository, pullRequestNumber, token,
     observedAt,
   });
   return { pullRequest, binding };
+}
+
+async function observeCurrentBaseAncestry({ repository, pullRequestBinding, token, httpClient = null } = {}) {
+  const baseSha = String(pullRequestBinding?.baseSha || '').toLowerCase();
+  const headSha = String(pullRequestBinding?.headSha || '').toLowerCase();
+  if (!SHA_RE.test(baseSha) || !SHA_RE.test(headSha)) throw new Error('github_compare_base_or_head_invalid');
+  const comparison = await githubJson(
+    `https://api.github.com/repos/${repository}/compare/${baseSha}...${headSha}`,
+    token,
+    { httpClient },
+  );
+  const compareStatus = String(comparison?.status || '');
+  const observedBaseSha = String(comparison?.base_commit?.sha || '').toLowerCase();
+  const mergeBaseSha = String(comparison?.merge_base_commit?.sha || '').toLowerCase();
+  if (!['ahead', 'behind', 'diverged', 'identical'].includes(compareStatus)) throw new Error('github_compare_status_invalid');
+  if (!SHA_RE.test(observedBaseSha) || observedBaseSha !== baseSha) throw new Error('github_compare_base_commit_mismatch');
+  if (!SHA_RE.test(mergeBaseSha)) throw new Error('github_compare_merge_base_invalid');
+  return buildBaseAncestryObservation({
+    source: githubHttpFixtureMode(httpClient) ? 'github_compare_api_mock' : 'github_compare_api',
+    repository,
+    pullRequestNumber: pullRequestBinding.pullRequestNumber,
+    observedBaseSha,
+    checkedHeadSha: headSha,
+    compareStatus,
+    mergeBaseSha,
+    state: ['ahead', 'identical'].includes(compareStatus) && mergeBaseSha === baseSha ? 'matched' : 'mismatch',
+    observedAt: new Date().toISOString(),
+  });
 }
 
 function latestWorkflowRun(candidates = []) {
@@ -1165,6 +1259,8 @@ export function aggregateGithubRunObservations(observations, {
   repository,
   testMode = false,
   pullRequestBinding = null,
+  baseAncestry = null,
+  acceptedMainTrustRootDigest = '',
   workflowRunDiscovery = null,
   hintRunIds = [],
 } = {}) {
@@ -1215,6 +1311,8 @@ export function aggregateGithubRunObservations(observations, {
     repository,
     pullRequestNumber: observations[0].pullRequestNumber,
     pullRequestBinding: pullRequestBinding || observations[0].pullRequestBinding,
+    baseAncestry,
+    acceptedMainTrustRootDigest,
     event: observations[0].event,
     baseRef: observations[0].baseRef,
     baseSha: observations[0].baseSha,
@@ -1264,9 +1362,16 @@ export function collectVerifiedGithubEvidence(request = {}) {
   if (!request.acceptedMainTrustRoot || !trustRootAccepted(request.acceptedMainTrustRoot, testMode)) throw new Error('caller_supplied_untrusted_root_forbidden');
   return (async () => {
     const document = trustRootDocument(request.acceptedMainTrustRoot);
+    const acceptedMainTrustRootDigest = trustRootContractDigest(request.acceptedMainTrustRoot);
     const firstPr = await observeCurrentPullRequest({
       repository: request.repository,
       pullRequestNumber: request.pullRequestNumber,
+      token: request.token,
+      httpClient: request.httpClient,
+    });
+    const firstBaseAncestry = await observeCurrentBaseAncestry({
+      repository: request.repository,
+      pullRequestBinding: firstPr.binding,
       token: request.token,
       httpClient: request.httpClient,
     });
@@ -1316,6 +1421,13 @@ export function collectVerifiedGithubEvidence(request = {}) {
       httpClient: request.httpClient,
     });
     if (firstPr.binding.stableDigest !== finalPr.binding.stableDigest) throw new Error('github_pull_request_changed_during_observation');
+    const finalBaseAncestry = await observeCurrentBaseAncestry({
+      repository: request.repository,
+      pullRequestBinding: finalPr.binding,
+      token: request.token,
+      httpClient: request.httpClient,
+    });
+    if (firstBaseAncestry.stableDigest !== finalBaseAncestry.stableDigest) throw new Error('github_base_ancestry_changed_during_observation');
     const finalDiscovery = await discoverCurrentPullRequestWorkflowRuns({
       repository: request.repository,
       pullRequestBinding: finalPr.binding,
@@ -1331,6 +1443,8 @@ export function collectVerifiedGithubEvidence(request = {}) {
         repository: request.repository,
         pullRequestNumber: finalPr.binding.pullRequestNumber,
         pullRequestBinding: finalPr.binding,
+        baseAncestry: finalBaseAncestry,
+        acceptedMainTrustRootDigest,
         event: 'pull_request',
         baseRef: finalPr.binding.baseRef,
         baseSha: finalPr.binding.baseSha,
@@ -1362,6 +1476,8 @@ export function collectVerifiedGithubEvidence(request = {}) {
       repository: request.repository,
       testMode,
       pullRequestBinding: finalPr.binding,
+      baseAncestry: finalBaseAncestry,
+      acceptedMainTrustRootDigest,
       workflowRunDiscovery: finalDiscovery.discovery,
       hintRunIds,
     });
@@ -1383,6 +1499,11 @@ export function reobserveSerializedGithubEvidence(receipt, request = {}) {
       repository: value.repository,
       pullRequestNumber: value.pullRequestNumber,
       pullRequestBindingStableDigest: value.pullRequestBinding?.stableDigest || null,
+      baseAncestryStableDigest: value.baseAncestry?.stableDigest || null,
+      observedBaseSha: value.observedBaseSha,
+      baseAncestryState: value.baseAncestryState,
+      acceptedMainTrustRootDigest: value.acceptedMainTrustRootDigest,
+      mergeContextDigest: value.mergeContextDigest,
       event: value.event,
       baseRef: value.baseRef,
       baseSha: value.baseSha,
@@ -1472,7 +1593,10 @@ export function createFixtureFinalDecision(observation = {}) {
     decision: observation.decision,
     decisionId: String(observation.decisionId || ''),
     repository: String(observation.repository || ''),
+    pullRequestNumber: Number(observation.pullRequestNumber),
+    baseSha: String(observation.baseSha || '').toLowerCase(),
     headSha: String(observation.headSha || '').toLowerCase(),
+    mergeContextDigest: String(observation.mergeContextDigest || ''),
     observedAt: observation.observedAt,
   };
   receipt.receiptDigest = sha256(canonicalJson(receipt));
@@ -1503,6 +1627,23 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   const expectedArtifactDigest = String(expected.artifactDigest || '');
   const runStatus = String(receipt.runStatus || (receipt.conclusion ? 'completed' : ''));
   const pendingRemoteState = ['queued', 'in_progress'].includes(runStatus) ? runStatus : null;
+  const trustRoot = expected.acceptedMainTrustRoot;
+  const trustedRoot = trustRootAccepted(trustRoot, expected.testMode === true)
+    && validateObservedTrustRootEnvelope(trustRoot, {
+      repository,
+      defaultBranch: V132_SOURCE_DEFAULT_BRANCH,
+    }).status === 'pass';
+  const trustedDocument = trustedRoot ? trustRootDocument(trustRoot) : null;
+  const expectedTrustRootDigest = trustedRoot ? trustRootContractDigest(trustRoot) : '';
+  const expectedMergeContextDigest = trustedRoot && SHA_RE.test(expectedBaseSha || baseSha) && SHA_RE.test(expectedHeadSha || headSha)
+    ? calculateMergeContextDigest({
+      repository,
+      pullRequestNumber,
+      baseSha: expectedBaseSha || baseSha,
+      headSha: expectedHeadSha || headSha,
+      acceptedMainTrustRootDigest: expectedTrustRootDigest,
+    })
+    : null;
 
   if (!['github_required_check_set', 'github_job_not_started'].includes(receipt.evidenceType)) reasons.push('remote_evidence_type_invalid');
   if (!repository || (expected.repository && repository !== expected.repository)) reasons.push('remote_repository_mismatch');
@@ -1525,6 +1666,28 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     || String(pullRequestBinding.baseSha || '').toLowerCase() !== baseSha
     || String(pullRequestBinding.headSha || '').toLowerCase() !== headSha
     || pullRequestBinding.state !== 'open') reasons.push('remote_pull_request_binding_mismatch');
+  const baseAncestry = receipt.baseAncestry || {};
+  if (!['github_compare_api', 'github_compare_api_mock', 'explicit_test_compare_api'].includes(baseAncestry.source)) reasons.push('remote_base_ancestry_source_invalid');
+  if (!validRfc3339(baseAncestry.observedAt)) reasons.push('remote_base_ancestry_timestamp_invalid');
+  if (baseAncestry.stableDigest !== sha256(canonicalJson(baseAncestryPayload(baseAncestry)))) reasons.push('remote_base_ancestry_digest_invalid');
+  if (baseAncestry.repository !== repository
+    || Number(baseAncestry.pullRequestNumber) !== pullRequestNumber
+    || String(baseAncestry.observedBaseSha || '').toLowerCase() !== baseSha
+    || String(baseAncestry.checkedHeadSha || '').toLowerCase() !== headSha) reasons.push('remote_base_ancestry_binding_mismatch');
+  if (receipt.observedBaseSha !== baseSha || receipt.baseAncestryState !== baseAncestry.state) reasons.push('remote_base_ancestry_projection_mismatch');
+  if (baseAncestry.state !== 'matched'
+    || !['ahead', 'identical'].includes(baseAncestry.compareStatus)
+    || String(baseAncestry.mergeBaseSha || '').toLowerCase() !== baseSha) reasons.push('remote_base_not_ancestor_of_head');
+  if (trustedRoot && receipt.acceptedMainTrustRootDigest !== expectedTrustRootDigest) reasons.push('remote_accepted_main_trust_root_digest_mismatch');
+  if (!DIGEST_RE.test(String(receipt.mergeContextDigest || ''))
+    || receipt.mergeContextDigest !== calculateMergeContextDigest({
+      repository,
+      pullRequestNumber,
+      baseSha,
+      headSha,
+      acceptedMainTrustRootDigest: receipt.acceptedMainTrustRootDigest,
+    })) reasons.push('remote_merge_context_digest_invalid');
+  if (expectedMergeContextDigest && receipt.mergeContextDigest !== expectedMergeContextDigest) reasons.push('remote_merge_context_digest_mismatch');
   if (!uniquePositiveIntegers(receipt.runIds)) reasons.push('remote_run_ids_invalid');
   const runAttempts = Array.isArray(receipt.runAttempts) ? receipt.runAttempts : [];
   if (runAttempts.length !== receipt.runIds?.length
@@ -1557,13 +1720,6 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   if (canonicalJson(discoveredSelectedRuns) !== canonicalJson(receiptSelectedRuns)) reasons.push('remote_workflow_discovery_selection_mismatch');
   if ((workflowRunDiscovery.missingWorkflowIdentities || []).length) reasons.push('remote_workflow_discovery_contract_omission');
   for (const error of receipt.observationErrors || []) reasons.push(`remote_observation_error:${String(error).slice(0, 160)}`);
-  const trustRoot = expected.acceptedMainTrustRoot;
-  const trustedRoot = trustRootAccepted(trustRoot, expected.testMode === true)
-    && validateObservedTrustRootEnvelope(trustRoot, {
-      repository,
-      defaultBranch: V132_SOURCE_DEFAULT_BRANCH,
-    }).status === 'pass';
-  const trustedDocument = trustedRoot ? trustRootDocument(trustRoot) : null;
   const workflowContract = trustedDocument?.workflowContract?.requiredWorkflows || [];
   const contractedWorkflowSet = workflowContract
     .map((entry) => ({ workflowId: Number(entry.workflowId), workflowPath: String(entry.path || '') }))
@@ -1618,6 +1774,9 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
       ...baseRemoteProjection(reasons.length ? 'failed' : unavailableState, reasons),
       remoteFailureClass: receipt.failureClass || 'unknown_pre_step_failure',
       remoteEvidenceObserved: true,
+      observedBaseSha: SHA_RE.test(baseSha) ? baseSha : null,
+      baseAncestryState: reasons.some((reason) => reason.includes('base_') || reason.includes('merge_context')) ? 'mismatch' : (baseAncestry.state || 'not_observed'),
+      mergeContextDigest: DIGEST_RE.test(String(receipt.mergeContextDigest || '')) ? receipt.mergeContextDigest : null,
       observedHeadSha: SHA_RE.test(headSha) ? headSha : null,
       runIds: uniquePositiveIntegers(receipt.runIds) ? [...receipt.runIds] : [],
     };
@@ -1628,6 +1787,9 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
       ...baseRemoteProjection(reasons.length ? 'failed' : pendingRemoteState, reasons),
       remoteFailureClass: reasons.length ? 'remote_evidence_invalid' : null,
       remoteEvidenceObserved: true,
+      observedBaseSha: SHA_RE.test(baseSha) ? baseSha : null,
+      baseAncestryState: reasons.some((reason) => reason.includes('base_') || reason.includes('merge_context')) ? 'mismatch' : (baseAncestry.state || 'not_observed'),
+      mergeContextDigest: DIGEST_RE.test(String(receipt.mergeContextDigest || '')) ? receipt.mergeContextDigest : null,
       observedHeadSha: SHA_RE.test(headSha) ? headSha : null,
       runIds: uniquePositiveIntegers(receipt.runIds) ? [...receipt.runIds] : [],
     };
@@ -1723,6 +1885,7 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
 
   let remoteValidationState = 'passed';
   if (reasons.some((reason) => reason.includes('head_sha_mismatch') || reason.includes('_head_mismatch'))) remoteValidationState = 'head_mismatch';
+  else if (reasons.some((reason) => reason.includes('base_ancestry') || reason.includes('base_not_ancestor') || reason.includes('merge_context'))) remoteValidationState = 'stale';
   else if (['cancelled', 'canceled'].includes(receipt.conclusion)) remoteValidationState = 'canceled';
   else if (reasons.some((reason) => reason.includes('required_check_set'))) remoteValidationState = 'required_check_set_mismatch';
   else if (reasons.some((reason) => reason.includes('artifact'))) remoteValidationState = 'artifact_missing';
@@ -1736,6 +1899,9 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     requiredCheckSetState: !reasons.some((reason) => reason.includes('required_check') || reason.startsWith('check_') || reason.includes('candidate_controlled_required_check')) ? 'matched' : 'mismatch',
     artifactIntegrityState: !reasons.some((reason) => reason.includes('artifact')) ? 'verified' : 'missing_or_mismatch',
     remoteEvidenceObserved: true,
+    observedBaseSha: SHA_RE.test(baseSha) ? baseSha : null,
+    baseAncestryState: reasons.some((reason) => reason.includes('base_') || reason.includes('merge_context')) ? 'mismatch' : (baseAncestry.state || 'not_observed'),
+    mergeContextDigest: DIGEST_RE.test(String(receipt.mergeContextDigest || '')) ? receipt.mergeContextDigest : null,
     observedHeadSha: SHA_RE.test(headSha) ? headSha : null,
     runIds: uniquePositiveIntegers(receipt.runIds) ? [...receipt.runIds] : [],
     reasonCodes: reasons,
@@ -1755,9 +1921,15 @@ export function evaluateFinalDecisionReceipt(receipt, expected = {}) {
   if (receipt.authority !== V132_FINAL_AUTHORITY) reasons.push('final_decision_authority_invalid');
   if (receipt.decision !== 'allow_merge') reasons.push('final_decision_not_allow_merge');
   if (!/^[A-Za-z0-9_.:-]{8,128}$/.test(String(receipt.decisionId || ''))) reasons.push('final_decision_id_invalid');
+  if (!Number.isInteger(Number(receipt.pullRequestNumber)) || Number(receipt.pullRequestNumber) < 1) reasons.push('final_decision_pull_request_number_invalid');
+  if (expected.pullRequestNumber && Number(receipt.pullRequestNumber) !== Number(expected.pullRequestNumber)) reasons.push('final_decision_pull_request_number_mismatch');
+  if (!SHA_RE.test(String(receipt.baseSha || '').toLowerCase())) reasons.push('final_decision_base_invalid');
+  if (expected.baseSha && String(receipt.baseSha || '').toLowerCase() !== String(expected.baseSha).toLowerCase()) reasons.push('final_decision_base_mismatch');
   if (!SHA_RE.test(String(receipt.headSha || '').toLowerCase())) reasons.push('final_decision_head_invalid');
   if (expected.headSha && String(receipt.headSha || '').toLowerCase() !== String(expected.headSha).toLowerCase()) reasons.push('final_decision_head_mismatch');
   if (expected.repository && receipt.repository !== expected.repository) reasons.push('final_decision_repository_mismatch');
+  if (!DIGEST_RE.test(String(receipt.mergeContextDigest || ''))) reasons.push('final_decision_merge_context_digest_invalid');
+  if (expected.mergeContextDigest && receipt.mergeContextDigest !== expected.mergeContextDigest) reasons.push('final_decision_merge_context_digest_mismatch');
   const suppliedDigest = String(receipt.receiptDigest || '');
   const { receiptDigest: ignoredDigest, ...decisionPayload } = receipt;
   if (!DIGEST_RE.test(suppliedDigest) || suppliedDigest !== sha256(canonicalJson(decisionPayload))) reasons.push('final_decision_digest_invalid');
@@ -1765,6 +1937,7 @@ export function evaluateFinalDecisionReceipt(receipt, expected = {}) {
   return {
     status: reasons.length ? 'fail' : 'pass',
     finalDecisionState: reasons.length ? 'not_authorized' : 'authorized',
+    mergeContextDigest: DIGEST_RE.test(String(receipt.mergeContextDigest || '')) ? receipt.mergeContextDigest : null,
     reasonCodes: reasons,
     createsAuthority: false,
   };
@@ -1781,20 +1954,32 @@ export function validateCanonicalState(state = {}) {
   const requiredCheckSetState = state.remoteEvidence?.requiredCheckSetState || state.requiredCheckSetState || 'not_observed';
   const artifactIntegrityState = state.remoteEvidence?.artifactIntegrityState || state.artifactIntegrityState || 'not_observed';
   const finalDecisionEvidenceStatus = state.finalDecisionEvidence?.status || state.finalDecisionEvidenceStatus || 'not_observed';
+  const observedBaseSha = state.observedBaseSha;
+  const baseAncestryState = state.baseAncestryState;
+  const mergeContextDigest = state.mergeContextDigest;
   if (!['passed', 'failed'].includes(local)) reasons.push('canonical_local_validation_state_invalid');
   if (!V132_REMOTE_VALIDATION_STATES.includes(remote)) reasons.push('canonical_remote_validation_state_invalid');
   if (!['eligible', 'blocked'].includes(technical)) reasons.push('canonical_technical_eligibility_invalid');
   if (!['authorized', 'not_authorized'].includes(finalDecision)) reasons.push('canonical_final_decision_state_invalid');
   if (typeof state.mergeAllowed !== 'boolean') reasons.push('canonical_merge_allowed_invalid');
+  if (![null, undefined].includes(observedBaseSha) && !SHA_RE.test(String(observedBaseSha || '').toLowerCase())) reasons.push('canonical_observed_base_sha_invalid');
+  if (!['not_observed', 'not_applicable', 'matched', 'mismatch'].includes(baseAncestryState)) reasons.push('canonical_base_ancestry_state_invalid');
+  if (![null, undefined].includes(mergeContextDigest) && !DIGEST_RE.test(String(mergeContextDigest || ''))) reasons.push('canonical_merge_context_digest_invalid');
+  if (remote === 'passed' && (!SHA_RE.test(String(observedBaseSha || '').toLowerCase()) || baseAncestryState !== 'matched' || !DIGEST_RE.test(String(mergeContextDigest || '')))) {
+    reasons.push('canonical_passed_remote_release_context_incomplete');
+  }
 
   const technicalConjunction = local === 'passed'
     && remote === 'passed'
     && remoteEvidenceStatus === 'pass'
     && sameHeadState === 'matched'
     && requiredCheckSetState === 'matched'
-    && artifactIntegrityState === 'verified';
+    && artifactIntegrityState === 'verified'
+    && baseAncestryState === 'matched'
+    && DIGEST_RE.test(String(mergeContextDigest || ''));
   if ((technical === 'eligible') !== technicalConjunction) reasons.push('canonical_technical_eligibility_contradiction');
   if (finalDecision === 'authorized' && finalDecisionEvidenceStatus !== 'pass') reasons.push('canonical_final_decision_without_trusted_evidence');
+  if (finalDecision === 'authorized' && state.finalDecisionEvidence?.mergeContextDigest !== mergeContextDigest) reasons.push('canonical_final_decision_merge_context_mismatch');
   const mergeConjunction = technicalConjunction && finalDecision === 'authorized' && finalDecisionEvidenceStatus === 'pass';
   if (state.mergeAllowed !== mergeConjunction) reasons.push('canonical_merge_allowed_contradiction');
   if (remote !== 'passed' && technical === 'eligible') reasons.push('canonical_nonpassed_remote_technically_eligible');
@@ -1808,13 +1993,39 @@ export function deriveCanonicalState({
   expected = {},
 } = {}) {
   const remote = evaluateRemoteEvidence(remoteEvidence, expected);
-  const finalDecision = evaluateFinalDecisionReceipt(finalDecisionReceipt, expected);
+  const observedBaseSha = remote.observedBaseSha || (SHA_RE.test(String(expected.baseSha || '').toLowerCase()) ? String(expected.baseSha).toLowerCase() : null);
+  const baseAncestryState = remote.baseAncestryState !== 'not_observed'
+    ? remote.baseAncestryState
+    : (expected.baseAncestryState || 'not_observed');
+  const expectedMergeContextDigest = expected.mergeContextDigest || (
+    expected.acceptedMainTrustRoot
+    && expected.repository
+    && expected.pullRequestNumber
+    && expected.baseSha
+    && expected.headSha
+      ? calculateMergeContextDigest({
+        repository: expected.repository,
+        pullRequestNumber: expected.pullRequestNumber,
+        baseSha: expected.baseSha,
+        headSha: expected.headSha,
+        acceptedMainTrustRootDigest: trustRootContractDigest(expected.acceptedMainTrustRoot),
+      })
+      : null
+  );
+  const mergeContextDigest = expectedMergeContextDigest || remote.mergeContextDigest || null;
+  const finalDecision = evaluateFinalDecisionReceipt(finalDecisionReceipt, {
+    ...expected,
+    baseSha: expected.baseSha || observedBaseSha,
+    mergeContextDigest,
+  });
   const localValidationState = localValidationPassed ? 'passed' : 'failed';
   const technicalMergeEligibility = localValidationState === 'passed'
     && remote.remoteValidationState === 'passed'
     && remote.sameHeadState === 'matched'
     && remote.requiredCheckSetState === 'matched'
     && remote.artifactIntegrityState === 'verified'
+    && baseAncestryState === 'matched'
+    && DIGEST_RE.test(String(mergeContextDigest || ''))
     ? 'eligible'
     : 'blocked';
   const mergeAllowed = technicalMergeEligibility === 'eligible' && finalDecision.finalDecisionState === 'authorized';
@@ -1824,6 +2035,9 @@ export function deriveCanonicalState({
     remoteFailureClass: remote.remoteFailureClass,
     technicalMergeEligibility,
     finalDecisionState: finalDecision.finalDecisionState,
+    observedBaseSha,
+    baseAncestryState,
+    mergeContextDigest,
     mergeAllowed,
     deprecatedLocalTechnicalReady: {
       value: localValidationState === 'passed',

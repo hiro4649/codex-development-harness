@@ -10,6 +10,7 @@ import { spawnSync } from 'node:child_process';
 import {
   aggregateGithubRunObservations,
   buildRequiredCheckTrustSnapshot,
+  calculateMergeContextDigest,
   canonicalJson,
   collectAcceptedMainTrustRoot,
   collectVerifiedGithubEvidence,
@@ -136,10 +137,13 @@ function assertExactHeadWorkflowJobs(relativePath, expectedJobCount) {
     assert.match(steps[checkoutIndex], /fetch-depth:\s*0/);
     assert.match(steps[checkoutIndex], /persist-credentials:\s*false/);
     const assertion = steps[checkoutIndex + 1] || '';
-    assert.match(assertion, /name:\s*Assert exact checkout head/);
+    assert.match(assertion, /name:\s*Assert exact checkout head and current base/);
     assert.match(assertion, /CODEX_EXPECTED_HEAD_SHA:\s*\$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
     assert.match(assertion, /git rev-parse HEAD/);
     assert.match(assertion, /v132_workflow_checkout_head_mismatch/);
+    assert.match(assertion, /CODEX_PR_BASE_SHA:\s*\$\{\{ github\.event\.pull_request\.base\.sha \|\| '' \}\}/);
+    assert.match(assertion, /git merge-base --is-ancestor "\$CODEX_PR_BASE_SHA" HEAD/);
+    assert.match(assertion, /v132_workflow_base_not_ancestor_of_head/);
     assert.match(assertion, /exit 1/);
   }
   return { workflow, jobs };
@@ -218,6 +222,13 @@ function validReceipts({ rulesetBinding = null, requiredAppId = null } = {}) {
     observedAt: '2026-07-10T00:00:00Z',
   });
   const workflowContentDigest = acceptedMainTrustRoot.document.workflowContract.requiredWorkflows[0].workflowContentDigest;
+  const mergeContextDigest = calculateMergeContextDigest({
+    repository,
+    pullRequestNumber: 165,
+    baseSha,
+    headSha,
+    acceptedMainTrustRootDigest: trustRootContractDigest(acceptedMainTrustRoot),
+  });
   const boundValues = { repository, headSha, status: 'pass' };
   const remoteEvidence = createFixtureGithubEvidence({
     repository, pullRequestNumber: 165, event: 'pull_request', baseRef: 'main', baseSha, headSha, runId: 101, runAttempt: 1,
@@ -245,7 +256,7 @@ function validReceipts({ rulesetBinding = null, requiredAppId = null } = {}) {
   });
   const finalDecisionReceipt = createFixtureFinalDecision({
     authority: V132_FINAL_AUTHORITY, decision: 'allow_merge', decisionId: 'decision:test:001',
-    repository, headSha, observedAt: '2026-07-10T00:02:00Z',
+    repository, pullRequestNumber: 165, baseSha, headSha, mergeContextDigest, observedAt: '2026-07-10T00:02:00Z',
   });
   const expected = {
     repository,
@@ -256,6 +267,7 @@ function validReceipts({ rulesetBinding = null, requiredAppId = null } = {}) {
     runId: 101,
     runAttempt: 1,
     acceptedMainTrustRoot,
+    mergeContextDigest,
     testMode: true,
   };
   return {
@@ -426,6 +438,11 @@ function createCollectorMockScenario(mode = 'pass') {
     if (url.pathname === `/repos/${repository}/pulls/${pullRequestNumber}`) {
       return json({ number: pullRequestNumber, state: 'open', merged: false, base: { ref: 'codex/v131-base', sha: baseSha, repo: { full_name: repository } }, head: { ref: 'codex/v132-candidate', sha: headSha, repo: { full_name: repository } } });
     }
+    if (url.pathname === `/repos/${repository}/compare/${baseSha}...${headSha}`) {
+      return mode === 'base_not_ancestor'
+        ? json({ status: 'diverged', base_commit: { sha: baseSha }, merge_base_commit: { sha: 'd'.repeat(40) } })
+        : json({ status: 'ahead', ahead_by: 1, behind_by: 0, base_commit: { sha: baseSha }, merge_base_commit: { sha: baseSha } });
+    }
     if (url.pathname === `/repos/${repository}/actions/runs`) return json({ total_count: workflowRuns.length, workflow_runs: workflowRuns });
     const runMatch = url.pathname.match(new RegExp(`^/repos/${repository}/actions/runs/(\\d+)$`));
     if (runMatch) return json(runsById.get(Number(runMatch[1])));
@@ -510,6 +527,30 @@ test('v132_evidence_truth_typed_receipts_authorize_only_exact_state', () => {
   const modifiedSerialized = structuredClone(receipts.remoteEvidence);
   modifiedSerialized.runAttempts[0].runAttempt = 2;
   assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: modifiedSerialized, expected: receipts.expected }).mergeAllowed, false);
+});
+
+test('v132_release_context_rejects_base_advance_after_remote_and_final_evidence', () => {
+  const receipts = validReceipts();
+  const advancedBaseSha = 'd'.repeat(40);
+  const advancedMergeContextDigest = calculateMergeContextDigest({
+    repository: receipts.expected.repository,
+    pullRequestNumber: receipts.expected.pullRequestNumber,
+    baseSha: advancedBaseSha,
+    headSha: receipts.expected.headSha,
+    acceptedMainTrustRootDigest: trustRootContractDigest(receipts.expected.acceptedMainTrustRoot),
+  });
+  const state = deriveCanonicalState({
+    localValidationPassed: true,
+    remoteEvidence: receipts.remoteEvidence,
+    finalDecisionReceipt: receipts.finalDecisionReceipt,
+    expected: { ...receipts.expected, baseSha: advancedBaseSha, mergeContextDigest: advancedMergeContextDigest },
+  });
+  assert.equal(state.remoteValidationState, 'stale');
+  assert.equal(state.finalDecisionState, 'not_authorized');
+  assert.equal(state.mergeAllowed, false);
+  assert.ok(state.remoteEvidence.reasonCodes.includes('remote_base_sha_mismatch'));
+  assert.ok(state.finalDecisionEvidence.reasonCodes.includes('final_decision_base_mismatch'));
+  assert.ok(state.finalDecisionEvidence.reasonCodes.includes('final_decision_merge_context_digest_mismatch'));
 });
 
 test('v132_github_evidence_binds_pr_event_workflow_base_and_head', () => {
@@ -793,6 +834,11 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
       { name: 'compat-safe', workflowPath: compatibilityPath, entryPath: 'compat.json', schemaVersion: V132_VERSION, requiredFields: ['schemaVersion', 'repository', 'headSha', 'status'], requiredFieldValues },
     ],
   });
+  const aggregateOptions = {
+    repository,
+    testMode: true,
+    acceptedMainTrustRootDigest: trustRootContractDigest(acceptedMainTrustRoot),
+  };
   const snapshotA = buildRequiredCheckTrustSnapshot({
     repository,
     baseRef: 'main',
@@ -874,7 +920,7 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
       artifactRecord: artifact(302, 'compat-safe', compatibilityPath, 'compat.json'),
     }),
   ];
-  const receipt = aggregateGithubRunObservations(observations, { repository, testMode: true });
+  const receipt = aggregateGithubRunObservations(observations, aggregateOptions);
   const remote = deriveCanonicalState({
     localValidationPassed: true,
     remoteEvidence: receipt,
@@ -883,7 +929,7 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
   assert.equal(remote.remoteValidationState, 'passed', remote.remoteEvidence.reasonCodes.join(','));
   assert.equal(remote.technicalMergeEligibility, 'eligible');
 
-  const omittedReceipt = aggregateGithubRunObservations(observations.slice(0, 1), { repository, testMode: true });
+  const omittedReceipt = aggregateGithubRunObservations(observations.slice(0, 1), aggregateOptions);
   const omitted = deriveCanonicalState({
     localValidationPassed: true,
     remoteEvidence: omittedReceipt,
@@ -899,7 +945,7 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
   rerun.workflowRuns[0].runAttempt = 2;
   rerun.checkRuns[0].checkRunId = 1103;
   rerun.artifacts[0].artifactId = 303;
-  const normalizedRerun = aggregateGithubRunObservations([...observations, rerun], { repository, testMode: true });
+  const normalizedRerun = aggregateGithubRunObservations([...observations, rerun], aggregateOptions);
   assert.deepEqual(normalizedRerun.runIds, [102, 103]);
   const rerunState = deriveCanonicalState({
     localValidationPassed: true,
@@ -918,7 +964,7 @@ test('v132_multi_run_aggregation_uses_stable_shared_trust_snapshot', () => {
   failedLatest.checkRuns[0].checkRunId = 1104;
   failedLatest.checkRuns[0].conclusion = 'failure';
   failedLatest.artifacts = [];
-  const failedLatestReceipt = aggregateGithubRunObservations([...observations, rerun, failedLatest], { repository, testMode: true });
+  const failedLatestReceipt = aggregateGithubRunObservations([...observations, rerun, failedLatest], aggregateOptions);
   const failedLatestState = deriveCanonicalState({
     localValidationPassed: true,
     remoteEvidence: failedLatestReceipt,
@@ -1033,6 +1079,9 @@ test('v132_production_collector_mock_e2e_binds_current_pr_and_latest_runs', asyn
     assert.equal(serializedA.mergeAllowed, false);
     assert.equal(serializedA.finalDecisionAuthorityCreated, false);
     assert.equal(serializedA.receipt.pullRequestBinding.headSha, scenario.headSha);
+    assert.equal(serializedA.receipt.observedBaseSha, scenario.baseSha);
+    assert.equal(serializedA.receipt.baseAncestryState, 'matched');
+    assert.match(serializedA.receipt.mergeContextDigest, /^sha256:[a-f0-9]{64}$/);
     assert.deepEqual(serializedA.receipt.workflowRunDiscovery.hintRunIds, [101, 201]);
     assert.deepEqual(serializedA.receipt.runIds, [102, 201]);
 
@@ -1066,6 +1115,14 @@ test('v132_production_collector_mock_e2e_binds_current_pr_and_latest_runs', asyn
     assert.equal(evaluation.remoteValidationState, 'passed', evaluation.remoteEvidence.reasonCodes.join(','));
     assert.equal(evaluation.mergeAllowed, false);
     assert.ok(scenario.calls.some((entry) => entry.includes('/actions/runs?event=pull_request') && entry.includes(`head_sha=${scenario.headSha}`)));
+    assert.ok(scenario.calls.some((entry) => entry.includes(`/compare/${scenario.baseSha}...${scenario.headSha}`)));
+    const staleBaseReceipt = structuredClone(serializedA.receipt);
+    staleBaseReceipt.baseSha = 'd'.repeat(40);
+    await assert.rejects(() => reobserveSerializedGithubEvidence(staleBaseReceipt, {
+      token: 'fixture-token',
+      acceptedMainTrustRoot: trustRoot,
+      httpClient: scenario.httpClient,
+    }), /serialized_github_receipt_reobservation_mismatch/);
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }
@@ -1082,7 +1139,7 @@ test('v132_collector_stale_success_old_head_and_unavailable_states_fail_closed',
       httpClient: stale.httpClient,
     });
     assert.equal(staleResult.status, 'fail');
-    assert.equal(staleResult.remoteValidationState, 'failed');
+    assert.equal(staleResult.remoteValidationState, 'artifact_missing');
     assert.ok(fs.existsSync(staleOutput));
     assert.deepEqual(JSON.parse(fs.readFileSync(staleOutput, 'utf8')).receipt.runIds, [102, 201]);
 
@@ -1094,10 +1151,21 @@ test('v132_collector_stale_success_old_head_and_unavailable_states_fail_closed',
       httpClient: oldHead.httpClient,
     });
     assert.equal(oldHeadResult.status, 'fail');
-    assert.equal(oldHeadResult.remoteValidationState, 'failed');
+    assert.notEqual(oldHeadResult.remoteValidationState, 'passed');
     const oldHeadSerialized = JSON.parse(fs.readFileSync(oldHeadOutput, 'utf8'));
     assert.equal(oldHeadSerialized.receipt.headSha, oldHead.headSha);
     assert.ok(oldHeadSerialized.receipt.workflowRunDiscovery.missingWorkflowIdentities.includes('1001:.github/workflows/quality-gate.yml'));
+
+    const baseDrift = createCollectorMockScenario('base_not_ancestor');
+    const baseDriftOutput = path.join(directory, 'base-drift.json');
+    const baseDriftResult = await runCollectorCli({
+      argv: [`--repository=${baseDrift.repository}`, `--pull-request=${baseDrift.pullRequestNumber}`, `--output=${baseDriftOutput}`],
+      env: { CODEX_V132_COLLECTOR_TOKEN: 'fixture-token' },
+      httpClient: baseDrift.httpClient,
+    });
+    assert.equal(baseDriftResult.status, 'fail');
+    assert.equal(baseDriftResult.remoteValidationState, 'stale');
+    assert.equal(JSON.parse(fs.readFileSync(baseDriftOutput, 'utf8')).receipt.baseAncestryState, 'mismatch');
 
     for (const mode of ['billing', 'pre_runner']) {
       const unavailable = createCollectorMockScenario(mode);
@@ -1156,6 +1224,15 @@ test('v132_final_decision_serialized_signature_verification', () => {
     publicKeyPem,
     keyId: 'owner-final-key-001',
   });
+  const baseSha = 'b'.repeat(40);
+  const headSha = 'a'.repeat(40);
+  const mergeContextDigest = calculateMergeContextDigest({
+    repository,
+    pullRequestNumber: 165,
+    baseSha,
+    headSha,
+    acceptedMainTrustRootDigest: trustRootContractDigest(trustRoot),
+  });
   const payload = {
     evidenceType: 'final_decision_authorization',
     trustClass: 'explicit_test_fixture',
@@ -1165,7 +1242,10 @@ test('v132_final_decision_serialized_signature_verification', () => {
     decision: 'allow_merge',
     decisionId: 'decision:signed:001',
     repository,
-    headSha: 'a'.repeat(40),
+    pullRequestNumber: 165,
+    baseSha,
+    headSha,
+    mergeContextDigest,
     observedAt: '2026-07-10T00:02:00Z',
     signatureAlgorithm: 'ed25519',
     signingKeyId: 'owner-final-key-001',
@@ -1176,7 +1256,8 @@ test('v132_final_decision_serialized_signature_verification', () => {
   const serialized = { ...payload, signature };
   serialized.receiptDigest = sha256(canonicalJson(serialized));
   const verified = verifySignedFinalDecisionReceipt(serialized, { trustRoot });
-  const evaluation = deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: verified, expected: { testMode: true } });
+  const expected = { repository, pullRequestNumber: 165, baseSha, headSha, mergeContextDigest, testMode: true };
+  const evaluation = deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: verified, expected });
   assert.equal(evaluation.finalDecisionState, 'authorized');
   assert.throws(() => verifySignedFinalDecisionReceipt(serialized, { trustRoot: structuredClone(trustRoot) }), /trusted_root_required/);
   const { publicKey: arbitraryPublicKey } = crypto.generateKeyPairSync('ed25519');
@@ -1190,6 +1271,22 @@ test('v132_final_decision_serialized_signature_verification', () => {
   const modified = structuredClone(serialized);
   modified.headSha = 'b'.repeat(40);
   assert.equal(deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: modified, expected: { testMode: true } }).finalDecisionState, 'not_authorized');
+  const advancedBaseSha = 'd'.repeat(40);
+  const advancedMergeContextDigest = calculateMergeContextDigest({
+    repository,
+    pullRequestNumber: 165,
+    baseSha: advancedBaseSha,
+    headSha,
+    acceptedMainTrustRootDigest: trustRootContractDigest(trustRoot),
+  });
+  const advancedBase = deriveCanonicalState({
+    localValidationPassed: true,
+    finalDecisionReceipt: verified,
+    expected: { ...expected, baseSha: advancedBaseSha, mergeContextDigest: advancedMergeContextDigest },
+  });
+  assert.equal(advancedBase.finalDecisionState, 'not_authorized');
+  assert.ok(advancedBase.finalDecisionEvidence.reasonCodes.includes('final_decision_base_mismatch'));
+  assert.ok(advancedBase.finalDecisionEvidence.reasonCodes.includes('final_decision_merge_context_digest_mismatch'));
 });
 
 test('v132_billing_lock_is_unavailable_not_code_failure', () => {
@@ -1301,6 +1398,20 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   assert.equal(policy.trustRootContract.workflowDispatchBindsGithubSha, true);
   assert.equal(policy.trustRootContract.exactHeadAssertionBeforeChecksRequired, true);
   assert.equal(policy.trustRootContract.artifactHeadMustEqualExpectedHead, true);
+  assert.equal(policy.trustRootContract.currentBaseCompareApiObservationRequired, true);
+  assert.equal(policy.trustRootContract.currentBaseMustBeAncestorOfExactHead, true);
+  assert.deepEqual(policy.trustRootContract.mergeContextDigestBindings, ['repository', 'pullRequestNumber', 'baseSha', 'headSha', 'acceptedMainTrustRootDigest']);
+  assert.ok(policy.trustRootContract.finalDecisionKey.requiredBindings.includes('pullRequestNumber'));
+  assert.ok(policy.trustRootContract.finalDecisionKey.requiredBindings.includes('baseSha'));
+  assert.ok(policy.trustRootContract.finalDecisionKey.requiredBindings.includes('headSha'));
+  assert.ok(policy.trustRootContract.finalDecisionKey.requiredBindings.includes('mergeContextDigest'));
+  assert.deepEqual(policy.canonicalStateContract.fields, ['localValidationState', 'remoteValidationState', 'observedBaseSha', 'baseAncestryState', 'mergeContextDigest', 'technicalMergeEligibility', 'finalDecisionState', 'mergeAllowed']);
+  assert.equal(policy.requiredWorkflowApplicability.qualityGateRequiredForAllPullRequests, true);
+  assert.equal(policy.requiredWorkflowApplicability.compatibilityGateRequiredForAllPullRequests, true);
+  assert.equal(policy.requiredWorkflowApplicability.compatibilityJobMode, 'single_lightweight_aggregate');
+  assert.equal(policy.requiredWorkflowApplicability.compatibilityJobMaximum, 1);
+  assert.equal(policy.requiredWorkflowApplicability.pullRequestPathFiltersAllowed, false);
+  assert.equal(policy.requiredWorkflowApplicability.workflowDispatchBaseApplicability, 'not_applicable');
   assert.deepEqual(policy.trustRootContract.requiredCheckIdentityFields, ['name', 'appId']);
   assert.deepEqual(policy.trustRootContract.rulesetWorkflowIdentityFields, ['path', 'ref', 'sha', 'repositoryId']);
   assert.equal(policy.remoteEvidenceCollector.credentialClass, 'owner_managed_github_app_or_fine_grained_pat');
@@ -1505,7 +1616,7 @@ test('v132_target_allowlist_rejects_nested_product_paths', () => {
 test('v132_ci_cost_and_debt_closure', () => {
   const ci = planCiCost({ repoRoot: ROOT, changeClass: 'source_core' });
   assert.equal(ci.status, 'pass');
-  assert.equal(ci.estimatedJobs, 4);
+  assert.equal(ci.estimatedJobs, 2);
   assert.equal(ci.estimatedWorkflowRuns, 2);
   assert.deepEqual(ci.workflowNames, ['quality-gate.yml', 'v132-compatibility-gate.yml']);
   assert.equal(ci.confidence, 'constrained_static_workflow_analysis');
@@ -1563,12 +1674,15 @@ test('v132_workflow_heavy_trigger_excludes_edited', () => {
 
 test('v132_all_automatic_source_jobs_bind_and_assert_exact_head', () => {
   const quality = assertExactHeadWorkflowJobs('.github/workflows/quality-gate.yml', 1);
-  const compatibility = assertExactHeadWorkflowJobs('.github/workflows/v132-compatibility-gate.yml', 3);
-  assert.equal(quality.jobs.length + compatibility.jobs.length, 4);
+  const compatibility = assertExactHeadWorkflowJobs('.github/workflows/v132-compatibility-gate.yml', 1);
+  assert.equal(quality.jobs.length + compatibility.jobs.length, 2);
   assert.match(quality.workflow, /CODEX_PR_HEAD_SHA:\s*\$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+  assert.match(quality.workflow, /CODEX_V132_BASE_APPLICABILITY=not_applicable/);
   assert.match(quality.workflow, /cp "\$RUNNER_TEMP\/codex-quality-gate\.json" codex-v132-safe-summary\.json/);
   assert.match(quality.workflow, /codex-v132-safe-summary\.json/);
-  assert.equal((compatibility.workflow.match(/CODEX_EXPECTED_HEAD_SHA:/g) || []).length, 3);
+  assert.equal((compatibility.workflow.match(/CODEX_EXPECTED_HEAD_SHA:/g) || []).length, 1);
+  assert.equal(/^\s+paths:/m.test(compatibility.workflow), false);
+  assert.equal((compatibility.workflow.match(/codex-v132-compatibility-check\.mjs --lane=/g) || []).length, 3);
 });
 
 test('v132_workflow_runner_accepts_compact_technical_pass', () => {
@@ -1587,6 +1701,14 @@ test('v132_workflow_runner_accepts_compact_technical_pass', () => {
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 7 }).status, 'fail');
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedRepository: 'wrong/repository' }).status, 'fail');
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedHeadSha: 'f'.repeat(40) }).status, 'fail');
+    assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedBaseSha: report.observedBaseSha, baseApplicability: 'required' }).status, 'pass');
+    const staleBaseEvaluation = evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedBaseSha: 'd'.repeat(40), baseApplicability: 'required' });
+    assert.equal(staleBaseEvaluation.status, 'fail');
+    assert.ok(staleBaseEvaluation.failures.includes('v132_workflow_base_mismatch'));
+    const notAncestorReport = { ...structuredClone(report), baseAncestryState: 'mismatch' };
+    const notAncestorEvaluation = evaluateV132CompactWorkflowReport(notAncestorReport, { gateExit: 0, expectedBaseSha: report.observedBaseSha, baseApplicability: 'required' });
+    assert.equal(notAncestorEvaluation.status, 'fail');
+    assert.ok(notAncestorEvaluation.failures.includes('v132_workflow_base_not_ancestor_of_head'));
     const syntheticMergeReport = { ...structuredClone(report), headSha: 'e'.repeat(40) };
     const syntheticMergeEvaluation = evaluateV132CompactWorkflowReport(syntheticMergeReport, { gateExit: 0, expectedHeadSha: report.headSha });
     assert.equal(syntheticMergeEvaluation.status, 'fail');

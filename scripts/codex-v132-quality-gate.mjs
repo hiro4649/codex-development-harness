@@ -179,13 +179,23 @@ export function runV132SourceQualityGate({
   const repository = repositoryFromRemote(remote);
   const headSha = git(['rev-parse', 'HEAD'], root, '0'.repeat(40), accounting);
   const gitTopLevel = git(['rev-parse', '--show-toplevel'], root, '', accounting);
+  const eventName = process.env.CODEX_EVENT_NAME || 'local';
+  const suppliedBaseSha = String(process.env.CODEX_PR_BASE_SHA || '').toLowerCase();
+  const baseSha = suppliedBaseSha || policy.provisionalBaseSha;
+  const baseShaExists = run('git', ['cat-file', '-e', `${baseSha}^{commit}`], root, accounting).status === 0;
+  const baseApplicability = eventName === 'workflow_dispatch' ? 'not_applicable' : 'required';
+  const baseAncestryState = baseApplicability === 'not_applicable'
+    ? 'not_applicable'
+    : baseShaExists && run('git', ['merge-base', '--is-ancestor', baseSha, headSha], root, accounting).status === 0
+      ? 'matched'
+      : 'mismatch';
   const locallyBoundExpectedEvidence = {
     ...expectedRemoteEvidence,
     repository,
+    baseSha,
     headSha,
+    baseAncestryState,
   };
-  const baseSha = policy.provisionalBaseSha;
-  const baseShaExists = run('git', ['cat-file', '-e', `${baseSha}^{commit}`], root, accounting).status === 0;
   const workspaceState = collectWorkspaceState({ repoRoot: root, baseSha, headSha, accounting });
   const changedFiles = workspaceState.changedPaths;
   const workflowInputs = readWorkflowInputs(root);
@@ -227,6 +237,10 @@ export function runV132SourceQualityGate({
     sourceManifest,
     repoRoot: root,
   });
+  if (baseApplicability === 'required' && baseAncestryState !== 'matched') {
+    workspaceIdentity.status = 'fail';
+    workspaceIdentity.reasonCodes.push('v132_workflow_base_not_ancestor_of_head');
+  }
   const observedProductMutationCount = plan.classification.unknownPaths.length;
   const workspaceScope = evaluateObservedWorkspaceScope(workspaceState, observedProductMutationCount, { allowDirtyFixture });
   if (workspaceScope.status !== 'pass') {
@@ -334,6 +348,9 @@ export function runV132SourceQualityGate({
     observed: {
       repository,
       baseSha,
+      observedBaseSha: canonicalState.observedBaseSha,
+      baseApplicability,
+      baseAncestryState: canonicalState.baseAncestryState,
       headSha,
       workspaceStateDigest: workspaceState.workspaceStateDigest,
       worktreeState: workspaceState.worktreeState,
@@ -362,6 +379,9 @@ export function runV132SourceQualityGate({
     },
     repository,
     baseSha,
+    observedBaseSha: canonicalState.observedBaseSha,
+    baseAncestryState: canonicalState.baseAncestryState,
+    mergeContextDigest: canonicalState.mergeContextDigest,
     headSha,
     status: localBlockers.length ? 'fail' : 'pass',
     localValidationState: canonicalState.localValidationState,
@@ -389,7 +409,6 @@ export function runV132SourceQualityGate({
       reusedNodeCount: execution.reusedNodeCount,
       authority: false,
     },
-    exactHeadNodeSkipRate: plan.exactHeadNodeSkipRate,
     changeClass: plan.classification.changeClass,
     v132SelfTestStatus: selfTest,
     manifestProjectionStatus: { status: projection.status, classifiedRepositoryCount: projection.registryStatus.classifiedRepositoryCount },

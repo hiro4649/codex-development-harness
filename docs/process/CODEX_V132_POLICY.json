@@ -89,6 +89,9 @@
     "fields": [
       "localValidationState",
       "remoteValidationState",
+      "observedBaseSha",
+      "baseAncestryState",
+      "mergeContextDigest",
       "technicalMergeEligibility",
       "finalDecisionState",
       "mergeAllowed"
@@ -153,7 +156,10 @@
         "signingKeyId",
         "publicKeyFingerprint",
         "repository",
-        "exactHeadSha",
+        "pullRequestNumber",
+        "baseSha",
+        "headSha",
+        "mergeContextDigest",
         "decisionId",
         "observedAt",
         "receiptDigest",
@@ -172,6 +178,9 @@
     "artifactHeadMustEqualExpectedHead": true,
     "currentPullRequestApiObservationRequired": true,
     "currentPullRequestBindings": ["repository", "pullRequestNumber", "headSha", "baseSha"],
+    "currentBaseCompareApiObservationRequired": true,
+    "currentBaseMustBeAncestorOfExactHead": true,
+    "mergeContextDigestBindings": ["repository", "pullRequestNumber", "baseSha", "headSha", "acceptedMainTrustRootDigest"],
     "userSuppliedRunIdAuthority": "hint_only",
     "latestRunDiscoverySource": "github_api_current_pr_exact_head",
     "artifactRepositoryHeadStatusBindingsRequired": true,
@@ -199,6 +208,16 @@
     "createsFinalDecisionAuthority": false,
     "persistedObservationStates": ["passed", "unavailable_billing", "unavailable_pre_runner", "queued", "in_progress", "canceled", "failed"],
     "nonPassedObservationMergeAllowed": false
+  },
+  "requiredWorkflowApplicability": {
+    "sourceProfile": "source_control_plane",
+    "qualityGateRequiredForAllPullRequests": true,
+    "compatibilityGateRequiredForAllPullRequests": true,
+    "compatibilityJobMode": "single_lightweight_aggregate",
+    "compatibilityJobMaximum": 1,
+    "pullRequestPathFiltersAllowed": false,
+    "workflowDispatchBaseApplicability": "not_applicable",
+    "implicitPathFilterAuthority": false
   },
   "rulesetWorkflowSupport": {
     "state": "sha_pinned_only",
@@ -500,9 +519,9 @@
     "heavyEditedTriggerAllowed": false,
     "prBodyLintPath": "lightweight_non_authoritative",
     "remoteJobTargets": {
-      "docs_only_max": 1,
+      "docs_only_max": 2,
       "target_metadata_only_max": 2,
-      "source_core_target": 3,
+      "source_core_target": 2,
       "source_core_hard_max": 4,
       "duplicate_evidence_refresh": 0
     },

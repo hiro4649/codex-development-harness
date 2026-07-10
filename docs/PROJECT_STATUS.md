@@ -32,10 +32,14 @@ Draft PR #165 is open from this v1.3.2 branch. PR #164 remains its provisional v
 - Marked `activeHarnessVersion` as a non-authoritative deprecated execution alias across generated projections.
 - Made generated benchmark JSON `verificationMetrics` the single metric source.
 - Bound all four automatic Source jobs to the exact PR head, disabled persisted checkout credentials, and added an immediate checkout assertion. Only the two Source harness workflows changed; no target or product workflow changed.
+- Bound every automatic Source job to the current PR base as well as exact head. Pull requests fail with `v132_workflow_base_not_ancestor_of_head`; workflow dispatch records base applicability as not applicable.
+- Added Pull Request plus Compare API re-observation, `observedBaseSha`, `baseAncestryState`, and trust-bound `mergeContextDigest` to remote evidence and canonical state.
+- Bound signed Final Decision receipts to repository, PR number, current base, exact head, and merge-context digest.
+- Removed implicit compatibility path filtering and consolidated all compatibility lanes into one lightweight always-applicable job. Automatic Source topology is now two workflows and two jobs, under the four-job maximum.
 
 ## Remaining Work
 
-- Review the Exact-Head Workflow Closure on Draft PR #165.
+- Review the Release Context Closure on Draft PR #165.
 - Rebase onto accepted v1.3.1 main later and rerun exact local and remote checks.
 - Bootstrap the owner-key trust document on accepted main, then observe it through the production collector; the candidate cannot bootstrap itself.
 - Target installation remains a later, separately authorized project.
@@ -48,14 +52,15 @@ Draft PR #165 is open from this v1.3.2 branch. PR #164 remains its provisional v
 ## Risks
 
 - Rebase may change policy or workflow inputs and invalidate all optimization receipts.
+- A base advance invalidates remote evidence and any earlier Final Decision even when the head SHA is unchanged.
 - Branch protection/ruleset observation may expose a different exact check/workflow/app identity set; remote confirmation is pending.
 - GitHub workflow-content and artifact-value bindings require runner-step evidence before release acceptance.
 - The accepted-main trust-root bootstrap must not be performed from the candidate branch.
 
 ## Test Status
 
-The required local closure suite covers exact-head workflow semantics, synthetic-merge rejection, report/artifact head binding, real-git trust bootstrap, production collector mock E2E, latest-run selection, queued/in-progress/canceled truth, unavailable receipts, parser equivalence, compatibility lanes, actionlint, and the bounded benchmark. Exact sizes and timings come only from generated benchmark JSON `verificationMetrics`; coverage remains non-comparable and superiority remains not proven.
+The required local closure suite covers exact-head/current-base workflow semantics, positive and negative base ancestry, stale-base receipt rejection, Final Decision merge-context invalidation, synthetic-merge rejection, report/artifact binding, real-git trust bootstrap, production collector mock E2E, latest-run selection, queued/in-progress/canceled truth, unavailable receipts, parser equivalence, compatibility lanes, actionlint, and the bounded benchmark. Exact sizes and timings come only from generated benchmark JSON `verificationMetrics`; coverage remains non-comparable and superiority remains not proven.
 
 ## CI Status
 
-Draft PR #165 exists. Exact current PR head and automatic run state are read dynamically from GitHub and are not embedded here. The most recent observation ended all four jobs before runner steps because of the account billing lock. No manual rerun or `workflow_dispatch` was performed; runner evidence remains unavailable, not code execution evidence.
+Draft PR #165 exists. Exact current PR base/head and automatic run state are read dynamically from GitHub and are not embedded here. The last pushed revision used four jobs that ended before runner steps because of the account billing lock; this local closure reduces the next automatic topology to two jobs. No manual rerun or `workflow_dispatch` is permitted; runner evidence remains unavailable, not code execution evidence.
