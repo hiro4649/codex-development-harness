@@ -20,3 +20,12 @@
 - Executed bounded rollback/compatibility invariants under the v1.3.2 tuple.
 - Separated Source candidate display from per-repository target-installed observation.
 - Replaced node-count approximations with direct subprocess/write/retry/checkpoint accounting and output-digest benchmark coverage.
+- Removed repository fallback and made malformed, missing, unsupported, lookalike, or mismatched origins fail closed.
+- Added an accepted-main Ed25519 trust-root protocol with key ID, fingerprint, rotation, revocation, and candidate self-authorization rejection.
+- Bound remote evidence to repository, PR, event, base/head, workflow identity, run attempts, observed required checks, contracted artifacts, and observation time.
+- Split unknown pre-runner failure from authoritative billing unavailability.
+- Added real bounded compatibility behavior contracts for v1.3.1 through v1.2.7 without reactivating historical self-tests.
+- Added candidate lifecycle fields and allowed transitions, keeping accepted main, development parent, candidate, and execution versions distinct.
+- Added a generated 1585-byte routine effective policy and deferred full-manifest reads.
+- Added the v1.3.2 lean Source workflow path, eight-line Summary, and full-SHA action pins.
+- Verified the implementation checkpoint with 24 self-tests, compact/full Source gates, actionlint, parser equivalence, negative trust/evidence fixtures, and one-warm-up/five-run benchmark.

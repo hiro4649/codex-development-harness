@@ -2,33 +2,38 @@
 
 ## Highest-Priority Next Task
 
-Review the HARNESS v1.3.2 Final Truth Closure on Draft PR #165. After v1.3.1 is accepted on main, rebase and repeat exact validation. Do not activate or roll out targets.
+Review the exact pushed HARNESS v1.3.2 Trust Root and Parity Closure on Draft PR #165. Inspect one automatic required-check attempt without rerunning it. After v1.3.1 is accepted on main, rebase and repeat exact validation. Do not activate or roll out targets.
 
 ## Required Files
 
 - `docs/process/CODEX_V132_POLICY.json`
 - `docs/process/CODEX_V132_SPEC.md`
+- `docs/process/CODEX_EFFECTIVE_POLICY.compact.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 - `scripts/codex-v132-*.mjs`
+- `scripts/codex-workflow-quality-runner.mjs`
+- `scripts/codex-v132-evidence-truth.mjs`
+- `scripts/codex-v132-compatibility-invariants.mjs`
 - `.github/workflows/quality-gate.yml`
 - `.github/workflows/v132-compatibility-gate.yml`
-- `scripts/codex-workflow-quality-runner.mjs`
 
 ## Implementation Strategy
 
-1. Review content-addressed resume, API-reobserved evidence, signed Final Decision verification, canonical workflow adapter, and behavioral compatibility invariants in PR #165.
+1. Review fail-closed workspace identity, accepted-main trust roots, API-observed evidence, Final Decision verification, canonical workflow adapter, and behavioral compatibility invariants in PR #165.
 2. Keep remote state `not_observed` while jobs cannot start; do not rerun blindly.
-3. After v1.3.1 main acceptance, rebase and recompute policy digests if inputs change.
-4. Run strict projections, compact/full gates, workflow adapter negative fixtures, compatibility lanes, parser equivalence, and the coverage-attested comparable benchmark.
-5. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
+3. Treat accepted-main trust-root bootstrap as a separate owner-governed action; never authorize it from the candidate branch.
+4. After v1.3.1 main acceptance, rebase and recompute policy, workspace, and receipt digests if inputs change.
+5. Run strict projections, compact/full gates, workflow adapter negatives, evidence-binding fixtures, compatibility lanes, parser equivalence, actionlint, and the bounded benchmark.
+6. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
 
 ## Expected Risks
 
 - Rebase conflicts in active tuple, workflow, or project-memory files.
 - New v1.3.1 main changes can invalidate benchmark comparison and receipt digests.
 - Remote checks may remain unavailable.
+- A trust-root or required-check contract placed only on the candidate branch must remain non-authoritative.
 
 ## Validation Steps
 
@@ -36,11 +41,13 @@ Review the HARNESS v1.3.2 Final Truth Closure on Draft PR #165. After v1.3.1 is 
 - `node scripts/codex-v132-self-test.mjs --stage=all`
 - `CODEX_HARNESS_SOURCE_REPO=1 CODEX_HARNESS_MODE=core CODEX_PROFILE_COMPAT_MODE=optional CODEX_QUALITY_REPORT=json node scripts/codex-local-quality-gate.mjs`
 - Repeat with `CODEX_V132_DIAGNOSTICS=1` once after compact pass.
+- Run actionlint over all workflow files.
+- Run `node scripts/codex-v132-benchmark.mjs` with one warm-up and five measured runs per side.
 
 ## Stop Conditions
 
-Stop on target/product/sensitive mutation, authority weakening, output-limit breach, unobserved remote pass, or merge permission without exact typed remote evidence and Final Decision.
+Stop on target/product/sensitive mutation, authority weakening, candidate-controlled trust, output-limit breach, unobserved remote pass, or merge permission without exact typed remote evidence and Final Decision.
 
 ## Estimated Complexity
 
-Medium. The architecture is complete locally; the remaining work is rebase-sensitive verification, not feature expansion.
+Medium. The Source body is locally complete; remaining work is independent review, accepted-main trust bootstrap, rebase-sensitive verification, and exact-head remote validation, not feature expansion.

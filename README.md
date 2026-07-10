@@ -2,6 +2,8 @@
 # Codex Development Harness
 
 Local Source candidate: v1.3.2 Evidence-Converged Lean Core
+Accepted main: v1.3.0 at be06232adbe9072456bc9a36a1b298f5ba900470
+Candidate lifecycle: local_validated; remote validation and activation are incomplete
 Provisional base: v1.3.1 PR head; rebase required after v1.3.1 main acceptance
 Compatibility Adapter: v1.3.2 internal compatibility evidence with explicit debt disposition
 Final Decision authority: v1.1.8_final_decision_kernel
@@ -20,12 +22,16 @@ Current authority is:
 - `docs/process/CODEX_V132_POLICY.json`
 - `docs/process/CODEX_V132_SPEC.md`
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
+- `docs/process/CODEX_EFFECTIVE_POLICY.compact.json` for routine reads
 
 v1.3.2 Evidence-Converged Lean Core is a local Source-only candidate. It adds
 typed evidence truth, canonical merge state, strict compiled manifests,
 deterministic incremental validation, digest-bound resumability, bounded
 context and output, allowlist target planning, and CI cost planning. Local pass
 never becomes remote pass, and missing remote evidence never becomes approval.
+Final Decision keys and artifact/workflow contracts must come from an
+accepted-main GitHub API trust root; a candidate-selected key cannot authorize
+itself. Required checks come from branch-protection or ruleset observation.
 
 It keeps rollback readable through the v1.3.2 Compatibility Adapter.
 The adapter preserves internal compatibility evidence for existing target gates
