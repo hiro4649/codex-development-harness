@@ -196,12 +196,13 @@ export function executeValidationPlan({ plan, context = {}, priorCompletedNodes 
     budgetUsage: {
       wallClockMinutes: (Date.now() - startedAtMs) / 60000,
       nodeAttempts: executedNodeResults.length,
-      toolCalls: executedNodeResults.length,
-      fileWrites: Number(context.fileWritesMade || 0),
-      retryPerNode: 0,
-      retryCount: 0,
+      toolCalls: Number(context.executionAccounting?.subprocessExecutions || 0),
+      subprocessExecutions: Number(context.executionAccounting?.subprocessExecutions || 0),
+      fileWrites: Number(context.executionAccounting?.harnessFileWrites || 0),
+      retryPerNode: Number(context.executionAccounting?.retryPerNode || 0),
+      retryCount: Number(context.executionAccounting?.retryCount || 0),
       parallelAgentRuntime: 1,
-      checkpointCount: Math.floor((executedNodeResults.length + reusedNodeResults.length) / 3),
+      checkpointCount: Number(context.executionAccounting?.checkpointCount || 0),
     },
     authorityCreated: false,
   };

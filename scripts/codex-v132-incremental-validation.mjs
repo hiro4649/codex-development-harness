@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 // CODEX_QUALITY_HARNESS_FILE v1.3.2
 
+import crypto from 'node:crypto';
+import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { canonicalJson, sha256, V132_VERSION } from './codex-v132-evidence-truth.mjs';
 
-export const V132_NODE_EXECUTOR_VERSION = 'v132-node-executor-1';
+export const V132_NODE_EXECUTOR_VERSION = 'v132-node-executor-2';
+export const V132_WORKSPACE_DIGEST_VERSION = 'v132-workspace-content-1';
 
 export const V132_VALIDATION_GRAPH = Object.freeze([
   {
@@ -37,7 +42,7 @@ export const V132_VALIDATION_GRAPH = Object.freeze([
   {
     nodeId: 'changed_file_classification',
     dependsOn: ['workspace_identity'],
-    inputDigests: ['diffDigest', 'classificationPolicyDigest'],
+    inputDigests: ['workspaceStateDigest', 'classificationPolicyDigest'],
     invalidationKeys: ['git_diff', 'classification_policy'],
     costClass: 'fast',
     requiredProfiles: ['source_control_plane'],
@@ -46,7 +51,7 @@ export const V132_VALIDATION_GRAPH = Object.freeze([
   {
     nodeId: 'dependency_closure',
     dependsOn: ['changed_file_classification', 'manifest_compile'],
-    inputDigests: ['graphDigest', 'diffDigest', 'policyDigest'],
+    inputDigests: ['graphDigest', 'workspaceStateDigest', 'policyDigest'],
     invalidationKeys: ['validation_graph', 'git_diff', 'policy_files'],
     costClass: 'fast',
     requiredProfiles: ['source_control_plane'],
@@ -110,6 +115,124 @@ function normalizePath(file) {
   return String(file || '').replaceAll('\\', '/').replace(/^\.\//, '');
 }
 
+function digestBytes(value) {
+  const bytes = Buffer.isBuffer(value) ? value : Buffer.from(String(value));
+  return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+}
+
+function accountSubprocess(accounting) {
+  if (accounting && typeof accounting === 'object') {
+    accounting.subprocessExecutions = Number(accounting.subprocessExecutions || 0) + 1;
+  }
+}
+
+function gitBuffer(repoRoot, args, accounting) {
+  accountSubprocess(accounting);
+  const result = spawnSync('git', args, { cwd: repoRoot, windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
+  if (result.status !== 0) {
+    throw new Error(`workspace_git_failed:${args[0]}:${String(result.stderr || '').slice(-256)}`);
+  }
+  return Buffer.from(result.stdout || Buffer.alloc(0));
+}
+
+function nullSeparated(buffer) {
+  return buffer.toString('utf8').split('\0').filter(Boolean);
+}
+
+function parseIndexEntries(buffer) {
+  const entries = new Map();
+  for (const item of nullSeparated(buffer)) {
+    const match = item.match(/^(\d{6}) ([a-f0-9]{40,64}) (\d+)\t([\s\S]+)$/);
+    if (!match) continue;
+    entries.set(normalizePath(match[4]), { mode: match[1], objectId: match[2], stage: Number(match[3]) });
+  }
+  return entries;
+}
+
+function parseTreeEntries(buffer) {
+  const entries = new Map();
+  for (const item of nullSeparated(buffer)) {
+    const match = item.match(/^(\d{6}) ([a-z]+) ([a-f0-9]{40,64})\t([\s\S]+)$/);
+    if (!match) continue;
+    entries.set(normalizePath(match[4]), { mode: match[1], objectType: match[2], objectId: match[3] });
+  }
+  return entries;
+}
+
+export function calculateWorkspaceStateDigest(workspaceState = {}, { baseSha, headSha } = {}) {
+  return sha256(canonicalJson({
+    version: workspaceState.workspaceDigestVersion,
+    baseSha,
+    headSha,
+    changedPaths: (workspaceState.changedPaths || []).map(normalizePath).sort(),
+    committedPatchDigest: workspaceState.committedPatchDigest,
+    stagedPatchDigest: workspaceState.stagedPatchDigest,
+    unstagedPatchDigest: workspaceState.unstagedPatchDigest,
+    trackedEntries: workspaceState.trackedEntries || [],
+    untrackedEntries: workspaceState.untrackedEntries || [],
+  }));
+}
+
+function worktreeEntry(repoRoot, relativePath) {
+  const absolute = path.join(repoRoot, ...relativePath.split('/'));
+  let stat;
+  try {
+    stat = fs.lstatSync(absolute);
+  } catch (error) {
+    if (error?.code === 'ENOENT') return { exists: false };
+    throw error;
+  }
+  const mode = (stat.mode & 0o177777).toString(8).padStart(6, '0');
+  if (stat.isSymbolicLink()) {
+    const symlinkTarget = fs.readlinkSync(absolute);
+    return { exists: true, type: 'symlink', mode, symlinkTarget, contentDigest: digestBytes(symlinkTarget) };
+  }
+  if (stat.isFile()) {
+    return { exists: true, type: 'file', mode, contentDigest: digestBytes(fs.readFileSync(absolute)), size: stat.size };
+  }
+  return { exists: true, type: 'other', mode, contentDigest: null };
+}
+
+export function collectWorkspaceState({ repoRoot = process.cwd(), baseSha, headSha = 'HEAD', accounting } = {}) {
+  const root = path.resolve(repoRoot);
+  if (!baseSha) throw new Error('workspace_base_sha_required');
+  const committedPatch = gitBuffer(root, ['diff', '--binary', '--full-index', '--no-ext-diff', baseSha, headSha, '--'], accounting);
+  const stagedPatch = gitBuffer(root, ['diff', '--cached', '--binary', '--full-index', '--no-ext-diff', '--'], accounting);
+  const unstagedPatch = gitBuffer(root, ['diff', '--binary', '--full-index', '--no-ext-diff', '--'], accounting);
+  const committedPaths = nullSeparated(gitBuffer(root, ['diff', '--name-only', '-z', baseSha, headSha, '--'], accounting));
+  const stagedPaths = nullSeparated(gitBuffer(root, ['diff', '--cached', '--name-only', '-z', '--'], accounting));
+  const unstagedPaths = nullSeparated(gitBuffer(root, ['diff', '--name-only', '-z', '--'], accounting));
+  const untrackedPaths = nullSeparated(gitBuffer(root, ['ls-files', '--others', '--exclude-standard', '-z'], accounting));
+  const changedPaths = [...new Set([...committedPaths, ...stagedPaths, ...unstagedPaths, ...untrackedPaths].map(normalizePath))].sort();
+  const indexEntries = parseIndexEntries(gitBuffer(root, ['ls-files', '--stage', '-z'], accounting));
+  const headEntries = parseTreeEntries(gitBuffer(root, ['ls-tree', '-r', '-z', '--full-tree', headSha], accounting));
+  const trackedPathSet = new Set([...committedPaths, ...stagedPaths, ...unstagedPaths].map(normalizePath));
+  const trackedEntries = [...trackedPathSet].sort().map((relativePath) => ({
+    path: relativePath,
+    head: headEntries.get(relativePath) || null,
+    index: indexEntries.get(relativePath) || null,
+    worktree: worktreeEntry(root, relativePath),
+  }));
+  const untrackedEntries = untrackedPaths.map(normalizePath).sort().map((relativePath) => ({
+    path: relativePath,
+    worktree: worktreeEntry(root, relativePath),
+  }));
+  const state = {
+    workspaceDigestVersion: V132_WORKSPACE_DIGEST_VERSION,
+    contentAddressed: true,
+    ignoredExclusionPolicy: 'git_exclude_standard_only',
+    changedPaths,
+    untrackedPaths: untrackedEntries.map((entry) => entry.path),
+    committedPatchDigest: digestBytes(committedPatch),
+    stagedPatchDigest: digestBytes(stagedPatch),
+    unstagedPatchDigest: digestBytes(unstagedPatch),
+    trackedEntries,
+    untrackedEntries,
+  };
+  state.workspaceStateDigest = calculateWorkspaceStateDigest(state, { baseSha, headSha });
+  return state;
+}
+
 export function classifyChangedFiles(changedFiles = []) {
   const normalized = changedFiles.map(normalizePath).filter(Boolean);
   if (!normalized.length) return { changeClass: 'no_op', unknownPaths: [], normalizedChangedFiles: [] };
@@ -133,6 +256,7 @@ export function buildValidationDigests({
   registry = [],
   workflowInputs = {},
   evidenceReceipt = null,
+  workspaceState = null,
   environment = process.env,
 } = {}) {
   const safeEnvironment = {
@@ -145,7 +269,13 @@ export function buildValidationDigests({
   const graphDigest = sha256(canonicalJson(V132_VALIDATION_GRAPH));
   const policyDigest = sha256(canonicalJson(policy));
   const registryDigest = sha256(canonicalJson(registry));
-  const diffDigest = sha256(canonicalJson(changedFiles.map(normalizePath).sort()));
+  const calculatedWorkspaceStateDigest = calculateWorkspaceStateDigest(workspaceState || {}, { baseSha, headSha });
+  const workspaceStateVerified = workspaceState?.contentAddressed === true
+    && workspaceState.workspaceDigestVersion === V132_WORKSPACE_DIGEST_VERSION
+    && workspaceState.workspaceStateDigest === calculatedWorkspaceStateDigest;
+  const workspaceStateDigest = workspaceStateVerified
+    ? workspaceState.workspaceStateDigest
+    : sha256(canonicalJson({ version: 'paths_only_non_resumable', changedFiles: changedFiles.map(normalizePath).sort() }));
   const toolchainDigest = sha256(canonicalJson({ node: process.version, platform: process.platform, arch: process.arch }));
   const environmentDigest = sha256(canonicalJson(safeEnvironment));
   return {
@@ -155,7 +285,9 @@ export function buildValidationDigests({
     manifestDigest: policyDigest,
     registryDigest,
     observationDigest: sha256(canonicalJson(evidenceReceipt?.registryObservation || 'not_observed')),
-    diffDigest,
+    workspaceStateDigest,
+    workspaceDigestVersion: workspaceState?.workspaceDigestVersion || 'paths_only_non_resumable',
+    contentAddressedWorkspace: workspaceStateVerified,
     classificationPolicyDigest: sha256(`${V132_VERSION}:classification`),
     graphDigest,
     selectedCheckDigest: sha256(`${V132_VERSION}:selected_checks`),
@@ -167,7 +299,7 @@ export function buildValidationDigests({
     canonicalStateDigest: sha256('pending'),
     outputPolicyDigest: sha256(canonicalJson(policy.outputLimits || {})),
     workflowDigest: sha256(canonicalJson(workflowInputs)),
-    changeClassDigest: diffDigest,
+    changeClassDigest: sha256(canonicalJson({ workspaceStateDigest, classificationPolicy: `${V132_VERSION}:classification` })),
     executorVersionDigest: sha256(V132_NODE_EXECUTOR_VERSION),
   };
 }
@@ -180,9 +312,10 @@ function nodeInputDigest(node, digests) {
 export function validateResumeReceipt(receipt, current = {}, now = Date.now()) {
   const reasons = [];
   if (!receipt || receipt.receiptVersion !== 'v132') reasons.push('resume_receipt_version_invalid');
-  for (const field of ['repository', 'baseSha', 'headSha', 'diffDigest', 'policyDigest', 'registryDigest', 'toolchainDigest', 'graphDigest', 'environmentDigest']) {
+  for (const field of ['repository', 'baseSha', 'headSha', 'workspaceStateDigest', 'workspaceDigestVersion', 'policyDigest', 'registryDigest', 'toolchainDigest', 'graphDigest', 'environmentDigest']) {
     if (receipt?.[field] !== current[field]) reasons.push(`resume_${field}_mismatch`);
   }
+  if (receipt?.contentAddressedWorkspace !== true || current.contentAddressedWorkspace !== true) reasons.push('resume_workspace_not_content_addressed');
   if (!Number.isFinite(Date.parse(receipt?.expiresAt || '')) || Date.parse(receipt.expiresAt) <= now) reasons.push('resume_receipt_expired');
   if (!Array.isArray(receipt?.completedNodes) || !Array.isArray(receipt?.nextNodes)) reasons.push('resume_node_lists_invalid');
   if (receipt?.createsAuthority !== false) reasons.push('resume_receipt_authority_invalid');
@@ -204,11 +337,16 @@ export function planIncrementalValidation({
   registry = [],
   workflowInputs = {},
   evidenceReceipt = null,
+  workspaceState = null,
   previousReceipt = null,
   now = Date.now(),
 } = {}) {
-  const classification = classifyChangedFiles(changedFiles);
-  const digests = buildValidationDigests({ repository, baseSha, headSha, changedFiles, policy, registry, workflowInputs, evidenceReceipt });
+  const workspaceStateVerified = workspaceState?.contentAddressed === true
+    && workspaceState.workspaceDigestVersion === V132_WORKSPACE_DIGEST_VERSION
+    && workspaceState.workspaceStateDigest === calculateWorkspaceStateDigest(workspaceState, { baseSha, headSha });
+  const effectiveChangedFiles = workspaceStateVerified ? workspaceState.changedPaths : changedFiles;
+  const classification = classifyChangedFiles(effectiveChangedFiles);
+  const digests = buildValidationDigests({ repository, baseSha, headSha, changedFiles: effectiveChangedFiles, policy, registry, workflowInputs, evidenceReceipt, workspaceState });
   const currentReceiptIdentity = { repository, baseSha, headSha, ...digests };
   const receiptValidation = previousReceipt
     ? validateResumeReceipt(previousReceipt, currentReceiptIdentity, now)
@@ -281,7 +419,9 @@ export function createValidationReceipt({
     repository,
     baseSha,
     headSha,
-    diffDigest: plan?.digests?.diffDigest,
+    workspaceStateDigest: plan?.digests?.workspaceStateDigest,
+    workspaceDigestVersion: plan?.digests?.workspaceDigestVersion,
+    contentAddressedWorkspace: plan?.digests?.contentAddressedWorkspace === true,
     policyDigest: plan?.digests?.policyDigest,
     registryDigest: plan?.digests?.registryDigest,
     toolchainDigest: plan?.digests?.toolchainDigest,
