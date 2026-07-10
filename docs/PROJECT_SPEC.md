@@ -1,82 +1,44 @@
 # Project Specification
 
-## HARNESS v1.3.1 Operational Convergence Core Purpose
-
-HARNESS v1.3.1 Operational Convergence Core is the active Source governance layer for reducing operational mistakes. It is not a capability expansion track. Its purpose is to make the harness harder to misuse across local work, remote CI state, target profile planning, and compatibility debt handling.
-
 ## Current Architecture
 
-The Source repository `hiro4649/codex-development-harness` now declares `activeHarnessVersion=1.3.1` and `activeSelfTestSuite=v131`. The Final Decision authority remains `v1.1.8_final_decision_kernel`. v1.3.0 remains immediate rollback, and v1.2.9 remains immediate rollback compatibility through the Compatibility Adapter.
-
-## Source Repo vs Target Repo Boundary
-
-The Source repository defines harness policy, compatibility projection, local quality gates, operator instructions, and v1.3.1 convergence checks. Target repositories are not mutated by this Source body work. Target rollout remains separate and has not started from v1.3.1.
+HARNESS v1.3.2 Evidence-Converged Lean Core is a local Source-only candidate on provisional v1.3.1 PR head `35fbdd0e7075701516de3b2de722b3b7014f1dbf`. It comprises a typed Evidence Truth Kernel, strict manifest compiler, static Registry v2 plus separate dynamic observation schema, deterministic incremental validation graph, resumable receipts, bounded context/output rendering, allowlist target dry-run planner, and CI cost planner.
 
 ## Functional Specifications
 
-- Active Source: `activeHarnessVersion=1.3.1`, `activeSelfTestSuite=v131`.
-- Final authority: `v1.1.8_final_decision_kernel`.
-- Compatibility Adapter: active, internal-only, non-authoritative.
-- v1.3.1 gate order: Workspace Identity Gate, Manifest Strict Validator, Validation State Machine, Target Profile Drift Linter, Remote CI Cost Gate, Decision Capsule v2, Compatibility Debt Ledger, Target Profile Installer Dry Run, Product Value Return Gate advisory.
-- Validation State Machine precedes Remote CI Cost Gate.
-- Compatibility Debt entries require `mustReviewBefore`.
-- Product Value Return Gate is advisory and nonblocking.
-- Target Profile Installer is dry-run only.
-- Target Profile Installer Dry Run rejects sensitive target diffs, including nested package/lockfile, runtime, contract, deploy, wallet, RPC, secret, env, and product source paths.
-- Target Profile Installer Dry Run rejects `CODEX_SOURCE_HARNESS_MANIFEST.json` anywhere in target install diffs, even if the caller forgot to set the explicit source-manifest-copied flag.
-- Target Profile Installer Dry Run reports safe source manifest copy paths and count when a forbidden Source manifest copy is detected.
-- Target Profile Installer Dry Run report surfaces are bounded: changed files, reason codes, and Source manifest copy paths are truncated for display while exact counts and omitted counts remain available.
-- Target Profile Installer Dry Run report bounds are declared in Source code and policy; v131 self-test verifies they stay synchronized.
-- Remote CI Cost Gate must not treat remote-pending or billing-blocked checks as remote pass.
-- Remote CI Cost Gate and Decision Capsule v2 must expose `remoteRequiredChecksPassed=false`, `mergeAllowed=false`, and `requiredCheckBypassAllowed=false` until remote validation has actually passed and merge readiness is `merge_ready`.
+- Remote, same-head, check-set, artifact, and Final Decision states require typed receipts.
+- Canonical state is `localValidationState`, `remoteValidationState`, `technicalMergeEligibility`, `finalDecisionState`, and `mergeAllowed`.
+- Local-only pass leaves remote `not_observed`, technical eligibility blocked, and `mergeAllowed=false`.
+- Exact digest-bound validation may reuse deterministic nodes; changed or expired inputs invalidate reuse.
+- Routine context is limited to 7168 bytes across four ordered sections.
+- Compact output is limited to 8192 bytes and 64 top-level fields; full diagnostics are opt-in.
+- Target planning is allowlist-based, fail-closed, dry-run only, and has no mutation authority.
+- CI cost is estimated before future remote work; heavy PR validation excludes `edited`.
 
 ## Data Models
 
-- `v131SelfTestStatus`
-- `v131OperationalConvergenceCore`
-- `validationStateMachine`
-- `remoteCiCostGate`
-- `decisionCapsuleV2`
-- `compatibilityDebtLedger`
-- `targetProfileInstallerDryRun`
-- `productValueReturnGate`
-
-Compatibility debt entry shape:
-
-```json
-{
-  "state": "pass_with_compatibility_debt",
-  "reason": "legacy target gate shape preserved",
-  "introducedIn": "1.3.0",
-  "mustReviewBefore": "1.3.2",
-  "affectsAuthority": false,
-  "blocking": false
-}
-```
+The normative model is `docs/process/CODEX_V132_POLICY.json`. Typed remote and Final Decision receipts feed the canonical state contract. Static repository classification is immutable owner input; dynamic GitHub observation is expiring evidence. Resumable receipts bind repository, base/head, diff, policy, registry, graph, toolchain, and environment digests.
 
 ## APIs
 
-No product or runtime APIs are changed. v1.3.1 adds Source harness scripts and policy/spec metadata only.
+Source harness APIs are exported from `scripts/codex-v132-*.mjs`. No product or runtime API changes.
 
 ## Design Decisions
 
-- v1.3.1 focuses on operational convergence: correct repo, correct manifest, correct state classification, correct target profile wording, and bounded operator output.
-- Workspace Identity Gate parses GitHub remote URLs into exact `owner/repo` slugs instead of accepting substring matches.
-- It does not start Performance Track, Fable comparison, SDK benchmark, Skill runtime, DAG runtime, target rollout, or v1.3.2.
-- It does not create merge authority outside Final Decision.
-- It keeps PR/target installer behavior dry-run or metadata-only until a separate rollout task explicitly authorizes target work.
+- `mergeAllowed` is the only canonical merge projection; the local-ready alias is explicitly non-authoritative.
+- Strict JSON rejects exact, escaped-equivalent, and case-fold key collisions before native parsing.
+- Unknown paths run the full local gate; unknown target paths are rejected.
+- Bounded samples retain exact counts and digests instead of unbounded arrays.
+- v1.3.1, v1.3.0, and v1.2.9 remain immediate, secondary, and emergency rollback respectively.
+- Compatibility debt due now is reclassified with a reason, not silently extended.
 
 ## Constraints
 
-- No target repository mutation from this Source body task.
-- No product/runtime/package/lockfile/deploy/wallet/RPC/secret mutation.
-- No branch protection bypass or required-check bypass.
-- No GitHub approval review and no self-approval.
-- Raw logs, secrets, prompts, and model outputs are forbidden as stored evidence.
-- GitHub Actions must not be used while account/billing lock remains.
+No activation, target rollout, target mutation, product/runtime/package/lockfile/deploy/wallet/RPC/secret change, Performance Track, Fable comparison, SDK benchmark, Skill runtime, DAG runtime, agent-team runtime, or remote action is allowed in this local candidate.
 
 ## Known Limitations
 
-- Remote CI for v1.3.1 has not run because Actions are currently unavailable.
-- Target repositories have not received v1.3.1.
-- Other AI evaluation from GitHub will require a future push/PR after remote CI usage is allowed.
+- The candidate must be rebased after v1.3.1 is accepted on main.
+- Remote CI is not observed; no remote approval is claimed.
+- Current legacy workflow topology exceeds the future three-job Source plan and must converge after rebase without weakening checks.
+- Dynamic repository observations are intentionally absent from the static Source manifest.

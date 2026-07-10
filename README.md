@@ -1,12 +1,12 @@
-<!-- CODEX_QUALITY_HARNESS_FILE v1.3.1 -->
+<!-- CODEX_QUALITY_HARNESS_FILE v1.3.2 -->
 # Codex Development Harness
 
-Active Source: v1.3.1 Operational Convergence Core
-Candidate: v1.3.1 active
-Compatibility Adapter: v1.3.1 internal compatibility evidence with visible compatibility debt
+Local Source candidate: v1.3.2 Evidence-Converged Lean Core
+Provisional base: v1.3.1 PR head; rebase required after v1.3.1 main acceptance
+Compatibility Adapter: v1.3.2 internal compatibility evidence with explicit debt disposition
 Final Decision authority: v1.1.8_final_decision_kernel
-Target harness display: HARNESS v1.3.1 Operational Convergence Core
-Target rollout: profile-gated; Performance Track deferred
+Target harness display: unchanged until separate owner-scoped rollout
+Target rollout: not started; Performance Track deferred
 
 Codex Development Harness is an AI PR safety gate. It helps decide whether an
 AI-authored change can be trusted, what evidence supports that decision, who is
@@ -17,21 +17,22 @@ Current authority is:
 - `AGENTS.md`
 - `docs/process/CODEX_HARNESS_MANIFEST.json`
 - `CODEX_SOURCE_HARNESS_MANIFEST.json`
-- `docs/process/CODEX_V131_SPEC.md`
+- `docs/process/CODEX_V132_POLICY.json`
+- `docs/process/CODEX_V132_SPEC.md`
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 
-v1.3.1 Operational Convergence Core is the active Source authority. It is a
-minimal Source release that makes v1.3.0 safer to operate across many
-repositories by preventing repo/worktree mistakes, profile drift, manifest
-divergence, CI state misclassification, local/remote evidence confusion,
-hidden compatibility debt, oversized operator output, and target install
-dry-run mistakes.
+v1.3.2 Evidence-Converged Lean Core is a local Source-only candidate. It adds
+typed evidence truth, canonical merge state, strict compiled manifests,
+deterministic incremental validation, digest-bound resumability, bounded
+context and output, allowlist target planning, and CI cost planning. Local pass
+never becomes remote pass, and missing remote evidence never becomes approval.
 
-It keeps target development resumable through the v1.3.1 Compatibility Adapter.
+It keeps rollback readable through the v1.3.2 Compatibility Adapter.
 The adapter preserves internal compatibility evidence for existing target gates
-without making old harness names active operator surfaces. The v1.3.1
+without making old harness names active operator surfaces. The v1.3.2
 Performance Track is deferred, non-authoritative, and not required for Core
-Activation.
+Activation. This candidate cannot activate until v1.3.1 is accepted on main,
+the branch is rebased, and exact-head remote evidence is obtained.
 
 It does not add target rollout authority, new P0 artifacts, new top-level
 operator statuses, new Skills, SDK runtime authority, DAG agent-team runtime,
