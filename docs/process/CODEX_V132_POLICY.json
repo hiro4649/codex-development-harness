@@ -1,0 +1,379 @@
+{
+  "marker": "CODEX_QUALITY_HARNESS_FILE v1.3.2",
+  "schemaVersion": "1.3.2",
+  "name": "HARNESS v1.3.2 Evidence-Converged Lean Core",
+  "normativePolicySource": true,
+  "purpose": "derive truthful evidence, run deterministic deltas, resume exact work, and bound operational output without creating authority",
+  "provisionalBaseSha": "35fbdd0e7075701516de3b2de722b3b7014f1dbf",
+  "requiresRebaseAfterV131Merge": true,
+  "activationAllowed": false,
+  "targetRolloutAllowed": false,
+  "remoteValidationState": "not_observed",
+  "intendedSourceTuple": {
+    "activeHarnessVersion": "1.3.2",
+    "activeSelfTestSuite": "v132",
+    "activeSelfTestStatusKey": "v132SelfTestStatus",
+    "currentVersion": "1.3.2",
+    "previousVersion": "1.3.1",
+    "candidateHarnessVersion": "1.3.2",
+    "candidateSelfTestSuite": "v132",
+    "candidateSelfTestStatusKey": "v132SelfTestStatus",
+    "candidateActivationState": "local_source_candidate",
+    "sourceActivation": "forbidden_until_v131_main_and_exact_head_remote_pass",
+    "finalAuthority": "v1.1.8_final_decision_kernel",
+    "authorityCreated": false,
+    "targetRollout": "not_started",
+    "targetMutationCount": 0
+  },
+  "rollbackChain": [
+    {
+      "version": "1.3.1",
+      "priority": 1,
+      "role": "immediate_rollback"
+    },
+    {
+      "version": "1.3.0",
+      "priority": 2,
+      "role": "secondary_rollback"
+    },
+    {
+      "version": "1.2.9",
+      "priority": 3,
+      "role": "emergency_legacy_rollback"
+    }
+  ],
+  "compatibility": {
+    "v128": "blocking_compatibility",
+    "v127": "readable_compatibility"
+  },
+  "canonicalStateContract": {
+    "fields": [
+      "localValidationState",
+      "remoteValidationState",
+      "technicalMergeEligibility",
+      "finalDecisionState",
+      "mergeAllowed"
+    ],
+    "canonicalMergeField": "mergeAllowed",
+    "legacyLocalField": "deprecatedLocalTechnicalReady",
+    "legacyLocalFieldAuthority": false,
+    "qualityScoreCanonical": false
+  },
+  "evidenceTruthKernel": {
+    "authorityBooleanClaimsAccepted": false,
+    "notObservedBecomesPass": false,
+    "billingLockBecomesCodeFailure": false,
+    "localPassBecomesRemotePass": false,
+    "prBodyIsEvidence": false,
+    "requiredObservationSource": "github_api",
+    "createsAuthority": false
+  },
+  "manifestCompiler": {
+    "state": "active",
+    "normativeSource": "docs/process/CODEX_V132_POLICY.json",
+    "compiledViews": [
+      "CODEX_SOURCE_HARNESS_MANIFEST.json",
+      "docs/process/CODEX_HARNESS_MANIFEST.json",
+      "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+      "compact_effective_policy"
+    ],
+    "rejectExactDuplicateKeys": true,
+    "rejectCaseFoldDuplicateKeys": true,
+    "rejectEscapedEquivalentDuplicateKeys": true,
+    "unicodeNormalization": "NFC",
+    "parserEquivalenceTargets": [
+      "node",
+      "powershell",
+      "python"
+    ]
+  },
+  "staticRegistry": [
+    {
+      "repositoryFullName": "hiro4649/codex-development-harness",
+      "repositoryId": 1243452288,
+      "role": "source",
+      "registrationState": "registered",
+      "profileClass": "source_control_plane",
+      "defaultBranch": "main",
+      "desiredNextHarnessVersion": "1.3.2",
+      "classificationSource": "owner_spec"
+    },
+    {
+      "repositoryFullName": "hiro4649/disco-funky-repair",
+      "repositoryId": 1239326977,
+      "role": "target",
+      "registrationState": "registered",
+      "profileClass": "metadata_gate_target",
+      "defaultBranch": "main",
+      "desiredNextHarnessVersion": "1.3.2",
+      "classificationSource": "owner_spec"
+    },
+    {
+      "repositoryFullName": "hiro4649/iris-live2d-renderer",
+      "repositoryId": 1239765322,
+      "role": "target",
+      "registrationState": "registered",
+      "profileClass": "metadata_gate_target",
+      "defaultBranch": "main",
+      "desiredNextHarnessVersion": "1.3.2",
+      "classificationSource": "owner_spec"
+    },
+    {
+      "repositoryFullName": "hiro4649/iris",
+      "repositoryId": 1239764352,
+      "role": "target",
+      "registrationState": "registered",
+      "profileClass": "complex_fixture_target",
+      "defaultBranch": "main",
+      "desiredNextHarnessVersion": "1.3.2",
+      "classificationSource": "owner_spec"
+    },
+    {
+      "repositoryFullName": "hiro4649/VOXWEAVE",
+      "repositoryId": 1255020469,
+      "role": "target",
+      "registrationState": "registered",
+      "profileClass": "full_quality_gate_target",
+      "defaultBranch": "main",
+      "desiredNextHarnessVersion": "1.3.2",
+      "classificationSource": "owner_spec"
+    },
+    {
+      "repositoryFullName": "hiro4649/CRIPTO-TIP",
+      "repositoryId": 1256870006,
+      "role": "target",
+      "registrationState": "registered",
+      "profileClass": "product_heavy_target",
+      "defaultBranch": "main",
+      "desiredNextHarnessVersion": "1.3.2",
+      "classificationSource": "owner_spec"
+    },
+    {
+      "repositoryFullName": "hiro4649/VGC-FUNKY-TOKEN",
+      "repositoryId": 1257029490,
+      "role": "target",
+      "registrationState": "registered",
+      "profileClass": "restricted_token_target",
+      "defaultBranch": "main",
+      "desiredNextHarnessVersion": "1.3.2",
+      "classificationSource": "owner_spec"
+    },
+    {
+      "repositoryFullName": "hiro4649/APS-GATE",
+      "repositoryId": 1272874880,
+      "role": "target",
+      "registrationState": "registered",
+      "profileClass": "lite_action_target",
+      "defaultBranch": "main",
+      "desiredNextHarnessVersion": "1.3.2",
+      "classificationSource": "owner_spec"
+    }
+  ],
+  "dynamicObservationSchema": {
+    "fields": [
+      "repositoryFullName",
+      "observedMainHeadSha",
+      "observedMainHarnessVersion",
+      "observedMainSelfTestSuite",
+      "pendingPrNumber",
+      "pendingPrHeadSha",
+      "pendingPrHarnessVersion",
+      "observationSource",
+      "observedAt",
+      "freshnessTtlSeconds"
+    ],
+    "persistInStaticRegistry": false,
+    "planningFreshnessTtlSeconds": 3600,
+    "mergeDecisionRequiresLiveExactHeadObservation": true
+  },
+  "inventoryStates": [
+    "registered",
+    "explicitly_excluded",
+    "unclassified_blocking"
+  ],
+  "incrementalValidationGraph": {
+    "schedulerType": "deterministic_validation_graph",
+    "agentTeamRuntime": false,
+    "unknownPathAction": "full_local_gate",
+    "requiredFlow": [
+      "workspace_identity",
+      "manifest_compile",
+      "registry_observation",
+      "changed_file_classification",
+      "dependency_closure",
+      "selected_local_checks",
+      "compatibility_checks",
+      "evidence_truth_projection",
+      "compact_output_rendering",
+      "ci_cost_planning"
+    ]
+  },
+  "contextCacheEnvelope": {
+    "order": [
+      "immutableCore",
+      "compiledRepoPolicy",
+      "taskDelta",
+      "evidenceCapsule"
+    ],
+    "limits": {
+      "immutableCoreBytes": 1536,
+      "compiledRepoPolicyBytes": 1536,
+      "taskDeltaBytes": 2048,
+      "evidenceCapsuleBytes": 2048
+    },
+    "fullManifestInRoutineContext": false,
+    "fullConversationReplay": false,
+    "skillsMcpToolsLazyLoad": true,
+    "providerNeutral": true
+  },
+  "outputLimits": {
+    "defaultCompactJsonBytes": 8192,
+    "decisionCapsuleBytes": 2048,
+    "safeSummaryBytes": 3584,
+    "orchestrationReceiptBytes": 24576,
+    "fullDiagnosticsBytes": 131072,
+    "topLevelFieldCount": 64,
+    "displayPathBytes": 256,
+    "reasonCodeBytes": 128,
+    "changedPathSamples": 50,
+    "reasonSamples": 50,
+    "sourceManifestSamples": 20
+  },
+  "targetPlanner": {
+    "mode": "dry_run_only",
+    "automaticMutationAllowed": false,
+    "unknownPathAction": "fail_closed",
+    "alwaysForbidden": [
+      "**/CODEX_SOURCE_HARNESS_MANIFEST.json",
+      "absolute_path",
+      "path_traversal",
+      "symlink_escape",
+      "control_character",
+      "unbounded_path"
+    ],
+    "profileAllowedFiles": {
+      "metadata_gate_target": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+        "docs/process/CODEX_V132_SPEC.md",
+        "scripts/codex-harness-version.mjs",
+        "scripts/codex-local-quality-gate.mjs",
+        "scripts/codex-v132-self-test.mjs"
+      ],
+      "complex_fixture_target": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+        "docs/process/CODEX_V132_SPEC.md",
+        "scripts/codex-harness-version.mjs",
+        "scripts/codex-local-quality-gate.mjs",
+        "scripts/codex-v132-self-test.mjs"
+      ],
+      "full_quality_gate_target": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+        "docs/process/CODEX_V132_SPEC.md",
+        "scripts/codex-harness-version.mjs",
+        "scripts/codex-local-quality-gate.mjs",
+        "scripts/codex-v132-self-test.mjs"
+      ],
+      "product_heavy_target": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+        "docs/process/CODEX_V132_SPEC.md",
+        "scripts/codex-harness-version.mjs",
+        "scripts/codex-local-quality-gate.mjs",
+        "scripts/codex-v132-self-test.mjs"
+      ],
+      "restricted_token_target": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+        "docs/process/CODEX_V132_SPEC.md",
+        "scripts/codex-harness-version.mjs",
+        "scripts/codex-v132-self-test.mjs"
+      ],
+      "lite_action_target": [
+        "AGENTS.md",
+        "docs/process/CODEX_HARNESS_MANIFEST.json",
+        "docs/process/CODEX_ACTIVE_POLICY_INDEX.json",
+        "docs/process/CODEX_V132_SPEC.md",
+        "scripts/codex-harness-version.mjs",
+        "scripts/codex-v132-self-test.mjs"
+      ]
+    }
+  },
+  "ciCostPlanner": {
+    "heavyPullRequestTriggers": [
+      "opened",
+      "synchronize",
+      "reopened"
+    ],
+    "heavyEditedTriggerAllowed": false,
+    "prBodyLintPath": "lightweight_non_authoritative",
+    "remoteJobTargets": {
+      "docs_only_max": 1,
+      "target_metadata_only_max": 2,
+      "source_core_target": 3,
+      "source_core_hard_max": 4,
+      "duplicate_evidence_refresh": 0
+    },
+    "rerunAllowed": false
+  },
+  "compatibilityDebtClosure": {
+    "dueVersion": "1.3.2",
+    "allowedDispositions": [
+      "resolved",
+      "reclassified_with_reason",
+      "extended_once_with_owner_reason"
+    ],
+    "legacyTargetGateShape": {
+      "disposition": "reclassified_with_reason",
+      "reason": "legacy aliases remain a Compatibility Adapter obligation until all registered targets consume canonical v132 fields",
+      "affectsAuthority": false,
+      "blocking": false,
+      "silentExtension": false
+    }
+  },
+  "longRunAutonomyBudget": {
+    "wallClockMinutesMax": 120,
+    "toolCallsMax": 300,
+    "fileWritesMax": 100,
+    "retryPerNodeMax": 1,
+    "parallelAgentRuntimeMax": 1,
+    "checkpointEveryCompletedNodes": 3,
+    "heartbeatSummaryBytesMax": 512,
+    "agentTeamRuntime": false
+  },
+  "performanceAcceptance": {
+    "warmupRuns": 1,
+    "measuredRuns": 5,
+    "statusPathP50Ms": 1500,
+    "docsOnlyP50Ms": 3000,
+    "sourceIncrementalP50Ms": 8000,
+    "fullColdP50Ms": 12000,
+    "exactHeadSkipRateMin": 0.7
+  },
+  "performanceTrack": {
+    "state": "deferred",
+    "authority": "non_authoritative",
+    "superiorityClaimState": "not_proven"
+  },
+  "nonGoals": [
+    "Performance Track",
+    "Fable comparison",
+    "SDK benchmark",
+    "Skill runtime",
+    "DAG runtime",
+    "agent-team runtime",
+    "automatic target mutation",
+    "target rollout",
+    "product runtime authority",
+    "package or lockfile mutation",
+    "deploy wallet RPC secret mutation",
+    "v1.3.3"
+  ]
+}

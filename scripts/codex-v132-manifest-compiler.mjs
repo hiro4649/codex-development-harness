@@ -1,0 +1,269 @@
+#!/usr/bin/env node
+// CODEX_QUALITY_HARNESS_FILE v1.3.2
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { canonicalJson, sha256, V132_FINAL_AUTHORITY, V132_VERSION } from './codex-v132-evidence-truth.mjs';
+
+const WHITESPACE = /\s/;
+
+class StrictJsonScanner {
+  constructor(text) {
+    this.text = String(text);
+    this.index = 0;
+    this.collisions = [];
+  }
+
+  scan() {
+    this.skipWhitespace();
+    this.parseValue('$');
+    this.skipWhitespace();
+    if (this.index !== this.text.length) throw new Error(`json_trailing_data:${this.index}`);
+    if (this.collisions.length) throw new Error(this.collisions.join(','));
+  }
+
+  skipWhitespace() {
+    while (this.index < this.text.length && WHITESPACE.test(this.text[this.index])) this.index += 1;
+  }
+
+  parseValue(pathName) {
+    this.skipWhitespace();
+    const char = this.text[this.index];
+    if (char === '{') return this.parseObject(pathName);
+    if (char === '[') return this.parseArray(pathName);
+    if (char === '"') return this.parseStringToken().value;
+    if (char === '-' || /[0-9]/.test(char || '')) return this.parseNumber();
+    for (const literal of ['true', 'false', 'null']) {
+      if (this.text.startsWith(literal, this.index)) {
+        this.index += literal.length;
+        return literal === 'true' ? true : literal === 'false' ? false : null;
+      }
+    }
+    throw new Error(`json_value_invalid:${pathName}:${this.index}`);
+  }
+
+  parseObject(pathName) {
+    const result = {};
+    const exactKeys = new Map();
+    const foldedKeys = new Map();
+    this.index += 1;
+    this.skipWhitespace();
+    if (this.text[this.index] === '}') {
+      this.index += 1;
+      return result;
+    }
+    while (this.index < this.text.length) {
+      this.skipWhitespace();
+      if (this.text[this.index] !== '"') throw new Error(`json_object_key_missing:${pathName}:${this.index}`);
+      const token = this.parseStringToken();
+      const normalized = token.value.normalize('NFC');
+      const folded = normalized.toLocaleLowerCase('en-US');
+      if (exactKeys.has(normalized)) {
+        const previousRaw = exactKeys.get(normalized);
+        const kind = previousRaw === token.raw ? 'exact_duplicate_key' : 'escaped_equivalent_duplicate_key';
+        this.collisions.push(`${kind}:${pathName}.${normalized}`);
+      } else {
+        exactKeys.set(normalized, token.raw);
+      }
+      if (foldedKeys.has(folded) && foldedKeys.get(folded) !== normalized) {
+        this.collisions.push(`case_fold_duplicate_key:${pathName}.${normalized}`);
+      } else {
+        foldedKeys.set(folded, normalized);
+      }
+      this.skipWhitespace();
+      if (this.text[this.index] !== ':') throw new Error(`json_object_colon_missing:${pathName}.${normalized}:${this.index}`);
+      this.index += 1;
+      result[normalized] = this.parseValue(`${pathName}.${normalized}`);
+      this.skipWhitespace();
+      if (this.text[this.index] === '}') {
+        this.index += 1;
+        return result;
+      }
+      if (this.text[this.index] !== ',') throw new Error(`json_object_separator_invalid:${pathName}:${this.index}`);
+      this.index += 1;
+    }
+    throw new Error(`json_object_unterminated:${pathName}`);
+  }
+
+  parseArray(pathName) {
+    const result = [];
+    this.index += 1;
+    this.skipWhitespace();
+    if (this.text[this.index] === ']') {
+      this.index += 1;
+      return result;
+    }
+    while (this.index < this.text.length) {
+      result.push(this.parseValue(`${pathName}[${result.length}]`));
+      this.skipWhitespace();
+      if (this.text[this.index] === ']') {
+        this.index += 1;
+        return result;
+      }
+      if (this.text[this.index] !== ',') throw new Error(`json_array_separator_invalid:${pathName}:${this.index}`);
+      this.index += 1;
+    }
+    throw new Error(`json_array_unterminated:${pathName}`);
+  }
+
+  parseStringToken() {
+    const start = this.index;
+    this.index += 1;
+    let escaping = false;
+    while (this.index < this.text.length) {
+      const char = this.text[this.index];
+      if (escaping) {
+        escaping = false;
+      } else if (char === '\\') {
+        escaping = true;
+      } else if (char === '"') {
+        this.index += 1;
+        const raw = this.text.slice(start, this.index);
+        return { raw, value: JSON.parse(raw) };
+      } else if (char.charCodeAt(0) < 0x20) {
+        throw new Error(`json_string_control_character:${this.index}`);
+      }
+      this.index += 1;
+    }
+    throw new Error(`json_string_unterminated:${start}`);
+  }
+
+  parseNumber() {
+    const match = this.text.slice(this.index).match(/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/);
+    if (!match) throw new Error(`json_number_invalid:${this.index}`);
+    this.index += match[0].length;
+    const value = Number(match[0]);
+    if (!Number.isFinite(value)) throw new Error(`json_number_non_finite:${this.index}`);
+    return value;
+  }
+}
+
+export function parseJsonStrict(text) {
+  const scanner = new StrictJsonScanner(text);
+  scanner.scan();
+  return JSON.parse(String(text));
+}
+
+export function readJsonStrict(file) {
+  return parseJsonStrict(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+}
+
+export function validateStaticRegistry(registry = []) {
+  const reasons = [];
+  const repositories = new Set();
+  const repositoryIds = new Set();
+  if (!Array.isArray(registry) || registry.length !== 8) reasons.push('static_registry_must_classify_eight_repositories');
+  for (const [index, entry] of (registry || []).entries()) {
+    const prefix = `registry_${index}`;
+    if (!/^hiro4649\/[A-Za-z0-9_.-]+$/.test(String(entry.repositoryFullName || ''))) reasons.push(`${prefix}_repository_invalid`);
+    if (!Number.isInteger(entry.repositoryId) || entry.repositoryId < 1) reasons.push(`${prefix}_repository_id_invalid`);
+    if (!['source', 'target'].includes(entry.role)) reasons.push(`${prefix}_role_invalid`);
+    if (!['registered', 'explicitly_excluded', 'unclassified_blocking'].includes(entry.registrationState)) reasons.push(`${prefix}_registration_state_invalid`);
+    if (!entry.profileClass) reasons.push(`${prefix}_profile_missing`);
+    if (entry.defaultBranch !== 'main') reasons.push(`${prefix}_default_branch_invalid`);
+    if (entry.desiredNextHarnessVersion !== V132_VERSION) reasons.push(`${prefix}_desired_version_invalid`);
+    if (entry.classificationSource !== 'owner_spec') reasons.push(`${prefix}_classification_source_invalid`);
+    if (repositories.has(String(entry.repositoryFullName).toLowerCase())) reasons.push(`${prefix}_repository_duplicate`);
+    if (repositoryIds.has(entry.repositoryId)) reasons.push(`${prefix}_repository_id_duplicate`);
+    repositories.add(String(entry.repositoryFullName).toLowerCase());
+    repositoryIds.add(entry.repositoryId);
+  }
+  const aps = (registry || []).find((entry) => entry.repositoryFullName === 'hiro4649/APS-GATE');
+  if (aps?.profileClass !== 'lite_action_target') reasons.push('aps_gate_lite_action_profile_missing');
+  return { status: reasons.length ? 'fail' : 'pass', classifiedRepositoryCount: repositories.size, reasonCodes: reasons, createsAuthority: false };
+}
+
+export function compileEffectivePolicy(policy = {}) {
+  const tuple = policy.intendedSourceTuple || {};
+  const registryStatus = validateStaticRegistry(policy.staticRegistry || []);
+  const compact = {
+    schemaVersion: V132_VERSION,
+    marker: `CODEX_QUALITY_HARNESS_FILE v${V132_VERSION}`,
+    name: policy.name,
+    provisionalBaseSha: policy.provisionalBaseSha,
+    requiresRebaseAfterV131Merge: policy.requiresRebaseAfterV131Merge === true,
+    activationAllowed: policy.activationAllowed === true,
+    targetRolloutAllowed: policy.targetRolloutAllowed === true,
+    remoteValidationState: policy.remoteValidationState,
+    activeHarnessVersion: tuple.activeHarnessVersion,
+    activeSelfTestSuite: tuple.activeSelfTestSuite,
+    activeSelfTestStatusKey: tuple.activeSelfTestStatusKey,
+    previousVersion: tuple.previousVersion,
+    finalAuthority: tuple.finalAuthority,
+    authorityCreated: tuple.authorityCreated,
+    targetRollout: tuple.targetRollout,
+    targetMutationCount: tuple.targetMutationCount,
+    performanceTrack: policy.performanceTrack,
+    registryDigest: sha256(canonicalJson(policy.staticRegistry || [])),
+    registryStatus,
+    policyDigest: sha256(canonicalJson(policy)),
+  };
+  return {
+    ...compact,
+    compactCanonicalBytes: Buffer.byteLength(canonicalJson(compact), 'utf8'),
+  };
+}
+
+export function compileManifestProjection(policy = {}) {
+  const effectivePolicy = compileEffectivePolicy(policy);
+  return {
+    marker: effectivePolicy.marker,
+    schemaVersion: V132_VERSION,
+    harnessVersion: V132_VERSION,
+    sourceHarnessVersion: V132_VERSION,
+    activeHarnessVersion: V132_VERSION,
+    activeSelfTestSuite: 'v132',
+    activeSelfTestStatusKey: 'v132SelfTestStatus',
+    currentVersion: V132_VERSION,
+    previousVersion: '1.3.1',
+    candidateHarnessVersion: V132_VERSION,
+    candidateSelfTestSuite: 'v132',
+    candidateSelfTestStatusKey: 'v132SelfTestStatus',
+    candidateActivationState: 'local_source_candidate',
+    sourceActivation: 'forbidden_until_v131_main_and_exact_head_remote_pass',
+    provisionalBaseSha: policy.provisionalBaseSha,
+    requiresRebaseAfterV131Merge: true,
+    activationAllowed: false,
+    targetRolloutAllowed: false,
+    remoteValidationState: 'not_observed',
+    targetRollout: 'not_started',
+    finalAuthority: V132_FINAL_AUTHORITY,
+    authorityCreated: false,
+    targetMutationCount: 0,
+    canonicalPolicySource: 'docs/process/CODEX_V132_POLICY.json',
+    canonicalPolicyDigest: effectivePolicy.policyDigest,
+    compiledEffectivePolicyDigest: sha256(canonicalJson(effectivePolicy)),
+  };
+}
+
+export function validateManifestProjections({ policy = {}, sourceManifest = {}, docsManifest = {}, activePolicy = {} } = {}) {
+  const expected = compileManifestProjection(policy);
+  const reasons = [];
+  for (const [label, manifest] of [['source', sourceManifest], ['docs', docsManifest], ['active_policy', activePolicy]]) {
+    for (const [key, value] of Object.entries(expected)) {
+      if (manifest[key] !== value) reasons.push(`${label}_${key}_projection_mismatch`);
+    }
+  }
+  if ((sourceManifest.registeredTargetRepositories || []).some((entry) => Object.hasOwn(entry, 'currentTargetHarnessVersion'))) {
+    reasons.push('ambiguous_current_target_harness_version_forbidden');
+  }
+  const registryStatus = validateStaticRegistry(sourceManifest.staticRepositoryRegistryV2 || []);
+  if (registryStatus.status !== 'pass') reasons.push(...registryStatus.reasonCodes);
+  if (sourceManifest.dynamicRepositoryObservation?.persistedInStaticManifest !== false) reasons.push('dynamic_observation_must_be_separate');
+  return {
+    status: reasons.length ? 'fail' : 'pass',
+    reasonCodes: reasons,
+    expectedProjectionDigest: sha256(canonicalJson(expected)),
+    registryStatus,
+    createsAuthority: false,
+  };
+}
+
+export function loadV132Policy(repoRoot = process.cwd()) {
+  return readJsonStrict(path.join(repoRoot, 'docs', 'process', 'CODEX_V132_POLICY.json'));
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const policy = loadV132Policy();
+  console.log(JSON.stringify(compileEffectivePolicy(policy), null, 2));
+}
