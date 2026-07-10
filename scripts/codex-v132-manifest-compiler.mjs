@@ -228,28 +228,21 @@ export function compileEffectivePolicy(policy = {}) {
     activeHarnessVersion: tuple.activeHarnessVersion,
     activeHarnessVersionAliasState: policy.versionSemantics?.activeHarnessVersion,
     activeHarnessVersionAuthority: policy.versionSemantics?.activeHarnessVersionCreatesPublishedAuthority,
-    acceptedMainVersionAuthority: policy.versionSemantics?.acceptedMainVersion,
-    candidateVersionAuthority: policy.versionSemantics?.candidateVersion,
     activeSelfTestSuite: tuple.activeSelfTestSuite,
     activeSelfTestStatusKey: tuple.activeSelfTestStatusKey,
     previousVersion: tuple.previousVersion,
     finalAuthority: tuple.finalAuthority,
     authorityCreated: tuple.authorityCreated,
-    sourceCandidateDisplay: policy.sourceCandidateDisplay,
-    targetInstalledState: policy.targetInstalledState,
     targetRolloutState: tuple.targetRolloutState,
     targetMutationCount: tuple.targetMutationCount,
     performanceTrack: policy.performanceTrack,
     routineRequiredReads: policy.routineReadContract?.requiredReads || [],
     fullManifestDeferredTo: policy.routineReadContract?.fullManifestDeferredTo || [],
     registryDigest: sha256(canonicalJson(policy.staticRegistry || [])),
-    registryStatus,
+    registryCount: registryStatus.classifiedRepositoryCount,
     policyDigest: sha256(canonicalJson(policy)),
   };
-  return {
-    ...compact,
-    compactCanonicalBytes: Buffer.byteLength(canonicalJson(compact), 'utf8'),
-  };
+  return compact;
 }
 
 export function compileManifestProjection(policy = {}) {

@@ -10,14 +10,16 @@ HARNESS v1.3.2 Evidence-Converged Lean Core is a Source-only candidate on provis
 - Final Decision verification requires an accepted-main trust root, allowed Ed25519 key ID and fingerprint, non-revoked rotation state, repository, exact head, decision ID, observation time, receipt digest, and signature. A candidate-supplied key cannot authorize itself.
 - The committed trust-root document contains no commit SHA. GitHub API observation adds repository, default branch, exact HEAD, Git blob SHA, fixed path, and observation time; their effective digest is the Final Decision trust binding.
 - Remote evidence observes the current PR's repository, number, base/head SHAs, then discovers exact-head runs through GitHub API. Per contracted workflow, the highest run number and latest attempt are authoritative; run IDs supplied to the CLI are hints only.
-- Passed, billing-unavailable, pre-runner-unavailable, and failed observations are persisted without authority. Only a passed observation can project `remoteValidationState=passed`; every other state keeps `mergeAllowed=false`.
-- Required checks and workflows come from one observed classic-protection/Ruleset snapshot. The observed workflow set must exactly equal the accepted-main contract; omission and uncontracted additions fail closed.
+- Every automatic v1.3.2 Source job checks out `${{ github.event.pull_request.head.sha || github.sha }}` with persisted credentials disabled and asserts `git rev-parse HEAD` before checks. Compact reports and uploaded artifacts bind that same expected head.
+- Passed, billing-unavailable, pre-runner-unavailable, queued, in-progress, canceled, and failed observations are persisted without authority. Only a passed observation can project `remoteValidationState=passed`; every other state keeps `mergeAllowed=false`.
+- Required checks and workflows come from one observed classic-protection/Ruleset snapshot. The observed required-workflow set must exactly equal the accepted-main required contract; omission fails closed, while unrelated workflows create no authority and are outside that required set.
 - Artifact ZIP input is bounded to 8 MiB, 64 entries, and a 256 KiB contracted payload. Duplicate contracted entries and ZIP64 are rejected.
 - Canonical state is `localValidationState`, `remoteValidationState`, `technicalMergeEligibility`, `finalDecisionState`, and `mergeAllowed`.
 - Local-only pass leaves remote `not_observed`, technical eligibility blocked, and `mergeAllowed=false`.
 - Candidate lifecycle is `draft -> local_validated -> remote_unavailable|remote_validated -> activation_eligible -> active`, with `superseded` as a terminal replacement state.
 - Exact digest-bound validation may reuse only schema-valid, output-digest-valid results from the current executor. Committed, staged, unstaged, untracked-content, file-mode, or symlink-target changes invalidate reuse.
 - Routine reads are `AGENTS.md`, the generated compact effective policy, and the task delta. Full manifests are deferred to architecture audit, conflict, compatibility failure, or release review.
+- The compact effective policy keeps full-manifest detail behind digests and targets 1800 bytes while retaining a 2048-byte hard limit.
 - Compact output is limited to 8192 bytes and 64 top-level fields; full diagnostics are opt-in.
 - Target planning is allowlist-based, fail-closed, dry-run only, and has no mutation authority.
 - CI cost is conservatively inferred from workflow files; current automatic Source topology is two workflows and four jobs, with no matrix expansion.

@@ -45,7 +45,8 @@ Architect/reviewer project-memory read order: docs/PROJECT_SPEC.md, docs/PROJECT
 Core policy:
 - HARNESS v1.3.2 is Evidence-Converged Lean Core: typed evidence, canonical state, strict compiled manifests, deterministic incremental validation, bounded context/output, resumable receipts, allowlist target dry-run planning, and CI cost planning.
 - Local pass is never remote pass. Missing remote evidence remains `not_observed`; billing lock is unavailable infrastructure, not code failure; only `mergeAllowed` is canonical merge projection.
-- Accepted-main trust is a SHA-free document plus a GitHub-observed Source default-branch HEAD/blob/path envelope. Required workflow sets, check app IDs, Ruleset refs, and artifact repository/head/status values are exact bindings.
+- Accepted-main trust is a SHA-free document plus a GitHub-observed Source default-branch HEAD/blob/path envelope. The observed required-workflow set, check app IDs, Ruleset refs, and artifact repository/head/status values are exact bindings; unrelated workflows create no authority.
+- Every automatic v1.3.2 Source job checks out and asserts the exact pull-request head before validation; workflow dispatch binds `github.sha`.
 - Remote collection uses an owner-managed `CODEX_V132_COLLECTOR_TOKEN` with Metadata, Contents, Actions, Pull requests, Administration, and Checks read only through `scripts/codex-v132-collect-remote-evidence.mjs`; its serialized receipt is non-authoritative and ordinary product workflows must never receive that credential.
 - Final Decision remains the authority. Decision Capsule v3 is a bounded non-authoritative projection of canonical state.
 - Performance Track covers 60-task benchmark, SDK, Skill runtime, DAG team, learned orchestration, Cyber runtime, and Fable comparison; it is deferred, non-authoritative, and superiority is not proven.

@@ -178,6 +178,7 @@ function normalizedWorkflowRuns(workflowRuns = []) {
     pullRequestNumber: Number(run.pullRequestNumber),
     baseSha: String(run.baseSha || '').toLowerCase(),
     headSha: String(run.headSha || '').toLowerCase(),
+    status: String(run.status || (run.conclusion ? 'completed' : '')),
     conclusion: String(run.conclusion || ''),
     createdAt: String(run.createdAt || run.startedAt || ''),
     updatedAt: String(run.updatedAt || run.completedAt || ''),
@@ -344,6 +345,7 @@ function workflowDiscoveryPayload(discovery = {}) {
       runId: Number(run.runId),
       runNumber: Number(run.runNumber),
       runAttempt: Number(run.runAttempt),
+      status: String(run.status || (run.conclusion ? 'completed' : '')),
       conclusion: String(run.conclusion || ''),
       headSha: String(run.headSha || '').toLowerCase(),
     })).sort((a, b) => a.workflowPath.localeCompare(b.workflowPath) || a.workflowId - b.workflowId),
@@ -416,6 +418,7 @@ function buildRemoteReceipt(observation = {}, { testMode = false, observationSou
     startedAt: observation.startedAt,
     completedAt: observation.completedAt,
     observedAt: observation.observedAt,
+    runStatus: String(observation.runStatus || (observation.conclusion ? 'completed' : '')),
     conclusion: observation.conclusion,
     failureClass: observation.failureClass || null,
     observationErrors: [...new Set(observation.observationErrors || [])].map(String).sort(),
@@ -550,6 +553,7 @@ async function discoverCurrentPullRequestWorkflowRuns({
         runId: Number(run.id),
         runNumber: Number(run.run_number),
         runAttempt: Number(run.run_attempt),
+        status: String(run.status || (run.conclusion ? 'completed' : '')),
         conclusion: String(run.conclusion || ''),
         headSha: String(run.head_sha || '').toLowerCase(),
       };
@@ -1058,7 +1062,8 @@ async function observeGithubRun({
   }
   const annotationText = annotations.join('\n');
   const billingObserved = /account is locked due to a billing issue|billing (?:issue|lock)|spending limit/i.test(annotationText);
-  const failureClass = preRunnerJobs.length === jobsList.length && jobsList.length > 0
+  const failureClass = run.status === 'completed' && run.conclusion === 'failure'
+    && preRunnerJobs.length === jobsList.length && jobsList.length > 0
     ? (billingObserved ? 'account_billing_lock' : 'pre_runner_unavailable')
     : null;
 
@@ -1115,6 +1120,7 @@ async function observeGithubRun({
       pullRequestNumber: Number(pullRequest.number),
       baseSha: pullRequest.base.sha,
       headSha: run.head_sha,
+      status: run.status,
       conclusion: run.conclusion,
       createdAt: run.created_at,
       updatedAt: run.updated_at,
@@ -1125,6 +1131,7 @@ async function observeGithubRun({
     startedAt: run.run_started_at || run.created_at,
     completedAt: run.updated_at,
     observedAt: new Date().toISOString(),
+    runStatus: run.status,
     conclusion: run.conclusion,
     failureClass,
     observationErrors,
@@ -1193,6 +1200,12 @@ export function aggregateGithubRunObservations(observations, {
     }
   }
   const selected = [...selectedByWorkflow.values()].sort((a, b) => Number(a.runId) - Number(b.runId));
+  const selectedStatuses = selected.map((item) => String(item.runStatus || (item.conclusion ? 'completed' : '')));
+  const runStatus = selectedStatuses.includes('in_progress')
+    ? 'in_progress'
+    : selectedStatuses.includes('queued')
+      ? 'queued'
+      : 'completed';
   const failureClass = selected.some((item) => item.failureClass === 'account_billing_lock')
     ? 'account_billing_lock'
     : selected.some((item) => item.failureClass === 'pre_runner_unavailable')
@@ -1214,7 +1227,14 @@ export function aggregateGithubRunObservations(observations, {
     startedAt: selected.map((item) => item.startedAt).sort()[0],
     completedAt: selected.map((item) => item.completedAt).sort().at(-1),
     observedAt: new Date().toISOString(),
-    conclusion: selected.every((item) => item.conclusion === 'success') ? 'success' : 'failure',
+    runStatus,
+    conclusion: runStatus !== 'completed'
+      ? null
+      : selected.every((item) => item.conclusion === 'success')
+        ? 'success'
+        : selected.some((item) => ['cancelled', 'canceled'].includes(item.conclusion))
+          ? 'cancelled'
+          : 'failure',
     failureClass,
     observationErrors: selected.flatMap((item) => item.observationErrors || []),
     annotationText: selected.map((item) => item.annotationText).filter(Boolean).join('\n'),
@@ -1323,6 +1343,7 @@ export function collectVerifiedGithubEvidence(request = {}) {
         startedAt: now,
         completedAt: now,
         observedAt: now,
+        runStatus: 'completed',
         conclusion: 'failure',
         failureClass: null,
         observationErrors: finalDiscovery.discovery.missingWorkflowIdentities.map((identity) => `required_workflow_missing:${identity}`),
@@ -1372,6 +1393,7 @@ export function reobserveSerializedGithubEvidence(receipt, request = {}) {
       workflowRunDiscoveryStableDigest: value.workflowRunDiscovery?.stableDigest || null,
       startedAt: value.startedAt,
       completedAt: value.completedAt,
+      runStatus: value.runStatus,
       conclusion: value.conclusion,
       failureClass: value.failureClass,
       observationErrors: value.observationErrors,
@@ -1479,6 +1501,8 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   const expectedCheckSetDigest = String(expected.requiredCheckSetDigest || '');
   const artifactDigest = String(receipt.artifactDigest || '');
   const expectedArtifactDigest = String(expected.artifactDigest || '');
+  const runStatus = String(receipt.runStatus || (receipt.conclusion ? 'completed' : ''));
+  const pendingRemoteState = ['queued', 'in_progress'].includes(runStatus) ? runStatus : null;
 
   if (!['github_required_check_set', 'github_job_not_started'].includes(receipt.evidenceType)) reasons.push('remote_evidence_type_invalid');
   if (!repository || (expected.repository && repository !== expected.repository)) reasons.push('remote_repository_mismatch');
@@ -1490,6 +1514,7 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   if (expectedBaseSha && baseSha !== expectedBaseSha) reasons.push('remote_base_sha_mismatch');
   if (!SHA_RE.test(headSha)) reasons.push('remote_head_sha_invalid');
   if (expectedHeadSha && headSha !== expectedHeadSha) reasons.push('remote_head_sha_mismatch');
+  if (!['completed', 'queued', 'in_progress'].includes(runStatus)) reasons.push('remote_run_status_invalid');
   const pullRequestBinding = receipt.pullRequestBinding || {};
   if (!['github_api_current_pr', 'github_api_mock_current_pr', 'explicit_test_current_pr'].includes(pullRequestBinding.source)) reasons.push('remote_pull_request_binding_source_invalid');
   if (!validRfc3339(pullRequestBinding.observedAt)) reasons.push('remote_pull_request_binding_timestamp_invalid');
@@ -1525,6 +1550,7 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     runId: run.runId,
     runNumber: run.runNumber,
     runAttempt: run.runAttempt,
+    status: run.status,
     conclusion: run.conclusion,
     headSha: run.headSha,
   })).sort((a, b) => a.workflowPath.localeCompare(b.workflowPath) || a.workflowId - b.workflowId);
@@ -1554,7 +1580,8 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     if (workflowRun.pullRequestNumber !== pullRequestNumber) reasons.push(`workflow_${index}_pr_mismatch`);
     if (workflowRun.baseSha !== baseSha) reasons.push(`workflow_${index}_base_mismatch`);
     if (workflowRun.headSha !== headSha) reasons.push(`workflow_${index}_head_mismatch`);
-    if (receipt.evidenceType !== 'github_job_not_started' && workflowRun.conclusion !== 'success') reasons.push(`workflow_${index}_conclusion_not_success`);
+    if (!['completed', 'queued', 'in_progress'].includes(workflowRun.status)) reasons.push(`workflow_${index}_status_invalid`);
+    if (receipt.evidenceType !== 'github_job_not_started' && !pendingRemoteState && workflowRun.conclusion !== 'success') reasons.push(`workflow_${index}_conclusion_not_success`);
     const contractedWorkflow = workflowContract.find((entry) => entry.workflowId === workflowRun.workflowId && entry.path === workflowRun.workflowPath);
     if (receipt.evidenceType !== 'github_job_not_started' && !contractedWorkflow) {
       reasons.push(`workflow_${index}_not_in_accepted_main_contract`);
@@ -1590,6 +1617,16 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     return {
       ...baseRemoteProjection(reasons.length ? 'failed' : unavailableState, reasons),
       remoteFailureClass: receipt.failureClass || 'unknown_pre_step_failure',
+      remoteEvidenceObserved: true,
+      observedHeadSha: SHA_RE.test(headSha) ? headSha : null,
+      runIds: uniquePositiveIntegers(receipt.runIds) ? [...receipt.runIds] : [],
+    };
+  }
+
+  if (pendingRemoteState) {
+    return {
+      ...baseRemoteProjection(reasons.length ? 'failed' : pendingRemoteState, reasons),
+      remoteFailureClass: reasons.length ? 'remote_evidence_invalid' : null,
       remoteEvidenceObserved: true,
       observedHeadSha: SHA_RE.test(headSha) ? headSha : null,
       runIds: uniquePositiveIntegers(receipt.runIds) ? [...receipt.runIds] : [],
@@ -1686,6 +1723,7 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
 
   let remoteValidationState = 'passed';
   if (reasons.some((reason) => reason.includes('head_sha_mismatch') || reason.includes('_head_mismatch'))) remoteValidationState = 'head_mismatch';
+  else if (['cancelled', 'canceled'].includes(receipt.conclusion)) remoteValidationState = 'canceled';
   else if (reasons.some((reason) => reason.includes('required_check_set'))) remoteValidationState = 'required_check_set_mismatch';
   else if (reasons.some((reason) => reason.includes('artifact'))) remoteValidationState = 'artifact_missing';
   else if (reasons.length) remoteValidationState = 'failed';
@@ -1693,7 +1731,7 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   return {
     status: reasons.length ? 'fail' : 'pass',
     remoteValidationState,
-    remoteFailureClass: reasons.length ? 'remote_evidence_invalid' : null,
+    remoteFailureClass: remoteValidationState === 'canceled' ? 'remote_run_canceled' : (reasons.length ? 'remote_evidence_invalid' : null),
     sameHeadState: !reasons.some((reason) => reason.includes('head')) && expectedHeadSha ? 'matched' : (expectedHeadSha ? 'mismatch' : 'not_requested'),
     requiredCheckSetState: !reasons.some((reason) => reason.includes('required_check') || reason.startsWith('check_') || reason.includes('candidate_controlled_required_check')) ? 'matched' : 'mismatch',
     artifactIntegrityState: !reasons.some((reason) => reason.includes('artifact')) ? 'verified' : 'missing_or_mismatch',

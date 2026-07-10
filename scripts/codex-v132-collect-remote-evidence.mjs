@@ -84,7 +84,11 @@ export async function runCollectorCli({
   const evaluatedRemoteValidationState = evaluation.remoteValidationState;
   const passed = evaluation.status === 'pass' && evaluatedRemoteValidationState === 'passed';
   const unavailable = ['unavailable_billing', 'unavailable_pre_runner'].includes(evaluatedRemoteValidationState);
-  const remoteValidationState = passed || unavailable ? evaluatedRemoteValidationState : 'failed';
+  const pending = ['queued', 'in_progress'].includes(evaluatedRemoteValidationState);
+  const terminalNonPass = ['canceled', 'failed'].includes(evaluatedRemoteValidationState);
+  const remoteValidationState = passed || unavailable || pending || terminalNonPass
+    ? evaluatedRemoteValidationState
+    : 'failed';
 
   const serialized = {
     schemaVersion: V132_VERSION,
@@ -107,8 +111,8 @@ export async function runCollectorCli({
   };
   const outputPath = writeAtomicJson(output, serialized);
   return {
-    status: passed ? 'pass' : unavailable ? 'unavailable' : 'fail',
-    exitCode: passed ? 0 : unavailable ? 2 : 1,
+    status: passed ? 'pass' : unavailable || pending ? 'unavailable' : 'fail',
+    exitCode: passed ? 0 : unavailable || pending ? 2 : 1,
     remoteValidationState,
     repository,
     headSha: receipt.headSha,

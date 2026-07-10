@@ -163,9 +163,13 @@
     "keyRotationStates": ["stable", "rotation_pending"],
     "revokedKeyIdsRequired": true,
     "workflowContentDigestRequired": true,
-    "requiredWorkflowExactSet": true,
+    "observedRequiredWorkflowSetExact": true,
     "requiredWorkflowLatestAttemptOnly": true,
     "requiredWorkflowSelectedRunMustSucceed": true,
+    "automaticSourceJobExactHeadCheckoutRequired": true,
+    "workflowDispatchBindsGithubSha": true,
+    "exactHeadAssertionBeforeChecksRequired": true,
+    "artifactHeadMustEqualExpectedHead": true,
     "currentPullRequestApiObservationRequired": true,
     "currentPullRequestBindings": ["repository", "pullRequestNumber", "headSha", "baseSha"],
     "userSuppliedRunIdAuthority": "hint_only",
@@ -193,7 +197,7 @@
     "ordinaryProductWorkflowExposureAllowed": false,
     "serializedReceiptAuthority": "none",
     "createsFinalDecisionAuthority": false,
-    "persistedObservationStates": ["passed", "unavailable_billing", "unavailable_pre_runner", "failed"],
+    "persistedObservationStates": ["passed", "unavailable_billing", "unavailable_pre_runner", "queued", "in_progress", "canceled", "failed"],
     "nonPassedObservationMergeAllowed": false
   },
   "rulesetWorkflowSupport": {
@@ -387,6 +391,7 @@
       "compatibility_failure",
       "release_review"
     ],
+    "compactEffectivePolicyTargetBytes": 1800,
     "compactEffectivePolicyBytesMax": 2048
   },
   "outputLimits": {

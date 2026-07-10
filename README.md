@@ -32,10 +32,12 @@ context and output, allowlist target planning, and CI cost planning. Local pass
 never becomes remote pass, and missing remote evidence never becomes approval.
 Final Decision keys and artifact/workflow contracts must come from a SHA-free
 trust document observed at the accepted-main GitHub default-branch HEAD and
-Git blob; a candidate-selected key cannot authorize itself. Required workflows
-form an exact set, checks bind GitHub App identity when required, Rulesets bind
+Git blob; a candidate-selected key cannot authorize itself. The observed
+required-workflow set exactly matches the accepted-main contract, while
+unrelated workflows create no authority. Checks bind GitHub App identity when required, Rulesets bind
 path/ref/SHA/repository ID, and bounded artifacts bind repository, head, and
-pass status. The owner-credential collector writes no authority.
+pass status. Every automatic Source job checks out and asserts the exact PR
+head before validation. The owner-credential collector writes no authority.
 
 It keeps rollback readable through the v1.3.2 Compatibility Adapter.
 The adapter preserves internal compatibility evidence for existing target gates
@@ -71,7 +73,9 @@ CODEX_HARNESS_MODE=target CODEX_PROFILE_COMPAT_MODE=off CODEX_QUALITY_REPORT=jso
 After accepted-main trust bootstrap, an owner may collect exact remote evidence
 with `scripts/codex-v132-collect-remote-evidence.mjs`, a PR number, and an
 isolated `CODEX_V132_COLLECTOR_TOKEN`. Optional run IDs are hints only; GitHub's
-current PR head and latest contracted runs are authoritative. The token needs
+current PR head and latest contracted runs are authoritative. Queued,
+in-progress, canceled, failed, and unavailable observations remain distinct and
+non-authoritative. The token needs
 Metadata, Contents, Actions, Pull requests, Administration, and Checks read and
 must never enter an ordinary product workflow. Passed, unavailable, and failed
 JSON observations have no merge or Final Decision authority.

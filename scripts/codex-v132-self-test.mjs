@@ -112,6 +112,39 @@ function strictJson(file) {
   return readJsonStrict(path.join(ROOT, file));
 }
 
+function workflowJobSegments(text) {
+  const jobsIndex = text.search(/^jobs:\s*$/m);
+  assert.ok(jobsIndex >= 0, 'workflow_jobs_block_missing');
+  const jobsBlock = text.slice(jobsIndex);
+  const matches = [...jobsBlock.matchAll(/^  ([A-Za-z0-9_-]+):\s*$/gm)];
+  return matches.map((match, index) => ({
+    jobId: match[1],
+    text: jobsBlock.slice(match.index, matches[index + 1]?.index ?? jobsBlock.length),
+  }));
+}
+
+function assertExactHeadWorkflowJobs(relativePath, expectedJobCount) {
+  const workflow = fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
+  const jobs = workflowJobSegments(workflow);
+  assert.equal(jobs.length, expectedJobCount, `${relativePath}:job_count`);
+  for (const { jobId, text } of jobs) {
+    const starts = [...text.matchAll(/^      - /gm)];
+    const steps = starts.map((match, index) => text.slice(match.index, starts[index + 1]?.index ?? text.length));
+    const checkoutIndex = steps.findIndex((step) => step.includes('actions/checkout@'));
+    assert.ok(checkoutIndex >= 0, `${relativePath}:${jobId}:checkout_missing`);
+    assert.match(steps[checkoutIndex], /ref:\s*\$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+    assert.match(steps[checkoutIndex], /fetch-depth:\s*0/);
+    assert.match(steps[checkoutIndex], /persist-credentials:\s*false/);
+    const assertion = steps[checkoutIndex + 1] || '';
+    assert.match(assertion, /name:\s*Assert exact checkout head/);
+    assert.match(assertion, /CODEX_EXPECTED_HEAD_SHA:\s*\$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+    assert.match(assertion, /git rev-parse HEAD/);
+    assert.match(assertion, /v132_workflow_checkout_head_mismatch/);
+    assert.match(assertion, /exit 1/);
+  }
+  return { workflow, jobs };
+}
+
 function resolvePython() {
   const bundled = process.env.USERPROFILE
     ? path.join(process.env.USERPROFILE, '.cache', 'codex-runtimes', 'codex-primary-runtime', 'dependencies', 'python', 'python.exe')
@@ -336,7 +369,7 @@ function createCollectorMockScenario(mode = 'pass') {
   ]);
   const digest = (bytes) => `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
   const pullRequests = [{ number: pullRequestNumber }];
-  const run = ({ id, workflowId, runNumber, attempt = 1, conclusion = 'success', runHeadSha = headSha }) => ({
+  const run = ({ id, workflowId, runNumber, attempt = 1, status = 'completed', conclusion = 'success', runHeadSha = headSha }) => ({
     id,
     workflow_id: workflowId,
     run_number: runNumber,
@@ -344,18 +377,20 @@ function createCollectorMockScenario(mode = 'pass') {
     event: 'pull_request',
     head_sha: runHeadSha,
     conclusion,
-    status: 'completed',
+    status,
     pull_requests: pullRequests,
     created_at: `2026-07-10T00:${String(runNumber).padStart(2, '0')}:00Z`,
     run_started_at: `2026-07-10T00:${String(runNumber).padStart(2, '0')}:00Z`,
     updated_at: `2026-07-10T00:${String(runNumber).padStart(2, '0')}:30Z`,
   });
   const unavailable = ['billing', 'pre_runner'].includes(mode);
-  const qualityLatestConclusion = mode === 'newer_failure' || unavailable ? 'failure' : 'success';
-  const compatibilityConclusion = unavailable ? 'failure' : 'success';
+  const pendingStatus = ['queued', 'in_progress'].includes(mode) ? mode : null;
+  const canceled = mode === 'canceled';
+  const qualityLatestConclusion = pendingStatus ? null : canceled ? 'cancelled' : mode === 'newer_failure' || unavailable ? 'failure' : 'success';
+  const compatibilityConclusion = pendingStatus ? null : canceled ? 'cancelled' : unavailable ? 'failure' : 'success';
   const qualityOld = run({ id: 101, workflowId: 1001, runNumber: 10, conclusion: 'success', runHeadSha: mode === 'old_head' ? oldHeadSha : headSha });
-  const qualityLatest = run({ id: 102, workflowId: 1001, runNumber: 11, conclusion: qualityLatestConclusion, runHeadSha: mode === 'old_head' ? oldHeadSha : headSha });
-  const compatibilityLatest = run({ id: 201, workflowId: 1002, runNumber: 20, conclusion: compatibilityConclusion });
+  const qualityLatest = run({ id: 102, workflowId: 1001, runNumber: 11, status: pendingStatus || 'completed', conclusion: qualityLatestConclusion, runHeadSha: mode === 'old_head' ? oldHeadSha : headSha });
+  const compatibilityLatest = run({ id: 201, workflowId: 1002, runNumber: 20, status: pendingStatus || 'completed', conclusion: compatibilityConclusion });
   const workflowRuns = [qualityOld, qualityLatest, compatibilityLatest];
   const runsById = new Map(workflowRuns.map((item) => [item.id, item]));
   const calls = [];
@@ -369,8 +404,8 @@ function createCollectorMockScenario(mode = 'pass') {
       id: jobId,
       name,
       conclusion: selectedRun.conclusion,
-      steps: unavailable ? [] : [{ name: 'run', conclusion: selectedRun.conclusion }],
-      runner_name: unavailable ? null : 'GitHub Actions 1',
+      steps: unavailable || pendingStatus ? [] : [{ name: 'run', conclusion: selectedRun.conclusion }],
+      runner_name: unavailable || pendingStatus ? null : 'GitHub Actions 1',
     };
   };
   const httpClient = createFixtureGithubHttpClient(async (input, options = {}) => {
@@ -1085,6 +1120,32 @@ test('v132_collector_stale_success_old_head_and_unavailable_states_fail_closed',
   }
 });
 
+test('v132_collector_preserves_pending_canceled_and_failed_observation_truth', async () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-v132-collector-state-'));
+  try {
+    for (const mode of ['queued', 'in_progress', 'canceled']) {
+      const scenario = createCollectorMockScenario(mode);
+      const output = path.join(directory, `${mode}.json`);
+      const result = await runCollectorCli({
+        argv: [`--repository=${scenario.repository}`, `--pull-request=${scenario.pullRequestNumber}`, `--output=${output}`],
+        env: { CODEX_V132_COLLECTOR_TOKEN: 'fixture-token' },
+        httpClient: scenario.httpClient,
+      });
+      assert.equal(result.remoteValidationState, mode);
+      assert.equal(result.status, mode === 'canceled' ? 'fail' : 'unavailable');
+      assert.equal(result.exitCode, mode === 'canceled' ? 1 : 2);
+      const serialized = JSON.parse(fs.readFileSync(output, 'utf8'));
+      assert.equal(serialized.remoteValidationState, mode);
+      assert.equal(serialized.receipt.runStatus, mode === 'canceled' ? 'completed' : mode);
+      assert.equal(serialized.authority, 'none');
+      assert.equal(serialized.mergeAllowed, false);
+      assert.equal(serialized.finalDecisionAuthorityCreated, false);
+    }
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('v132_final_decision_serialized_signature_verification', () => {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const repository = 'hiro4649/codex-development-harness';
@@ -1136,7 +1197,8 @@ test('v132_billing_lock_is_unavailable_not_code_failure', () => {
   const headSha = 'a'.repeat(40);
   const receipt = createFixtureGithubEvidence({
     repository: 'hiro4649/codex-development-harness', pullRequestNumber: 165, event: 'pull_request', baseRef: 'main', baseSha, headSha, runId: 1, runAttempt: 1,
-    workflowRuns: [{ runId: 1, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml', event: 'pull_request', pullRequestNumber: 165, baseSha, headSha }],
+    workflowRuns: [{ runId: 1, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml', event: 'pull_request', pullRequestNumber: 165, baseSha, headSha, status: 'completed', conclusion: 'failure' }],
+    runStatus: 'completed', conclusion: 'failure',
     failureClass: 'account_billing_lock', annotationText: 'account billing lock',
     startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:00:01Z', observedAt: '2026-07-10T00:00:02Z',
   });
@@ -1151,7 +1213,8 @@ test('v132_unknown_pre_runner_is_not_mislabeled_billing', () => {
   const headSha = 'a'.repeat(40);
   const receipt = createFixtureGithubEvidence({
     repository: 'hiro4649/codex-development-harness', pullRequestNumber: 165, event: 'pull_request', baseRef: 'main', baseSha, headSha, runId: 2, runAttempt: 1,
-    workflowRuns: [{ runId: 2, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml', event: 'pull_request', pullRequestNumber: 165, baseSha, headSha }],
+    workflowRuns: [{ runId: 2, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml', event: 'pull_request', pullRequestNumber: 165, baseSha, headSha, status: 'completed', conclusion: 'failure' }],
+    runStatus: 'completed', conclusion: 'failure',
     failureClass: 'pre_runner_unavailable',
     startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:00:01Z', observedAt: '2026-07-10T00:00:02Z',
   });
@@ -1233,7 +1296,11 @@ test('v132_manifest_projection_and_registry_inventory', () => {
     'trustSourceBlobSha',
     'trustSourcePath',
   ]);
-  assert.equal(policy.trustRootContract.requiredWorkflowExactSet, true);
+  assert.equal(policy.trustRootContract.observedRequiredWorkflowSetExact, true);
+  assert.equal(policy.trustRootContract.automaticSourceJobExactHeadCheckoutRequired, true);
+  assert.equal(policy.trustRootContract.workflowDispatchBindsGithubSha, true);
+  assert.equal(policy.trustRootContract.exactHeadAssertionBeforeChecksRequired, true);
+  assert.equal(policy.trustRootContract.artifactHeadMustEqualExpectedHead, true);
   assert.deepEqual(policy.trustRootContract.requiredCheckIdentityFields, ['name', 'appId']);
   assert.deepEqual(policy.trustRootContract.rulesetWorkflowIdentityFields, ['path', 'ref', 'sha', 'repositoryId']);
   assert.equal(policy.remoteEvidenceCollector.credentialClass, 'owner_managed_github_app_or_fine_grained_pat');
@@ -1241,7 +1308,7 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   assert.equal(policy.remoteEvidenceCollector.checksReadRequired, true);
   assert.equal(policy.remoteEvidenceCollector.ordinaryProductWorkflowExposureAllowed, false);
   assert.equal(policy.remoteEvidenceCollector.createsFinalDecisionAuthority, false);
-  assert.deepEqual(policy.remoteEvidenceCollector.persistedObservationStates, ['passed', 'unavailable_billing', 'unavailable_pre_runner', 'failed']);
+  assert.deepEqual(policy.remoteEvidenceCollector.persistedObservationStates, ['passed', 'unavailable_billing', 'unavailable_pre_runner', 'queued', 'in_progress', 'canceled', 'failed']);
   assert.equal(policy.trustRootContract.userSuppliedRunIdAuthority, 'hint_only');
   assert.equal(policy.rulesetWorkflowSupport.state, 'sha_pinned_only');
   assert.equal(policy.artifactResourceBounds.maximumArchiveBytes, V132_ARTIFACT_LIMITS.archiveBytes);
@@ -1278,6 +1345,7 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   const compactPolicyPath = path.join(ROOT, 'docs/process/CODEX_EFFECTIVE_POLICY.compact.json');
   const compactPolicyText = fs.readFileSync(compactPolicyPath, 'utf8');
   assert.ok(Buffer.byteLength(compactPolicyText, 'utf8') <= 2048);
+  assert.ok(Buffer.byteLength(compactPolicyText, 'utf8') <= policy.routineReadContract.compactEffectivePolicyTargetBytes);
   assert.deepEqual(parseJsonStrict(compactPolicyText), compileEffectivePolicy(policy));
   assert.deepEqual(policy.routineReadContract.requiredReads, ['AGENTS.md', 'docs/process/CODEX_EFFECTIVE_POLICY.compact.json', 'task_delta_capsule']);
   assert.equal(harnessVersion.activeHarnessVersion, '1.3.2');
@@ -1493,6 +1561,16 @@ test('v132_workflow_heavy_trigger_excludes_edited', () => {
   assert.equal(/actions\/(?:cache\/(?:restore|save)|upload-artifact)@v\d/.test(workflow), false);
 });
 
+test('v132_all_automatic_source_jobs_bind_and_assert_exact_head', () => {
+  const quality = assertExactHeadWorkflowJobs('.github/workflows/quality-gate.yml', 1);
+  const compatibility = assertExactHeadWorkflowJobs('.github/workflows/v132-compatibility-gate.yml', 3);
+  assert.equal(quality.jobs.length + compatibility.jobs.length, 4);
+  assert.match(quality.workflow, /CODEX_PR_HEAD_SHA:\s*\$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+  assert.match(quality.workflow, /cp "\$RUNNER_TEMP\/codex-quality-gate\.json" codex-v132-safe-summary\.json/);
+  assert.match(quality.workflow, /codex-v132-safe-summary\.json/);
+  assert.equal((compatibility.workflow.match(/CODEX_EXPECTED_HEAD_SHA:/g) || []).length, 3);
+});
+
 test('v132_workflow_runner_accepts_compact_technical_pass', () => {
   const previous = process.env.CODEX_SKIP_V132_SELF_TEST;
   process.env.CODEX_SKIP_V132_SELF_TEST = '1';
@@ -1509,6 +1587,12 @@ test('v132_workflow_runner_accepts_compact_technical_pass', () => {
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 7 }).status, 'fail');
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedRepository: 'wrong/repository' }).status, 'fail');
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedHeadSha: 'f'.repeat(40) }).status, 'fail');
+    const syntheticMergeReport = { ...structuredClone(report), headSha: 'e'.repeat(40) };
+    const syntheticMergeEvaluation = evaluateV132CompactWorkflowReport(syntheticMergeReport, { gateExit: 0, expectedHeadSha: report.headSha });
+    assert.equal(syntheticMergeEvaluation.status, 'fail');
+    assert.ok(syntheticMergeEvaluation.failures.includes('v132_workflow_head_mismatch'));
+    const uploadedArtifactProjection = JSON.parse(JSON.stringify(report));
+    assert.equal(uploadedArtifactProjection.headSha, report.headSha);
     const remoteContradiction = { ...structuredClone(report), remoteValidationState: 'failed', remoteEvidenceStatus: 'fail', technicalMergeEligibility: 'eligible' };
     assert.equal(evaluateV132CompactWorkflowReport(remoteContradiction, { gateExit: 0 }).status, 'fail');
     const unobservedEligible = { ...structuredClone(report), remoteValidationState: 'not_observed', technicalMergeEligibility: 'eligible' };

@@ -48,7 +48,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+          persist-credentials: false
+      - name: Assert exact checkout head
+        shell: bash
+        env:
+          CODEX_EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          actual_head="$(git rev-parse HEAD)"
+          if [ "$actual_head" != "$CODEX_EXPECTED_HEAD_SHA" ]; then
+            echo "::error title=v1.3.2 exact-head checkout mismatch::v132_workflow_checkout_head_mismatch"
+            exit 1
+          fi
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -127,7 +140,7 @@ jobs:
           CODEX_LIFEBOAT_WRITE: "1"
           CODEX_EVENT_NAME: ${{ github.event_name }}
           CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-          CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           CODEX_REPOSITORY: ${{ github.repository }}
           CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json
         run: |
@@ -200,7 +213,7 @@ jobs:
           CODEX_OPENAI_METHOD_REPORT: "json"
           CODEX_EVENT_NAME: ${{ github.event_name }}
           CODEX_PR_NUMBER: ${{ github.event.pull_request.number || '' }}
-          CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+          CODEX_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           CODEX_PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
           CODEX_REPOSITORY: ${{ github.repository }}
           CODEX_LIFEBOAT_PATH: ${{ runner.temp }}/codex-minimal-safe-failure.json

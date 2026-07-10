@@ -2,6 +2,12 @@
 
 ## 2026-07-10
 
+- Bound all four automatic v1.3.2 Source jobs to the exact pull-request head, disabled persisted checkout credentials, and rejected synthetic merge-commit execution before checks.
+- Preserved queued, in-progress, canceled, failed, billing-unavailable, and pre-runner-unavailable observations as distinct non-authoritative states.
+- Added workflow semantic fixtures for exact checkout order, workflow-dispatch SHA binding, report/artifact head equality, and synthetic-merge rejection.
+- Clarified that only the observed required-workflow set must exactly match the accepted-main contract; unrelated workflows create no authority.
+- Replaced fixed CI SHA/run history with dynamic GitHub observation wording.
+- Removed duplicate display and registry-detail fields from the routine compact policy and added a 1800-byte operating target under the unchanged 2048-byte hard limit.
 - Removed the self-referential commit SHA from the authoritative trust document and bound Final Decision to an observed main HEAD/blob/path envelope digest.
 - Added a real-git trust bootstrap fixture, exact required-workflow closure with latest-attempt normalization, required-check GitHub App identity, and exact Ruleset path/ref/SHA/repository binding.
 - Added the owner-credential `codex-v132-collect-remote-evidence` CLI; its serialized receipt is non-authoritative and creates no Final Decision authority.
@@ -10,7 +16,7 @@
 - Bound production collection to the GitHub-observed current PR and exact head, with API-discovered latest runs; supplied run IDs are hints only.
 - Persisted billing, pre-runner, and failed observations with no authority and added deterministic production-path mock API coverage through receipt re-observation.
 - Added Checks read to the owner credential contract and made Ruleset workflow support explicitly SHA-pinned-only.
-- This Remote Collector Truth Closure commit changes no workflow file. PR #165 overall contains Source workflow changes from earlier commits; no target or product workflow changed.
+- The preceding Remote Collector Truth Closure changed no workflow file. This Exact-Head Workflow Closure changes only the two Source harness workflows; no target or product workflow changed.
 - Kept benchmark sizes and timings exclusively in generated `verificationMetrics`; measured timing samples vary around the baseline while compact output is substantially smaller, and non-comparable coverage keeps superiority not proven.
 
 - Built HARNESS v1.3.2 Evidence-Converged Lean Core as a local Source-only candidate.
