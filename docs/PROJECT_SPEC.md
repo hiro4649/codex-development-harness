@@ -2,18 +2,18 @@
 
 ## Current Architecture
 
-HARNESS v1.3.2 Evidence-Converged Lean Core is a local Source-only candidate on provisional v1.3.1 PR head `35fbdd0e7075701516de3b2de722b3b7014f1dbf`. It comprises a typed Evidence Truth Kernel, strict manifest compiler, static Registry v2 plus separate dynamic observation schema, deterministic incremental validation graph, resumable receipts, bounded context/output rendering, allowlist target dry-run planner, and CI cost planner.
+HARNESS v1.3.2 Evidence-Converged Lean Core is a Draft Source-only candidate on provisional v1.3.1 PR head `35fbdd0e7075701516de3b2de722b3b7014f1dbf`. It comprises a trusted Evidence Truth Kernel, strict manifest compiler, Registry v2, executable incremental validation graph, attested resumable receipts, bounded output, advisory compiled context envelope, allowlist target dry-run planner, and workflow-parsed CI cost planner.
 
 ## Functional Specifications
 
-- Remote, same-head, check-set, artifact, and Final Decision states require typed receipts.
+- Remote, same-head, check-set, artifact, and Final Decision states require verified collector receipts; structurally valid JSON alone is untrusted.
 - Canonical state is `localValidationState`, `remoteValidationState`, `technicalMergeEligibility`, `finalDecisionState`, and `mergeAllowed`.
 - Local-only pass leaves remote `not_observed`, technical eligibility blocked, and `mergeAllowed=false`.
-- Exact digest-bound validation may reuse deterministic nodes; changed or expired inputs invalidate reuse.
-- Routine context is limited to 7168 bytes across four ordered sections.
+- Exact digest-bound validation may reuse only schema-valid, output-digest-valid results from the current executor; changed, forged, expired, or unexecuted inputs invalidate reuse.
+- The compiled context proposal is limited to 7168 bytes and classified `compiled_advisory_contract`, not runtime enforcement.
 - Compact output is limited to 8192 bytes and 64 top-level fields; full diagnostics are opt-in.
 - Target planning is allowlist-based, fail-closed, dry-run only, and has no mutation authority.
-- CI cost is estimated before future remote work; heavy PR validation excludes `edited`.
+- CI cost is parsed from actual workflow files; current Source PR topology is two workflows and four jobs, with no matrix expansion.
 
 ## Data Models
 
@@ -40,5 +40,5 @@ No activation, target rollout, target mutation, product/runtime/package/lockfile
 
 - The candidate must be rebased after v1.3.1 is accepted on main.
 - Remote CI is not observed; no remote approval is claimed.
-- Current legacy workflow topology exceeds the future three-job Source plan and must converge after rebase without weakening checks.
+- Remote runner-step behavior remains unverified because current automatic jobs fail before steps.
 - Dynamic repository observations are intentionally absent from the static Source manifest.

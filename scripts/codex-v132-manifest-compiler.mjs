@@ -236,6 +236,49 @@ export function compileManifestProjection(policy = {}) {
   };
 }
 
+const V132_CANONICAL_VERSION_AUTHORITY = Object.freeze({
+  v132: 'local_source_candidate',
+  v131: 'immediate_rollback',
+  v130: 'secondary_rollback',
+  v129: 'emergency_legacy_rollback',
+  v128: 'blocking_compatibility',
+  v127: 'readable_compatibility',
+});
+
+function validateDeepActiveSemantics(value, pathName, reasons, inheritedHistorical = false) {
+  if (!value || typeof value !== 'object') return;
+  const historical = inheritedHistorical || (String(value.authorityScope || '').startsWith('historical_') && value.activeForV132 === false);
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = `${pathName}.${key}`;
+    if (!historical && ['activeHarnessVersion', 'currentVersion', 'candidateHarnessVersion'].includes(key)
+      && child !== V132_VERSION) reasons.push(`stale_active_version:${childPath}:${child}`);
+    if (!historical && key === 'sourceActivation' && child !== 'forbidden_until_v131_main_and_exact_head_remote_pass') {
+      reasons.push(`stale_source_activation:${childPath}:${child}`);
+    }
+    if (!historical && key === 'activationReady' && child === true) reasons.push(`stale_activation_ready_true:${childPath}`);
+    if (!historical && key === 'theme' && /v1\.3\.0|Goal-Contracted|Operational Convergence/i.test(String(child))) {
+      reasons.push(`stale_active_theme:${childPath}`);
+    }
+    if (!historical && key === 'versionAuthority' && child && typeof child === 'object') {
+      for (const [version, role] of Object.entries(V132_CANONICAL_VERSION_AUTHORITY)) {
+        if (child[version] !== role) reasons.push(`rollback_role_mismatch:${childPath}.${version}`);
+      }
+    }
+    if (!historical && ['legacySelfTests', 'legacySelfTestSuites'].includes(key) && child && typeof child === 'object') {
+      for (const [version, role] of Object.entries(V132_CANONICAL_VERSION_AUTHORITY).filter(([version]) => version !== 'v132')) {
+        if (child[version] !== role) reasons.push(`legacy_role_mismatch:${childPath}.${version}`);
+      }
+    }
+    validateDeepActiveSemantics(child, childPath, reasons, historical);
+  }
+}
+
+export function validateManifestSemanticConvergence(manifest, label = 'manifest') {
+  const reasons = [];
+  validateDeepActiveSemantics(manifest, label, reasons);
+  return { status: reasons.length ? 'fail' : 'pass', reasonCodes: [...new Set(reasons)], authority: false };
+}
+
 export function validateManifestProjections({ policy = {}, sourceManifest = {}, docsManifest = {}, activePolicy = {} } = {}) {
   const expected = compileManifestProjection(policy);
   const reasons = [];
@@ -243,6 +286,8 @@ export function validateManifestProjections({ policy = {}, sourceManifest = {}, 
     for (const [key, value] of Object.entries(expected)) {
       if (manifest[key] !== value) reasons.push(`${label}_${key}_projection_mismatch`);
     }
+    const semantic = validateManifestSemanticConvergence(manifest, label);
+    if (semantic.status !== 'pass') reasons.push(...semantic.reasonCodes);
   }
   if ((sourceManifest.registeredTargetRepositories || []).some((entry) => Object.hasOwn(entry, 'currentTargetHarnessVersion'))) {
     reasons.push('ambiguous_current_target_harness_version_forbidden');

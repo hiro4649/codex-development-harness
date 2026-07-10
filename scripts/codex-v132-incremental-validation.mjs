@@ -339,6 +339,7 @@ export function buildContextCacheEnvelope({
   }));
   return {
     schemaVersion: V132_VERSION,
+    state: 'compiled_advisory_contract',
     order: ['immutableCore', 'compiledRepoPolicy', 'taskDelta', 'evidenceCapsule'],
     sections,
     totalBytes: sections.reduce((sum, section) => sum + section.bytes, 0),
@@ -348,6 +349,7 @@ export function buildContextCacheEnvelope({
     skillsMcpToolsLazyLoad: true,
     modelToolChangesWithinTask: false,
     providerNeutral: true,
+    runtimeEnforced: false,
     createsAuthority: false,
   };
 }

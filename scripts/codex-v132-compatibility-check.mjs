@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { readJsonStrict } from './codex-v132-manifest-compiler.mjs';
+import { sha256 } from './codex-v132-evidence-truth.mjs';
 
 export const V132_CANONICAL_ROLLBACK_CHAIN = Object.freeze({
   v132: 'local_source_candidate',
@@ -21,6 +22,7 @@ const LANE_VERSIONS = Object.freeze({
   'blocking-readable': ['v128', 'v127'],
   all: ['v131', 'v130', 'v129', 'v128', 'v127'],
 });
+const VERSION_MARKERS = Object.freeze({ v131: 'v1.3.1', v130: 'v1.3.0', v129: 'v1.2.9', v128: 'v1.2.8', v127: 'v1.2.7' });
 
 export function runV132CompatibilityCheck({ repoRoot = process.cwd(), lane = 'all' } = {}) {
   const root = path.resolve(repoRoot);
@@ -28,6 +30,7 @@ export function runV132CompatibilityCheck({ repoRoot = process.cwd(), lane = 'al
   const docs = readJsonStrict(path.join(root, 'docs/process/CODEX_HARNESS_MANIFEST.json'));
   const index = readJsonStrict(path.join(root, 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json'));
   const reasons = [];
+  const historicalSelfTestEvidence = [];
   const versions = LANE_VERSIONS[lane] || [];
   if (!versions.length) reasons.push('compatibility_lane_invalid');
   for (const manifest of [source, docs, index]) {
@@ -42,6 +45,12 @@ export function runV132CompatibilityCheck({ repoRoot = process.cwd(), lane = 'al
     const numeric = version.slice(1);
     const selfTest = path.join(root, 'scripts', `codex-v${numeric}-self-test.mjs`);
     if (!fs.existsSync(selfTest)) reasons.push(`${version}_historical_self_test_missing`);
+    else {
+      const text = fs.readFileSync(selfTest, 'utf8');
+      const expectedMarker = `CODEX_QUALITY_HARNESS_FILE ${VERSION_MARKERS[version]}`;
+      if (!text.includes(expectedMarker)) reasons.push(`${version}_historical_self_test_marker_mismatch`);
+      historicalSelfTestEvidence.push({ version, sourceDigest: sha256(text), marker: expectedMarker, executionMode: 'source_preservation_projection_only' });
+    }
   }
   const adapter = source.compatibilityAdapter;
   if (adapter?.createsAuthority !== false || adapter?.affectsFinalDecision !== false) reasons.push('compatibility_adapter_authority_invalid');
@@ -53,6 +62,7 @@ export function runV132CompatibilityCheck({ repoRoot = process.cwd(), lane = 'al
     checkedVersions: versions,
     rollbackChain: V132_CANONICAL_ROLLBACK_CHAIN,
     historicalSelfTestsExecutedAsActiveTuple: false,
+    historicalSelfTestEvidence,
     compatibilityProjectionChecked: true,
     reasonCodes: [...new Set(reasons)],
     authorityCreated: false,
@@ -67,4 +77,3 @@ if (import.meta.url === invokedPath) {
   console.log(JSON.stringify(report, null, 2));
   process.exitCode = report.status === 'pass' ? 0 : 1;
 }
-

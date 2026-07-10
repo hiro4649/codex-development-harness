@@ -17,7 +17,7 @@ Prime Directive: smallest correct change for product value; do not weaken truth,
 
 <!-- CODEX_ACTIVE_BLOCK_BEGIN -->
 machineBindingId=FD_AUTH: Final Decision is pass/block/mergeAllowed/exit-code authority.
-machineBindingId=DC_AUTH: Decision Capsule is domain decision authority.
+machineBindingId=DC_PROJECTION: Decision Capsule is a non-authoritative domain projection; it cannot authorize merge.
 machineBindingId=SAME_HEAD: Same-head required checks must bind observed provider heads.
 machineBindingId=SOURCE_TARGET_MODE: Source/target deterministic mode must not infer Source from target files.
 machineBindingId=PROCESS_RECEIPT: Process receipt permits edit/check/commit/push/PR/fix_ci only inside scoped provenance.
@@ -41,6 +41,7 @@ Architect/reviewer project-memory read order: docs/PROJECT_SPEC.md, docs/PROJECT
 Core policy:
 - HARNESS v1.3.2 is Evidence-Converged Lean Core: typed evidence, canonical state, strict compiled manifests, deterministic incremental validation, bounded context/output, resumable receipts, allowlist target dry-run planning, and CI cost planning.
 - Local pass is never remote pass. Missing remote evidence remains `not_observed`; billing lock is unavailable infrastructure, not code failure; only `mergeAllowed` is canonical merge projection.
+- Final Decision remains the authority. Decision Capsule v3 is a bounded non-authoritative projection of canonical state.
 - Performance Track covers 60-task benchmark, SDK, Skill runtime, DAG team, learned orchestration, Cyber runtime, and Fable comparison; it is deferred, non-authoritative, and superiority is not proven.
 - v1.3.1 is immediate rollback; v1.3.0 secondary rollback; v1.2.9 emergency rollback; v1.2.8 and v1.2.7 remain compatibility evidence.
 - Performance Track, target rollout waves, and Skill install remain forbidden unless scoped.

@@ -127,6 +127,7 @@ export function validateReusableNodeResult(prior, node, inputDigest) {
 }
 
 export function executeValidationPlan({ plan, context = {}, priorCompletedNodes = [], now = () => new Date().toISOString(), handlers = {} } = {}) {
+  const startedAtMs = Date.now();
   const resolvedHandlers = { ...defaultHandlers(), ...handlers };
   const completed = new Map();
   const executedNodeResults = [];
@@ -192,6 +193,16 @@ export function executeValidationPlan({ plan, context = {}, priorCompletedNodes 
     executedNodeCount: executedNodeResults.length,
     reusedNodeCount: reusedNodeResults.length,
     failureCodes: failures,
+    budgetUsage: {
+      wallClockMinutes: (Date.now() - startedAtMs) / 60000,
+      nodeAttempts: executedNodeResults.length,
+      toolCalls: executedNodeResults.length,
+      fileWrites: Number(context.fileWritesMade || 0),
+      retryPerNode: 0,
+      retryCount: 0,
+      parallelAgentRuntime: 1,
+      checkpointCount: Math.floor((executedNodeResults.length + reusedNodeResults.length) / 3),
+    },
     authorityCreated: false,
   };
 }

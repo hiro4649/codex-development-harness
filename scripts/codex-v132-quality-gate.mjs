@@ -13,6 +13,7 @@ import {
   buildDecisionCapsuleV3,
   buildOrchestrationReceipt,
   buildSafeSummary,
+  evaluateLongRunBudget,
   finalizeCompactOutput,
   planCiCost,
   validateCompatibilityDebtClosure,
@@ -85,7 +86,13 @@ function runSelfTest(repoRoot) {
   };
 }
 
-export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics = process.env.CODEX_V132_DIAGNOSTICS === '1' } = {}) {
+export function runV132SourceQualityGate({
+  repoRoot = process.cwd(),
+  diagnostics = process.env.CODEX_V132_DIAGNOSTICS === '1',
+  remoteEvidence = null,
+  finalDecisionReceipt = null,
+  expectedRemoteEvidence = {},
+} = {}) {
   const root = path.resolve(repoRoot);
   const policy = loadV132Policy(root);
   const sourceManifest = readJsonStrict(path.join(root, 'CODEX_SOURCE_HARNESS_MANIFEST.json'));
@@ -109,6 +116,7 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
     policy,
     registry: policy.staticRegistry,
     workflowInputs,
+    evidenceReceipt: remoteEvidence,
     previousReceipt,
   });
   const debt = validateCompatibilityDebtClosure([{
@@ -141,29 +149,33 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
       },
       runLocalChecks: () => runSelfTest(root),
       runCompatibilityChecks: () => {
-        const matches = Object.entries(rollbackChain).every(([key, value]) => sourceManifest.versionAuthority?.[key] === value
-          || (key === 'v127' && sourceManifest.versionAuthority?.[key] === 'compatibility_readable'));
+        const matches = Object.entries(rollbackChain).every(([key, value]) => sourceManifest.versionAuthority?.[key] === value);
         return { status: matches ? 'pass' : 'fail', reasonCodes: matches ? [] : ['rollback_chain_projection_mismatch'] };
       },
       deriveCanonicalState: (completed) => {
         const priorRequired = ['workspace_identity', 'manifest_compile', 'changed_file_classification', 'dependency_closure', 'selected_local_checks', 'compatibility_checks'];
         const localPassed = priorRequired.every((nodeId) => completed.get(nodeId)?.status === 'pass');
-        return deriveCanonicalState({ localValidationPassed: localPassed });
+        return deriveCanonicalState({ localValidationPassed: localPassed, remoteEvidence, finalDecisionReceipt, expected: expectedRemoteEvidence });
       },
       runCiCostPlanning: () => {
-        const result = planCiCost({ changeClass: plan.classification.changeClass });
+        const result = planCiCost({ repoRoot: root, changeClass: plan.classification.changeClass });
         return { ...result, estimatedJobs: result.estimatedJobCount, estimatedWorkflowRuns: result.workflowRunCount };
       },
     },
   });
   const localBlockers = [...execution.failureCodes];
+  const longRunBudgetStatus = evaluateLongRunBudget({
+    ...execution.budgetUsage,
+    fileWrites: execution.budgetUsage.fileWrites + (receiptFile ? 1 : 0),
+  });
+  if (longRunBudgetStatus.status !== 'within_budget') localBlockers.push(...longRunBudgetStatus.reasonCodes);
   if (debt.status !== 'pass') localBlockers.push(...debt.reasonCodes);
   if (sourceManifest.authorityCreated !== false) localBlockers.push('authority_created');
   if (sourceManifest.targetMutationCount !== 0) localBlockers.push('target_mutation_detected');
   const evidenceNode = execution.completedNodeResults.find((node) => node.nodeId === 'evidence_truth_projection');
   const canonicalState = evidenceNode?.output
-    ? { ...deriveCanonicalState({ localValidationPassed: evidenceNode.output.localValidationState === 'passed' }), ...evidenceNode.output }
-    : deriveCanonicalState({ localValidationPassed: false });
+    ? { ...deriveCanonicalState({ localValidationPassed: evidenceNode.output.localValidationState === 'passed', remoteEvidence, finalDecisionReceipt, expected: expectedRemoteEvidence }), ...evidenceNode.output }
+    : deriveCanonicalState({ localValidationPassed: false, remoteEvidence, finalDecisionReceipt, expected: expectedRemoteEvidence });
   const selfTestNode = execution.completedNodeResults.find((node) => node.nodeId === 'selected_local_checks');
   const selfTest = selfTestNode?.output || { status: 'fail', reasonCodes: ['selected_local_checks_not_executed'] };
   const nextSafeAction = canonicalState.localValidationState === 'passed'
@@ -171,8 +183,8 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
     : 'repair_smallest_local_source_blocker';
   const decisionCapsuleV3 = buildDecisionCapsuleV3({ repository, headSha, canonicalState, blockerCodes: localBlockers, nextSafeAction });
   const safeSummary = buildSafeSummary({ repository, headSha, canonicalState, blockerCodes: localBlockers, nextSafeAction });
-  const orchestrationReceipt = buildOrchestrationReceipt({ plan, repository, baseSha, headSha });
-  const ciCostPlan = planCiCost({ changeClass: plan.classification.changeClass });
+  const orchestrationReceipt = buildOrchestrationReceipt({ plan, execution, repository, baseSha, headSha });
+  const ciCostPlan = planCiCost({ repoRoot: root, changeClass: plan.classification.changeClass });
   const report = {
     schemaVersion: V132_VERSION,
     harnessName: 'HARNESS v1.3.2 Evidence-Converged Lean Core',
@@ -194,11 +206,19 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
     skippedNodeCount: plan.skippedNodeCount,
     executedNodeCount: execution.executedNodeCount,
     reusedNodeCount: execution.reusedNodeCount,
+    executionAttestationStatus: {
+      status: execution.status,
+      executorVersion: execution.executorVersion,
+      executedNodeCount: execution.executedNodeCount,
+      reusedNodeCount: execution.reusedNodeCount,
+      authority: false,
+    },
     exactHeadNodeSkipRate: plan.exactHeadNodeSkipRate,
     changeClass: plan.classification.changeClass,
     v132SelfTestStatus: selfTest,
     manifestProjectionStatus: { status: projection.status, classifiedRepositoryCount: projection.registryStatus.classifiedRepositoryCount },
     compatibilityDebtStatus: debt,
+    longRunBudgetStatus,
     ciCostPlan,
     decisionCapsuleV3,
     safeSummary,

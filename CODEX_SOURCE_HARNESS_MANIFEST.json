@@ -14,8 +14,8 @@
   "targetRolloutAllowed": false,
   "remoteValidationState": "not_observed",
   "canonicalPolicySource": "docs/process/CODEX_V132_POLICY.json",
-  "canonicalPolicyDigest": "sha256:adc1878007536256d511eed44b8e4fca39989dcbf847742dff39322633646709",
-  "compiledEffectivePolicyDigest": "sha256:8d52f1331b46cfd8721c1b981fdb377270333df871471fb9a58ba9cf61c2c4fe",
+  "canonicalPolicyDigest": "sha256:fc3709d4088fb0f51cdd842ec938cd42de8b365e8b11f74d9cc8596128ce550e",
+  "compiledEffectivePolicyDigest": "sha256:424507050d55f2870787a953f8203b991d8924b4a925c036af20144f2c6b530a",
   "sourceRepoMode": true,
   "genericCore": {
     "mode": "core",
@@ -250,9 +250,13 @@
     "scripts/codex-v132-evidence-truth.mjs",
     "scripts/codex-v132-manifest-compiler.mjs",
     "scripts/codex-v132-incremental-validation.mjs",
+    "scripts/codex-v132-node-executor.mjs",
     "scripts/codex-v132-operational-bounds.mjs",
     "scripts/codex-v132-quality-gate.mjs",
-    "scripts/codex-v132-self-test.mjs"
+    "scripts/codex-v132-self-test.mjs",
+    "scripts/codex-v132-compatibility-check.mjs",
+    "scripts/codex-v132-benchmark.mjs",
+    ".github/workflows/v132-compatibility-gate.yml"
   ],
   "policyFiles": [
     "CODEX_SOURCE_HARNESS_MANIFEST.json",
@@ -1098,17 +1102,27 @@
     "codex-v126-self-test.mjs",
     "codex-v130-skill-compiler.mjs",
     "codex-v131-self-test.mjs",
-    "codex-v131-operational-convergence.mjs"
+    "codex-v131-operational-convergence.mjs",
+    "codex-v132-evidence-truth.mjs",
+    "codex-v132-manifest-compiler.mjs",
+    "codex-v132-incremental-validation.mjs",
+    "codex-v132-node-executor.mjs",
+    "codex-v132-operational-bounds.mjs",
+    "codex-v132-quality-gate.mjs",
+    "codex-v132-self-test.mjs",
+    "codex-v132-compatibility-check.mjs",
+    "codex-v132-benchmark.mjs"
   ],
   "optionalFiles": [],
   "activeHarnessVersion": "1.3.2",
   "activeSelfTestSuite": "v132",
   "activeSelfTestStatusKey": "v132SelfTestStatus",
   "legacySelfTestSuites": {
-    "v129": "immediate_rollback",
+    "v131": "immediate_rollback",
+    "v130": "secondary_rollback",
+    "v129": "emergency_legacy_rollback",
     "v128": "blocking_compatibility",
-    "v127": "compatibility_readable",
-    "v130": "immediate_rollback"
+    "v127": "readable_compatibility"
   },
   "targetRollout": "not_started",
   "representativeRealPrValidation": "not_started",
@@ -1510,7 +1524,7 @@
   ],
   "targetHarnessVersion": "1.2.9",
   "evidenceSchemaVersion": 6,
-  "theme": "Goal-Contracted Capability Router",
+  "theme": "Evidence-Converged Lean Core",
   "requiredStatuses": [
     "v110SelfTestStatus",
     "proSummaryFirstStatus",
@@ -1770,9 +1784,11 @@
     ]
   },
   "legacySelfTests": {
-    "v129": "immediate_rollback",
+    "v131": "immediate_rollback",
+    "v130": "secondary_rollback",
+    "v129": "emergency_legacy_rollback",
     "v128": "blocking_compatibility",
-    "v127": "compatibility_readable"
+    "v127": "readable_compatibility"
   },
   "contextRouting": {
     "version": "1.2.4",
@@ -1936,6 +1952,8 @@
   },
   "upgradePath": "v128_to_v129_goal_contracted_capability_router",
   "deterministicDecisionProjectionAndTokenMinimalLoopClosure": {
+    "authorityScope": "historical_compatibility_reference",
+    "activeForV132": false,
     "version": "1.2.8",
     "name": "Deterministic Decision Projection and Token-Minimal Loop Closure",
     "sourceOnlyRelease": true,
@@ -2022,6 +2040,8 @@
     "placeholderReceiptValid": false
   },
   "v129SourceShadowCandidate": {
+    "authorityScope": "historical_compatibility_reference",
+    "activeForV132": false,
     "version": "1.2.9",
     "name": "Goal-Contracted Capability Router",
     "activationState": "active",
@@ -2062,14 +2082,16 @@
   "sourceActivation": "forbidden_until_v131_main_and_exact_head_remote_pass",
   "finalAuthority": "v1.1.8_final_decision_kernel",
   "versionAuthority": {
-    "v132": "blocking_current_candidate_authority",
+    "v132": "local_source_candidate",
     "v131": "immediate_rollback",
     "v130": "secondary_rollback",
     "v129": "emergency_legacy_rollback",
     "v128": "blocking_compatibility",
-    "v127": "compatibility_readable"
+    "v127": "readable_compatibility"
   },
   "v130SourceShadowCandidate": {
+    "authorityScope": "historical_compatibility_reference",
+    "activeForV132": false,
     "version": "1.3.0",
     "name": "Verified Goal Intake, Adaptive Capability Escalation, and Transactional Agent Teams",
     "candidateHarnessVersion": "1.3.0",
@@ -2274,6 +2296,8 @@
     }
   },
   "targetCompatibilityBridge": {
+    "authorityScope": "historical_target_profile_template",
+    "activeForV132": false,
     "state": "active",
     "purpose": "preserve_v111_v129_target_compatibility_chain_for_v130_core_target_profiles",
     "startsTargetRollout": false,
@@ -2480,6 +2504,8 @@
     "permissionWeakeningAllowed": false
   },
   "v131OperationalConvergenceCore": {
+    "authorityScope": "historical_compatibility_reference",
+    "activeForV132": false,
     "version": "1.3.1",
     "name": "HARNESS v1.3.1 Operational Convergence Core",
     "purpose": "prevent operational premise mistakes without adding product runtime target rollout or merge authority",

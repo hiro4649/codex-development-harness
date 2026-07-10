@@ -2,7 +2,7 @@
 
 ## Highest-Priority Next Task
 
-After v1.3.1 is accepted on main, rebase the local v1.3.2 candidate and repeat exact local verification. Do not activate or roll out targets during rebase.
+Review the HARNESS v1.3.2 P0 Integration Closure on Draft PR #165. After v1.3.1 is accepted on main, rebase and repeat exact validation. Do not activate or roll out targets.
 
 ## Required Files
 
@@ -13,14 +13,16 @@ After v1.3.1 is accepted on main, rebase the local v1.3.2 candidate and repeat e
 - `docs/process/CODEX_ACTIVE_POLICY_INDEX.json`
 - `scripts/codex-v132-*.mjs`
 - `.github/workflows/quality-gate.yml`
+- `.github/workflows/v132-compatibility-gate.yml`
+- `scripts/codex-workflow-quality-runner.mjs`
 
 ## Implementation Strategy
 
-1. Fetch accepted main read-only and rebase the local four-commit series.
-2. Recompute compiled policy digests only if the normative policy changes.
-3. Run strict projections, self-test, compact gate, one opt-in diagnostic gate, and one warm-up plus five measured runs.
-4. Confirm local pass still yields remote `not_observed` and `mergeAllowed=false`.
-5. Report CI cost before any owner-authorized remote action.
+1. Review execution attestations, trusted collector boundary, compact workflow adapter, and compatibility projection in PR #165.
+2. Keep remote state `not_observed` while jobs cannot start; do not rerun blindly.
+3. After v1.3.1 main acceptance, rebase and recompute policy digests if inputs change.
+4. Run strict projections, compact/full gates, workflow adapter, compatibility lanes, parser equivalence, and comparable benchmark.
+5. Confirm local pass still yields `mergeAllowed=false` until trusted exact-head remote evidence and Final Decision exist.
 
 ## Expected Risks
 

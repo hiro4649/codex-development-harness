@@ -50,4 +50,3 @@ jobs:
         with:
           node-version: "20"
       - run: node scripts/codex-v132-compatibility-check.mjs --lane=blocking-readable
-

@@ -65,7 +65,10 @@
     "billingLockBecomesCodeFailure": false,
     "localPassBecomesRemotePass": false,
     "prBodyIsEvidence": false,
-    "requiredObservationSource": "github_api",
+    "requiredObservationSource": "github_api_verified_collector",
+    "trustedCollectorRequired": true,
+    "serializedReceiptRetainsTrust": false,
+    "receiptPayloadDigestRecomputed": true,
     "createsAuthority": false
   },
   "manifestCompiler": {
@@ -193,6 +196,9 @@
   ],
   "incrementalValidationGraph": {
     "schedulerType": "deterministic_validation_graph",
+    "executorState": "active",
+    "executorVersion": "v132-node-executor-1",
+    "receiptRequiresExecutedOutputDigest": true,
     "agentTeamRuntime": false,
     "unknownPathAction": "full_local_gate",
     "requiredFlow": [
@@ -209,6 +215,8 @@
     ]
   },
   "contextCacheEnvelope": {
+    "state": "compiled_advisory_contract",
+    "runtimeEnforced": false,
     "order": [
       "immutableCore",
       "compiledRepoPolicy",
@@ -307,6 +315,8 @@
     }
   },
   "ciCostPlanner": {
+    "state": "workflow_file_parser",
+    "confidence": "parsed_from_workflow_files",
     "heavyPullRequestTriggers": [
       "opened",
       "synchronize",

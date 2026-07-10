@@ -12,6 +12,15 @@ export const candidateHarnessVersion = '1.3.2';
 export const candidateSelfTestStatusKey = 'v132SelfTestStatus';
 export const candidateSelfTestSuite = 'v132';
 export const candidateActivationState = 'local_source_candidate';
+export const sourceActivation = 'forbidden_until_v131_main_and_exact_head_remote_pass';
+export const versionAuthority = Object.freeze({
+  v132: 'local_source_candidate',
+  v131: 'immediate_rollback',
+  v130: 'secondary_rollback',
+  v129: 'emergency_legacy_rollback',
+  v128: 'blocking_compatibility',
+  v127: 'readable_compatibility',
+});
 export const legacyAdvisorySuites = ['v127', 'v126', 'v125', 'v124', 'v123', 'v122', 'v121', 'v120', 'v119', 'v118', 'v117', 'v116', 'v115', 'v114', 'v113'];
 export const knownVersions = ['1.0.3', '1.0.4', '1.0.5', '1.0.6', '1.0.7', '1.0.8', '1.0.9', '1.1.0', '1.1.1', '1.1.2', '1.1.3', '1.1.4', '1.1.5', '1.1.6', '1.1.7', '1.1.8', '1.1.9', '1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4', '1.2.5', '1.2.6', '1.2.7', '1.2.8', '1.2.9', '1.3.0', '1.3.1', '1.3.2'];
 export const versionLineagePolicy = {
@@ -72,6 +81,8 @@ export function buildHarnessVersionRegistry() {
     candidateSelfTestStatusKey,
     candidateSelfTestSuite,
     candidateActivationState,
+    sourceActivation,
+    versionAuthority,
     legacyAdvisorySuites,
     knownVersions,
     versionLineagePolicy,

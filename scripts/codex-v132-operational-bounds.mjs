@@ -101,21 +101,70 @@ export function planTargetInstallDryRun({ profileClass, changedFiles = [], polic
     accepted: boundedSample(accepted),
     rejected: boundedSample(rejected.map((entry) => `${entry.path}:${entry.reasonCodes.join('+')}`)),
     rejectedExactCount: rejected.length,
-    productFalseNegativeCount: 0,
+    knownFixtureFalseNegativeCount: 0,
     authority: false,
   };
 }
 
-export function planCiCost({ changeClass = 'source_core', duplicateEvidenceRefresh = false, manualRunCount = 0 } = {}) {
-  let estimatedJobCount = changeClass === 'docs_only' ? 1 : changeClass === 'target_metadata' ? 2 : 3;
+function parseWorkflowTopology(file, text) {
+  const beforePermissions = text.split(/^permissions:/m)[0] || '';
+  const automaticPullRequest = /^  pull_request:/m.test(beforePermissions);
+  const jobsIndex = text.search(/^jobs:\s*$/m);
+  const jobsBlock = jobsIndex >= 0 ? text.slice(jobsIndex) : '';
+  const jobMatches = [...jobsBlock.matchAll(/^  ([A-Za-z0-9_-]+):\s*$/gm)];
+  const jobs = jobMatches.map((match, index) => {
+    const segment = jobsBlock.slice(match.index, jobMatches[index + 1]?.index ?? jobsBlock.length);
+    let expansion = 1;
+    const include = segment.match(/^\s{8}include:\s*$([\s\S]*?)(?=^\s{6}\S|^\s{4}\S|(?![\s\S]))/m)?.[1] || '';
+    const includeCount = (include.match(/^\s{10}-\s/gm) || []).length;
+    if (includeCount) expansion = includeCount;
+    else {
+      const dimensions = [...segment.matchAll(/^\s{8}([A-Za-z0-9_-]+):\s*\[([^\]]*)\]\s*$/gm)]
+        .map((item) => item[2].split(',').map((value) => value.trim()).filter(Boolean).length)
+        .filter((count) => count > 0);
+      if (dimensions.length) expansion = dimensions.reduce((product, count) => product * count, 1);
+    }
+    return { name: match[1], matrixExpansion: expansion };
+  });
+  return { file, automaticPullRequest, jobs };
+}
+
+export function inspectWorkflowTopology(repoRoot = process.cwd()) {
+  const directory = path.join(repoRoot, '.github', 'workflows');
+  const workflows = fs.existsSync(directory)
+    ? fs.readdirSync(directory).filter((name) => /\.ya?ml$/i.test(name)).sort()
+      .map((name) => parseWorkflowTopology(name, fs.readFileSync(path.join(directory, name), 'utf8')))
+    : [];
+  const automatic = workflows.filter((workflow) => workflow.automaticPullRequest);
+  return {
+    estimatedWorkflowRuns: automatic.length,
+    estimatedJobs: automatic.reduce((sum, workflow) => sum + workflow.jobs.reduce((jobSum, job) => jobSum + job.matrixExpansion, 0), 0),
+    matrixExpansionCount: automatic.reduce((sum, workflow) => sum + workflow.jobs.reduce((jobSum, job) => jobSum + Math.max(0, job.matrixExpansion - 1), 0), 0),
+    workflowNames: automatic.map((workflow) => workflow.file),
+    triggerReasons: automatic.map((workflow) => `${workflow.file}:pull_request`),
+    manualRunsRequired: 0,
+    confidence: 'parsed_from_workflow_files',
+    workflows,
+  };
+}
+
+export function planCiCost({ repoRoot, changeClass = 'source_core', duplicateEvidenceRefresh = false, manualRunCount = 0 } = {}) {
+  const actual = repoRoot ? inspectWorkflowTopology(repoRoot) : null;
+  let estimatedJobCount = actual?.estimatedJobs ?? (changeClass === 'docs_only' ? 1 : changeClass === 'target_metadata' ? 2 : 3);
   if (duplicateEvidenceRefresh) estimatedJobCount = 0;
-  const workflowRunCount = estimatedJobCount ? 1 : 0;
+  const workflowRunCount = duplicateEvidenceRefresh ? 0 : (actual?.estimatedWorkflowRuns ?? (estimatedJobCount ? 1 : 0));
   return {
     status: estimatedJobCount <= 4 && manualRunCount === 0 ? 'pass' : 'over_budget',
     workflowRunCount,
     estimatedJobCount,
-    matrixExpansionCount: estimatedJobCount,
+    estimatedWorkflowRuns: workflowRunCount,
+    estimatedJobs: estimatedJobCount,
+    matrixExpansionCount: duplicateEvidenceRefresh ? 0 : (actual?.matrixExpansionCount ?? 0),
     manualRunCount,
+    manualRunsRequired: manualRunCount,
+    workflowNames: duplicateEvidenceRefresh ? [] : (actual?.workflowNames || []),
+    triggerReasons: duplicateEvidenceRefresh ? ['duplicate_evidence_refresh'] : (actual?.triggerReasons || [`${changeClass}:declared_estimate`]),
+    confidence: actual?.confidence || 'declared_estimate',
     sourceCoreHardMaximum: 4,
     heavyPullRequestTriggers: ['opened', 'synchronize', 'reopened'],
     pullRequestEditedTriggersHeavyWorkflow: false,
@@ -190,7 +239,7 @@ export function buildSafeSummary({ repository, headSha, canonicalState, blockerC
   return summary;
 }
 
-export function buildOrchestrationReceipt({ plan, repository, baseSha, headSha } = {}) {
+export function buildOrchestrationReceipt({ plan, execution, repository, baseSha, headSha } = {}) {
   const receipt = {
     schemaVersion: V132_VERSION,
     schedulerType: 'deterministic_validation_graph',
@@ -199,8 +248,13 @@ export function buildOrchestrationReceipt({ plan, repository, baseSha, headSha }
     headSha,
     selectedNodeIds: (plan?.selectedNodes || []).map((node) => node.nodeId),
     reusedNodeIds: (plan?.reusedNodes || []).map((node) => node.nodeId),
+    executedNodeIds: (execution?.executedNodeResults || []).map((node) => node.nodeId),
+    executedOutputDigests: (execution?.executedNodeResults || []).map((node) => node.outputDigest),
     selectedNodeCount: plan?.selectedNodeCount || 0,
     skippedNodeCount: plan?.skippedNodeCount || 0,
+    executedNodeCount: execution?.executedNodeCount ?? 0,
+    reusedNodeCount: execution?.reusedNodeCount ?? 0,
+    executorVersion: execution?.executorVersion || null,
     exactHeadNodeSkipRate: plan?.exactHeadNodeSkipRate || 0,
     graphDigest: plan?.digests?.graphDigest,
     diffDigest: plan?.digests?.diffDigest,

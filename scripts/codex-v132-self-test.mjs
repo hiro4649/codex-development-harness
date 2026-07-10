@@ -43,7 +43,9 @@ import {
   V132_OUTPUT_LIMITS,
 } from './codex-v132-operational-bounds.mjs';
 import { runV132SourceQualityGate } from './codex-v132-quality-gate.mjs';
+import { runV132CompatibilityCheck } from './codex-v132-compatibility-check.mjs';
 import { evaluateV132CompactWorkflowReport } from './codex-workflow-quality-runner.mjs';
+import * as harnessVersion from './codex-harness-version.mjs';
 
 const ROOT = process.cwd();
 const results = [];
@@ -71,6 +73,27 @@ function resolvePython() {
     if (probe.status === 0) return command;
   }
   throw new Error('python_runtime_not_available_for_parser_equivalence');
+}
+
+function resolvePowerShell() {
+  for (const command of ['pwsh', 'powershell', 'powershell.exe']) {
+    const probe = spawnSync(command, ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.ToString()'], { encoding: 'utf8', windowsHide: true });
+    if (probe.status === 0) return command;
+  }
+  throw new Error('powershell_runtime_not_available_for_parser_equivalence');
+}
+
+function parseThroughPowerShell(file) {
+  const escaped = file.replaceAll("'", "''");
+  const result = spawnSync(resolvePowerShell(), ['-NoProfile', '-Command', `$x=Get-Content -Raw '${escaped}' | ConvertFrom-Json; $x | ConvertTo-Json -Depth 100 -Compress`], { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout.replace(/^\uFEFF/, '').trim());
+}
+
+function parseThroughPython(file) {
+  const result = spawnSync(resolvePython(), ['-c', 'import json,sys; print(json.dumps(json.load(open(sys.argv[1], encoding="utf-8")), ensure_ascii=False, separators=(",",":")))', file], { encoding: 'utf8', windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout.trim());
 }
 
 function validReceipts() {
@@ -165,7 +188,7 @@ test('v132_node_powershell_python_parser_equivalence', () => {
   try {
     const nodeValue = parseJsonStrict(fs.readFileSync(file, 'utf8'));
     const escaped = file.replaceAll("'", "''");
-    const powershell = spawnSync('powershell.exe', ['-NoProfile', '-Command', `$x=Get-Content -Raw '${escaped}' | ConvertFrom-Json; Write-Output ($x.schemaVersion+'|'+$x.nested.value)`], { encoding: 'utf8', windowsHide: true });
+    const powershell = spawnSync(resolvePowerShell(), ['-NoProfile', '-Command', `$x=Get-Content -Raw '${escaped}' | ConvertFrom-Json; Write-Output ($x.schemaVersion+'|'+$x.nested.value)`], { encoding: 'utf8', windowsHide: true });
     const python = spawnSync(resolvePython(), ['-c', 'import json,sys; x=json.load(open(sys.argv[1], encoding="utf-8")); print(x["schemaVersion"]+"|"+str(x["nested"]["value"]))', file], { encoding: 'utf8', windowsHide: true });
     assert.equal(powershell.status, 0, powershell.stderr);
     assert.equal(python.status, 0, python.stderr);
@@ -174,6 +197,17 @@ test('v132_node_powershell_python_parser_equivalence', () => {
     assert.equal(python.stdout.trim(), expected);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('v132_actual_manifests_parser_equivalence', () => {
+  for (const relative of ['docs/process/CODEX_V132_POLICY.json', 'CODEX_SOURCE_HARNESS_MANIFEST.json', 'docs/process/CODEX_HARNESS_MANIFEST.json', 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json']) {
+    const file = path.join(ROOT, relative);
+    const nodeDigest = sha256(canonicalJson(parseJsonStrict(fs.readFileSync(file, 'utf8'))));
+    const powershellDigest = sha256(canonicalJson(parseThroughPowerShell(file)));
+    const pythonDigest = sha256(canonicalJson(parseThroughPython(file)));
+    assert.equal(powershellDigest, nodeDigest, `${relative}:powershell`);
+    assert.equal(pythonDigest, nodeDigest, `${relative}:python`);
   }
 });
 
@@ -190,6 +224,15 @@ test('v132_manifest_projection_and_registry_inventory', () => {
   assert.equal(policy.staticRegistry.find((entry) => entry.repositoryFullName === 'hiro4649/APS-GATE').profileClass, 'lite_action_target');
   assert.equal(policy.dynamicObservationSchema.persistInStaticRegistry, false);
   assert.ok(compileEffectivePolicy(policy).compactCanonicalBytes <= 8192);
+  assert.equal(harnessVersion.activeHarnessVersion, '1.3.2');
+  assert.equal(harnessVersion.activeSelfTestSuite, 'v132');
+  assert.deepEqual(harnessVersion.versionAuthority, {
+    v132: 'local_source_candidate', v131: 'immediate_rollback', v130: 'secondary_rollback',
+    v129: 'emergency_legacy_rollback', v128: 'blocking_compatibility', v127: 'readable_compatibility',
+  });
+  const agents = fs.readFileSync(path.join(ROOT, 'AGENTS.md'), 'utf8');
+  assert.ok(agents.includes('Decision Capsule is a non-authoritative domain projection'));
+  assert.ok(agents.includes('Final Decision remains the authority'));
 });
 
 test('v132_incremental_validation_resume_and_invalidation', () => {
@@ -247,17 +290,20 @@ test('v132_target_allowlist_rejects_nested_product_paths', () => {
   const plan = planTargetInstallDryRun({ profileClass: 'metadata_gate_target', changedFiles: rejected, policy });
   assert.equal(plan.status, 'fail_closed');
   assert.equal(plan.rejectedExactCount, rejected.length);
-  assert.equal(plan.productFalseNegativeCount, 0);
+  assert.equal(plan.knownFixtureFalseNegativeCount, 0);
   const allowed = planTargetInstallDryRun({ profileClass: 'metadata_gate_target', changedFiles: ['AGENTS.md', 'scripts/codex-v132-self-test.mjs'], policy });
   assert.equal(allowed.status, 'pass');
 });
 
 test('v132_ci_cost_and_debt_closure', () => {
-  const ci = planCiCost({ changeClass: 'source_core' });
+  const ci = planCiCost({ repoRoot: ROOT, changeClass: 'source_core' });
   assert.equal(ci.status, 'pass');
-  assert.equal(ci.estimatedJobCount, 3);
+  assert.equal(ci.estimatedJobs, 4);
+  assert.equal(ci.estimatedWorkflowRuns, 2);
+  assert.deepEqual(ci.workflowNames, ['quality-gate.yml', 'v132-compatibility-gate.yml']);
+  assert.equal(ci.confidence, 'parsed_from_workflow_files');
   assert.equal(ci.pullRequestEditedTriggersHeavyWorkflow, false);
-  assert.equal(planCiCost({ duplicateEvidenceRefresh: true }).estimatedJobCount, 0);
+  assert.equal(planCiCost({ repoRoot: ROOT, duplicateEvidenceRefresh: true }).estimatedJobs, 0);
   const debt = validateCompatibilityDebtClosure([{ mustReviewBefore: '1.3.2', disposition: 'reclassified_with_reason', reason: 'adapter obligation retained', silentExtension: false }]);
   assert.equal(debt.status, 'pass');
   assert.equal(validateCompatibilityDebtClosure([{ mustReviewBefore: '1.3.2' }]).status, 'fail');
@@ -266,6 +312,14 @@ test('v132_ci_cost_and_debt_closure', () => {
 test('v132_long_run_budget_is_bounded', () => {
   assert.equal(evaluateLongRunBudget({ wallClockMinutes: 119, toolCalls: 299, fileWrites: 99, retryPerNode: 1, parallelAgentRuntime: 1 }).status, 'within_budget');
   assert.equal(evaluateLongRunBudget({ toolCalls: 301 }).status, 'checkpoint_stop');
+});
+
+test('v132_compatibility_projection_is_active_tuple_neutral', () => {
+  for (const lane of ['immediate-secondary', 'emergency', 'blocking-readable', 'all']) {
+    const result = runV132CompatibilityCheck({ repoRoot: ROOT, lane });
+    assert.equal(result.status, 'pass', `${lane}:${result.reasonCodes.join(',')}`);
+    assert.equal(result.historicalSelfTestsExecutedAsActiveTuple, false);
+  }
 });
 
 test('v132_compact_output_bounds_and_canonical_fields', () => {
@@ -318,6 +372,7 @@ test('v132_source_gate_end_to_end_local_only', () => {
     assert.equal(report.authorityCreated, false);
     assert.equal(report.targetMutationCount, 0);
     assert.equal(report.remoteUnobservedPassCount, 0);
+    assert.equal(report.longRunBudgetStatus.status, 'within_budget');
     assert.ok(Buffer.byteLength(JSON.stringify(report), 'utf8') <= 8192);
   } finally {
     if (previous === undefined) delete process.env.CODEX_SKIP_V132_SELF_TEST;

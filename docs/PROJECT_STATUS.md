@@ -6,11 +6,11 @@
 
 ## Current Commit SHA
 
-The exact local Commit D SHA is recorded by git after this document is committed. Provisional base: `35fbdd0e7075701516de3b2de722b3b7014f1dbf`.
+The exact PR head is recorded by git and PR #165. Provisional base: `35fbdd0e7075701516de3b2de722b3b7014f1dbf`.
 
 ## Open PRs
 
-PR #164 is the provisional v1.3.1 base. This v1.3.2 branch has no PR and must not be pushed before v1.3.1 is accepted on main.
+Draft PR #165 is open from the pushed v1.3.2 branch. PR #164 remains its provisional v1.3.1 base.
 
 ## Completed Work
 
@@ -19,11 +19,14 @@ PR #164 is the provisional v1.3.1 base. This v1.3.2 branch has no PR and must no
 - Added deterministic incremental validation and digest-bound resume receipts.
 - Added bounded compact output, context, target dry-run, CI cost, debt, and long-run controls.
 - Added the v1.3.2 compact Source quality gate, self-test, specification, and project memory.
+- Replaced planner-only completion with schema-validated node execution attestations and truthful resume receipts.
+- Added an opaque trusted GitHub collector boundary and compact workflow-runner adapter.
+- Converged automatic Source validation to one quality job plus three v1.3.2-aware compatibility jobs.
 
 ## Remaining Work
 
-- Complete local self-test, compact/full-diagnostic validation, and five-run benchmark.
-- Rebase onto accepted v1.3.1 main later, rerun local checks, then request a separate remote review.
+- Review the P0 integration closure on Draft PR #165.
+- Rebase onto accepted v1.3.1 main later and rerun exact local and remote checks.
 - Target installation remains a later, separately authorized project.
 
 ## Active Blockers
@@ -34,13 +37,13 @@ PR #164 is the provisional v1.3.1 base. This v1.3.2 branch has no PR and must no
 ## Risks
 
 - Rebase may change policy or workflow inputs and invalidate all resume receipts.
-- Legacy workflow jobs have not yet been reduced to the v1.3.2 planned Source cost.
+- Branch protection may still expect historical checks; the replacement workflow preserves three aggregate check names but remote confirmation is pending.
 - Parser equivalence depends on Node, PowerShell, and Python availability in the local verification environment.
 
 ## Test Status
 
-Final local results are reported from git and the verification commands, not predeclared here.
+Local self-test, compact gate, workflow adapter, parser equivalence, and compatibility lanes pass. Benchmark timing remains non-authoritative and does not establish superiority.
 
 ## CI Status
 
-No manual rerun or `workflow_dispatch` was performed. Automatic historical PR checks were created but failed before runner steps due the known account/billing lock. This is infrastructure unavailability, not v1.3.2 code evidence.
+The branch was pushed and automatic PR checks were created. Jobs failed before runner steps. No manual rerun or `workflow_dispatch` was performed. Remote evidence remains `not_observed`; the failure is not code execution evidence.

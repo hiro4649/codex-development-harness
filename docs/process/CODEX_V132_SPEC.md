@@ -17,7 +17,7 @@ v1.3.2 converges evidence into a small truthful result, reuses deterministic val
 
 ## Evidence Truth Kernel
 
-Remote state, required checks, same-head binding, artifact integrity, and Final Decision are derived only from typed receipts. Boolean claims such as `remoteChecksPass`, `sameHead`, or `artifactUploaded` are rejected. A PR body is display text, not evidence. Missing observation remains `not_observed`; an account billing lock becomes `unavailable_billing`, not a code failure.
+Remote state, required checks, same-head binding, artifact integrity, and Final Decision are derived only from opaque verified collector receipts. Serialized or locally constructed typed JSON is untrusted. Check-set, artifact, and payload digests are recomputed from observed data. Boolean claims such as `remoteChecksPass`, `sameHead`, or `artifactUploaded` are rejected. A PR body is display text, not evidence. Missing observation remains `not_observed`; an account billing lock becomes `unavailable_billing`, not a code failure.
 
 Canonical state fields are:
 
@@ -37,13 +37,13 @@ Registry v2 separates immutable owner classification from expiring GitHub observ
 
 ## Incremental Validation
 
-The deterministic graph runs workspace identity, manifest compilation, registry observation, change classification, dependency closure, selected checks, compatibility checks, evidence projection, compact rendering, and CI cost planning. Unknown paths fail closed into the full local gate.
+The deterministic executor runs concrete handlers for workspace identity, manifest compilation, registry observation, change classification, dependency closure, selected checks, compatibility checks, evidence projection, compact rendering, and CI cost planning. Unknown paths fail closed into the full local gate.
 
-A resumable receipt binds repository, base/head SHA, diff, policy, registry, graph, toolchain, and environment digests. Any mismatch or expiry invalidates reuse. Exact repeated input reuses deterministic nodes while evidence, compact output, and CI planning always rerun.
+A resumable receipt binds repository, base/head SHA, diff, policy, registry, graph, toolchain, environment, node input, executor version, output digest, and completion time. Unexecuted or forged nodes cannot be stored or reused. Any mismatch or expiry invalidates reuse. Evidence, compact output, and CI planning always rerun.
 
 ## Operational Bounds
 
-Routine context order is immutable core, compiled repository policy, task delta, then evidence capsule. Limits are 1536, 1536, 2048, and 2048 bytes. Full manifest and conversation replay are excluded; Skills and tools load lazily and create no authority.
+The advisory compiled context order is immutable core, compiled repository policy, task delta, then evidence capsule. Limits are 1536, 1536, 2048, and 2048 bytes. It is `compiled_advisory_contract` until connected to an executable AI context compiler; it does not claim runtime enforcement.
 
 Default compact JSON is at most 8192 bytes and 64 top-level fields. Decision Capsule v3 is at most 2048 bytes, Safe Summary 3584 bytes, Orchestration Receipt 24576 bytes, and opt-in full diagnostics 131072 bytes. Paths and reason codes are bounded; exact counters and incremental digests preserve cardinality without retaining unbounded arrays. `qualityScore` is not canonical authority; the compatibility projection is `legacyLocalQualityScore` with `authority=false`.
 
@@ -53,13 +53,13 @@ Long runs stop or checkpoint at 120 minutes, 300 tool calls, 100 file writes, on
 
 Target install planning is `dry_run_only`, allowlist-based, and never mutates a repository. Absolute, traversal, control-character, symlink-escape, Source manifest, nested package/lockfile, runtime, contract, deployment, environment, wallet, RPC, secret, and unclassified paths fail closed.
 
-The CI planner estimates workflow, job, matrix, and manual-run counts. Heavy PR validation listens only to `opened`, `synchronize`, and `reopened`; `edited` is excluded. Source Core plans three jobs with a hard maximum of four. Duplicate evidence refresh plans zero.
+The CI planner parses actual workflow files and expands job and matrix counts. Heavy PR validation listens only to `opened`, `synchronize`, and `reopened`; `edited` is excluded. Current Source Core topology is two workflows and four jobs, the hard maximum. Duplicate evidence refresh plans zero.
 
 ## Compatibility And Authority
 
 Rollback order is v1.3.1 immediate, v1.3.0 secondary, v1.2.9 emergency legacy, v1.2.8 blocking compatibility, and v1.2.7 readable compatibility. Compatibility debt due in v1.3.2 must be resolved, reclassified with a reason, or extended once with an owner reason. The preserved target-gate aliases are reclassified as a non-authoritative adapter obligation until targets consume canonical fields.
 
-Final Decision remains `v1.1.8_final_decision_kernel`. Models, agents, Skills, tools, plugins, receipts, summaries, and compatibility aliases create no authority.
+Final Decision remains `v1.1.8_final_decision_kernel`. Decision Capsule v3 is a non-authoritative bounded projection. Models, agents, Skills, tools, plugins, receipts, summaries, and compatibility aliases create no authority.
 
 ## Non-Goals
 
