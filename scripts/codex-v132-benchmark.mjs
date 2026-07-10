@@ -46,15 +46,16 @@ function runGate(repoRoot, expectedVersion) {
   const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
   if (result.status !== 0) throw new Error(`${expectedVersion}_gate_failed:${String(result.stderr || result.stdout).slice(-500)}`);
   const report = JSON.parse(result.stdout.replace(/^\uFEFF/, ''));
+  const sourceManifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'CODEX_SOURCE_HARNESS_MANIFEST.json'), 'utf8'));
   const activeStatus = expectedVersion === '1.3.2' ? report.v132SelfTestStatus?.status : report.v131SelfTestStatus?.status;
   if (report.status !== 'pass' || activeStatus !== 'pass') throw new Error(`${expectedVersion}_invariant_gate_not_pass`);
   const safetyInvariantProjection = {
     status: report.status,
     activeSelfTestStatus: activeStatus,
-    authorityCreated: report.authorityCreated ?? false,
-    targetMutationCount: Number(report.targetMutationCount || 0),
-    PerformanceTrack: report.PerformanceTrack || report.performanceTrack?.state || null,
-    superiorityClaimState: report.superiorityClaimState || null,
+    authorityCreated: report.authorityCreated ?? sourceManifest.authorityCreated,
+    targetMutationCount: Number(report.targetMutationCount ?? sourceManifest.targetMutationCount),
+    PerformanceTrack: report.PerformanceTrack || report.performanceTrack?.state || sourceManifest.performanceTrack?.state || null,
+    superiorityClaimState: report.superiorityClaimState || sourceManifest.performanceTrack?.superiorityClaimState || null,
   };
   return {
     elapsedMs: Number(elapsedMs.toFixed(2)),
