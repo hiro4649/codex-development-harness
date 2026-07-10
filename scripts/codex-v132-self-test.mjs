@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
+  canonicalJson,
   deriveCanonicalState,
   sha256,
   V132_FINAL_AUTHORITY,
@@ -26,6 +27,7 @@ import {
   planIncrementalValidation,
   validateResumeReceipt,
 } from './codex-v132-incremental-validation.mjs';
+import { executeValidationPlan, V132_NODE_EXECUTOR_VERSION } from './codex-v132-node-executor.mjs';
 import {
   buildDecisionCapsuleV3,
   buildOrchestrationReceipt,
@@ -88,6 +90,25 @@ function validReceipts() {
       decision: 'allow_merge', repository, headSha, receiptDigest: sha256('final-decision'), observedAt: '2026-07-10T00:02:00Z',
     },
   };
+}
+
+function executeFixturePlan(plan) {
+  return executeValidationPlan({
+    plan,
+    context: {
+      repository: 'hiro4649/codex-development-harness',
+      headSha: 'b'.repeat(40),
+      workspaceIdentity: { status: 'pass', reasonCodes: [] },
+      manifestProjection: { status: 'pass', reasonCodes: [], expectedProjectionDigest: sha256('projection') },
+      registryObservation: { status: 'not_observed', digest: sha256('not_observed') },
+      rollbackChain: { v131: 'immediate_rollback', v130: 'secondary_rollback', v129: 'emergency_legacy_rollback', v128: 'blocking_compatibility', v127: 'readable_compatibility' },
+      outputLimits: { compactJsonBytes: 8192, topLevelFieldCount: 64 },
+      runLocalChecks: () => ({ status: 'pass', testCount: 1 }),
+      runCompatibilityChecks: () => ({ status: 'pass', reasonCodes: [] }),
+      deriveCanonicalState: (completed) => deriveCanonicalState({ localValidationPassed: ['workspace_identity', 'manifest_compile', 'changed_file_classification', 'dependency_closure', 'selected_local_checks', 'compatibility_checks'].every((nodeId) => completed.get(nodeId)?.status === 'pass') }),
+      runCiCostPlanning: () => ({ status: 'pass', estimatedJobs: 3, estimatedWorkflowRuns: 1 }),
+    },
+  });
 }
 
 test('v132_evidence_truth_local_never_remote', () => {
@@ -166,10 +187,12 @@ test('v132_manifest_projection_and_registry_inventory', () => {
 
 test('v132_incremental_validation_resume_and_invalidation', () => {
   const policy = loadV132Policy(ROOT);
-  const args = { repository: 'hiro4649/codex-development-harness', profile: 'source_control_plane', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), changedFiles: ['scripts/codex-v132-self-test.mjs'], policy, registry: policy.staticRegistry };
+  const args = { repository: 'hiro4649/codex-development-harness', profile: 'source_control_plane', baseSha: 'a'.repeat(40), headSha: 'b'.repeat(40), changedFiles: ['scripts/codex-v132-self-test.mjs'], policy, registry: policy.staticRegistry, workflowInputs: { 'quality-gate.yml': sha256('workflow-a') } };
   const first = planIncrementalValidation(args);
-  const completed = first.selectedNodes.map((node) => ({ nodeId: node.nodeId, status: 'pass', inputDigest: node.inputDigest }));
-  const receipt = createValidationReceipt({ plan: first, repository: args.repository, baseSha: args.baseSha, headSha: args.headSha, completedNodeResults: completed });
+  const execution = executeFixturePlan(first);
+  assert.equal(execution.status, 'pass', execution.failureCodes.join(','));
+  assert.equal(execution.executedNodeCount, 10);
+  const receipt = createValidationReceipt({ plan: first, repository: args.repository, baseSha: args.baseSha, headSha: args.headSha, completedNodeResults: execution.completedNodeResults });
   const resumed = planIncrementalValidation({ ...args, previousReceipt: receipt });
   assert.ok(resumed.exactHeadNodeSkipRate >= 0.7, String(resumed.exactHeadNodeSkipRate));
   assert.equal(resumed.skippedNodeCount, 7);
@@ -178,6 +201,25 @@ test('v132_incremental_validation_resume_and_invalidation', () => {
   const unknown = planIncrementalValidation({ ...args, changedFiles: ['backend/server.ts'] });
   assert.equal(unknown.status, 'full_gate_required');
   assert.equal(unknown.selectedNodeCount, 10);
+  assert.throws(() => createValidationReceipt({ plan: first, repository: args.repository, baseSha: args.baseSha, headSha: args.headSha, completedNodeResults: [{ nodeId: 'workspace_identity', status: 'pass', inputDigest: first.selectedNodes[0].inputDigest }] }), /unattested_node/);
+
+  const forged = structuredClone(receipt);
+  forged.completedNodes.find((node) => node.nodeId === 'workspace_identity').output.repository = 'forged/repository';
+  const forgedPlan = planIncrementalValidation({ ...args, previousReceipt: forged });
+  assert.equal(forgedPlan.reusedNodes.some((node) => node.nodeId === 'workspace_identity'), false);
+
+  const oldExecutor = structuredClone(receipt);
+  oldExecutor.completedNodes.find((node) => node.nodeId === 'manifest_compile').executorVersion = `${V132_NODE_EXECUTOR_VERSION}-old`;
+  const executorPlan = planIncrementalValidation({ ...args, previousReceipt: oldExecutor });
+  assert.equal(executorPlan.reusedNodes.some((node) => node.nodeId === 'manifest_compile'), false);
+
+  const workflowChanged = planIncrementalValidation({ ...args, workflowInputs: { 'quality-gate.yml': sha256('workflow-b') }, previousReceipt: receipt });
+  assert.equal(workflowChanged.selectedNodes.some((node) => node.nodeId === 'ci_cost_planning'), true);
+
+  const evidenceA = planIncrementalValidation({ ...args, evidenceReceipt: { receiptDigest: sha256('a') } });
+  const evidenceB = planIncrementalValidation({ ...args, evidenceReceipt: { receiptDigest: sha256('b') } });
+  assert.notEqual(evidenceA.selectedNodes.find((node) => node.nodeId === 'evidence_truth_projection').inputDigest, evidenceB.selectedNodes.find((node) => node.nodeId === 'evidence_truth_projection').inputDigest);
+  assert.equal(receipt.completedNodes.every((node) => node.outputDigest === sha256(canonicalJson(node.output))), true);
 });
 
 test('v132_context_cache_envelope_limits', () => {

@@ -4,6 +4,8 @@
 import os from 'node:os';
 import { canonicalJson, sha256, V132_VERSION } from './codex-v132-evidence-truth.mjs';
 
+export const V132_NODE_EXECUTOR_VERSION = 'v132-node-executor-1';
+
 export const V132_VALIDATION_GRAPH = Object.freeze([
   {
     nodeId: 'workspace_identity',
@@ -129,6 +131,8 @@ export function buildValidationDigests({
   changedFiles = [],
   policy = {},
   registry = [],
+  workflowInputs = {},
+  evidenceReceipt = null,
   environment = process.env,
 } = {}) {
   const safeEnvironment = {
@@ -150,7 +154,7 @@ export function buildValidationDigests({
     policyDigest,
     manifestDigest: policyDigest,
     registryDigest,
-    observationDigest: sha256('not_observed'),
+    observationDigest: sha256(canonicalJson(evidenceReceipt?.registryObservation || 'not_observed')),
     diffDigest,
     classificationPolicyDigest: sha256(`${V132_VERSION}:classification`),
     graphDigest,
@@ -158,12 +162,13 @@ export function buildValidationDigests({
     toolchainDigest,
     environmentDigest,
     compatibilityInputDigest: sha256(`${V132_VERSION}:v131_v130_v129_v128_v127`),
-    evidenceDigest: sha256('not_observed'),
+    evidenceDigest: sha256(canonicalJson(evidenceReceipt || 'not_observed')),
     headSha,
     canonicalStateDigest: sha256('pending'),
     outputPolicyDigest: sha256(canonicalJson(policy.outputLimits || {})),
-    workflowDigest: sha256(`${V132_VERSION}:workflow_plan`),
+    workflowDigest: sha256(canonicalJson(workflowInputs)),
     changeClassDigest: diffDigest,
+    executorVersionDigest: sha256(V132_NODE_EXECUTOR_VERSION),
   };
 }
 
@@ -197,21 +202,21 @@ export function planIncrementalValidation({
   changedFiles = [],
   policy = {},
   registry = [],
+  workflowInputs = {},
+  evidenceReceipt = null,
   previousReceipt = null,
   now = Date.now(),
 } = {}) {
   const classification = classifyChangedFiles(changedFiles);
-  const digests = buildValidationDigests({ repository, baseSha, headSha, changedFiles, policy, registry });
+  const digests = buildValidationDigests({ repository, baseSha, headSha, changedFiles, policy, registry, workflowInputs, evidenceReceipt });
   const currentReceiptIdentity = { repository, baseSha, headSha, ...digests };
   const receiptValidation = previousReceipt
     ? validateResumeReceipt(previousReceipt, currentReceiptIdentity, now)
     : { status: 'not_observed', resumeAllowed: false, reasonCodes: [], createsAuthority: false };
 
-  const requiredNodeIds = FULL_GATE_CLASSES.has(classification.changeClass)
-    ? V132_VALIDATION_GRAPH.map((node) => node.nodeId)
-    : classification.changeClass === 'docs_only'
-      ? ['workspace_identity', 'manifest_compile', 'changed_file_classification', 'dependency_closure', 'selected_local_checks', 'evidence_truth_projection', 'compact_output_rendering', 'ci_cost_planning']
-      : ['workspace_identity', 'manifest_compile', 'changed_file_classification', 'evidence_truth_projection', 'compact_output_rendering', 'ci_cost_planning'];
+  // Every profile preserves the same invariant closure. Cheap exact-head reuse,
+  // rather than omission, makes no-op and docs-only paths fast.
+  const requiredNodeIds = V132_VALIDATION_GRAPH.map((node) => node.nodeId);
 
   const completed = new Map((previousReceipt?.completedNodes || []).map((node) => [node.nodeId, node]));
   const selectedNodes = [];
@@ -219,8 +224,14 @@ export function planIncrementalValidation({
   for (const node of V132_VALIDATION_GRAPH.filter((item) => requiredNodeIds.includes(item.nodeId))) {
     const inputDigest = nodeInputDigest(node, digests);
     const prior = completed.get(node.nodeId);
-    if (receiptValidation.resumeAllowed && node.alwaysRun !== true && prior?.inputDigest === inputDigest && prior?.status === 'pass') {
-      reusedNodes.push({ nodeId: node.nodeId, status: 'reused_verified', inputDigest, authority: false });
+    const priorOutputDigest = prior?.output ? sha256(canonicalJson(prior.output)) : null;
+    const priorValid = prior?.inputDigest === inputDigest
+      && prior?.executorVersion === V132_NODE_EXECUTOR_VERSION
+      && ['pass', 'not_observed', 'not_applicable'].includes(prior?.status)
+      && prior?.outputDigest === priorOutputDigest
+      && Number.isFinite(Date.parse(prior?.completedAt || ''));
+    if (receiptValidation.resumeAllowed && node.alwaysRun !== true && priorValid) {
+      reusedNodes.push({ nodeId: node.nodeId, status: 'reused_verified', inputDigest, outputDigest: prior.outputDigest, executorVersion: prior.executorVersion, authority: false });
     } else {
       selectedNodes.push({ ...node, inputDigest });
     }
@@ -254,6 +265,14 @@ export function createValidationReceipt({
   createdAt = new Date().toISOString(),
   ttlMinutes = 120,
 } = {}) {
+  for (const item of completedNodeResults) {
+    const calculatedDigest = item?.output ? sha256(canonicalJson(item.output)) : null;
+    if (!item?.nodeId || !item?.inputDigest || !item?.outputDigest || item.outputDigest !== calculatedDigest
+      || item.executorVersion !== V132_NODE_EXECUTOR_VERSION || !['pass', 'not_observed', 'not_applicable'].includes(item.status)
+      || !Number.isFinite(Date.parse(item.completedAt || ''))) {
+      throw new Error(`validation_receipt_unattested_node:${item?.nodeId || 'unknown'}`);
+    }
+  }
   const createdMs = Date.parse(createdAt);
   const completedIds = new Set(completedNodeResults.map((item) => item.nodeId));
   const nextNodes = (plan?.selectedNodes || []).filter((node) => !completedIds.has(node.nodeId)).map((node) => node.nodeId);
@@ -268,10 +287,15 @@ export function createValidationReceipt({
     toolchainDigest: plan?.digests?.toolchainDigest,
     graphDigest: plan?.digests?.graphDigest,
     environmentDigest: plan?.digests?.environmentDigest,
+    executorVersion: V132_NODE_EXECUTOR_VERSION,
     completedNodes: completedNodeResults.map((item) => ({
       nodeId: item.nodeId,
       status: item.status,
       inputDigest: item.inputDigest,
+      outputDigest: item.outputDigest,
+      executorVersion: item.executorVersion,
+      completedAt: item.completedAt,
+      output: item.output,
     })),
     nextNodes,
     createdAt,

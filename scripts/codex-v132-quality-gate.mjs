@@ -8,6 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { deriveCanonicalState, sha256, canonicalJson, V132_VERSION } from './codex-v132-evidence-truth.mjs';
 import { loadV132Policy, readJsonStrict, validateManifestProjections } from './codex-v132-manifest-compiler.mjs';
 import { buildToolchainSummary, createValidationReceipt, planIncrementalValidation } from './codex-v132-incremental-validation.mjs';
+import { executeValidationPlan } from './codex-v132-node-executor.mjs';
 import {
   buildDecisionCapsuleV3,
   buildOrchestrationReceipt,
@@ -35,6 +36,25 @@ function repositoryFromRemote(remote) {
 function listChangedFiles(repoRoot, baseSha) {
   const output = git(['diff', '--name-only', baseSha], repoRoot, '');
   return output.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+}
+
+function readWorkflowInputs(repoRoot) {
+  const directory = path.join(repoRoot, '.github', 'workflows');
+  if (!fs.existsSync(directory)) return {};
+  return Object.fromEntries(fs.readdirSync(directory)
+    .filter((name) => /\.ya?ml$/i.test(name))
+    .sort()
+    .map((name) => [name, sha256(fs.readFileSync(path.join(directory, name), 'utf8'))]));
+}
+
+function evaluateWorkspaceIdentity({ repository, headSha, sourceManifest, repoRoot }) {
+  const reasons = [];
+  if (repository !== 'hiro4649/codex-development-harness') reasons.push('workspace_repository_mismatch');
+  if (!/^[a-f0-9]{40}$/.test(headSha)) reasons.push('workspace_head_invalid');
+  if (sourceManifest.activeHarnessVersion !== V132_VERSION) reasons.push('workspace_active_version_mismatch');
+  const agents = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
+  if (!agents.includes('CODEX_QUALITY_HARNESS_FILE v1.3.2')) reasons.push('workspace_agents_marker_missing');
+  return { status: reasons.length ? 'fail' : 'pass', reasonCodes: reasons };
 }
 
 function readResumeReceipt(file) {
@@ -77,6 +97,7 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
   const headSha = git(['rev-parse', 'HEAD'], root, '0'.repeat(40));
   const baseSha = policy.provisionalBaseSha;
   const changedFiles = listChangedFiles(root, baseSha);
+  const workflowInputs = readWorkflowInputs(root);
   const receiptFile = process.env.CODEX_V132_RESUME_RECEIPT_FILE || '';
   const previousReceipt = readResumeReceipt(receiptFile);
   const plan = planIncrementalValidation({
@@ -87,23 +108,64 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
     changedFiles,
     policy,
     registry: policy.staticRegistry,
+    workflowInputs,
     previousReceipt,
   });
-  const selfTestRequired = plan.selectedNodes.some((node) => node.nodeId === 'selected_local_checks');
-  const selfTest = selfTestRequired ? runSelfTest(root) : { status: 'pass', reusedVerified: true };
   const debt = validateCompatibilityDebtClosure([{
     mustReviewBefore: V132_VERSION,
     disposition: policy.compatibilityDebtClosure?.legacyTargetGateShape?.disposition,
     reason: policy.compatibilityDebtClosure?.legacyTargetGateShape?.reason,
     silentExtension: policy.compatibilityDebtClosure?.legacyTargetGateShape?.silentExtension,
   }]);
-  const localBlockers = [];
-  if (projection.status !== 'pass') localBlockers.push(...projection.reasonCodes);
-  if (selfTest.status !== 'pass') localBlockers.push('v132_self_test_failed');
+  const rollbackChain = {
+    v131: 'immediate_rollback',
+    v130: 'secondary_rollback',
+    v129: 'emergency_legacy_rollback',
+    v128: 'blocking_compatibility',
+    v127: 'readable_compatibility',
+  };
+  const workspaceIdentity = evaluateWorkspaceIdentity({ repository, headSha, sourceManifest, repoRoot: root });
+  const execution = executeValidationPlan({
+    plan,
+    priorCompletedNodes: previousReceipt?.completedNodes || [],
+    context: {
+      repository,
+      headSha,
+      workspaceIdentity,
+      manifestProjection: projection,
+      registryObservation: { status: 'not_observed', digest: plan.digests.observationDigest },
+      rollbackChain,
+      outputLimits: {
+        compactJsonBytes: policy.outputLimits.defaultCompactJsonBytes,
+        topLevelFieldCount: policy.outputLimits.topLevelFieldCount,
+      },
+      runLocalChecks: () => runSelfTest(root),
+      runCompatibilityChecks: () => {
+        const matches = Object.entries(rollbackChain).every(([key, value]) => sourceManifest.versionAuthority?.[key] === value
+          || (key === 'v127' && sourceManifest.versionAuthority?.[key] === 'compatibility_readable'));
+        return { status: matches ? 'pass' : 'fail', reasonCodes: matches ? [] : ['rollback_chain_projection_mismatch'] };
+      },
+      deriveCanonicalState: (completed) => {
+        const priorRequired = ['workspace_identity', 'manifest_compile', 'changed_file_classification', 'dependency_closure', 'selected_local_checks', 'compatibility_checks'];
+        const localPassed = priorRequired.every((nodeId) => completed.get(nodeId)?.status === 'pass');
+        return deriveCanonicalState({ localValidationPassed: localPassed });
+      },
+      runCiCostPlanning: () => {
+        const result = planCiCost({ changeClass: plan.classification.changeClass });
+        return { ...result, estimatedJobs: result.estimatedJobCount, estimatedWorkflowRuns: result.workflowRunCount };
+      },
+    },
+  });
+  const localBlockers = [...execution.failureCodes];
   if (debt.status !== 'pass') localBlockers.push(...debt.reasonCodes);
   if (sourceManifest.authorityCreated !== false) localBlockers.push('authority_created');
   if (sourceManifest.targetMutationCount !== 0) localBlockers.push('target_mutation_detected');
-  const canonicalState = deriveCanonicalState({ localValidationPassed: localBlockers.length === 0 });
+  const evidenceNode = execution.completedNodeResults.find((node) => node.nodeId === 'evidence_truth_projection');
+  const canonicalState = evidenceNode?.output
+    ? { ...deriveCanonicalState({ localValidationPassed: evidenceNode.output.localValidationState === 'passed' }), ...evidenceNode.output }
+    : deriveCanonicalState({ localValidationPassed: false });
+  const selfTestNode = execution.completedNodeResults.find((node) => node.nodeId === 'selected_local_checks');
+  const selfTest = selfTestNode?.output || { status: 'fail', reasonCodes: ['selected_local_checks_not_executed'] };
   const nextSafeAction = canonicalState.localValidationState === 'passed'
     ? 'rebase_after_v131_merge_then_obtain_exact_head_remote_evidence'
     : 'repair_smallest_local_source_blocker';
@@ -130,6 +192,8 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
     nextSafeAction,
     selectedNodeCount: plan.selectedNodeCount,
     skippedNodeCount: plan.skippedNodeCount,
+    executedNodeCount: execution.executedNodeCount,
+    reusedNodeCount: execution.reusedNodeCount,
     exactHeadNodeSkipRate: plan.exactHeadNodeSkipRate,
     changeClass: plan.classification.changeClass,
     v132SelfTestStatus: selfTest,
@@ -160,6 +224,7 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
       changedFiles,
       projection,
       plan,
+      execution,
       toolchain: buildToolchainSummary(),
       policyDigest: sha256(canonicalJson(policy)),
       authority: false,
@@ -168,11 +233,7 @@ export function runV132SourceQualityGate({ repoRoot = process.cwd(), diagnostics
     validateFullDiagnostics(report);
   }
   if (!localBlockers.length && receiptFile) {
-    const completedNodeResults = [
-      ...plan.selectedNodes.map((node) => ({ nodeId: node.nodeId, status: 'pass', inputDigest: node.inputDigest })),
-      ...plan.reusedNodes.map((node) => ({ nodeId: node.nodeId, status: 'pass', inputDigest: node.inputDigest })),
-    ];
-    writeResumeReceipt(receiptFile, createValidationReceipt({ plan, repository, baseSha, headSha, completedNodeResults }));
+    writeResumeReceipt(receiptFile, createValidationReceipt({ plan, repository, baseSha, headSha, completedNodeResults: execution.completedNodeResults }));
   }
   return { report, exitCode: localBlockers.length ? 1 : 0 };
 }
