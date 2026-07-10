@@ -3401,7 +3401,57 @@ export function buildRequiredStatusClosureV3Report(report, failures = [], option
 
 
 
+export function isV132CompactReport(report) {
+  return report?.schemaVersion === '1.3.2'
+    && Object.hasOwn(report, 'localValidationState')
+    && Object.hasOwn(report, 'remoteValidationState')
+    && Object.hasOwn(report, 'mergeAllowed');
+}
+
+export function evaluateV132CompactWorkflowReport(report, options = {}) {
+  const failures = [];
+  const requiredScalar = [
+    ['status', report?.status, ['pass']],
+    ['localValidationState', report?.localValidationState, ['passed']],
+    ['remoteValidationState', report?.remoteValidationState, ['not_observed', 'unavailable_billing', 'queued', 'in_progress', 'passed', 'failed', 'canceled', 'stale', 'head_mismatch', 'artifact_missing', 'required_check_set_mismatch']],
+    ['technicalMergeEligibility', report?.technicalMergeEligibility, ['blocked', 'eligible']],
+    ['finalDecisionState', report?.finalDecisionState, ['not_authorized', 'authorized']],
+  ];
+  for (const [field, value, allowed] of requiredScalar) {
+    if (!allowed.includes(value)) failures.push(`v132_${field}_invalid`);
+  }
+  if (typeof report?.mergeAllowed !== 'boolean') failures.push('v132_mergeAllowed_invalid');
+  if (report?.v132SelfTestStatus?.status !== 'pass') failures.push('v132_self_test_not_pass');
+  if (report?.manifestProjectionStatus?.status !== 'pass') failures.push('v132_manifest_projection_not_pass');
+  if (report?.compatibilityDebtStatus?.status !== 'pass') failures.push('v132_compatibility_debt_not_pass');
+  if (report?.authorityCreated !== false) failures.push('v132_authority_created');
+  if (report?.targetMutationCount !== 0) failures.push('v132_target_mutation_detected');
+  const metrics = report?.outputMetrics || {};
+  for (const [field, limit] of [['compactJsonBytes', 8192], ['decisionCapsuleBytes', 2048], ['safeSummaryBytes', 3584], ['orchestrationReceiptBytes', 24576]]) {
+    if (!Number.isInteger(metrics[field]) || metrics[field] < 0 || metrics[field] > limit) failures.push(`v132_${field}_invalid`);
+  }
+  if (!Number.isInteger(metrics.topLevelFieldCount) || metrics.topLevelFieldCount > 64) failures.push('v132_top_level_field_count_invalid');
+  if (report?.mergeAllowed === true && !(report.remoteValidationState === 'passed'
+    && report.technicalMergeEligibility === 'eligible' && report.finalDecisionState === 'authorized')) {
+    failures.push('v132_merge_allowed_without_canonical_authorization');
+  }
+  if (Object.hasOwn(report || {}, 'mergeReady')) failures.push('v132_legacy_mergeReady_forbidden');
+  return {
+    schemaVersion: '1.3.2',
+    mode: 'source',
+    status: failures.length ? 'fail' : 'pass',
+    technicalRequiredCheckPassed: failures.length === 0,
+    mergeAllowed: report?.mergeAllowed === true,
+    remoteValidationState: report?.remoteValidationState || 'not_observed',
+    failures,
+    gateExit: Number(options.gateExit || 0),
+    authorityCreated: false,
+    safeSummaryOnly: true,
+  };
+}
+
 export function evaluateWorkflowReport(report, options = {}) {
+  if (isV132CompactReport(report)) return evaluateV132CompactWorkflowReport(report, options);
 
 
 
@@ -6245,6 +6295,23 @@ function writeInvalidReportArtifacts(loaded) {
 
 
 export function buildWorkflowQualityRunnerReport(report, options = {}) {
+  if (isV132CompactReport(report)) {
+    const result = evaluateV132CompactWorkflowReport(report, options);
+    return {
+      schemaVersion: '1.3.2',
+      workflowQualityRunnerStatus: { status: result.status, safeSummaryOnly: true },
+      technicalRequiredCheckPassed: result.technicalRequiredCheckPassed,
+      localValidationState: report.localValidationState,
+      remoteValidationState: report.remoteValidationState,
+      technicalMergeEligibility: report.technicalMergeEligibility,
+      finalDecisionState: report.finalDecisionState,
+      mergeAllowed: report.mergeAllowed,
+      blockerCodes: result.failures.slice(0, 16),
+      authorityCreated: false,
+      targetMutationCount: 0,
+      safeSummaryOnly: true,
+    };
+  }
 
 
 
@@ -6370,6 +6437,19 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
 
 
 
+  }
+
+  if (isV132CompactReport(loaded.report)) {
+    const result = evaluateV132CompactWorkflowReport(loaded.report, {
+      gateExit: Number(args['gate-exit'] || process.env.CODEX_GATE_EXIT || 0),
+      eventName: process.env.CODEX_EVENT_NAME,
+    });
+    writeJsonReport(buildWorkflowQualityRunnerReport(loaded.report, {
+      gateExit: Number(args['gate-exit'] || process.env.CODEX_GATE_EXIT || 0),
+      eventName: process.env.CODEX_EVENT_NAME,
+    }), 'CODEX_WORKFLOW_RUNNER_REPORT');
+    for (const item of result.failures.slice(0, 20)) console.error(`::error title=codex-v132-quality-gate::${item}`);
+    process.exit(result.technicalRequiredCheckPassed ? 0 : 1);
   }
 
 

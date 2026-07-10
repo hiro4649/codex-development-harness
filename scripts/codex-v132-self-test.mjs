@@ -8,6 +8,8 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
   canonicalJson,
+  collectTrustedFinalDecision,
+  collectVerifiedGithubEvidence,
   deriveCanonicalState,
   sha256,
   V132_FINAL_AUTHORITY,
@@ -41,6 +43,7 @@ import {
   V132_OUTPUT_LIMITS,
 } from './codex-v132-operational-bounds.mjs';
 import { runV132SourceQualityGate } from './codex-v132-quality-gate.mjs';
+import { evaluateV132CompactWorkflowReport } from './codex-workflow-quality-runner.mjs';
 
 const ROOT = process.cwd();
 const results = [];
@@ -73,22 +76,22 @@ function resolvePython() {
 function validReceipts() {
   const repository = 'hiro4649/codex-development-harness';
   const headSha = 'a'.repeat(40);
-  const checkDigest = sha256('required-check-set');
-  const artifactDigest = sha256('safe-artifact');
-  const expected = { repository, headSha, requiredCheckSetDigest: checkDigest, artifactDigest };
+  const remoteEvidence = collectVerifiedGithubEvidence({
+    repository, headSha, runId: 101, runAttempt: 1,
+    startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:01:00Z', observedAt: '2026-07-10T00:01:01Z',
+    conclusion: 'success',
+    checkRuns: [{ checkRunId: 202, name: 'quality-gate', conclusion: 'success', headSha }],
+    artifacts: [{ artifactId: 303, name: 'safe-summary', sizeInBytes: 123, contentDigest: sha256('safe-artifact') }],
+  }, { testMode: true });
+  const finalDecisionReceipt = collectTrustedFinalDecision({
+    authority: V132_FINAL_AUTHORITY, decision: 'allow_merge', decisionId: 'decision:test:001',
+    repository, headSha, observedAt: '2026-07-10T00:02:00Z',
+  }, { testMode: true });
+  const expected = { repository, headSha, requiredCheckSetDigest: remoteEvidence.requiredCheckSetDigest, artifactDigest: remoteEvidence.artifactDigest, testMode: true };
   return {
     expected,
-    remoteEvidence: {
-      evidenceType: 'github_required_check_set', repository, headSha,
-      runIds: [101], runAttempt: 1, observationSource: 'github_api',
-      startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:01:00Z', observedAt: '2026-07-10T00:01:01Z',
-      requiredCheckSetDigest: checkDigest, artifactDigest, conclusion: 'success',
-      checkRuns: [{ checkRunId: 202, name: 'quality-gate', conclusion: 'success', headSha }],
-    },
-    finalDecisionReceipt: {
-      evidenceType: 'final_decision_authorization', authority: V132_FINAL_AUTHORITY,
-      decision: 'allow_merge', repository, headSha, receiptDigest: sha256('final-decision'), observedAt: '2026-07-10T00:02:00Z',
-    },
+    remoteEvidence,
+    finalDecisionReceipt,
   };
 }
 
@@ -131,15 +134,19 @@ test('v132_evidence_truth_typed_receipts_authorize_only_exact_state', () => {
   const invalid = structuredClone(receipts.remoteEvidence);
   invalid.remoteChecksPass = true;
   assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: invalid, expected: receipts.expected }).mergeAllowed, false);
+  const plainTypedJson = structuredClone(receipts.remoteEvidence);
+  const plainDecision = structuredClone(receipts.finalDecisionReceipt);
+  assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: plainTypedJson, finalDecisionReceipt: plainDecision, expected: receipts.expected }).mergeAllowed, false);
+  assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: receipts.remoteEvidence, finalDecisionReceipt: receipts.finalDecisionReceipt, expected: { ...receipts.expected, testMode: false } }).mergeAllowed, false);
 });
 
 test('v132_billing_lock_is_unavailable_not_code_failure', () => {
-  const receipt = {
-    evidenceType: 'github_job_not_started', repository: 'hiro4649/codex-development-harness', headSha: 'a'.repeat(40),
-    runIds: [1], runAttempt: 1, observationSource: 'github_api', failureClass: 'account_billing_lock',
-    annotationDigest: sha256('billing'), startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:00:01Z', observedAt: '2026-07-10T00:00:02Z',
-  };
-  const state = deriveCanonicalState({ localValidationPassed: true, remoteEvidence: receipt });
+  const receipt = collectVerifiedGithubEvidence({
+    repository: 'hiro4649/codex-development-harness', headSha: 'a'.repeat(40), runId: 1, runAttempt: 1,
+    failureClass: 'account_billing_lock', annotationText: 'account billing lock',
+    startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:00:01Z', observedAt: '2026-07-10T00:00:02Z',
+  }, { testMode: true });
+  const state = deriveCanonicalState({ localValidationPassed: true, remoteEvidence: receipt, expected: { testMode: true } });
   assert.equal(state.remoteValidationState, 'unavailable_billing');
   assert.equal(state.remoteFailureClass, 'account_billing_lock');
   assert.equal(state.mergeAllowed, false);
@@ -280,6 +287,21 @@ test('v132_workflow_heavy_trigger_excludes_edited', () => {
   const workflow = fs.readFileSync(path.join(ROOT, '.github/workflows/quality-gate.yml'), 'utf8');
   const typesLine = workflow.split(/\r?\n/).find((line) => line.includes('types:')) || '';
   assert.equal(typesLine.includes('edited'), false);
+});
+
+test('v132_workflow_runner_accepts_compact_technical_pass', () => {
+  const previous = process.env.CODEX_SKIP_V132_SELF_TEST;
+  process.env.CODEX_SKIP_V132_SELF_TEST = '1';
+  try {
+    const { report } = runV132SourceQualityGate({ repoRoot: ROOT, diagnostics: false });
+    const result = evaluateV132CompactWorkflowReport(report, { gateExit: 0 });
+    assert.equal(result.status, 'pass', result.failures.join(','));
+    assert.equal(result.technicalRequiredCheckPassed, true);
+    assert.equal(result.mergeAllowed, false);
+  } finally {
+    if (previous === undefined) delete process.env.CODEX_SKIP_V132_SELF_TEST;
+    else process.env.CODEX_SKIP_V132_SELF_TEST = previous;
+  }
 });
 
 test('v132_source_gate_end_to_end_local_only', () => {
