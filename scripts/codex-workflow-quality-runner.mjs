@@ -3414,7 +3414,7 @@ export function evaluateV132CompactWorkflowReport(report, options = {}) {
   const requiredScalar = [
     ['status', report?.status, ['pass']],
     ['localValidationState', report?.localValidationState, ['passed']],
-    ['remoteValidationState', report?.remoteValidationState, ['not_observed', 'unavailable_billing', 'queued', 'in_progress', 'passed', 'failed', 'canceled', 'stale', 'head_mismatch', 'artifact_missing', 'required_check_set_mismatch']],
+    ['remoteValidationState', report?.remoteValidationState, ['not_observed', 'unavailable_billing', 'unavailable_pre_runner', 'queued', 'in_progress', 'passed', 'failed', 'canceled', 'stale', 'head_mismatch', 'artifact_missing', 'required_check_set_mismatch']],
     ['technicalMergeEligibility', report?.technicalMergeEligibility, ['blocked', 'eligible']],
     ['finalDecisionState', report?.finalDecisionState, ['not_authorized', 'authorized']],
   ];
@@ -3422,6 +3422,9 @@ export function evaluateV132CompactWorkflowReport(report, options = {}) {
     if (!allowed.includes(value)) failures.push(`v132_${field}_invalid`);
   }
   if (typeof report?.mergeAllowed !== 'boolean') failures.push('v132_mergeAllowed_invalid');
+  if (report?.status === 'pass' && report?.blockingCount !== 0) failures.push('v132_pass_with_blockers');
+  if (options.expectedRepository && report?.repository !== options.expectedRepository) failures.push('v132_workflow_repository_mismatch');
+  if (options.expectedHeadSha && String(report?.headSha || '').toLowerCase() !== String(options.expectedHeadSha).toLowerCase()) failures.push('v132_workflow_head_mismatch');
   if (report?.v132SelfTestStatus?.status !== 'pass') failures.push('v132_self_test_not_pass');
   if (report?.manifestProjectionStatus?.status !== 'pass') failures.push('v132_manifest_projection_not_pass');
   if (report?.compatibilityDebtStatus?.status !== 'pass') failures.push('v132_compatibility_debt_not_pass');
@@ -3429,6 +3432,7 @@ export function evaluateV132CompactWorkflowReport(report, options = {}) {
   if (report?.longRunBudgetStatus?.status !== 'within_budget') failures.push('v132_long_run_budget_not_within_budget');
   if (report?.automaticTargetMutation !== false) failures.push('v132_automatic_target_mutation_invalid');
   if (report?.remoteUnobservedPassCount !== 0) failures.push('v132_remote_unobserved_pass_count_invalid');
+  if (report?.PerformanceTrack !== 'deferred') failures.push('v132_performance_track_not_deferred');
   if (report?.superiorityClaimState !== 'not_proven') failures.push('v132_superiority_claim_invalid');
   if (report?.authorityCreated !== false) failures.push('v132_authority_created');
   if (report?.targetMutationCount !== 0) failures.push('v132_target_mutation_detected');
@@ -6449,10 +6453,14 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     const result = evaluateV132CompactWorkflowReport(loaded.report, {
       gateExit: Number(args['gate-exit'] || process.env.CODEX_GATE_EXIT || 0),
       eventName: process.env.CODEX_EVENT_NAME,
+      expectedRepository: process.env.GITHUB_REPOSITORY || process.env.CODEX_REPOSITORY,
+      expectedHeadSha: process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA,
     });
     writeJsonReport(buildWorkflowQualityRunnerReport(loaded.report, {
       gateExit: Number(args['gate-exit'] || process.env.CODEX_GATE_EXIT || 0),
       eventName: process.env.CODEX_EVENT_NAME,
+      expectedRepository: process.env.GITHUB_REPOSITORY || process.env.CODEX_REPOSITORY,
+      expectedHeadSha: process.env.CODEX_PR_HEAD_SHA || process.env.GITHUB_SHA,
     }), 'CODEX_WORKFLOW_RUNNER_REPORT');
     for (const item of result.failures.slice(0, 20)) console.error(`::error title=codex-v132-quality-gate::${item}`);
     process.exit(result.technicalRequiredCheckPassed ? 0 : 1);

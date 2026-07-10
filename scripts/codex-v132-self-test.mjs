@@ -12,8 +12,10 @@ import {
   collectVerifiedGithubEvidence,
   createFixtureFinalDecision,
   createFixtureGithubEvidence,
+  createFixtureTrustRoot,
   deriveCanonicalState,
   sha256,
+  trustRootContractDigest,
   validateCanonicalState,
   verifySignedFinalDecisionReceipt,
   V132_FINAL_AUTHORITY,
@@ -49,7 +51,7 @@ import {
   validateCompatibilityDebtClosure,
   V132_OUTPUT_LIMITS,
 } from './codex-v132-operational-bounds.mjs';
-import { runV132SourceQualityGate } from './codex-v132-quality-gate.mjs';
+import { evaluateWorkspaceIdentity, repositoryFromRemote, runV132SourceQualityGate } from './codex-v132-quality-gate.mjs';
 import { runV132CompatibilityCheck } from './codex-v132-compatibility-check.mjs';
 import { evaluateV132CompactWorkflowReport } from './codex-workflow-quality-runner.mjs';
 import * as harnessVersion from './codex-harness-version.mjs';
@@ -121,23 +123,64 @@ function parseThroughPython(file) {
 function validReceipts() {
   const repository = 'hiro4649/codex-development-harness';
   const headSha = 'a'.repeat(40);
+  const baseSha = 'b'.repeat(40);
+  const { publicKey } = crypto.generateKeyPairSync('ed25519');
+  const acceptedMainTrustRoot = createFixtureTrustRoot({
+    repository,
+    acceptedMainSha: 'c'.repeat(40),
+    publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
+  });
+  const requiredCheckTrustRoot = {
+    source: 'explicit_test_branch_protection',
+    baseRef: 'main',
+    requiredCheckNames: ['quality-gate'],
+    observedAt: '2026-07-10T00:00:00Z',
+  };
+  requiredCheckTrustRoot.digest = sha256(canonicalJson(requiredCheckTrustRoot));
   const remoteEvidence = createFixtureGithubEvidence({
-    repository, headSha, runId: 101, runAttempt: 1,
+    repository, pullRequestNumber: 165, event: 'pull_request', baseRef: 'main', baseSha, headSha, runId: 101, runAttempt: 1,
+    workflowRuns: [{ runId: 101, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml', event: 'pull_request', pullRequestNumber: 165, baseSha, headSha }],
     startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:01:00Z', observedAt: '2026-07-10T00:01:01Z',
     conclusion: 'success',
+    requiredCheckTrustRoot,
+    acceptedMainTrustRoot,
     checkRuns: [{ checkRunId: 202, name: 'quality-gate', conclusion: 'success', headSha }],
-    artifacts: [{ artifactId: 303, name: 'safe-summary', sizeInBytes: 123, contentDigest: sha256('safe-artifact') }],
+    artifacts: [{
+      artifactId: 303,
+      name: 'safe-summary',
+      sizeInBytes: 123,
+      contentDigest: sha256('safe-artifact'),
+      entryPath: 'safe-summary.json',
+      schemaVersion: V132_VERSION,
+      semanticDigest: sha256('safe-summary-payload'),
+    }],
   });
   const finalDecisionReceipt = createFixtureFinalDecision({
     authority: V132_FINAL_AUTHORITY, decision: 'allow_merge', decisionId: 'decision:test:001',
     repository, headSha, observedAt: '2026-07-10T00:02:00Z',
   });
-  const expected = { repository, headSha, runId: 101, runAttempt: 1, requiredCheckNames: ['quality-gate'], requiredCheckSetDigest: remoteEvidence.requiredCheckSetDigest, artifactDigest: remoteEvidence.artifactDigest, testMode: true };
+  const expected = {
+    repository,
+    pullRequestNumber: 165,
+    event: 'pull_request',
+    baseSha,
+    headSha,
+    runId: 101,
+    runAttempt: 1,
+    acceptedMainTrustRoot,
+    testMode: true,
+  };
   return {
     expected,
     remoteEvidence,
     finalDecisionReceipt,
   };
+}
+
+function refreshRemotePayloadDigest(receipt) {
+  const { receiptPayloadDigest: ignored, ...payload } = receipt;
+  receipt.receiptPayloadDigest = sha256(canonicalJson(payload));
+  return receipt;
 }
 
 function fixtureWorkspaceState(changedPaths, salt = 'a') {
@@ -211,36 +254,84 @@ test('v132_evidence_truth_typed_receipts_authorize_only_exact_state', () => {
   assert.equal(deriveCanonicalState({ localValidationPassed: true, remoteEvidence: modifiedSerialized, expected: receipts.expected }).mergeAllowed, false);
 });
 
+test('v132_github_evidence_binds_pr_event_workflow_base_and_head', () => {
+  const scenarios = [
+    ['remote_pull_request_number_mismatch', (receipt) => { receipt.pullRequestNumber += 1; }],
+    ['remote_event_not_pull_request', (receipt) => { receipt.event = 'push'; }],
+    ['remote_base_sha_mismatch', (receipt) => { receipt.baseSha = 'd'.repeat(40); }],
+    ['remote_head_sha_mismatch', (receipt) => { receipt.headSha = 'd'.repeat(40); }],
+    ['workflow_0_not_in_accepted_main_contract', (receipt) => { receipt.workflowRuns[0].workflowPath = '.github/workflows/untrusted.yml'; }],
+  ];
+  for (const [reason, mutate] of scenarios) {
+    const receipts = validReceipts();
+    mutate(receipts.remoteEvidence);
+    refreshRemotePayloadDigest(receipts.remoteEvidence);
+    const state = deriveCanonicalState({ localValidationPassed: true, ...receipts });
+    assert.equal(state.mergeAllowed, false, reason);
+    assert.ok(state.remoteEvidence.reasonCodes.includes(reason), `${reason}:${state.remoteEvidence.reasonCodes.join(',')}`);
+  }
+  const receipts = validReceipts();
+  const state = deriveCanonicalState({
+    localValidationPassed: true,
+    ...receipts,
+    expected: { ...receipts.expected, requiredCheckNames: [] },
+  });
+  assert.equal(state.mergeAllowed, false);
+  assert.ok(state.remoteEvidence.reasonCodes.includes('candidate_controlled_required_check_list_forbidden'));
+});
+
 test('v132_final_decision_serialized_signature_verification', () => {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const repository = 'hiro4649/codex-development-harness';
+  const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' });
+  const trustRoot = createFixtureTrustRoot({
+    repository,
+    acceptedMainSha: 'c'.repeat(40),
+    publicKeyPem,
+    keyId: 'owner-final-key-001',
+  });
   const payload = {
     evidenceType: 'final_decision_authorization',
-    trustClass: 'signed_final_decision_kernel',
-    testMode: false,
-    observationSource: 'final_decision_kernel_verified',
+    trustClass: 'explicit_test_fixture',
+    testMode: true,
+    observationSource: 'explicit_test_final_decision',
     authority: V132_FINAL_AUTHORITY,
     decision: 'allow_merge',
     decisionId: 'decision:signed:001',
-    repository: 'hiro4649/codex-development-harness',
+    repository,
     headSha: 'a'.repeat(40),
     observedAt: '2026-07-10T00:02:00Z',
     signatureAlgorithm: 'ed25519',
-    signingKeyId: 'self-test-key',
+    signingKeyId: 'owner-final-key-001',
+    signingKeyFingerprint: trustRoot.finalDecisionKey.publicKeyFingerprint,
+    trustRootDigest: trustRootContractDigest(trustRoot),
   };
   const signature = crypto.sign(null, Buffer.from(canonicalJson(payload)), privateKey).toString('base64');
   const serialized = { ...payload, signature };
   serialized.receiptDigest = sha256(canonicalJson(serialized));
-  const verified = verifySignedFinalDecisionReceipt(serialized, { publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }) });
-  const evaluation = deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: verified });
+  const verified = verifySignedFinalDecisionReceipt(serialized, { trustRoot });
+  const evaluation = deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: verified, expected: { testMode: true } });
   assert.equal(evaluation.finalDecisionState, 'authorized');
+  assert.throws(() => verifySignedFinalDecisionReceipt(serialized, { trustRoot: structuredClone(trustRoot) }), /trusted_root_required/);
+  const { publicKey: arbitraryPublicKey } = crypto.generateKeyPairSync('ed25519');
+  const arbitraryRoot = createFixtureTrustRoot({
+    repository,
+    acceptedMainSha: 'c'.repeat(40),
+    publicKeyPem: arbitraryPublicKey.export({ type: 'spki', format: 'pem' }),
+    keyId: 'owner-final-key-002',
+  });
+  assert.throws(() => verifySignedFinalDecisionReceipt(serialized, { trustRoot: arbitraryRoot }), /signing_key_id_untrusted/);
   const modified = structuredClone(serialized);
   modified.headSha = 'b'.repeat(40);
-  assert.equal(deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: modified, expected: { finalDecisionPublicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }) } }).finalDecisionState, 'not_authorized');
+  assert.equal(deriveCanonicalState({ localValidationPassed: true, finalDecisionReceipt: modified, expected: { testMode: true } }).finalDecisionState, 'not_authorized');
 });
 
 test('v132_billing_lock_is_unavailable_not_code_failure', () => {
+  const baseSha = 'b'.repeat(40);
+  const headSha = 'a'.repeat(40);
   const receipt = createFixtureGithubEvidence({
-    repository: 'hiro4649/codex-development-harness', headSha: 'a'.repeat(40), runId: 1, runAttempt: 1,
+    repository: 'hiro4649/codex-development-harness', pullRequestNumber: 165, event: 'pull_request', baseRef: 'main', baseSha, headSha, runId: 1, runAttempt: 1,
+    workflowRuns: [{ runId: 1, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml', event: 'pull_request', pullRequestNumber: 165, baseSha, headSha }],
     failureClass: 'account_billing_lock', annotationText: 'account billing lock',
     startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:00:01Z', observedAt: '2026-07-10T00:00:02Z',
   });
@@ -248,6 +339,38 @@ test('v132_billing_lock_is_unavailable_not_code_failure', () => {
   assert.equal(state.remoteValidationState, 'unavailable_billing');
   assert.equal(state.remoteFailureClass, 'account_billing_lock');
   assert.equal(state.mergeAllowed, false);
+});
+
+test('v132_unknown_pre_runner_is_not_mislabeled_billing', () => {
+  const baseSha = 'b'.repeat(40);
+  const headSha = 'a'.repeat(40);
+  const receipt = createFixtureGithubEvidence({
+    repository: 'hiro4649/codex-development-harness', pullRequestNumber: 165, event: 'pull_request', baseRef: 'main', baseSha, headSha, runId: 2, runAttempt: 1,
+    workflowRuns: [{ runId: 2, runAttempt: 1, workflowId: 1001, workflowPath: '.github/workflows/quality-gate.yml', event: 'pull_request', pullRequestNumber: 165, baseSha, headSha }],
+    failureClass: 'pre_runner_unavailable',
+    startedAt: '2026-07-10T00:00:00Z', completedAt: '2026-07-10T00:00:01Z', observedAt: '2026-07-10T00:00:02Z',
+  });
+  const state = deriveCanonicalState({ localValidationPassed: true, remoteEvidence: receipt, expected: { testMode: true } });
+  assert.equal(state.remoteValidationState, 'unavailable_pre_runner');
+  assert.equal(state.remoteFailureClass, 'pre_runner_unavailable');
+  assert.equal(state.mergeAllowed, false);
+});
+
+test('v132_workspace_identity_origin_and_top_level_fail_closed', () => {
+  assert.equal(repositoryFromRemote('git@github.com:hiro4649/codex-development-harness.git'), 'hiro4649/codex-development-harness');
+  assert.equal(repositoryFromRemote('https://github.com/hiro4649/codex-development-harness.git'), 'hiro4649/codex-development-harness');
+  assert.equal(repositoryFromRemote(''), null);
+  assert.equal(repositoryFromRemote('not a url'), null);
+  assert.equal(repositoryFromRemote('https://github.com.evil.example/hiro4649/codex-development-harness'), null);
+  assert.equal(repositoryFromRemote('https://gitlab.com/hiro4649/codex-development-harness'), null);
+  const sourceManifest = strictJson('CODEX_SOURCE_HARNESS_MANIFEST.json');
+  const headSha = 'a'.repeat(40);
+  const baseSha = 'b'.repeat(40);
+  const common = { headSha, baseSha, baseShaExists: true, sourceManifest, repoRoot: ROOT };
+  assert.equal(evaluateWorkspaceIdentity({ ...common, remote: '', repository: null, gitTopLevel: ROOT }).status, 'fail');
+  assert.equal(evaluateWorkspaceIdentity({ ...common, remote: 'malformed', repository: null, gitTopLevel: ROOT }).status, 'fail');
+  assert.equal(evaluateWorkspaceIdentity({ ...common, remote: 'https://github.com/hiro4649/codex-development-harness-lookalike', repository: 'hiro4649/codex-development-harness-lookalike', gitTopLevel: ROOT }).status, 'fail');
+  assert.equal(evaluateWorkspaceIdentity({ ...common, remote: 'https://github.com/hiro4649/codex-development-harness', repository: 'hiro4649/codex-development-harness', gitTopLevel: os.tmpdir() }).status, 'fail');
 });
 
 test('v132_manifest_strict_duplicate_collision_rejection', () => {
@@ -448,7 +571,8 @@ test('v132_compatibility_projection_is_active_tuple_neutral', () => {
     assert.equal(result.projectionValidStatus, 'pass');
     assert.equal(result.behaviorInvariantsStatus, 'pass');
     assert.equal(result.boundedBehaviorInvariantsExecuted, true);
-    assert.equal(result.compatibilityEvidence.every((entry) => entry.executionMode === 'bounded_invariants_under_v132_active_tuple'), true);
+    assert.equal(result.compatibilityEvidence.every((entry) => entry.executionMode === 'bounded_pure_behavior_contracts'), true);
+    assert.equal(result.compatibilityEvidence.every((entry) => entry.behaviorInvariantCount >= 2), true);
   }
 });
 
@@ -484,6 +608,8 @@ test('v132_workflow_runner_accepts_compact_technical_pass', () => {
     assert.equal(result.technicalRequiredCheckPassed, true);
     assert.equal(result.mergeAllowed, false);
     assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 7 }).status, 'fail');
+    assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedRepository: 'wrong/repository' }).status, 'fail');
+    assert.equal(evaluateV132CompactWorkflowReport(report, { gateExit: 0, expectedHeadSha: 'f'.repeat(40) }).status, 'fail');
     const remoteContradiction = { ...structuredClone(report), remoteValidationState: 'failed', remoteEvidenceStatus: 'fail', technicalMergeEligibility: 'eligible' };
     assert.equal(evaluateV132CompactWorkflowReport(remoteContradiction, { gateExit: 0 }).status, 'fail');
     const unobservedEligible = { ...structuredClone(report), remoteValidationState: 'not_observed', technicalMergeEligibility: 'eligible' };

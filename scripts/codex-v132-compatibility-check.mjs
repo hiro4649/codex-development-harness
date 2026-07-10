@@ -4,8 +4,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { readJsonStrict } from './codex-v132-manifest-compiler.mjs';
+import { loadV132Policy, readJsonStrict } from './codex-v132-manifest-compiler.mjs';
 import { canonicalJson, sha256 } from './codex-v132-evidence-truth.mjs';
+import { runV132CompatibilityBehaviorInvariants } from './codex-v132-compatibility-invariants.mjs';
 
 export const V132_CANONICAL_ROLLBACK_CHAIN = Object.freeze({
   v132: 'local_source_candidate',
@@ -24,66 +25,9 @@ const LANE_VERSIONS = Object.freeze({
 });
 const VERSION_MARKERS = Object.freeze({ v131: 'v1.3.1', v130: 'v1.3.0', v129: 'v1.2.9', v128: 'v1.2.8', v127: 'v1.2.7' });
 
-export const V132_COMPATIBILITY_INVARIANT_CONTRACT = Object.freeze({
-  common: [
-    'v132_active_tuple',
-    'final_decision_authority_preserved',
-    'compatibility_adapter_internal_only',
-    'performance_track_deferred',
-    'target_rollout_not_started',
-    'authority_not_created',
-    'target_product_not_mutated',
-  ],
-  v131: ['immediate_rollback_role'],
-  v130: ['secondary_rollback_role', 'machine_aliases_preserved', 'target_overlay_projection_only'],
-  v129: ['emergency_rollback_role', 'immediate_rollback_alias_preserved'],
-  v128: ['blocking_compatibility_role', 'rollback_compatibility_alias_preserved'],
-  v127: ['readable_compatibility_role', 'readable_compatibility_alias_preserved'],
-});
-
-function invariantResult(invariantId, passed) {
-  return { invariantId, status: passed ? 'pass' : 'fail' };
-}
-
-function runBehaviorInvariants(manifest, version) {
-  const adapter = manifest.compatibilityAdapter || {};
-  const v130Adapter = adapter.v130CompatibilityAdapter || {};
-  const roleInvariantIds = {
-    v131: 'immediate_rollback_role',
-    v130: 'secondary_rollback_role',
-    v129: 'emergency_rollback_role',
-    v128: 'blocking_compatibility_role',
-    v127: 'readable_compatibility_role',
-  };
-  const results = [
-    invariantResult('v132_active_tuple', manifest.activeHarnessVersion === '1.3.2' && manifest.activeSelfTestSuite === 'v132'),
-    invariantResult('final_decision_authority_preserved', manifest.finalAuthority === 'v1.1.8_final_decision_kernel'),
-    invariantResult('compatibility_adapter_internal_only', adapter.state === 'active' && adapter.authority === 'internal_compatibility_only'
-      && adapter.createsAuthority === false && adapter.affectsFinalDecision === false && adapter.affectsTargetRollout === false),
-    invariantResult('performance_track_deferred', manifest.performanceTrack?.state === 'deferred'
-      && manifest.performanceTrack?.superiorityClaimState === 'not_proven'),
-    invariantResult('target_rollout_not_started', (manifest.targetRolloutState || manifest.targetRollout) === 'not_started'),
-    invariantResult('authority_not_created', manifest.authorityCreated === false),
-    invariantResult('target_product_not_mutated', manifest.targetMutationCount === 0),
-    invariantResult(roleInvariantIds[version], manifest.versionAuthority?.[version] === V132_CANONICAL_ROLLBACK_CHAIN[version]),
-  ];
-  if (version === 'v130') {
-    results.push(invariantResult('machine_aliases_preserved', adapter.machineAliasesPreserved === true));
-    results.push(invariantResult('target_overlay_projection_only', manifest.targetManifestOverlay?.projectionKind === 'profile_install_template_only'
-      && manifest.targetManifestOverlay?.mutatesTargetRepositories === false));
-  }
-  if (version === 'v129') results.push(invariantResult('immediate_rollback_alias_preserved', v130Adapter.immediateRollback === 'preserved'));
-  if (version === 'v128') results.push(invariantResult('rollback_compatibility_alias_preserved', v130Adapter.rollbackCompatibility === 'preserved'));
-  if (version === 'v127') results.push(invariantResult('readable_compatibility_alias_preserved', v130Adapter.readableCompatibility === 'preserved'));
-  const expectedIds = [...V132_COMPATIBILITY_INVARIANT_CONTRACT.common, ...V132_COMPATIBILITY_INVARIANT_CONTRACT[version]];
-  for (const invariantId of expectedIds) {
-    if (!results.some((result) => result.invariantId === invariantId)) results.push(invariantResult(`contract_missing:${invariantId}`, false));
-  }
-  return results;
-}
-
 export function runV132CompatibilityCheck({ repoRoot = process.cwd(), lane = 'all' } = {}) {
   const root = path.resolve(repoRoot);
+  const policy = loadV132Policy(root);
   const source = readJsonStrict(path.join(root, 'CODEX_SOURCE_HARNESS_MANIFEST.json'));
   const docs = readJsonStrict(path.join(root, 'docs/process/CODEX_HARNESS_MANIFEST.json'));
   const index = readJsonStrict(path.join(root, 'docs/process/CODEX_ACTIVE_POLICY_INDEX.json'));
@@ -116,9 +60,9 @@ export function runV132CompatibilityCheck({ repoRoot = process.cwd(), lane = 'al
       if (!markerValid) reasons.push(`${version}_historical_self_test_marker_mismatch`);
     }
     const projectionValid = manifests.every((manifest) => manifest.versionAuthority?.[version] === V132_CANONICAL_ROLLBACK_CHAIN[version]);
-    const behaviorInvariantResults = manifests.flatMap((manifest, manifestIndex) => runBehaviorInvariants(manifest, version)
-      .map((result) => ({ ...result, manifest: ['source', 'docs', 'active_policy'][manifestIndex] })));
-    const behaviorInvariantsPassed = behaviorInvariantResults.every((result) => result.status === 'pass');
+    const behavior = runV132CompatibilityBehaviorInvariants({ version, policy, repoRoot: root });
+    const behaviorInvariantResults = behavior.invariants;
+    const behaviorInvariantsPassed = behavior.status === 'pass';
     if (!projectionValid) reasons.push(`${version}_projection_invalid`);
     if (!behaviorInvariantsPassed) reasons.push(`${version}_behavior_invariant_failed`);
     compatibilityEvidence.push({
@@ -130,8 +74,8 @@ export function runV132CompatibilityCheck({ repoRoot = process.cwd(), lane = 'al
       behaviorInvariantCount: behaviorInvariantResults.length,
       behaviorInvariantDigest: sha256(canonicalJson(behaviorInvariantResults)),
       failedBehaviorInvariantIds: behaviorInvariantResults.filter((result) => result.status !== 'pass')
-        .map((result) => `${result.manifest}:${result.invariantId}`),
-      executionMode: 'bounded_invariants_under_v132_active_tuple',
+        .map((result) => result.invariantId),
+      executionMode: behavior.executionMode,
     });
   }
   const adapter = source.compatibilityAdapter;

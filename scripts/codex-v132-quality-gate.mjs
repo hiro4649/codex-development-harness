@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import {
   deriveCanonicalState,
+  collectAcceptedMainTrustRoot,
   reobserveSerializedGithubEvidence,
   sha256,
   canonicalJson,
@@ -38,9 +39,29 @@ function git(args, cwd, fallback = '', accounting) {
   return result.status === 0 ? String(result.stdout || '').trim() : fallback;
 }
 
-function repositoryFromRemote(remote) {
-  const match = String(remote || '').replace(/\.git$/i, '').match(/(?:github\.com[/:])([^/]+\/[^/]+)$/i);
-  return match?.[1] || 'hiro4649/codex-development-harness';
+export function repositoryFromRemote(remote) {
+  const value = String(remote || '').trim();
+  if (!value || /[\u0000-\u001f\u007f]/.test(value)) return null;
+  let owner = '';
+  let repository = '';
+  const scp = value.match(/^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/i);
+  if (scp) {
+    [, owner, repository] = scp;
+  } else {
+    let parsed;
+    try {
+      parsed = new URL(value);
+    } catch {
+      return null;
+    }
+    if (!['https:', 'ssh:'].includes(parsed.protocol) || parsed.hostname.toLowerCase() !== 'github.com') return null;
+    if (parsed.search || parsed.hash || (parsed.username && parsed.protocol === 'https:') || parsed.password) return null;
+    const segments = parsed.pathname.replace(/\/$/, '').replace(/\.git$/i, '').split('/').filter(Boolean);
+    if (segments.length !== 2) return null;
+    [owner, repository] = segments;
+  }
+  if (!/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(repository)) return null;
+  return `${owner}/${repository}`;
 }
 
 function readWorkflowInputs(repoRoot) {
@@ -52,13 +73,38 @@ function readWorkflowInputs(repoRoot) {
     .map((name) => [name, sha256(fs.readFileSync(path.join(directory, name), 'utf8'))]));
 }
 
-function evaluateWorkspaceIdentity({ repository, headSha, sourceManifest, repoRoot }) {
+function comparableRealPath(value) {
+  try {
+    const normalized = fs.realpathSync.native(path.resolve(value)).replaceAll('\\', '/').replace(/\/$/, '');
+    return process.platform === 'win32' ? normalized.toLowerCase() : normalized;
+  } catch {
+    return null;
+  }
+}
+
+export function evaluateWorkspaceIdentity({
+  repository,
+  remote,
+  headSha,
+  baseSha,
+  baseShaExists,
+  gitTopLevel,
+  sourceManifest,
+  repoRoot,
+}) {
   const reasons = [];
+  if (!remote) reasons.push('workspace_origin_missing');
+  if (remote && !repository) reasons.push('workspace_origin_malformed_or_unsupported');
   if (repository !== 'hiro4649/codex-development-harness') reasons.push('workspace_repository_mismatch');
   if (!/^[a-f0-9]{40}$/.test(headSha)) reasons.push('workspace_head_invalid');
+  if (!/^[a-f0-9]{40}$/.test(String(baseSha || '')) || baseShaExists !== true) reasons.push('workspace_base_invalid_or_missing');
+  const expectedTopLevel = comparableRealPath(repoRoot);
+  const observedTopLevel = comparableRealPath(gitTopLevel || '');
+  if (!expectedTopLevel || !observedTopLevel || expectedTopLevel !== observedTopLevel) reasons.push('workspace_git_top_level_mismatch');
   if (sourceManifest.activeHarnessVersion !== V132_VERSION) reasons.push('workspace_active_version_mismatch');
   const agents = fs.readFileSync(path.join(repoRoot, 'AGENTS.md'), 'utf8');
   if (!agents.includes('CODEX_QUALITY_HARNESS_FILE v1.3.2')) reasons.push('workspace_agents_marker_missing');
+  if (sourceManifest.marker !== 'CODEX_QUALITY_HARNESS_FILE v1.3.2') reasons.push('workspace_source_manifest_marker_missing');
   return { status: reasons.length ? 'fail' : 'pass', reasonCodes: reasons };
 }
 
@@ -124,13 +170,14 @@ export function runV132SourceQualityGate({
   const remote = git(['config', '--get', 'remote.origin.url'], root, '', accounting);
   const repository = repositoryFromRemote(remote);
   const headSha = git(['rev-parse', 'HEAD'], root, '0'.repeat(40), accounting);
+  const gitTopLevel = git(['rev-parse', '--show-toplevel'], root, '', accounting);
   const locallyBoundExpectedEvidence = {
-    requiredCheckNames: policy.evidenceTruthKernel?.requiredCheckNames || [],
     ...expectedRemoteEvidence,
     repository,
     headSha,
   };
   const baseSha = policy.provisionalBaseSha;
+  const baseShaExists = run('git', ['cat-file', '-e', `${baseSha}^{commit}`], root, accounting).status === 0;
   const workspaceState = collectWorkspaceState({ repoRoot: root, baseSha, headSha, accounting });
   const changedFiles = workspaceState.changedPaths;
   const workflowInputs = readWorkflowInputs(root);
@@ -162,7 +209,16 @@ export function runV132SourceQualityGate({
     v128: 'blocking_compatibility',
     v127: 'readable_compatibility',
   };
-  const workspaceIdentity = evaluateWorkspaceIdentity({ repository, headSha, sourceManifest, repoRoot: root });
+  const workspaceIdentity = evaluateWorkspaceIdentity({
+    repository,
+    remote,
+    headSha,
+    baseSha,
+    baseShaExists,
+    gitTopLevel,
+    sourceManifest,
+    repoRoot: root,
+  });
   const execution = executeValidationPlan({
     plan,
     priorCompletedNodes: previousReceipt?.completedNodes || [],
@@ -330,21 +386,33 @@ export async function runV132SourceQualityGateWithDurableEvidence(options = {}) 
   let finalDecisionReceipt = options.finalDecisionReceipt || null;
   let expectedRemoteEvidence = { ...(options.expectedRemoteEvidence || {}) };
   const remoteReceiptFile = process.env.CODEX_V132_REMOTE_RECEIPT_FILE || '';
+  const finalReceiptFile = process.env.CODEX_V132_FINAL_DECISION_RECEIPT_FILE || '';
+  let acceptedMainTrustRoot = options.acceptedMainTrustRoot || null;
+  if ((remoteReceiptFile || finalReceiptFile) && !acceptedMainTrustRoot) {
+    const policy = loadV132Policy(options.repoRoot || process.cwd());
+    acceptedMainTrustRoot = await collectAcceptedMainTrustRoot({
+      repository: 'hiro4649/codex-development-harness',
+      acceptedMainSha: policy.acceptedMainSha,
+      token: process.env.GITHUB_TOKEN,
+    });
+  }
   if (!remoteEvidence && remoteReceiptFile) {
     const serialized = JSON.parse(fs.readFileSync(path.resolve(remoteReceiptFile), 'utf8'));
-    remoteEvidence = await reobserveSerializedGithubEvidence(serialized, { token: process.env.GITHUB_TOKEN });
+    remoteEvidence = await reobserveSerializedGithubEvidence(serialized, {
+      token: process.env.GITHUB_TOKEN,
+      acceptedMainTrustRoot,
+    });
     expectedRemoteEvidence = {
       ...expectedRemoteEvidence,
-      requiredCheckSetDigest: remoteEvidence.requiredCheckSetDigest,
-      artifactDigest: remoteEvidence.artifactDigest,
+      acceptedMainTrustRoot,
+      event: process.env.CODEX_EVENT_NAME || 'pull_request',
+      pullRequestNumber: Number(process.env.CODEX_PR_NUMBER || 0) || undefined,
+      baseSha: process.env.CODEX_PR_BASE_SHA || undefined,
     };
   }
-  const finalReceiptFile = process.env.CODEX_V132_FINAL_DECISION_RECEIPT_FILE || '';
   if (!finalDecisionReceipt && finalReceiptFile) {
-    const publicKeyFile = process.env.CODEX_V132_FINAL_DECISION_PUBLIC_KEY_FILE || '';
-    if (!publicKeyFile) throw new Error('final_decision_public_key_file_required');
     const serialized = JSON.parse(fs.readFileSync(path.resolve(finalReceiptFile), 'utf8'));
-    finalDecisionReceipt = verifySignedFinalDecisionReceipt(serialized, { publicKeyPem: fs.readFileSync(path.resolve(publicKeyFile), 'utf8') });
+    finalDecisionReceipt = verifySignedFinalDecisionReceipt(serialized, { trustRoot: acceptedMainTrustRoot });
   }
   return runV132SourceQualityGate({ ...options, remoteEvidence, finalDecisionReceipt, expectedRemoteEvidence });
 }

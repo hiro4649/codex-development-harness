@@ -2,12 +2,14 @@
 // CODEX_QUALITY_HARNESS_FILE v1.3.2
 
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 
 export const V132_VERSION = '1.3.2';
 export const V132_FINAL_AUTHORITY = 'v1.1.8_final_decision_kernel';
 export const V132_REMOTE_VALIDATION_STATES = Object.freeze([
   'not_observed',
   'unavailable_billing',
+  'unavailable_pre_runner',
   'queued',
   'in_progress',
   'passed',
@@ -33,9 +35,12 @@ const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
 const RFC3339_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
 const API_OBSERVED_REMOTE_RECEIPTS = new WeakSet();
 const VERIFIED_FINAL_DECISION_RECEIPTS = new WeakSet();
+const ACCEPTED_MAIN_TRUST_ROOTS = new WeakSet();
+const FIXTURE_TRUST_ROOTS = new WeakSet();
 const FIXTURE_REMOTE_RECEIPTS = new WeakSet();
 const FIXTURE_FINAL_DECISION_RECEIPTS = new WeakSet();
-export const V132_GITHUB_COLLECTOR_VERSION = 'v132-github-collector-2';
+export const V132_GITHUB_COLLECTOR_VERSION = 'v132-github-collector-3';
+export const V132_TRUST_ROOT_PATH = 'docs/process/CODEX_V132_TRUST_ROOT.json';
 
 export function canonicalJson(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
@@ -45,6 +50,15 @@ export function canonicalJson(value) {
 
 export function sha256(value) {
   return `sha256:${crypto.createHash('sha256').update(String(value)).digest('hex')}`;
+}
+
+function sha256Bytes(value) {
+  return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
+}
+
+export function publicKeyFingerprint(publicKeyPem) {
+  const key = crypto.createPublicKey(publicKeyPem);
+  return sha256Bytes(key.export({ type: 'spki', format: 'der' }));
 }
 
 function collectForbiddenBooleanClaims(value, path = '$', claims = []) {
@@ -108,7 +122,66 @@ function normalizedArtifacts(artifacts = []) {
     name: String(artifact.name || ''),
     sizeInBytes: Number(artifact.sizeInBytes),
     contentDigest: String(artifact.contentDigest || ''),
+    entryPath: String(artifact.entryPath || ''),
+    schemaVersion: String(artifact.schemaVersion || ''),
+    semanticDigest: String(artifact.semanticDigest || ''),
   })).sort((a, b) => a.name.localeCompare(b.name) || a.artifactId - b.artifactId);
+}
+
+function normalizedWorkflowRuns(workflowRuns = []) {
+  return workflowRuns.map((run) => ({
+    runId: Number(run.runId),
+    runAttempt: Number(run.runAttempt),
+    workflowId: Number(run.workflowId),
+    workflowPath: String(run.workflowPath || ''),
+    event: String(run.event || ''),
+    pullRequestNumber: Number(run.pullRequestNumber),
+    baseSha: String(run.baseSha || '').toLowerCase(),
+    headSha: String(run.headSha || '').toLowerCase(),
+  })).sort((a, b) => a.runId - b.runId);
+}
+
+function validateTrustRootShape(root, expected = {}) {
+  const reasons = [];
+  if (root?.schemaVersion !== V132_VERSION) reasons.push('trust_root_schema_invalid');
+  if (root?.state !== 'active') reasons.push('trust_root_not_active');
+  if (root?.authority !== 'accepted_main_only') reasons.push('trust_root_authority_invalid');
+  if (root?.repository !== expected.repository) reasons.push('trust_root_repository_mismatch');
+  if (!SHA_RE.test(String(root?.acceptedMainSha || ''))) reasons.push('trust_root_main_sha_invalid');
+  if (expected.acceptedMainSha && root?.acceptedMainSha !== expected.acceptedMainSha) reasons.push('trust_root_main_sha_mismatch');
+  const key = root?.finalDecisionKey || {};
+  if (!/^[A-Za-z0-9_.:-]{8,128}$/.test(String(key.keyId || ''))) reasons.push('trust_root_key_id_invalid');
+  if (key.state !== 'active') reasons.push('trust_root_key_not_active');
+  if (!DIGEST_RE.test(String(key.publicKeyFingerprint || ''))) reasons.push('trust_root_key_fingerprint_invalid');
+  if (typeof key.publicKeyPem !== 'string') reasons.push('trust_root_public_key_missing');
+  else {
+    try {
+      if (publicKeyFingerprint(key.publicKeyPem) !== key.publicKeyFingerprint) reasons.push('trust_root_public_key_fingerprint_mismatch');
+    } catch {
+      reasons.push('trust_root_public_key_invalid');
+    }
+  }
+  if (!Array.isArray(root?.revokedKeyIds)) reasons.push('trust_root_revocation_list_invalid');
+  if (root?.revokedKeyIds?.includes(key.keyId)) reasons.push('trust_root_active_key_revoked');
+  if (!['stable', 'rotation_pending'].includes(root?.keyRotation?.state)) reasons.push('trust_root_rotation_state_invalid');
+  const artifacts = root?.artifactContract?.requiredArtifacts;
+  if (!Array.isArray(artifacts) || !artifacts.length) reasons.push('trust_root_artifact_contract_missing');
+  for (const [index, artifact] of (artifacts || []).entries()) {
+    if (!artifact.name || !artifact.entryPath || !artifact.schemaVersion) reasons.push(`trust_root_artifact_${index}_invalid`);
+    if (!Array.isArray(artifact.requiredFields)) reasons.push(`trust_root_artifact_${index}_required_fields_invalid`);
+  }
+  const workflows = root?.workflowContract?.requiredWorkflows;
+  if (!Array.isArray(workflows) || !workflows.length) reasons.push('trust_root_workflow_contract_missing');
+  for (const [index, workflow] of (workflows || []).entries()) {
+    if (!Number.isInteger(workflow.workflowId) || workflow.workflowId < 1 || !/^\.github\/workflows\/[^/]+\.ya?ml$/i.test(String(workflow.path || ''))) {
+      reasons.push(`trust_root_workflow_${index}_invalid`);
+    }
+  }
+  return { status: reasons.length ? 'fail' : 'pass', reasonCodes: reasons };
+}
+
+function trustRootAccepted(root, testMode) {
+  return testMode === true ? FIXTURE_TRUST_ROOTS.has(root) : ACCEPTED_MAIN_TRUST_ROOTS.has(root);
 }
 
 function remoteReceiptPayload(receipt) {
@@ -120,19 +193,29 @@ function buildRemoteReceipt(observation = {}, { testMode = false, observationSou
   const headSha = String(observation.headSha || '').toLowerCase();
   const checkRuns = normalizedCheckRuns(observation.checkRuns, headSha);
   const artifacts = normalizedArtifacts(observation.artifacts);
+  const workflowRuns = normalizedWorkflowRuns(observation.workflowRuns || []);
   const runIds = (observation.runIds || [observation.runId]).map(Number).filter(Number.isInteger).sort((a, b) => a - b);
   const runAttempts = (observation.runAttempts || [{ runId: observation.runId, runAttempt: observation.runAttempt }])
     .map((item) => ({ runId: Number(item.runId), runAttempt: Number(item.runAttempt) }))
     .sort((a, b) => a.runId - b.runId);
+  const trustedCheckNames = new Set(observation.requiredCheckTrustRoot?.requiredCheckNames || []);
+  const requiredCheckRuns = checkRuns.filter((check) => trustedCheckNames.has(check.name));
   const receipt = {
-    evidenceType: observation.failureClass === 'account_billing_lock' ? 'github_job_not_started' : 'github_required_check_set',
+    evidenceType: ['account_billing_lock', 'pre_runner_unavailable'].includes(observation.failureClass)
+      ? 'github_job_not_started'
+      : 'github_required_check_set',
     trustClass: testMode ? 'explicit_test_fixture' : 'github_api_reobserved',
     testMode,
     collectorVersion: V132_GITHUB_COLLECTOR_VERSION,
     repository: String(observation.repository || ''),
+    pullRequestNumber: Number(observation.pullRequestNumber),
+    event: String(observation.event || ''),
+    baseRef: String(observation.baseRef || ''),
+    baseSha: String(observation.baseSha || '').toLowerCase(),
     headSha,
     runIds,
     runAttempts,
+    workflowRuns,
     observationSource,
     startedAt: observation.startedAt,
     completedAt: observation.completedAt,
@@ -142,7 +225,10 @@ function buildRemoteReceipt(observation = {}, { testMode = false, observationSou
     annotationDigest: observation.annotationText ? sha256(String(observation.annotationText)) : null,
     checkRuns,
     artifacts,
-    requiredCheckSetDigest: sha256(canonicalJson(checkRuns.map(({ checkRunId, name, conclusion, headSha: checkHeadSha }) => ({ checkRunId, name, conclusion, headSha: checkHeadSha })))),
+    requiredCheckTrustRoot: observation.requiredCheckTrustRoot || null,
+    requiredArtifactContractDigest: String(observation.requiredArtifactContractDigest || ''),
+    requiredWorkflowContractDigest: String(observation.requiredWorkflowContractDigest || ''),
+    requiredCheckSetDigest: sha256(canonicalJson(requiredCheckRuns.map(({ checkRunId, name, conclusion, headSha: checkHeadSha }) => ({ checkRunId, name, conclusion, headSha: checkHeadSha })))),
     artifactDigest: sha256(canonicalJson(artifacts)),
   };
   receipt.receiptPayloadDigest = sha256(canonicalJson(remoteReceiptPayload(receipt)));
@@ -162,60 +248,302 @@ async function githubJson(url, token) {
   return response.json();
 }
 
-async function observeGithubRun({ repository, runId, token } = {}) {
+async function githubText(url, token) {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github.raw+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'codex-v132-trust-root-collector',
+    },
+  });
+  if (!response.ok) throw new Error(`github_trust_root_observation_failed:${response.status}`);
+  return response.text();
+}
+
+export async function collectAcceptedMainTrustRoot({ repository, acceptedMainSha, token } = {}) {
+  if (!/^[-A-Za-z0-9_.]+\/[-A-Za-z0-9_.]+$/.test(String(repository || ''))) throw new Error('trust_root_repository_invalid');
+  if (!SHA_RE.test(String(acceptedMainSha || ''))) throw new Error('trust_root_accepted_main_sha_invalid');
+  if (!token) throw new Error('github_token_required_for_trust_root_observation');
+  const encodedPath = V132_TRUST_ROOT_PATH.split('/').map(encodeURIComponent).join('/');
+  const text = await githubText(`https://api.github.com/repos/${repository}/contents/${encodedPath}?ref=${acceptedMainSha}`, token);
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('accepted_main_trust_root_json_invalid');
+  }
+  const trustRoot = {
+    ...parsed,
+    trustSource: 'accepted_main_github_api',
+    trustSourcePath: V132_TRUST_ROOT_PATH,
+    observedAt: new Date().toISOString(),
+  };
+  const validation = validateTrustRootShape(trustRoot, { repository, acceptedMainSha });
+  if (validation.status !== 'pass') throw new Error(`accepted_main_trust_root_invalid:${validation.reasonCodes.join(',')}`);
+  ACCEPTED_MAIN_TRUST_ROOTS.add(trustRoot);
+  return trustRoot;
+}
+
+export function createFixtureTrustRoot({ repository, acceptedMainSha, publicKeyPem, keyId = 'fixture-owner-key', requiredArtifacts, requiredWorkflows } = {}) {
+  const trustRoot = {
+    schemaVersion: V132_VERSION,
+    state: 'active',
+    authority: 'accepted_main_only',
+    repository,
+    acceptedMainSha,
+    finalDecisionKey: {
+      keyId,
+      state: 'active',
+      publicKeyPem,
+      publicKeyFingerprint: publicKeyFingerprint(publicKeyPem),
+    },
+    revokedKeyIds: [],
+    keyRotation: { state: 'stable', successorKeyId: null, notBefore: null },
+    artifactContract: {
+      requiredArtifacts: requiredArtifacts || [{
+        name: 'safe-summary',
+        entryPath: 'safe-summary.json',
+        schemaVersion: V132_VERSION,
+        requiredFields: ['schemaVersion', 'status', 'headSha'],
+      }],
+    },
+    workflowContract: {
+      requiredWorkflows: requiredWorkflows || [{ workflowId: 1001, path: '.github/workflows/quality-gate.yml' }],
+    },
+    trustSource: 'explicit_test_fixture',
+    trustSourcePath: null,
+    observedAt: '2026-07-10T00:00:00Z',
+  };
+  const validation = validateTrustRootShape(trustRoot, { repository, acceptedMainSha });
+  if (validation.status !== 'pass') throw new Error(`fixture_trust_root_invalid:${validation.reasonCodes.join(',')}`);
+  FIXTURE_TRUST_ROOTS.add(trustRoot);
+  return trustRoot;
+}
+
+async function githubBuffer(url, token) {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'codex-v132-artifact-observer',
+    },
+  });
+  if (!response.ok) throw new Error(`github_artifact_observation_failed:${response.status}`);
+  return Buffer.from(await response.arrayBuffer());
+}
+
+function readZipEntry(archive, entryPath) {
+  let eocd = -1;
+  for (let offset = archive.length - 22; offset >= Math.max(0, archive.length - 65557); offset -= 1) {
+    if (archive.readUInt32LE(offset) === 0x06054b50) {
+      eocd = offset;
+      break;
+    }
+  }
+  if (eocd < 0) throw new Error('artifact_zip_eocd_missing');
+  const entryCount = archive.readUInt16LE(eocd + 10);
+  let offset = archive.readUInt32LE(eocd + 16);
+  for (let index = 0; index < entryCount; index += 1) {
+    if (archive.readUInt32LE(offset) !== 0x02014b50) throw new Error('artifact_zip_central_directory_invalid');
+    const method = archive.readUInt16LE(offset + 10);
+    const compressedSize = archive.readUInt32LE(offset + 20);
+    const fileNameLength = archive.readUInt16LE(offset + 28);
+    const extraLength = archive.readUInt16LE(offset + 30);
+    const commentLength = archive.readUInt16LE(offset + 32);
+    const localOffset = archive.readUInt32LE(offset + 42);
+    const name = archive.subarray(offset + 46, offset + 46 + fileNameLength).toString('utf8').replaceAll('\\', '/');
+    if (name === entryPath) {
+      if (archive.readUInt32LE(localOffset) !== 0x04034b50) throw new Error('artifact_zip_local_header_invalid');
+      const localNameLength = archive.readUInt16LE(localOffset + 26);
+      const localExtraLength = archive.readUInt16LE(localOffset + 28);
+      const dataOffset = localOffset + 30 + localNameLength + localExtraLength;
+      const compressed = archive.subarray(dataOffset, dataOffset + compressedSize);
+      if (method === 0) return Buffer.from(compressed);
+      if (method === 8) return zlib.inflateRawSync(compressed);
+      throw new Error(`artifact_zip_compression_unsupported:${method}`);
+    }
+    offset += 46 + fileNameLength + extraLength + commentLength;
+  }
+  throw new Error(`artifact_contract_entry_missing:${entryPath}`);
+}
+
+async function observeRequiredArtifact(artifact, contract, token) {
+  const archive = await githubBuffer(artifact.archive_download_url, token);
+  const contentDigest = sha256Bytes(archive);
+  if (artifact.digest && artifact.digest !== contentDigest) throw new Error(`artifact_archive_digest_mismatch:${artifact.name}`);
+  const payloadBytes = readZipEntry(archive, contract.entryPath);
+  let payload;
+  try {
+    payload = JSON.parse(payloadBytes.toString('utf8').replace(/^\uFEFF/, ''));
+  } catch {
+    throw new Error(`artifact_payload_json_invalid:${artifact.name}`);
+  }
+  if (payload?.schemaVersion !== contract.schemaVersion) throw new Error(`artifact_schema_mismatch:${artifact.name}`);
+  for (const field of contract.requiredFields || []) {
+    if (!Object.hasOwn(payload, field)) throw new Error(`artifact_required_field_missing:${artifact.name}:${field}`);
+  }
+  return {
+    artifactId: Number(artifact.id),
+    name: artifact.name,
+    sizeInBytes: Number(artifact.size_in_bytes),
+    contentDigest,
+    entryPath: contract.entryPath,
+    schemaVersion: payload.schemaVersion,
+    semanticDigest: sha256(canonicalJson(payload)),
+  };
+}
+
+async function observeGithubRun({ repository, runId, token, acceptedMainTrustRoot } = {}) {
   if (!/^[-A-Za-z0-9_.]+\/[-A-Za-z0-9_.]+$/.test(String(repository || ''))) throw new Error('github_repository_invalid');
   if (!Number.isInteger(Number(runId)) || Number(runId) < 1) throw new Error('github_run_id_invalid');
   if (!token) throw new Error('github_token_required_for_verified_observation');
   const root = `https://api.github.com/repos/${repository}/actions/runs/${Number(runId)}`;
   const run = await githubJson(root, token);
   const jobs = await githubJson(`${root}/jobs?per_page=100`, token);
-  const artifacts = await githubJson(`${root}/artifacts?per_page=100`, token);
+  const artifactResponse = await githubJson(`${root}/artifacts?per_page=100`, token);
+  const workflow = await githubJson(`https://api.github.com/repos/${repository}/actions/workflows/${Number(run.workflow_id)}`, token);
+  const pullRequestNumbers = [...new Set((run.pull_requests || []).map((item) => Number(item.number)).filter(Number.isInteger))];
+  if (run.event !== 'pull_request' || pullRequestNumbers.length !== 1) throw new Error('github_run_pull_request_binding_missing');
+  const pullRequest = await githubJson(`https://api.github.com/repos/${repository}/pulls/${pullRequestNumbers[0]}`, token);
+  const protection = await githubJson(`https://api.github.com/repos/${repository}/branches/${encodeURIComponent(pullRequest.base.ref)}/protection/required_status_checks`, token);
+  const requiredCheckNames = [...new Set([
+    ...(protection.contexts || []),
+    ...(protection.checks || []).map((item) => item.context),
+  ].filter(Boolean))].sort();
+  if (!requiredCheckNames.length) throw new Error('github_required_check_trust_root_empty');
+  const requiredCheckTrustRoot = {
+    source: 'github_branch_protection',
+    baseRef: pullRequest.base.ref,
+    requiredCheckNames,
+    observedAt: new Date().toISOString(),
+  };
+  requiredCheckTrustRoot.digest = sha256(canonicalJson(requiredCheckTrustRoot));
+
+  const jobsList = jobs.jobs || [];
+  const preRunnerJobs = jobsList.filter((job) => (!Array.isArray(job.steps) || job.steps.length === 0) && !job.runner_name);
+  const annotations = [];
+  for (const job of preRunnerJobs) {
+    try {
+      const observed = await githubJson(`https://api.github.com/repos/${repository}/check-runs/${Number(job.id)}/annotations?per_page=100`, token);
+      annotations.push(...(Array.isArray(observed) ? observed : []).map((item) => String(item.message || item.title || '')));
+    } catch {
+      // Annotation absence must not be guessed as billing.
+    }
+  }
+  const annotationText = annotations.join('\n');
+  const billingObserved = /account is locked due to a billing issue|billing (?:issue|lock)|spending limit/i.test(annotationText);
+  const failureClass = preRunnerJobs.length === jobsList.length && jobsList.length > 0
+    ? (billingObserved ? 'account_billing_lock' : 'pre_runner_unavailable')
+    : null;
+
+  const trustRootValid = trustRootAccepted(acceptedMainTrustRoot, false)
+    && validateTrustRootShape(acceptedMainTrustRoot, { repository, acceptedMainSha: acceptedMainTrustRoot?.acceptedMainSha }).status === 'pass';
+  if (run.conclusion === 'success' && !trustRootValid) throw new Error('accepted_main_trust_root_required_for_success_evidence');
+  const artifactContracts = acceptedMainTrustRoot?.artifactContract?.requiredArtifacts || [];
+  const artifactsByName = new Map((artifactResponse.artifacts || []).filter((artifact) => artifact.expired !== true).map((artifact) => [artifact.name, artifact]));
+  const artifacts = [];
+  if (run.conclusion === 'success') {
+    for (const contract of artifactContracts) {
+      const artifact = artifactsByName.get(contract.name);
+      if (!artifact) throw new Error(`required_artifact_missing:${contract.name}`);
+      artifacts.push(await observeRequiredArtifact(artifact, contract, token));
+    }
+  }
   return {
     repository,
+    pullRequestNumber: Number(pullRequest.number),
+    event: run.event,
+    baseRef: pullRequest.base.ref,
+    baseSha: pullRequest.base.sha,
     headSha: run.head_sha,
     runId: Number(run.id),
     runAttempt: Number(run.run_attempt),
+    workflowRuns: [{
+      runId: Number(run.id),
+      runAttempt: Number(run.run_attempt),
+      workflowId: Number(run.workflow_id),
+      workflowPath: workflow.path,
+      event: run.event,
+      pullRequestNumber: Number(pullRequest.number),
+      baseSha: pullRequest.base.sha,
+      headSha: run.head_sha,
+    }],
     startedAt: run.run_started_at || run.created_at,
     completedAt: run.updated_at,
     observedAt: new Date().toISOString(),
     conclusion: run.conclusion,
+    failureClass,
+    annotationText,
+    requiredCheckTrustRoot,
+    requiredArtifactContractDigest: artifactContracts.length ? sha256(canonicalJson(acceptedMainTrustRoot.artifactContract)) : '',
+    requiredWorkflowContractDigest: acceptedMainTrustRoot?.workflowContract ? sha256(canonicalJson(acceptedMainTrustRoot.workflowContract)) : '',
     checkRuns: (jobs.jobs || []).map((job) => ({
       checkRunId: Number(job.id),
       name: job.name,
       conclusion: job.conclusion,
       headSha: run.head_sha,
     })),
-    artifacts: (artifacts.artifacts || []).filter((artifact) => artifact.expired !== true).map((artifact) => ({
-      artifactId: Number(artifact.id),
-      name: artifact.name,
-      sizeInBytes: Number(artifact.size_in_bytes),
-      contentDigest: artifact.digest || '',
-    })),
+    artifacts,
   };
 }
 
 export function collectVerifiedGithubEvidence(request = {}) {
-  const callerObservationFields = ['headSha', 'runAttempt', 'checkRuns', 'artifacts', 'conclusion', 'startedAt', 'completedAt', 'observedAt'];
+  const callerObservationFields = ['headSha', 'baseSha', 'pullRequestNumber', 'event', 'workflowRuns', 'runAttempt', 'checkRuns', 'artifacts', 'conclusion', 'startedAt', 'completedAt', 'observedAt'];
   if (callerObservationFields.some((field) => Object.hasOwn(request, field))) {
     throw new Error('caller_supplied_github_observation_forbidden');
   }
-  const allowedRequestFields = new Set(['repository', 'runId', 'runIds', 'token']);
+  const allowedRequestFields = new Set(['repository', 'runId', 'runIds', 'token', 'acceptedMainTrustRoot']);
   if (Object.keys(request).some((field) => !allowedRequestFields.has(field))) throw new Error('github_collector_request_field_forbidden');
   const runIds = [...new Set((request.runIds || [request.runId]).map(Number))].filter((runId) => Number.isInteger(runId) && runId > 0);
   if (!runIds.length || runIds.length > 4) throw new Error('github_run_id_set_invalid');
-  return Promise.all(runIds.map((runId) => observeGithubRun({ repository: request.repository, runId, token: request.token }))).then((observations) => {
+  if (request.acceptedMainTrustRoot && !trustRootAccepted(request.acceptedMainTrustRoot, false)) throw new Error('caller_supplied_untrusted_root_forbidden');
+  return Promise.all(runIds.map((runId) => observeGithubRun({
+    repository: request.repository,
+    runId,
+    token: request.token,
+    acceptedMainTrustRoot: request.acceptedMainTrustRoot,
+  }))).then((observations) => {
     const headSha = observations[0].headSha;
+    const bindingDigest = (item) => canonicalJson({
+      repository: item.repository,
+      pullRequestNumber: item.pullRequestNumber,
+      event: item.event,
+      baseRef: item.baseRef,
+      baseSha: item.baseSha,
+      headSha: item.headSha,
+      requiredCheckTrustRoot: item.requiredCheckTrustRoot,
+      requiredArtifactContractDigest: item.requiredArtifactContractDigest,
+      requiredWorkflowContractDigest: item.requiredWorkflowContractDigest,
+    });
+    if (observations.some((item) => bindingDigest(item) !== bindingDigest(observations[0]))) throw new Error('github_run_set_binding_mismatch');
+    const failureClass = observations.some((item) => item.failureClass === 'account_billing_lock')
+      ? 'account_billing_lock'
+      : observations.some((item) => item.failureClass === 'pre_runner_unavailable')
+        ? 'pre_runner_unavailable'
+        : null;
     const observation = {
       repository: request.repository,
+      pullRequestNumber: observations[0].pullRequestNumber,
+      event: observations[0].event,
+      baseRef: observations[0].baseRef,
+      baseSha: observations[0].baseSha,
       headSha,
       runIds: observations.map((item) => item.runId),
       runAttempts: observations.map((item) => ({ runId: item.runId, runAttempt: item.runAttempt })),
+      workflowRuns: observations.flatMap((item) => item.workflowRuns),
       startedAt: observations.map((item) => item.startedAt).sort()[0],
       completedAt: observations.map((item) => item.completedAt).sort().at(-1),
       observedAt: new Date().toISOString(),
       conclusion: observations.every((item) => item.conclusion === 'success') ? 'success' : 'failure',
+      failureClass,
+      annotationText: observations.map((item) => item.annotationText).filter(Boolean).join('\n'),
       checkRuns: observations.flatMap((item) => item.checkRuns),
       artifacts: observations.flatMap((item) => item.artifacts),
+      requiredCheckTrustRoot: observations[0].requiredCheckTrustRoot,
+      requiredArtifactContractDigest: observations[0].requiredArtifactContractDigest,
+      requiredWorkflowContractDigest: observations[0].requiredWorkflowContractDigest,
     };
     const receipt = buildRemoteReceipt(observation, { testMode: false, observationSource: 'github_api_verified_collector' });
     API_OBSERVED_REMOTE_RECEIPTS.add(receipt);
@@ -229,13 +557,19 @@ export function reobserveSerializedGithubEvidence(receipt, request = {}) {
     repository: serialized.repository,
     runIds: serialized.runIds,
     token: request.token,
+    acceptedMainTrustRoot: request.acceptedMainTrustRoot,
   }).then((observed) => {
     const comparable = (value) => ({
       evidenceType: value.evidenceType,
       repository: value.repository,
+      pullRequestNumber: value.pullRequestNumber,
+      event: value.event,
+      baseRef: value.baseRef,
+      baseSha: value.baseSha,
       headSha: value.headSha,
       runIds: value.runIds,
       runAttempts: value.runAttempts,
+      workflowRuns: value.workflowRuns,
       startedAt: value.startedAt,
       completedAt: value.completedAt,
       conclusion: value.conclusion,
@@ -243,6 +577,9 @@ export function reobserveSerializedGithubEvidence(receipt, request = {}) {
       annotationDigest: value.annotationDigest,
       checkRuns: value.checkRuns,
       artifacts: value.artifacts,
+      requiredCheckTrustRoot: value.requiredCheckTrustRoot,
+      requiredArtifactContractDigest: value.requiredArtifactContractDigest,
+      requiredWorkflowContractDigest: value.requiredWorkflowContractDigest,
       requiredCheckSetDigest: value.requiredCheckSetDigest,
       artifactDigest: value.artifactDigest,
     });
@@ -254,7 +591,15 @@ export function reobserveSerializedGithubEvidence(receipt, request = {}) {
 }
 
 export function createFixtureGithubEvidence(observation = {}) {
-  const receipt = buildRemoteReceipt(observation, { testMode: true, observationSource: 'explicit_test_collector' });
+  const trustRoot = observation.acceptedMainTrustRoot;
+  if (trustRoot && !trustRootAccepted(trustRoot, true)) throw new Error('fixture_remote_trust_root_invalid');
+  const receipt = buildRemoteReceipt({
+    ...observation,
+    requiredArtifactContractDigest: observation.requiredArtifactContractDigest
+      || (trustRoot?.artifactContract ? sha256(canonicalJson(trustRoot.artifactContract)) : ''),
+    requiredWorkflowContractDigest: observation.requiredWorkflowContractDigest
+      || (trustRoot?.workflowContract ? sha256(canonicalJson(trustRoot.workflowContract)) : ''),
+  }, { testMode: true, observationSource: 'explicit_test_collector' });
   FIXTURE_REMOTE_RECEIPTS.add(receipt);
   return receipt;
 }
@@ -264,15 +609,42 @@ function finalDecisionPayload(receipt) {
   return payload;
 }
 
-export function verifySignedFinalDecisionReceipt(serializedReceipt, { publicKeyPem } = {}) {
+export function trustRootContractDigest(root) {
+  return sha256(canonicalJson({
+    schemaVersion: root?.schemaVersion,
+    state: root?.state,
+    authority: root?.authority,
+    repository: root?.repository,
+    acceptedMainSha: root?.acceptedMainSha,
+    finalDecisionKey: root?.finalDecisionKey,
+    revokedKeyIds: root?.revokedKeyIds,
+    keyRotation: root?.keyRotation,
+    artifactContract: root?.artifactContract,
+    workflowContract: root?.workflowContract,
+  }));
+}
+
+export function verifySignedFinalDecisionReceipt(serializedReceipt, { trustRoot } = {}) {
   const receipt = structuredClone(serializedReceipt);
-  if (!publicKeyPem) throw new Error('final_decision_public_key_required');
+  const fixtureMode = receipt.testMode === true;
+  if (!trustRoot || !trustRootAccepted(trustRoot, fixtureMode)) throw new Error('final_decision_trusted_root_required');
+  const rootValidation = validateTrustRootShape(trustRoot, {
+    repository: receipt.repository,
+    acceptedMainSha: trustRoot.acceptedMainSha,
+  });
+  if (rootValidation.status !== 'pass') throw new Error(`final_decision_trust_root_invalid:${rootValidation.reasonCodes.join(',')}`);
+  const trustedKey = trustRoot.finalDecisionKey;
+  if (receipt.signingKeyId !== trustedKey.keyId) throw new Error('final_decision_signing_key_id_untrusted');
+  if (receipt.signingKeyFingerprint !== trustedKey.publicKeyFingerprint) throw new Error('final_decision_signing_key_fingerprint_untrusted');
+  if (trustRoot.revokedKeyIds.includes(receipt.signingKeyId)) throw new Error('final_decision_signing_key_revoked');
+  if (receipt.trustRootDigest !== trustRootContractDigest(trustRoot)) throw new Error('final_decision_trust_root_digest_mismatch');
   if (receipt.signatureAlgorithm !== 'ed25519' || typeof receipt.signature !== 'string') throw new Error('final_decision_signature_metadata_invalid');
   const payload = finalDecisionPayload(receipt);
-  const valid = crypto.verify(null, Buffer.from(canonicalJson(payload)), publicKeyPem, Buffer.from(receipt.signature, 'base64'));
+  const valid = crypto.verify(null, Buffer.from(canonicalJson(payload)), trustedKey.publicKeyPem, Buffer.from(receipt.signature, 'base64'));
   if (!valid) throw new Error('final_decision_signature_invalid');
   if (receipt.receiptDigest !== sha256(canonicalJson({ ...payload, signature: receipt.signature }))) throw new Error('final_decision_digest_invalid');
-  VERIFIED_FINAL_DECISION_RECEIPTS.add(receipt);
+  if (fixtureMode) FIXTURE_FINAL_DECISION_RECEIPTS.add(receipt);
+  else VERIFIED_FINAL_DECISION_RECEIPTS.add(receipt);
   return receipt;
 }
 
@@ -305,7 +677,11 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
   if (receipt.collectorVersion !== V132_GITHUB_COLLECTOR_VERSION) reasons.push('remote_collector_version_invalid');
   if (receipt.receiptPayloadDigest !== sha256(canonicalJson(remoteReceiptPayload(receipt)))) reasons.push('remote_receipt_payload_digest_invalid');
   const repository = String(receipt.repository || '');
+  const pullRequestNumber = Number(receipt.pullRequestNumber);
+  const event = String(receipt.event || '');
+  const baseSha = String(receipt.baseSha || '').toLowerCase();
   const headSha = String(receipt.headSha || '').toLowerCase();
+  const expectedBaseSha = String(expected.baseSha || '').toLowerCase();
   const expectedHeadSha = String(expected.headSha || '').toLowerCase();
   const requiredCheckSetDigest = String(receipt.requiredCheckSetDigest || '');
   const expectedCheckSetDigest = String(expected.requiredCheckSetDigest || '');
@@ -314,6 +690,12 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
 
   if (!['github_required_check_set', 'github_job_not_started'].includes(receipt.evidenceType)) reasons.push('remote_evidence_type_invalid');
   if (!repository || (expected.repository && repository !== expected.repository)) reasons.push('remote_repository_mismatch');
+  if (!Number.isInteger(pullRequestNumber) || pullRequestNumber < 1) reasons.push('remote_pull_request_number_invalid');
+  if (expected.pullRequestNumber && pullRequestNumber !== Number(expected.pullRequestNumber)) reasons.push('remote_pull_request_number_mismatch');
+  if (event !== 'pull_request') reasons.push('remote_event_not_pull_request');
+  if (expected.event && event !== expected.event) reasons.push('remote_event_mismatch');
+  if (!SHA_RE.test(baseSha)) reasons.push('remote_base_sha_invalid');
+  if (expectedBaseSha && baseSha !== expectedBaseSha) reasons.push('remote_base_sha_mismatch');
   if (!SHA_RE.test(headSha)) reasons.push('remote_head_sha_invalid');
   if (expectedHeadSha && headSha !== expectedHeadSha) reasons.push('remote_head_sha_mismatch');
   if (!uniquePositiveIntegers(receipt.runIds)) reasons.push('remote_run_ids_invalid');
@@ -323,16 +705,40 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     || new Set(runAttempts.map((item) => item.runId)).size !== runAttempts.length) reasons.push('remote_run_attempts_invalid');
   if (expected.runId && !receipt.runIds?.includes(Number(expected.runId))) reasons.push('remote_run_id_mismatch');
   if (expected.runAttempt && runAttempts.find((item) => item.runId === Number(expected.runId || receipt.runIds?.[0]))?.runAttempt !== Number(expected.runAttempt)) reasons.push('remote_run_attempt_mismatch');
+  const workflowRuns = normalizedWorkflowRuns(receipt.workflowRuns);
+  if (workflowRuns.length !== receipt.runIds?.length) reasons.push('remote_workflow_run_binding_count_mismatch');
+  const trustRoot = expected.acceptedMainTrustRoot;
+  const trustedRoot = trustRootAccepted(trustRoot, expected.testMode === true)
+    && validateTrustRootShape(trustRoot, { repository, acceptedMainSha: trustRoot?.acceptedMainSha }).status === 'pass';
+  const workflowContract = trustedRoot ? trustRoot.workflowContract.requiredWorkflows : [];
+  for (const [index, workflowRun] of workflowRuns.entries()) {
+    if (!receipt.runIds?.includes(workflowRun.runId)) reasons.push(`workflow_${index}_run_id_mismatch`);
+    if (workflowRun.event !== event) reasons.push(`workflow_${index}_event_mismatch`);
+    if (workflowRun.pullRequestNumber !== pullRequestNumber) reasons.push(`workflow_${index}_pr_mismatch`);
+    if (workflowRun.baseSha !== baseSha) reasons.push(`workflow_${index}_base_mismatch`);
+    if (workflowRun.headSha !== headSha) reasons.push(`workflow_${index}_head_mismatch`);
+    if (receipt.evidenceType !== 'github_job_not_started'
+      && !workflowContract.some((entry) => entry.workflowId === workflowRun.workflowId && entry.path === workflowRun.workflowPath)) {
+      reasons.push(`workflow_${index}_not_in_accepted_main_contract`);
+    }
+  }
+  if (receipt.evidenceType !== 'github_job_not_started'
+    && receipt.requiredWorkflowContractDigest !== (trustedRoot ? sha256(canonicalJson(trustRoot.workflowContract)) : '')) {
+    reasons.push('required_workflow_contract_digest_mismatch');
+  }
   if (!['github_api_verified_collector', 'explicit_test_collector'].includes(receipt.observationSource)) reasons.push('remote_observation_source_invalid');
   if (!validRfc3339(receipt.startedAt) || !validRfc3339(receipt.completedAt) || !validRfc3339(receipt.observedAt)) reasons.push('remote_timestamp_invalid');
   if (validRfc3339(receipt.startedAt) && validRfc3339(receipt.completedAt)
     && Date.parse(receipt.completedAt) < Date.parse(receipt.startedAt)) reasons.push('remote_timestamp_order_invalid');
 
   if (receipt.evidenceType === 'github_job_not_started') {
-    if (receipt.failureClass !== 'account_billing_lock') reasons.push('remote_not_started_failure_class_invalid');
-    if (!DIGEST_RE.test(String(receipt.annotationDigest || ''))) reasons.push('remote_not_started_annotation_digest_invalid');
+    if (!['account_billing_lock', 'pre_runner_unavailable'].includes(receipt.failureClass)) reasons.push('remote_not_started_failure_class_invalid');
+    if (receipt.failureClass === 'account_billing_lock' && !DIGEST_RE.test(String(receipt.annotationDigest || ''))) {
+      reasons.push('remote_billing_annotation_required');
+    }
+    const unavailableState = receipt.failureClass === 'account_billing_lock' ? 'unavailable_billing' : 'unavailable_pre_runner';
     return {
-      ...baseRemoteProjection(reasons.length ? 'failed' : 'unavailable_billing', reasons),
+      ...baseRemoteProjection(reasons.length ? 'failed' : unavailableState, reasons),
       remoteFailureClass: receipt.failureClass || 'unknown_pre_step_failure',
       remoteEvidenceObserved: true,
       observedHeadSha: SHA_RE.test(headSha) ? headSha : null,
@@ -348,11 +754,26 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     if (check.conclusion !== 'success') reasons.push(`check_${index}_conclusion_not_success`);
     if (String(check.headSha || '').toLowerCase() !== headSha) reasons.push(`check_${index}_head_mismatch`);
   }
-  const observedCheckNames = [...new Set(checkRuns.map((check) => check.name))].sort();
-  const expectedCheckNames = [...new Set(expected.requiredCheckNames || [])].sort();
-  if (expectedCheckNames.length && canonicalJson(observedCheckNames) !== canonicalJson(expectedCheckNames)) reasons.push('required_check_name_set_mismatch');
+  const checkTrust = receipt.requiredCheckTrustRoot || {};
+  const validCheckTrustSource = checkTrust.source === 'github_branch_protection'
+    || (expected.testMode === true && checkTrust.source === 'explicit_test_branch_protection');
+  if (!validCheckTrustSource) reasons.push('required_check_trust_root_invalid');
+  if (checkTrust.baseRef !== receipt.baseRef) reasons.push('required_check_trust_root_base_mismatch');
+  if (!validRfc3339(checkTrust.observedAt)) reasons.push('required_check_trust_root_timestamp_invalid');
+  const checkTrustPayload = { ...checkTrust };
+  delete checkTrustPayload.digest;
+  if (checkTrust.digest !== sha256(canonicalJson(checkTrustPayload))) reasons.push('required_check_trust_root_digest_invalid');
+  const expectedCheckNames = [...new Set(checkTrust.requiredCheckNames || [])].sort();
+  if (!expectedCheckNames.length) reasons.push('required_check_name_set_empty');
+  const observedCheckNames = [...new Set(checkRuns.filter((check) => check.conclusion === 'success').map((check) => check.name))].sort();
+  if (expectedCheckNames.some((name) => !observedCheckNames.includes(name))) reasons.push('required_check_name_set_mismatch');
+  if (Array.isArray(expected.requiredCheckNames) && canonicalJson([...new Set(expected.requiredCheckNames)].sort()) !== canonicalJson(expectedCheckNames)) {
+    reasons.push('candidate_controlled_required_check_list_forbidden');
+  }
   if (!DIGEST_RE.test(requiredCheckSetDigest)) reasons.push('required_check_set_digest_invalid');
-  const derivedCheckSetDigest = sha256(canonicalJson(normalizedCheckRuns(checkRuns, headSha).map(({ checkRunId, name, conclusion, headSha: checkHeadSha }) => ({ checkRunId, name, conclusion, headSha: checkHeadSha }))));
+  const derivedCheckSetDigest = sha256(canonicalJson(normalizedCheckRuns(checkRuns, headSha)
+    .filter((check) => expectedCheckNames.includes(check.name))
+    .map(({ checkRunId, name, conclusion, headSha: checkHeadSha }) => ({ checkRunId, name, conclusion, headSha: checkHeadSha }))));
   if (requiredCheckSetDigest !== derivedCheckSetDigest) reasons.push('required_check_set_digest_not_derived');
   if (expectedCheckSetDigest && requiredCheckSetDigest !== expectedCheckSetDigest) reasons.push('required_check_set_digest_mismatch');
   if (!DIGEST_RE.test(artifactDigest)) reasons.push('artifact_digest_missing_or_invalid');
@@ -366,13 +787,22 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     if (!artifact.name || typeof artifact.name !== 'string') reasons.push(`artifact_${index}_name_invalid`);
     if (!Number.isInteger(artifact.sizeInBytes) || artifact.sizeInBytes < 0) reasons.push(`artifact_${index}_size_invalid`);
     if (!DIGEST_RE.test(String(artifact.contentDigest || ''))) reasons.push(`artifact_${index}_content_digest_missing`);
+    if (!artifact.entryPath || !artifact.schemaVersion || !DIGEST_RE.test(String(artifact.semanticDigest || ''))) reasons.push(`artifact_${index}_semantic_binding_invalid`);
+  }
+  if (!trustedRoot) reasons.push('accepted_main_trust_root_required');
+  const requiredArtifactContractDigest = trustedRoot ? sha256(canonicalJson(trustRoot.artifactContract)) : '';
+  if (receipt.requiredArtifactContractDigest !== requiredArtifactContractDigest) reasons.push('required_artifact_contract_digest_mismatch');
+  const requiredArtifacts = trustedRoot ? trustRoot.artifactContract.requiredArtifacts : [];
+  if (canonicalJson(artifacts.map(({ name, entryPath, schemaVersion }) => ({ name, entryPath, schemaVersion })).sort((a, b) => a.name.localeCompare(b.name)))
+    !== canonicalJson(requiredArtifacts.map(({ name, entryPath, schemaVersion }) => ({ name, entryPath, schemaVersion })).sort((a, b) => a.name.localeCompare(b.name)))) {
+    reasons.push('required_artifact_exact_set_mismatch');
   }
   if (receipt.conclusion !== 'success') reasons.push('remote_conclusion_not_success');
 
   let remoteValidationState = 'passed';
   if (reasons.some((reason) => reason.includes('head_sha_mismatch') || reason.includes('_head_mismatch'))) remoteValidationState = 'head_mismatch';
   else if (reasons.some((reason) => reason.includes('required_check_set'))) remoteValidationState = 'required_check_set_mismatch';
-  else if (reasons.some((reason) => reason.includes('artifact_digest'))) remoteValidationState = 'artifact_missing';
+  else if (reasons.some((reason) => reason.includes('artifact'))) remoteValidationState = 'artifact_missing';
   else if (reasons.length) remoteValidationState = 'failed';
 
   return {
@@ -380,8 +810,8 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
     remoteValidationState,
     remoteFailureClass: reasons.length ? 'remote_evidence_invalid' : null,
     sameHeadState: !reasons.some((reason) => reason.includes('head')) && expectedHeadSha ? 'matched' : (expectedHeadSha ? 'mismatch' : 'not_requested'),
-    requiredCheckSetState: !reasons.some((reason) => reason.includes('required_check_set') || reason.startsWith('check_')) ? 'matched' : 'mismatch',
-    artifactIntegrityState: !reasons.some((reason) => reason.includes('artifact_digest')) ? 'verified' : 'missing_or_mismatch',
+    requiredCheckSetState: !reasons.some((reason) => reason.includes('required_check') || reason.startsWith('check_') || reason.includes('candidate_controlled_required_check')) ? 'matched' : 'mismatch',
+    artifactIntegrityState: !reasons.some((reason) => reason.includes('artifact')) ? 'verified' : 'missing_or_mismatch',
     remoteEvidenceObserved: true,
     observedHeadSha: SHA_RE.test(headSha) ? headSha : null,
     runIds: uniquePositiveIntegers(receipt.runIds) ? [...receipt.runIds] : [],
@@ -393,15 +823,7 @@ export function evaluateRemoteEvidence(receipt, expected = {}) {
 export function evaluateFinalDecisionReceipt(receipt, expected = {}) {
   if (receipt == null) return { status: 'not_observed', finalDecisionState: 'not_authorized', reasonCodes: [], createsAuthority: false };
   const reasons = collectForbiddenBooleanClaims(receipt).map((path) => `authority_boolean_forbidden:${path}`);
-  let productionTrusted = VERIFIED_FINAL_DECISION_RECEIPTS.has(receipt) && receipt.testMode === false;
-  if (!productionTrusted && receipt.testMode !== true && expected.finalDecisionPublicKeyPem) {
-    try {
-      verifySignedFinalDecisionReceipt(receipt, { publicKeyPem: expected.finalDecisionPublicKeyPem });
-      productionTrusted = true;
-    } catch {
-      productionTrusted = false;
-    }
-  }
+  const productionTrusted = VERIFIED_FINAL_DECISION_RECEIPTS.has(receipt) && receipt.testMode === false;
   const fixtureTrusted = FIXTURE_FINAL_DECISION_RECEIPTS.has(receipt) && receipt.testMode === true && expected.testMode === true;
   if (!productionTrusted && !fixtureTrusted) reasons.push('final_decision_receipt_not_signature_verified');
   if (receipt.testMode === true && expected.testMode !== true) reasons.push('fixture_final_decision_forbidden_outside_test_mode');
